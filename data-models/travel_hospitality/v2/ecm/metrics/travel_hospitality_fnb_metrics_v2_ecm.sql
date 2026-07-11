@@ -1,69 +1,90 @@
--- Metric views for domain: fnb | Business: Travel Hospitality | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: fnb | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 20:27:36
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_banquet_event_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Banquet and event order revenue metrics covering food, beverage, service charges, and tax. Enables catering sales performance management and event profitability analysis."
+  comment: "Banquet Event Order business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order`"
-  filter: event_status NOT IN ('CANCELLED', 'NO_SHOW')
   dimensions:
-    - name: "event_date"
-      expr: event_date
-      comment: "Date of the banquet event for temporal revenue trend analysis."
-    - name: "event_type"
-      expr: event_type
-      comment: "Type of event (wedding, conference, gala, etc.) for segment-level revenue analysis."
-    - name: "event_status"
-      expr: event_status
-      comment: "Current status of the event order (confirmed, tentative, completed) for pipeline and conversion tracking."
-    - name: "beverage_package_type"
+    - name: "Actual Covers"
+      expr: actual_covers
+    - name: "Beo Number"
+      expr: beo_number
+    - name: "Beverage Package Type"
       expr: beverage_package_type
-      comment: "Beverage package type selected for the event. Drives beverage revenue mix analysis."
-    - name: "setup_style"
-      expr: setup_style
-      comment: "Room setup style (theatre, banquet, classroom) for space utilization and capacity planning."
-    - name: "currency_code"
+    - name: "Billing Instructions"
+      expr: billing_instructions
+    - name: "Completed Timestamp"
+      expr: completed_timestamp
+    - name: "Confirmed Timestamp"
+      expr: confirmed_timestamp
+    - name: "Contact Email"
+      expr: contact_email
+    - name: "Contact Name"
+      expr: contact_name
+    - name: "Contact Phone"
+      expr: contact_phone
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the event order for multi-currency catering revenue reporting."
+    - name: "Dietary Requirements"
+      expr: dietary_requirements
+    - name: "Event Date"
+      expr: event_date
+    - name: "Event End Time"
+      expr: event_end_time
+    - name: "Event Name"
+      expr: event_name
+    - name: "Event Start Time"
+      expr: event_start_time
   measures:
-    - name: "total_event_revenue"
-      expr: SUM(CAST(total_revenue AS DOUBLE))
-      comment: "Total gross revenue from banquet event orders. Primary catering revenue KPI for sales performance and forecasting."
-    - name: "total_food_revenue"
-      expr: SUM(CAST(food_revenue AS DOUBLE))
-      comment: "Total food revenue from banquet events. Used to track food mix and per-person food yield."
-    - name: "total_beverage_revenue"
-      expr: SUM(CAST(beverage_revenue AS DOUBLE))
-      comment: "Total beverage revenue from banquet events. Tracks beverage attach rate and package uptake."
-    - name: "total_service_charge"
-      expr: SUM(CAST(service_charge_amount AS DOUBLE))
-      comment: "Total service charges collected on banquet orders. Key for labor cost recovery in catering operations."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected on banquet orders. Required for tax compliance and remittance."
-    - name: "event_order_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of banquet event orders. Volume baseline for catering pipeline and conversion rate analysis."
-    - name: "avg_revenue_per_event"
-      expr: AVG(CAST(total_revenue AS DOUBLE))
-      comment: "Average total revenue per banquet event. Benchmarks event value and informs minimum spend policies."
-    - name: "avg_food_revenue_per_event"
-      expr: AVG(CAST(food_revenue AS DOUBLE))
-      comment: "Average food revenue per event. Supports per-person food pricing strategy and package design."
-    - name: "avg_beverage_revenue_per_event"
-      expr: AVG(CAST(beverage_revenue AS DOUBLE))
-      comment: "Average beverage revenue per event. Informs beverage package pricing and upsell strategy."
-    - name: "beverage_to_food_revenue_ratio"
-      expr: ROUND(SUM(CAST(beverage_revenue AS DOUBLE)) / NULLIF(SUM(CAST(food_revenue AS DOUBLE)), 0), 4)
-      comment: "Ratio of beverage to food revenue. Industry benchmark for catering mix; higher ratios indicate strong beverage upsell."
-    - name: "avg_per_person_food_price"
-      expr: AVG(CAST(per_person_food_price AS DOUBLE))
-      comment: "Average per-person food price across events. Core pricing KPI for catering sales and package benchmarking."
-    - name: "avg_per_person_beverage_price"
-      expr: AVG(CAST(per_person_beverage_price AS DOUBLE))
-      comment: "Average per-person beverage price across events. Supports beverage package yield management."
+    - name: "Distinct Banquet Event Order"
+      expr: COUNT(DISTINCT banquet_event_order_id)
+    - name: "Total Function Space Id Fk"
+      expr: SUM(function_space_id_fk)
+    - name: "Average Function Space Id Fk"
+      expr: AVG(function_space_id_fk)
+    - name: "Total Beverage Revenue"
+      expr: SUM(beverage_revenue)
+    - name: "Average Beverage Revenue"
+      expr: AVG(beverage_revenue)
+    - name: "Total Food Revenue"
+      expr: SUM(food_revenue)
+    - name: "Average Food Revenue"
+      expr: AVG(food_revenue)
+    - name: "Total Per Person Beverage Price"
+      expr: SUM(per_person_beverage_price)
+    - name: "Average Per Person Beverage Price"
+      expr: AVG(per_person_beverage_price)
+    - name: "Total Per Person Food Price"
+      expr: SUM(per_person_food_price)
+    - name: "Average Per Person Food Price"
+      expr: AVG(per_person_food_price)
+    - name: "Total Service Charge Amount"
+      expr: SUM(service_charge_amount)
+    - name: "Average Service Charge Amount"
+      expr: AVG(service_charge_amount)
+    - name: "Total Service Charge Percentage"
+      expr: SUM(service_charge_percentage)
+    - name: "Average Service Charge Percentage"
+      expr: AVG(service_charge_percentage)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Tax Percentage"
+      expr: SUM(tax_percentage)
+    - name: "Average Tax Percentage"
+      expr: AVG(tax_percentage)
+    - name: "Total Total Revenue"
+      expr: SUM(total_revenue)
+    - name: "Average Total Revenue"
+      expr: AVG(total_revenue)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_banquet_menu_package`
@@ -71,50 +92,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Banquet menu package metrics for catering product portfolio management, pricing analysis, and cost control. Supports catering sales strategy and package profitability."
+  comment: "Banquet Menu Package business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package`"
-  filter: package_status = 'ACTIVE'
   dimensions:
-    - name: "package_type"
-      expr: package_type
-      comment: "Type of banquet package (Full Day, Half Day, Dinner, Reception) for portfolio segmentation."
-    - name: "menu_category"
-      expr: menu_category
-      comment: "Menu category of the package for cuisine and service style analysis."
-    - name: "package_status"
-      expr: package_status
-      comment: "Current status of the package (Active, Inactive, Seasonal) for portfolio management."
-    - name: "seasonal_indicator"
-      expr: seasonal_indicator
-      comment: "Flag for seasonal packages. Supports seasonal catering planning."
-    - name: "service_style"
-      expr: service_style
-      comment: "Service style (Buffet, Plated, Family Style) for operational planning."
-    - name: "tax_inclusive_flag"
-      expr: tax_inclusive_flag
-      comment: "Flag indicating whether package price is tax-inclusive. Impacts revenue recognition."
-    - name: "currency_code"
+    - name: "Advance Notice Days"
+      expr: advance_notice_days
+    - name: "Allergen Information"
+      expr: allergen_information
+    - name: "Approval Date"
+      expr: approval_date
+    - name: "Beverage Inclusion"
+      expr: beverage_inclusion
+    - name: "Cancellation Policy"
+      expr: cancellation_policy
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the package pricing."
+    - name: "Dietary Accommodations"
+      expr: dietary_accommodations
+    - name: "Included Courses"
+      expr: included_courses
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Maximum Capacity"
+      expr: maximum_capacity
+    - name: "Menu Category"
+      expr: menu_category
+    - name: "Minimum Guarantee"
+      expr: minimum_guarantee
+    - name: "Package Code"
+      expr: package_code
+    - name: "Package Name"
+      expr: package_name
+    - name: "Package Notes"
+      expr: package_notes
   measures:
-    - name: "total_packages"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of banquet menu packages. Baseline for catering portfolio breadth."
-    - name: "avg_per_person_price"
-      expr: AVG(CAST(per_person_price AS DOUBLE))
-      comment: "Average per-person package price. Benchmarks catering pricing strategy."
-    - name: "avg_food_cost_percentage"
-      expr: AVG(CAST(food_cost_percentage AS DOUBLE))
-      comment: "Average food cost percentage across packages. Core catering profitability KPI."
-    - name: "avg_beverage_cost_percentage"
-      expr: AVG(CAST(beverage_cost_percentage AS DOUBLE))
-      comment: "Average beverage cost percentage across packages. Tracks beverage margin performance."
-    - name: "avg_labor_hours_per_guest"
-      expr: AVG(CAST(labor_hours_per_guest AS DOUBLE))
-      comment: "Average labor hours required per guest. Drives staffing cost forecasting for events."
-    - name: "avg_service_charge_percentage"
-      expr: AVG(CAST(service_charge_percentage AS DOUBLE))
-      comment: "Average service charge percentage across packages. Validates pricing policy consistency."
+    - name: "Distinct Banquet Menu Package"
+      expr: COUNT(DISTINCT banquet_menu_package_id)
+    - name: "Total Beverage Cost Percentage"
+      expr: SUM(beverage_cost_percentage)
+    - name: "Average Beverage Cost Percentage"
+      expr: AVG(beverage_cost_percentage)
+    - name: "Total Beverage Duration Hours"
+      expr: SUM(beverage_duration_hours)
+    - name: "Average Beverage Duration Hours"
+      expr: AVG(beverage_duration_hours)
+    - name: "Total Food Cost Percentage"
+      expr: SUM(food_cost_percentage)
+    - name: "Average Food Cost Percentage"
+      expr: AVG(food_cost_percentage)
+    - name: "Total Labor Hours Per Guest"
+      expr: SUM(labor_hours_per_guest)
+    - name: "Average Labor Hours Per Guest"
+      expr: AVG(labor_hours_per_guest)
+    - name: "Total Per Person Price"
+      expr: SUM(per_person_price)
+    - name: "Average Per Person Price"
+      expr: AVG(per_person_price)
+    - name: "Total Service Charge Percentage"
+      expr: SUM(service_charge_percentage)
+    - name: "Average Service Charge Percentage"
+      expr: AVG(service_charge_percentage)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_discount`
@@ -122,59 +163,71 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "F&B discount program metrics covering discount value, usage scope, and promotional structure. Enables discount policy governance and margin impact analysis."
+  comment: "Discount business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`discount`"
-  filter: discount_status = 'ACTIVE'
   dimensions:
-    - name: "discount_type"
-      expr: discount_type
-      comment: "Type of discount (percentage, fixed amount, BOGO) for discount structure analysis."
-    - name: "discount_category"
+    - name: "Applicable Menu Item Scope"
+      expr: applicable_menu_item_scope
+    - name: "Applicable Outlet Scope"
+      expr: applicable_outlet_scope
+    - name: "Applies To Service Charge"
+      expr: applies_to_service_charge
+    - name: "Applies To Tax"
+      expr: applies_to_tax
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Authorization Level Required"
+      expr: authorization_level_required
+    - name: "Discount Category"
       expr: discount_category
-      comment: "Category of discount (loyalty, promotional, employee, manager) for discount program segmentation."
-    - name: "discount_status"
-      expr: discount_status
-      comment: "Status of the discount (active, expired, suspended) for active discount portfolio management."
-    - name: "revenue_class"
-      expr: revenue_class
-      comment: "Revenue class the discount applies to (food, beverage, all) for revenue impact scoping."
-    - name: "combinable_with_other_discounts"
+    - name: "Discount Code"
+      expr: discount_code
+    - name: "Combinable With Other Discounts"
       expr: combinable_with_other_discounts
-      comment: "Flag indicating if the discount can be combined with others. Controls discount stacking risk."
-    - name: "promo_code_required"
-      expr: promo_code_required
-      comment: "Flag indicating a promo code is required. Differentiates targeted vs. open discounts."
-    - name: "currency_code"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the discount for multi-currency discount reporting."
+    - name: "Discount Description"
+      expr: discount_description
+    - name: "Discount Status"
+      expr: discount_status
+    - name: "Discount Type"
+      expr: discount_type
+    - name: "Internal Notes"
+      expr: internal_notes
+    - name: "Maximum Usage Per Check"
+      expr: maximum_usage_per_check
   measures:
-    - name: "avg_discount_percentage"
-      expr: AVG(CAST(percentage AS DOUBLE))
-      comment: "Average discount percentage across active discounts. Benchmarks promotional depth and margin erosion risk."
-    - name: "avg_discount_amount"
-      expr: AVG(CAST(amount AS DOUBLE))
-      comment: "Average fixed discount amount. Supports discount value benchmarking and policy governance."
-    - name: "avg_minimum_check_amount"
-      expr: AVG(CAST(minimum_check_amount AS DOUBLE))
-      comment: "Average minimum check amount required to qualify for a discount. Informs discount threshold policy design."
-    - name: "avg_max_discount_per_check"
-      expr: AVG(CAST(maximum_discount_amount_per_check AS DOUBLE))
-      comment: "Average maximum discount cap per check. Tracks discount exposure limits and margin protection policies."
-    - name: "active_discount_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of active discounts. Baseline for promotional program complexity and governance."
-    - name: "combinable_discount_count"
-      expr: SUM(CASE WHEN combinable_with_other_discounts = true THEN 1 ELSE 0 END)
-      comment: "Number of discounts that can be combined with others. Tracks discount stacking risk exposure."
+    - name: "Distinct Discount"
+      expr: COUNT(DISTINCT discount_id)
+    - name: "Total Amount"
+      expr: SUM(amount)
+    - name: "Average Amount"
+      expr: AVG(amount)
+    - name: "Total Maximum Discount Amount Per Check"
+      expr: SUM(maximum_discount_amount_per_check)
+    - name: "Average Maximum Discount Amount Per Check"
+      expr: AVG(maximum_discount_amount_per_check)
+    - name: "Total Minimum Check Amount"
+      expr: SUM(minimum_check_amount)
+    - name: "Average Minimum Check Amount"
+      expr: AVG(minimum_check_amount)
+    - name: "Total Percentage"
+      expr: SUM(percentage)
+    - name: "Average Percentage"
+      expr: AVG(percentage)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_fnb_outlet`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_fnb_outlet`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Fnb Outlet business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`fnb_outlet`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`"
   dimensions:
     - name: "Accepts Reservations Flag"
       expr: accepts_reservations_flag
@@ -227,61 +280,13 @@ AS $$
       expr: AVG(food_cost_percentage_target)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_outlet`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "F&B outlet master metrics covering financial targets, compliance certifications, and operational attributes. Enables outlet portfolio management and performance benchmarking."
-  source: "`vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`"
-  filter: outlet_status = 'ACTIVE'
-  dimensions:
-    - name: "outlet_type"
-      expr: outlet_type
-      comment: "Type of outlet (restaurant, bar, café, banquet) for outlet category benchmarking."
-    - name: "cuisine_category"
-      expr: cuisine_category
-      comment: "Cuisine category for culinary portfolio and brand positioning analysis."
-    - name: "outlet_status"
-      expr: outlet_status
-      comment: "Operational status of the outlet for active portfolio management."
-    - name: "service_style"
-      expr: service_style
-      comment: "Service style (full service, quick service, buffet) for operational model analysis."
-    - name: "iso_22000_certified_flag"
-      expr: iso_22000_certified_flag
-      comment: "ISO 22000 food safety certification status. Compliance KPI for regulatory and brand standards."
-    - name: "accepts_reservations_flag"
-      expr: accepts_reservations_flag
-      comment: "Flag indicating the outlet accepts reservations. Supports revenue management and capacity planning."
-  measures:
-    - name: "avg_check_target"
-      expr: AVG(CAST(average_check_target AS DOUBLE))
-      comment: "Average check target across outlets. Benchmarks revenue per cover targets for outlet performance management."
-    - name: "avg_food_cost_target_pct"
-      expr: AVG(CAST(food_cost_percentage_target AS DOUBLE))
-      comment: "Average food cost target percentage across outlets. Baseline for food cost performance benchmarking."
-    - name: "avg_beverage_cost_target_pct"
-      expr: AVG(CAST(beverage_cost_percentage_target AS DOUBLE))
-      comment: "Average beverage cost target percentage across outlets. Baseline for beverage cost performance benchmarking."
-    - name: "outlet_count"
-      expr: COUNT(1)
-      comment: "Total number of active F&B outlets. Portfolio size baseline for capacity and investment planning."
-    - name: "iso_22000_certified_outlet_count"
-      expr: SUM(CASE WHEN iso_22000_certified_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of ISO 22000 certified outlets. Compliance portfolio KPI for regulatory standing and brand standards."
-    - name: "iso_22000_certification_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN iso_22000_certified_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of active outlets with ISO 22000 certification. Strategic food safety compliance KPI for executive reporting."
-$$;
-
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_fnb_supply_agreement`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_fnb_supply_agreement`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Fnb Supply Agreement business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`fnb_supply_agreement`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement`"
   dimensions:
     - name: "Agreement End Date"
       expr: agreement_end_date
@@ -325,58 +330,50 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Food safety inspection metrics tracking compliance scores, violation rates, and corrective action status. Critical for regulatory compliance, brand protection, and ISO 22000 certification management."
+  comment: "Food Safety Inspection business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection`"
   dimensions:
-    - name: "inspection_date"
-      expr: inspection_date
-      comment: "Date of the food safety inspection for compliance trend analysis."
-    - name: "inspection_type"
-      expr: inspection_type
-      comment: "Type of inspection (routine, follow-up, audit, regulatory) for inspection category analysis."
-    - name: "inspection_status"
-      expr: inspection_status
-      comment: "Status of the inspection (completed, pending, failed) for compliance monitoring."
-    - name: "compliance_status"
+    - name: "Areas Inspected"
+      expr: areas_inspected
+    - name: "Compliance Status"
       expr: compliance_status
-      comment: "Overall compliance status outcome (compliant, non-compliant, conditional) for regulatory reporting."
-    - name: "inspection_grade"
-      expr: inspection_grade
-      comment: "Grade assigned by the inspector (A, B, C, etc.) for public-facing compliance benchmarking."
-    - name: "regulatory_authority"
-      expr: regulatory_authority
-      comment: "Regulatory body conducting the inspection for jurisdiction-level compliance tracking."
-    - name: "haccp_compliance_flag"
+    - name: "Corrective Action Completion Date"
+      expr: corrective_action_completion_date
+    - name: "Corrective Action Due Date"
+      expr: corrective_action_due_date
+    - name: "Corrective Action Status"
+      expr: corrective_action_status
+    - name: "Corrective Actions Required"
+      expr: corrective_actions_required
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Critical Violations Count"
+      expr: critical_violations_count
+    - name: "Haccp Compliance Flag"
       expr: haccp_compliance_flag
-      comment: "HACCP compliance flag for food safety program adherence reporting."
-    - name: "iso_22000_compliance_flag"
-      expr: iso_22000_compliance_flag
-      comment: "ISO 22000 compliance flag for certification maintenance tracking."
-    - name: "reinspection_required_flag"
-      expr: reinspection_required_flag
-      comment: "Flag indicating a reinspection is required. Tracks non-compliance severity."
+    - name: "Inspection Checklist Used"
+      expr: inspection_checklist_used
+    - name: "Inspection Date"
+      expr: inspection_date
+    - name: "Inspection Duration Minutes"
+      expr: inspection_duration_minutes
+    - name: "Inspection Grade"
+      expr: inspection_grade
+    - name: "Inspection Notes"
+      expr: inspection_notes
+    - name: "Inspection Number"
+      expr: inspection_number
+    - name: "Inspection Report Url"
+      expr: inspection_report_url
   measures:
-    - name: "avg_inspection_score"
-      expr: AVG(CAST(inspection_score AS DOUBLE))
-      comment: "Average food safety inspection score. Primary compliance KPI for regulatory standing and brand protection."
-    - name: "inspection_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of food safety inspections. Baseline for inspection frequency and regulatory coverage."
-    - name: "reinspection_required_count"
-      expr: SUM(CASE WHEN reinspection_required_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of inspections requiring reinspection. Critical compliance risk KPI; high counts signal systemic food safety failures."
-    - name: "haccp_compliant_count"
-      expr: SUM(CASE WHEN haccp_compliance_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of inspections with HACCP compliance confirmed. Tracks HACCP program effectiveness."
-    - name: "iso_22000_compliant_count"
-      expr: SUM(CASE WHEN iso_22000_compliance_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of inspections with ISO 22000 compliance confirmed. Supports certification audit readiness."
-    - name: "reinspection_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN reinspection_required_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of inspections requiring reinspection. Regulatory risk KPI; target is 0% for premium hospitality brands."
-    - name: "haccp_compliance_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN haccp_compliance_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "HACCP compliance rate across all inspections. Mandatory food safety program KPI for regulatory and brand standards."
+    - name: "Distinct Food Safety Inspection"
+      expr: COUNT(DISTINCT food_safety_inspection_id)
+    - name: "Total Inspection Score"
+      expr: SUM(inspection_score)
+    - name: "Average Inspection Score"
+      expr: AVG(inspection_score)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_inventory_item`
@@ -384,62 +381,95 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "F&B inventory item master metrics covering stock levels, cost, and dietary/compliance attributes. Enables procurement planning, cost management, and food safety compliance."
+  comment: "Inventory Item business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`inventory_item`"
-  filter: item_status = 'ACTIVE'
   dimensions:
-    - name: "item_category"
-      expr: item_category
-      comment: "Category of the inventory item (food, beverage, dry goods) for category-level stock analysis."
-    - name: "item_subcategory"
-      expr: item_subcategory
-      comment: "Subcategory for granular inventory classification and procurement planning."
-    - name: "item_status"
-      expr: item_status
-      comment: "Status of the inventory item (active, discontinued, on-hold) for active stock management."
-    - name: "temperature_controlled_flag"
-      expr: temperature_controlled_flag
-      comment: "Flag for temperature-controlled items. Critical for cold chain compliance and storage cost allocation."
-    - name: "alcohol_flag"
+    - name: "Alcohol Flag"
       expr: alcohol_flag
-      comment: "Flag for alcoholic items. Required for liquor license compliance and beverage cost tracking."
-    - name: "local_sourced_flag"
-      expr: local_sourced_flag
-      comment: "Flag for locally sourced items. Supports sustainability reporting and local procurement targets."
-    - name: "organic_flag"
-      expr: organic_flag
-      comment: "Flag for organic items. Supports premium menu positioning and sustainability KPIs."
+    - name: "Allergen Flag"
+      expr: allergen_flag
+    - name: "Allergen Types"
+      expr: allergen_types
+    - name: "Brand Name"
+      expr: brand_name
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Gluten Free Flag"
+      expr: gluten_free_flag
+    - name: "Halal Certified Flag"
+      expr: halal_certified_flag
+    - name: "Iso Food Safety Classification"
+      expr: iso_food_safety_classification
+    - name: "Item Category"
+      expr: item_category
+    - name: "Item Code"
+      expr: item_code
+    - name: "Item Name"
+      expr: item_name
+    - name: "Item Status"
+      expr: item_status
+    - name: "Item Subcategory"
+      expr: item_subcategory
+    - name: "Kosher Certified Flag"
+      expr: kosher_certified_flag
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Last Physical Count Date"
+      expr: last_physical_count_date
   measures:
-    - name: "total_on_hand_value"
-      expr: SUM(CAST(current_on_hand_quantity AS DOUBLE) * CAST(standard_cost AS DOUBLE))
-      comment: "Total value of current on-hand inventory (quantity × standard cost). Primary inventory asset KPI for balance sheet and working capital management."
-    - name: "avg_standard_cost"
-      expr: AVG(CAST(standard_cost AS DOUBLE))
-      comment: "Average standard cost per inventory item. Benchmarks procurement pricing and cost inflation trends."
-    - name: "total_current_on_hand_quantity"
-      expr: SUM(CAST(current_on_hand_quantity AS DOUBLE))
-      comment: "Total quantity of all active inventory items on hand. Baseline for stock coverage and reorder planning."
-    - name: "items_below_par_count"
-      expr: SUM(CASE WHEN current_on_hand_quantity < par_level THEN 1 ELSE 0 END)
-      comment: "Number of items below par level. Critical procurement alert KPI; drives reorder decisions and prevents stockouts."
-    - name: "items_below_reorder_point_count"
-      expr: SUM(CASE WHEN current_on_hand_quantity < reorder_point THEN 1 ELSE 0 END)
-      comment: "Number of items at or below reorder point. Triggers procurement action to prevent service disruption."
-    - name: "avg_yield_percent"
-      expr: AVG(CAST(yield_percent AS DOUBLE))
-      comment: "Average yield percentage across inventory items. Informs recipe costing accuracy and portion control standards."
-    - name: "active_item_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of active inventory items. Baseline for inventory complexity and procurement portfolio management."
+    - name: "Distinct Inventory Item"
+      expr: COUNT(DISTINCT inventory_item_id)
+    - name: "Total Alcohol By Volume Percent"
+      expr: SUM(alcohol_by_volume_percent)
+    - name: "Average Alcohol By Volume Percent"
+      expr: AVG(alcohol_by_volume_percent)
+    - name: "Total Current On Hand Quantity"
+      expr: SUM(current_on_hand_quantity)
+    - name: "Average Current On Hand Quantity"
+      expr: AVG(current_on_hand_quantity)
+    - name: "Total Last Physical Count Quantity"
+      expr: SUM(last_physical_count_quantity)
+    - name: "Average Last Physical Count Quantity"
+      expr: AVG(last_physical_count_quantity)
+    - name: "Total Last Purchase Cost"
+      expr: SUM(last_purchase_cost)
+    - name: "Average Last Purchase Cost"
+      expr: AVG(last_purchase_cost)
+    - name: "Total Par Level"
+      expr: SUM(par_level)
+    - name: "Average Par Level"
+      expr: AVG(par_level)
+    - name: "Total Reorder Point"
+      expr: SUM(reorder_point)
+    - name: "Average Reorder Point"
+      expr: AVG(reorder_point)
+    - name: "Total Required Storage Temperature Max"
+      expr: SUM(required_storage_temperature_max)
+    - name: "Average Required Storage Temperature Max"
+      expr: AVG(required_storage_temperature_max)
+    - name: "Total Required Storage Temperature Min"
+      expr: SUM(required_storage_temperature_min)
+    - name: "Average Required Storage Temperature Min"
+      expr: AVG(required_storage_temperature_min)
+    - name: "Total Standard Cost"
+      expr: SUM(standard_cost)
+    - name: "Average Standard Cost"
+      expr: AVG(standard_cost)
+    - name: "Total Yield Percent"
+      expr: SUM(yield_percent)
+    - name: "Average Yield Percent"
+      expr: AVG(yield_percent)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_menu`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_menu`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Menu business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`menu`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`menu`"
   dimensions:
     - name: "Active Flag"
       expr: active_flag
@@ -451,6 +481,8 @@ AS $$
       expr: beverage_description
     - name: "Beverage Inclusion Flag"
       expr: beverage_inclusion_flag
+    - name: "Menu Code"
+      expr: menu_code
     - name: "Course Count"
       expr: course_count
     - name: "Course Description"
@@ -461,6 +493,8 @@ AS $$
       expr: cuisine_type
     - name: "Currency Code"
       expr: currency_code
+    - name: "Menu Description"
+      expr: menu_description
     - name: "Dietary Options"
       expr: dietary_options
     - name: "Effective End Date"
@@ -469,10 +503,6 @@ AS $$
       expr: effective_start_date
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
-    - name: "Maximum Capacity"
-      expr: maximum_capacity
-    - name: "Meal Period"
-      expr: meal_period
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -489,56 +519,62 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Menu item master metrics for menu engineering, pricing analysis, and cost management. Enables data-driven menu optimization decisions."
+  comment: "Menu Item business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`menu_item`"
-  filter: item_status = 'ACTIVE'
   dimensions:
-    - name: "item_category"
-      expr: item_category
-      comment: "Category of the menu item (Appetizer, Entree, Dessert, Beverage) for menu section analysis."
-    - name: "item_subcategory"
-      expr: item_subcategory
-      comment: "Subcategory for granular menu engineering analysis."
-    - name: "item_status"
-      expr: item_status
-      comment: "Current status of the menu item (Active, Inactive, Seasonal) for menu lifecycle management."
-    - name: "is_seasonal"
-      expr: is_seasonal
-      comment: "Flag for seasonal items. Supports seasonal menu planning and cost forecasting."
-    - name: "is_signature_item"
-      expr: is_signature_item
-      comment: "Flag for signature items. Tracks performance of brand-defining menu items."
-    - name: "is_vegan"
-      expr: is_vegan
-      comment: "Flag for vegan items. Supports dietary preference trend analysis."
-    - name: "is_gluten_free"
-      expr: is_gluten_free
-      comment: "Flag for gluten-free items. Tracks dietary accommodation menu coverage."
-    - name: "is_alcoholic"
+    - name: "Allergen Flags"
+      expr: allergen_flags
+    - name: "Calorie Count"
+      expr: calorie_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Food Safety Classification"
+      expr: food_safety_classification
+    - name: "Is Alcoholic"
       expr: is_alcoholic
-      comment: "Flag for alcoholic items. Separates food and beverage cost analysis."
+    - name: "Is Available Banquet"
+      expr: is_available_banquet
+    - name: "Is Available Room Service"
+      expr: is_available_room_service
+    - name: "Is Gluten Free"
+      expr: is_gluten_free
+    - name: "Is Halal"
+      expr: is_halal
+    - name: "Is Kosher"
+      expr: is_kosher
+    - name: "Is Seasonal"
+      expr: is_seasonal
+    - name: "Is Signature Item"
+      expr: is_signature_item
+    - name: "Is Vegan"
+      expr: is_vegan
   measures:
-    - name: "total_menu_items"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of menu items. Baseline for menu breadth and complexity analysis."
-    - name: "avg_standard_price"
-      expr: AVG(CAST(standard_price AS DOUBLE))
-      comment: "Average standard selling price across menu items. Benchmarks menu pricing strategy."
-    - name: "avg_cost_price"
-      expr: AVG(CAST(cost_price AS DOUBLE))
-      comment: "Average cost price across menu items. Tracks ingredient cost trends."
-    - name: "avg_gross_margin_pct"
-      expr: AVG(CAST(gross_margin_percent AS DOUBLE))
-      comment: "Average gross margin percentage across menu items. Core menu profitability KPI."
-    - name: "total_active_items"
-      expr: COUNT(CASE WHEN item_status = 'ACTIVE' THEN 1 END)
-      comment: "Count of currently active menu items. Tracks menu size for operational complexity management."
-    - name: "signature_item_count"
-      expr: SUM(CASE WHEN is_signature_item = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of signature menu items. Tracks brand differentiation through menu composition."
-    - name: "avg_alcohol_content_pct"
-      expr: AVG(CASE WHEN is_alcoholic = TRUE THEN alcohol_content_percent ELSE NULL END)
-      comment: "Average alcohol content percentage for alcoholic items. Supports responsible service compliance."
+    - name: "Distinct Menu Item"
+      expr: COUNT(DISTINCT menu_item_id)
+    - name: "Total Alcohol Content Percent"
+      expr: SUM(alcohol_content_percent)
+    - name: "Average Alcohol Content Percent"
+      expr: AVG(alcohol_content_percent)
+    - name: "Total Cost Price"
+      expr: SUM(cost_price)
+    - name: "Average Cost Price"
+      expr: AVG(cost_price)
+    - name: "Total Gross Margin Percent"
+      expr: SUM(gross_margin_percent)
+    - name: "Average Gross Margin Percent"
+      expr: AVG(gross_margin_percent)
+    - name: "Total Standard Price"
+      expr: SUM(standard_price)
+    - name: "Average Standard Price"
+      expr: AVG(standard_price)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_physical_count`
@@ -546,56 +582,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Physical inventory count metrics tracking variance, count accuracy, and adjustment activity. Enables inventory accuracy management and audit compliance."
+  comment: "Physical Count business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`physical_count`"
-  filter: count_status != 'CANCELLED'
   dimensions:
-    - name: "count_date"
-      expr: count_date
-      comment: "Date of the physical count for periodic inventory accuracy trend analysis."
-    - name: "count_type"
-      expr: count_type
-      comment: "Type of count (full, spot, cycle) for count methodology analysis."
-    - name: "count_status"
-      expr: count_status
-      comment: "Status of the count (in-progress, completed, approved) for count completion monitoring."
-    - name: "count_reason"
-      expr: count_reason
-      comment: "Reason for the count (scheduled, discrepancy, audit) for root cause analysis."
-    - name: "adjustment_required"
+    - name: "Adjustment Posted"
+      expr: adjustment_posted
+    - name: "Adjustment Posted Timestamp"
+      expr: adjustment_posted_timestamp
+    - name: "Adjustment Required"
       expr: adjustment_required
-      comment: "Flag indicating whether an inventory adjustment was required. Tracks count accuracy outcomes."
-    - name: "recount_required"
-      expr: recount_required
-      comment: "Flag indicating a recount was needed. Proxy for count quality and process adherence."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the count for period-end inventory reconciliation."
-    - name: "currency_code"
+    - name: "Approval Timestamp"
+      expr: approval_timestamp
+    - name: "Compliance Verified"
+      expr: compliance_verified
+    - name: "Count Date"
+      expr: count_date
+    - name: "Count End Timestamp"
+      expr: count_end_timestamp
+    - name: "Count Method"
+      expr: count_method
+    - name: "Count Number"
+      expr: count_number
+    - name: "Count Reason"
+      expr: count_reason
+    - name: "Count Start Timestamp"
+      expr: count_start_timestamp
+    - name: "Count Status"
+      expr: count_status
+    - name: "Count Type"
+      expr: count_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency for variance value reporting."
+    - name: "Fiscal Period"
+      expr: fiscal_period
   measures:
-    - name: "total_variance_value"
-      expr: SUM(CAST(total_variance_value AS DOUBLE))
-      comment: "Total monetary variance identified across all physical counts. Primary inventory accuracy KPI for loss prevention and audit."
-    - name: "avg_variance_percentage"
-      expr: AVG(CAST(variance_percentage AS DOUBLE))
-      comment: "Average variance percentage per count. Benchmarks inventory accuracy against industry targets (typically <1%)."
-    - name: "count_events"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of physical count events. Baseline for count frequency compliance and audit coverage."
-    - name: "counts_requiring_adjustment"
-      expr: SUM(CASE WHEN adjustment_required = true THEN 1 ELSE 0 END)
-      comment: "Number of counts that required inventory adjustments. Measures inventory discrepancy frequency."
-    - name: "counts_requiring_recount"
-      expr: SUM(CASE WHEN recount_required = true THEN 1 ELSE 0 END)
-      comment: "Number of counts that required a recount. Proxy for count process quality and staff training needs."
-    - name: "adjustment_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN adjustment_required = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of counts requiring adjustment. Key inventory control KPI; high rates signal systemic shrinkage or process failure."
-    - name: "recount_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN recount_required = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of counts requiring a recount. Measures count process reliability and staff competency."
+    - name: "Distinct Physical Count"
+      expr: COUNT(DISTINCT physical_count_id)
+    - name: "Total Total Variance Value"
+      expr: SUM(total_variance_value)
+    - name: "Average Total Variance Value"
+      expr: AVG(total_variance_value)
+    - name: "Total Variance Percentage"
+      expr: SUM(variance_percentage)
+    - name: "Average Variance Percentage"
+      expr: AVG(variance_percentage)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_pos_check`
@@ -603,65 +637,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Point-of-sale check metrics providing revenue, discount, tip, and service charge performance across outlets, meal periods, and order types. Core operational KPI layer for F&B revenue management."
+  comment: "Pos Check business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`pos_check`"
-  filter: check_status != 'VOIDED'
   dimensions:
-    - name: "business_date"
+    - name: "Actual Delivery Time"
+      expr: actual_delivery_time
+    - name: "Business Date"
       expr: business_date
-      comment: "Business date of the POS check for daily trend analysis."
-    - name: "meal_period"
-      expr: meal_period
-      comment: "Meal period (breakfast, lunch, dinner, late-night) for daypart revenue analysis."
-    - name: "order_type"
-      expr: order_type
-      comment: "Order type (dine-in, takeaway, delivery, room-charge) for channel mix analysis."
-    - name: "order_source"
-      expr: order_source
-      comment: "Source channel of the order (POS, app, phone) for omnichannel analysis."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (cash, card, room charge, loyalty) for tender mix analysis."
-    - name: "check_status"
+    - name: "Check Number"
+      expr: check_number
+    - name: "Check Status"
       expr: check_status
-      comment: "Current status of the check (open, closed, voided) for operational monitoring."
-    - name: "currency_code"
+    - name: "Closed Timestamp"
+      expr: closed_timestamp
+    - name: "Cover Count"
+      expr: cover_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the transaction for multi-currency reporting."
+    - name: "Delivery Duration Minutes"
+      expr: delivery_duration_minutes
+    - name: "Delivery Status"
+      expr: delivery_status
+    - name: "Folio Reference Number"
+      expr: folio_reference_number
+    - name: "Loyalty Points Earned"
+      expr: loyalty_points_earned
+    - name: "Manager Approval Required"
+      expr: manager_approval_required
+    - name: "Meal Period"
+      expr: meal_period
+    - name: "Opened Timestamp"
+      expr: opened_timestamp
+    - name: "Order Source"
+      expr: order_source
   measures:
-    - name: "total_check_revenue"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total gross revenue from all POS checks. Primary F&B revenue KPI used in daily revenue reporting and P&L."
-    - name: "total_subtotal_revenue"
-      expr: SUM(CAST(subtotal_amount AS DOUBLE))
-      comment: "Sum of pre-tax, pre-service-charge subtotals. Used to isolate net food and beverage revenue before charges."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discounts applied across all checks. Tracks promotional spend and discount leakage impacting margin."
-    - name: "total_service_charge_revenue"
-      expr: SUM(CAST(service_charge_amount AS DOUBLE))
-      comment: "Total service charge collected. Key for labor cost recovery and gratuity pool management."
-    - name: "total_tax_collected"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected across all checks. Required for tax compliance and remittance reporting."
-    - name: "total_tip_amount"
-      expr: SUM(CAST(tip_amount AS DOUBLE))
-      comment: "Total gratuity/tip collected. Informs staff compensation and service quality benchmarking."
-    - name: "check_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of POS checks. Baseline volume metric for throughput and staffing analysis."
-    - name: "avg_check_value"
-      expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average check value per transaction. Core hospitality KPI for spend-per-cover benchmarking and menu engineering."
-    - name: "discount_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
-      comment: "Discount as a percentage of subtotal revenue. Measures promotional intensity and margin erosion risk."
-    - name: "service_charge_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(service_charge_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
-      comment: "Service charge as a percentage of subtotal. Validates service charge policy compliance across outlets."
-    - name: "avg_tip_per_check"
-      expr: AVG(CAST(tip_amount AS DOUBLE))
-      comment: "Average tip per check. Proxy for guest satisfaction and service quality at the transaction level."
+    - name: "Distinct Pos Check"
+      expr: COUNT(DISTINCT pos_check_id)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Service Charge Amount"
+      expr: SUM(service_charge_amount)
+    - name: "Average Service Charge Amount"
+      expr: AVG(service_charge_amount)
+    - name: "Total Subtotal Amount"
+      expr: SUM(subtotal_amount)
+    - name: "Average Subtotal Amount"
+      expr: AVG(subtotal_amount)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Tender Amount"
+      expr: SUM(tender_amount)
+    - name: "Average Tender Amount"
+      expr: AVG(tender_amount)
+    - name: "Total Tip Amount"
+      expr: SUM(tip_amount)
+    - name: "Average Tip Amount"
+      expr: AVG(tip_amount)
+    - name: "Total Total Amount"
+      expr: SUM(total_amount)
+    - name: "Average Total Amount"
+      expr: AVG(total_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_pos_check_line`
@@ -669,53 +712,78 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-level POS metrics enabling menu item profitability, void analysis, and cost-of-sales tracking. Drives menu engineering and waste reduction decisions."
+  comment: "Pos Check Line business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`pos_check_line`"
-  filter: is_voided = false
   dimensions:
-    - name: "family_group_code"
-      expr: family_group_code
-      comment: "Family group classification (food, beverage, etc.) for category-level revenue analysis."
-    - name: "major_group_code"
-      expr: major_group_code
-      comment: "Major group classification for hierarchical menu revenue reporting."
-    - name: "course_number"
+    - name: "Course Number"
       expr: course_number
-      comment: "Course sequence (starter, main, dessert) for course-level revenue and margin analysis."
-    - name: "is_complimentary"
-      expr: is_complimentary
-      comment: "Flag indicating complimentary items. Used to track comp cost and policy adherence."
-    - name: "currency_code"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Transaction currency for multi-currency line-level reporting."
+    - name: "Family Group Code"
+      expr: family_group_code
+    - name: "Is Complimentary"
+      expr: is_complimentary
+    - name: "Is Inclusive Tax"
+      expr: is_inclusive_tax
+    - name: "Is Open Item"
+      expr: is_open_item
+    - name: "Is Voided"
+      expr: is_voided
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Line Sequence Number"
+      expr: line_sequence_number
+    - name: "Major Group Code"
+      expr: major_group_code
+    - name: "Modifier Text"
+      expr: modifier_text
+    - name: "Preparation Time Minutes"
+      expr: preparation_time_minutes
+    - name: "Seat Number"
+      expr: seat_number
+    - name: "Sent To Kitchen Timestamp"
+      expr: sent_to_kitchen_timestamp
+    - name: "Served Timestamp"
+      expr: served_timestamp
   measures:
-    - name: "total_line_revenue"
-      expr: SUM(CAST(line_total_amount AS DOUBLE))
-      comment: "Total revenue from all non-voided check lines. Granular revenue base for menu engineering and item profitability."
-    - name: "total_cost_of_sales"
-      expr: SUM(CAST(cost_of_sales AS DOUBLE))
-      comment: "Total cost of sales across all lines. Core input for gross margin and food cost percentage calculations."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total line-level discounts. Identifies which menu categories absorb the most promotional spend."
-    - name: "total_quantity_ordered"
-      expr: SUM(CAST(quantity_ordered AS DOUBLE))
-      comment: "Total quantity of items ordered. Drives menu popularity ranking and procurement forecasting."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average selling price per line item. Used in menu pricing strategy and yield management."
-    - name: "gross_margin_amount"
-      expr: SUM((CAST(line_total_amount AS DOUBLE)) - (CAST(cost_of_sales AS DOUBLE)))
-      comment: "Gross margin in absolute terms (revenue minus cost of sales). Primary profitability KPI for menu engineering."
-    - name: "food_cost_pct"
-      expr: ROUND(100.0 * SUM(CAST(cost_of_sales AS DOUBLE)) / NULLIF(SUM(CAST(line_total_amount AS DOUBLE)), 0), 2)
-      comment: "Food cost as a percentage of line revenue. Industry-standard KPI; target typically 28-35% for food, 18-24% for beverage."
-    - name: "line_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of non-voided check lines. Volume baseline for item mix and throughput analysis."
-    - name: "avg_line_revenue"
-      expr: AVG(CAST(line_total_amount AS DOUBLE))
-      comment: "Average revenue per check line. Supports upsell effectiveness and menu item contribution analysis."
+    - name: "Distinct Pos Check Line"
+      expr: COUNT(DISTINCT pos_check_line_id)
+    - name: "Total Cost Of Sales"
+      expr: SUM(cost_of_sales)
+    - name: "Average Cost Of Sales"
+      expr: AVG(cost_of_sales)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Line Subtotal Amount"
+      expr: SUM(line_subtotal_amount)
+    - name: "Average Line Subtotal Amount"
+      expr: AVG(line_subtotal_amount)
+    - name: "Total Line Total Amount"
+      expr: SUM(line_total_amount)
+    - name: "Average Line Total Amount"
+      expr: AVG(line_total_amount)
+    - name: "Total Quantity Ordered"
+      expr: SUM(quantity_ordered)
+    - name: "Average Quantity Ordered"
+      expr: AVG(quantity_ordered)
+    - name: "Total Service Charge Amount"
+      expr: SUM(service_charge_amount)
+    - name: "Average Service Charge Amount"
+      expr: AVG(service_charge_amount)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Unit Price"
+      expr: SUM(unit_price)
+    - name: "Average Unit Price"
+      expr: AVG(unit_price)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_recipe`
@@ -723,62 +791,87 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Recipe cost and nutritional metrics enabling menu engineering, food cost management, and dietary compliance. Supports standard cost setting and culinary program governance."
+  comment: "Recipe business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`recipe`"
-  filter: recipe_status = 'ACTIVE'
   dimensions:
-    - name: "recipe_type"
-      expr: recipe_type
-      comment: "Type of recipe (food, beverage, cocktail, dessert) for category-level cost analysis."
-    - name: "cuisine_type"
+    - name: "Allergen Information"
+      expr: allergen_information
+    - name: "Ccp Details"
+      expr: ccp_details
+    - name: "Chef Notes"
+      expr: chef_notes
+    - name: "Recipe Code"
+      expr: recipe_code
+    - name: "Cooking Instructions"
+      expr: cooking_instructions
+    - name: "Cooking Time Minutes"
+      expr: cooking_time_minutes
+    - name: "Cost Currency Code"
+      expr: cost_currency_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Cuisine Type"
       expr: cuisine_type
-      comment: "Cuisine type for culinary program and menu diversity analysis."
-    - name: "recipe_status"
-      expr: recipe_status
-      comment: "Status of the recipe (active, archived, in-development) for active recipe portfolio management."
-    - name: "seasonal_availability"
-      expr: seasonal_availability
-      comment: "Seasonal availability of the recipe for menu planning and procurement forecasting."
-    - name: "iso_22000_ccp_flag"
+    - name: "Dietary Attributes"
+      expr: dietary_attributes
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Expiration Date"
+      expr: expiration_date
+    - name: "Haccp Hazard Analysis"
+      expr: haccp_hazard_analysis
+    - name: "Iso 22000 Ccp Flag"
       expr: iso_22000_ccp_flag
-      comment: "Flag indicating the recipe has a critical control point per ISO 22000. Food safety compliance dimension."
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Recipe Name"
+      expr: recipe_name
   measures:
-    - name: "avg_total_recipe_cost"
-      expr: AVG(CAST(total_recipe_cost AS DOUBLE))
-      comment: "Average total cost per recipe. Core menu engineering KPI for pricing and margin management."
-    - name: "avg_food_cost_per_portion"
-      expr: AVG(CAST(standard_food_cost_per_portion AS DOUBLE))
-      comment: "Average standard food cost per portion. Primary recipe costing KPI for menu pricing and food cost control."
-    - name: "avg_beverage_cost_per_portion"
-      expr: AVG(CAST(standard_beverage_cost_per_portion AS DOUBLE))
-      comment: "Average standard beverage cost per portion. Supports beverage menu pricing and cost management."
-    - name: "avg_yield_quantity"
-      expr: AVG(CAST(yield_quantity AS DOUBLE))
-      comment: "Average yield quantity per recipe. Informs batch production planning and portion standardization."
-    - name: "avg_nutritional_protein_grams"
-      expr: AVG(CAST(nutritional_protein_grams AS DOUBLE))
-      comment: "Average protein content per recipe. Supports nutritional labeling compliance and health-focused menu positioning."
-    - name: "avg_nutritional_fat_grams"
-      expr: AVG(CAST(nutritional_fat_grams AS DOUBLE))
-      comment: "Average fat content per recipe. Supports nutritional compliance and dietary accommodation reporting."
-    - name: "avg_nutritional_carbohydrate_grams"
-      expr: AVG(CAST(nutritional_carbohydrate_grams AS DOUBLE))
-      comment: "Average carbohydrate content per recipe. Supports dietary labeling and health-conscious menu management."
-    - name: "recipe_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of active recipes. Baseline for culinary portfolio breadth and menu complexity management."
-    - name: "ccp_recipe_count"
-      expr: SUM(CASE WHEN iso_22000_ccp_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of recipes with critical control points. Food safety compliance KPI for HACCP and ISO 22000 program management."
+    - name: "Distinct Recipe"
+      expr: COUNT(DISTINCT recipe_id)
+    - name: "Total Nutritional Carbohydrate Grams"
+      expr: SUM(nutritional_carbohydrate_grams)
+    - name: "Average Nutritional Carbohydrate Grams"
+      expr: AVG(nutritional_carbohydrate_grams)
+    - name: "Total Nutritional Fat Grams"
+      expr: SUM(nutritional_fat_grams)
+    - name: "Average Nutritional Fat Grams"
+      expr: AVG(nutritional_fat_grams)
+    - name: "Total Nutritional Protein Grams"
+      expr: SUM(nutritional_protein_grams)
+    - name: "Average Nutritional Protein Grams"
+      expr: AVG(nutritional_protein_grams)
+    - name: "Total Standard Beverage Cost Per Portion"
+      expr: SUM(standard_beverage_cost_per_portion)
+    - name: "Average Standard Beverage Cost Per Portion"
+      expr: AVG(standard_beverage_cost_per_portion)
+    - name: "Total Standard Food Cost Per Portion"
+      expr: SUM(standard_food_cost_per_portion)
+    - name: "Average Standard Food Cost Per Portion"
+      expr: AVG(standard_food_cost_per_portion)
+    - name: "Total Standard Portion Size"
+      expr: SUM(standard_portion_size)
+    - name: "Average Standard Portion Size"
+      expr: AVG(standard_portion_size)
+    - name: "Total Total Recipe Cost"
+      expr: SUM(total_recipe_cost)
+    - name: "Average Total Recipe Cost"
+      expr: AVG(total_recipe_cost)
+    - name: "Total Yield Quantity"
+      expr: SUM(yield_quantity)
+    - name: "Average Yield Quantity"
+      expr: AVG(yield_quantity)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_recipe_ingredient`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_recipe_ingredient`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Recipe Ingredient business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`recipe_ingredient`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient`"
   dimensions:
     - name: "Active Flag"
       expr: active_flag
@@ -847,18 +940,20 @@ AS $$
       expr: AVG(yield_percentage)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_revenue_center`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_revenue_center`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Revenue Center business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`revenue_center`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`revenue_center`"
   dimensions:
     - name: "Allergen Menu Available Flag"
       expr: allergen_menu_available_flag
     - name: "Closure Date"
       expr: closure_date
+    - name: "Revenue Center Code"
+      expr: revenue_center_code
     - name: "Cost Center Code"
       expr: cost_center_code
     - name: "Covers Per Day Target"
@@ -883,10 +978,8 @@ AS $$
       expr: last_renovation_date
     - name: "Micros Rvc Number"
       expr: micros_rvc_number
-    - name: "Notes"
-      expr: notes
-    - name: "Opening Date"
-      expr: opening_date
+    - name: "Revenue Center Name"
+      expr: revenue_center_name
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -919,62 +1012,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Room service order metrics covering revenue, delivery performance, and guest satisfaction. Enables in-room dining profitability and service level management."
+  comment: "Room Service Order business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`room_service_order`"
-  filter: order_status != 'CANCELLED'
   dimensions:
-    - name: "business_date"
+    - name: "Actual Delivery Time"
+      expr: actual_delivery_time
+    - name: "Business Date"
       expr: business_date
-      comment: "Business date of the room service order for daily revenue and volume trend analysis."
-    - name: "order_status"
-      expr: order_status
-      comment: "Status of the room service order (pending, delivered, cancelled) for fulfillment monitoring."
-    - name: "order_source"
-      expr: order_source
-      comment: "Source channel of the order (phone, app, in-room tablet) for channel mix analysis."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method for the room service order for tender mix analysis."
-    - name: "on_time_delivery_flag"
-      expr: on_time_delivery_flag
-      comment: "Flag indicating on-time delivery. Core service level KPI for guest satisfaction management."
-    - name: "is_vip_guest"
-      expr: is_vip_guest
-      comment: "VIP guest flag for premium service level differentiation and VIP revenue tracking."
-    - name: "currency_code"
+    - name: "Cancellation Reason"
+      expr: cancellation_reason
+    - name: "Cover Count"
+      expr: cover_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the room service order."
+    - name: "Delivery Duration Minutes"
+      expr: delivery_duration_minutes
+    - name: "Dietary Restrictions"
+      expr: dietary_restrictions
+    - name: "Dispatch Time"
+      expr: dispatch_time
+    - name: "Folio Reference"
+      expr: folio_reference
+    - name: "Guest Feedback Comment"
+      expr: guest_feedback_comment
+    - name: "Guest Satisfaction Rating"
+      expr: guest_satisfaction_rating
+    - name: "Is Vip Guest"
+      expr: is_vip_guest
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Loyalty Member Number"
+      expr: loyalty_member_number
+    - name: "On Time Delivery Flag"
+      expr: on_time_delivery_flag
   measures:
-    - name: "total_room_service_revenue"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total room service revenue. Primary in-room dining revenue KPI for F&B department P&L."
-    - name: "total_subtotal_revenue"
-      expr: SUM(CAST(subtotal_amount AS DOUBLE))
-      comment: "Total pre-charge subtotal for room service orders. Isolates net food and beverage revenue."
-    - name: "total_delivery_charge"
-      expr: SUM(CAST(delivery_charge AS DOUBLE))
-      comment: "Total delivery charges collected. Tracks delivery fee revenue and cost recovery."
-    - name: "total_gratuity"
-      expr: SUM(CAST(gratuity_amount AS DOUBLE))
-      comment: "Total gratuity collected on room service orders. Informs staff compensation and service quality."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discounts applied to room service orders. Tracks promotional spend in in-room dining channel."
-    - name: "order_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of room service orders. Volume baseline for in-room dining demand and staffing."
-    - name: "avg_order_value"
-      expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average room service order value. Benchmarks in-room dining spend and informs menu pricing strategy."
-    - name: "on_time_delivery_count"
-      expr: SUM(CASE WHEN on_time_delivery_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of orders delivered on time. Service level compliance metric for guest satisfaction management."
-    - name: "on_time_delivery_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN on_time_delivery_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "On-time delivery rate for room service. Critical guest satisfaction KPI; target typically 90%+ for luxury properties."
-    - name: "vip_order_revenue"
-      expr: SUM(CASE WHEN is_vip_guest = true THEN total_amount ELSE 0 END)
-      comment: "Total room service revenue from VIP guests. Tracks premium guest spend and informs VIP service investment."
+    - name: "Distinct Room Service Order"
+      expr: COUNT(DISTINCT room_service_order_id)
+    - name: "Total Delivery Charge"
+      expr: SUM(delivery_charge)
+    - name: "Average Delivery Charge"
+      expr: AVG(delivery_charge)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Gratuity Amount"
+      expr: SUM(gratuity_amount)
+    - name: "Average Gratuity Amount"
+      expr: AVG(gratuity_amount)
+    - name: "Total Service Charge"
+      expr: SUM(service_charge)
+    - name: "Average Service Charge"
+      expr: AVG(service_charge)
+    - name: "Total Subtotal Amount"
+      expr: SUM(subtotal_amount)
+    - name: "Average Subtotal Amount"
+      expr: AVG(subtotal_amount)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Total Amount"
+      expr: SUM(total_amount)
+    - name: "Average Total Amount"
+      expr: AVG(total_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_stock_transaction`
@@ -982,62 +1087,71 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Inventory stock transaction metrics covering cost of goods movement, variance, and waste. Enables inventory cost control, shrinkage analysis, and procurement efficiency measurement."
+  comment: "Stock Transaction business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`stock_transaction`"
-  filter: transaction_status != 'CANCELLED'
   dimensions:
-    - name: "transaction_date"
-      expr: transaction_date
-      comment: "Date of the stock transaction for daily inventory movement trend analysis."
-    - name: "transaction_type"
-      expr: transaction_type
-      comment: "Type of stock movement (receipt, issue, transfer, adjustment, waste) for movement category analysis."
-    - name: "transaction_status"
-      expr: transaction_status
-      comment: "Status of the transaction (posted, pending, reversed) for reconciliation monitoring."
-    - name: "meal_period"
-      expr: meal_period
-      comment: "Meal period associated with the stock movement for daypart consumption analysis."
-    - name: "waste_category"
-      expr: waste_category
-      comment: "Waste category for waste-type stock transactions. Supports waste reduction targeting."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for quantity reporting consistency."
-    - name: "currency_code"
+    - name: "Batch Number"
+      expr: batch_number
+    - name: "Corrective Action Notes"
+      expr: corrective_action_notes
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the stock transaction for multi-currency cost reporting."
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Invoice Number"
+      expr: invoice_number
+    - name: "Meal Period"
+      expr: meal_period
+    - name: "Notes"
+      expr: notes
+    - name: "Record Created Timestamp"
+      expr: record_created_timestamp
+    - name: "Record Updated Timestamp"
+      expr: record_updated_timestamp
+    - name: "Reversal Reason"
+      expr: reversal_reason
+    - name: "Source System Transaction Ref"
+      expr: source_system_transaction_ref
+    - name: "Transaction Date"
+      expr: transaction_date
+    - name: "Transaction Number"
+      expr: transaction_number
+    - name: "Transaction Status"
+      expr: transaction_status
+    - name: "Transaction Timestamp"
+      expr: transaction_timestamp
+    - name: "Transaction Type"
+      expr: transaction_type
   measures:
-    - name: "total_stock_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all stock movements. Primary inventory cost KPI for COGS and food cost percentage calculations."
-    - name: "total_quantity_moved"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total quantity of stock moved across all transaction types. Volume baseline for consumption and procurement planning."
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total inventory variance in monetary terms. Key shrinkage and loss KPI for inventory control and audit."
-    - name: "avg_unit_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost across stock transactions. Tracks cost inflation and supplier pricing trends."
-    - name: "transaction_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of stock transactions. Volume baseline for inventory activity and operational throughput."
-    - name: "variance_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(variance_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_cost AS DOUBLE)), 0), 2)
-      comment: "Variance as a percentage of total stock cost. Industry-standard shrinkage rate KPI; target typically below 1-2%."
-    - name: "waste_transaction_cost"
-      expr: SUM(CASE WHEN transaction_type = 'WASTE' THEN total_cost ELSE 0 END)
-      comment: "Total cost of waste-type stock transactions. Isolates waste-driven inventory loss for sustainability and cost reporting."
+    - name: "Distinct Stock Transaction"
+      expr: COUNT(DISTINCT stock_transaction_id)
+    - name: "Total Quantity"
+      expr: SUM(quantity)
+    - name: "Average Quantity"
+      expr: AVG(quantity)
+    - name: "Total Total Cost"
+      expr: SUM(total_cost)
+    - name: "Average Total Cost"
+      expr: AVG(total_cost)
+    - name: "Total Unit Cost"
+      expr: SUM(unit_cost)
+    - name: "Average Unit Cost"
+      expr: AVG(unit_cost)
+    - name: "Total Variance Amount"
+      expr: SUM(variance_amount)
+    - name: "Average Variance Amount"
+      expr: AVG(variance_amount)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_storage_location`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_storage_location`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Storage Location business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`storage_location`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`storage_location`"
   dimensions:
     - name: "Access Restriction Level"
       expr: access_restriction_level
@@ -1095,58 +1209,66 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "POS void transaction metrics tracking voided revenue, quantities, and investigation rates. Enables fraud detection, loss prevention, and operational control monitoring."
+  comment: "Void Transaction business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`void_transaction`"
   dimensions:
-    - name: "business_date"
+    - name: "Authorization Code"
+      expr: authorization_code
+    - name: "Business Date"
       expr: business_date
-      comment: "Business date of the void for daily void trend and anomaly detection."
-    - name: "void_type"
-      expr: void_type
-      comment: "Type of void (item void, check void, split) for void category analysis."
-    - name: "void_reason_code"
-      expr: void_reason_code
-      comment: "Reason code for the void (error, guest request, manager comp) for root cause analysis."
-    - name: "void_status"
-      expr: void_status
-      comment: "Current status of the void transaction for reconciliation monitoring."
-    - name: "requires_investigation"
-      expr: requires_investigation
-      comment: "Flag indicating the void requires investigation. Prioritizes fraud and loss prevention review."
-    - name: "day_part"
-      expr: day_part
-      comment: "Day part during which the void occurred for operational pattern analysis."
-    - name: "is_employee_meal"
-      expr: is_employee_meal
-      comment: "Flag for employee meal voids to separate operational comps from guest-facing voids."
-    - name: "currency_code"
+    - name: "Cost Center Code"
+      expr: cost_center_code
+    - name: "Covers Count"
+      expr: covers_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the voided transaction."
+    - name: "Day Part"
+      expr: day_part
+    - name: "Investigation Notes"
+      expr: investigation_notes
+    - name: "Is Employee Meal"
+      expr: is_employee_meal
+    - name: "Is Manager Meal"
+      expr: is_manager_meal
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Original Check Number"
+      expr: original_check_number
+    - name: "Original Transaction Timestamp"
+      expr: original_transaction_timestamp
+    - name: "Pos Terminal Code"
+      expr: pos_terminal_code
+    - name: "Requires Investigation"
+      expr: requires_investigation
+    - name: "Revenue Center Code"
+      expr: revenue_center_code
   measures:
-    - name: "total_voided_amount"
-      expr: SUM(CAST(voided_total_amount AS DOUBLE))
-      comment: "Total monetary value of all voided transactions. Primary loss prevention KPI; high values trigger fraud investigation."
-    - name: "total_voided_quantity"
-      expr: SUM(CAST(voided_quantity AS DOUBLE))
-      comment: "Total quantity of items voided. Volume baseline for void frequency and portion control analysis."
-    - name: "total_voided_service_charge"
-      expr: SUM(CAST(voided_service_charge_amount AS DOUBLE))
-      comment: "Total service charges voided. Tracks service charge recovery leakage."
-    - name: "total_voided_tax"
-      expr: SUM(CAST(voided_tax_amount AS DOUBLE))
-      comment: "Total tax voided. Required for tax reconciliation and compliance reporting."
-    - name: "void_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of void transactions. Baseline frequency metric for operational control monitoring."
-    - name: "investigation_required_count"
-      expr: SUM(CASE WHEN requires_investigation = true THEN 1 ELSE 0 END)
-      comment: "Number of voids flagged for investigation. Critical fraud and loss prevention KPI."
-    - name: "investigation_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN requires_investigation = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of voids requiring investigation. Fraud risk indicator; elevated rates trigger internal audit escalation."
-    - name: "avg_voided_amount"
-      expr: AVG(CAST(voided_total_amount AS DOUBLE))
-      comment: "Average value per void transaction. Benchmarks void severity and informs authorization threshold policies."
+    - name: "Distinct Void Transaction"
+      expr: COUNT(DISTINCT void_transaction_id)
+    - name: "Total Voided Amount"
+      expr: SUM(voided_amount)
+    - name: "Average Voided Amount"
+      expr: AVG(voided_amount)
+    - name: "Total Voided Quantity"
+      expr: SUM(voided_quantity)
+    - name: "Average Voided Quantity"
+      expr: AVG(voided_quantity)
+    - name: "Total Voided Service Charge Amount"
+      expr: SUM(voided_service_charge_amount)
+    - name: "Average Voided Service Charge Amount"
+      expr: AVG(voided_service_charge_amount)
+    - name: "Total Voided Tax Amount"
+      expr: SUM(voided_tax_amount)
+    - name: "Average Voided Tax Amount"
+      expr: AVG(voided_tax_amount)
+    - name: "Total Voided Total Amount"
+      expr: SUM(voided_total_amount)
+    - name: "Average Voided Total Amount"
+      expr: AVG(voided_total_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_waste_log`
@@ -1154,67 +1276,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Food and beverage waste metrics tracking waste cost, quantity, and sustainability impact by outlet, category, and meal period. Drives cost reduction and sustainability reporting."
+  comment: "Waste Log business metrics"
   source: "`vibe_travel_hospitality_v1`.`fnb`.`waste_log`"
   dimensions:
-    - name: "waste_date"
-      expr: waste_date
-      comment: "Date of waste recording for daily and trend waste analysis."
-    - name: "waste_category"
-      expr: waste_category
-      comment: "Category of waste (food, beverage, packaging) for targeted reduction initiatives."
-    - name: "waste_type"
-      expr: waste_type
-      comment: "Type of waste (spoilage, over-production, trim, plate waste) for root cause analysis."
-    - name: "waste_reason"
-      expr: waste_reason
-      comment: "Reason for waste occurrence. Drives corrective action prioritization."
-    - name: "meal_period"
-      expr: meal_period
-      comment: "Meal period during which waste occurred. Identifies high-waste dayparts for operational intervention."
-    - name: "disposal_method"
-      expr: disposal_method
-      comment: "Method of disposal (composting, landfill, donation) for sustainability reporting."
-    - name: "food_category"
-      expr: food_category
-      comment: "Food category of wasted item for category-level waste cost analysis."
-    - name: "sustainability_impact_flag"
-      expr: sustainability_impact_flag
-      comment: "Flag indicating sustainability-relevant waste events for ESG reporting."
-    - name: "currency_code"
+    - name: "Batch Number"
+      expr: batch_number
+    - name: "Corrective Action Taken"
+      expr: corrective_action_taken
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency for waste cost reporting."
+    - name: "Disposal Method"
+      expr: disposal_method
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Food Category"
+      expr: food_category
+    - name: "Health Safety Incident Flag"
+      expr: health_safety_incident_flag
+    - name: "Iso 22000 Compliant Flag"
+      expr: iso_22000_compliant_flag
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Meal Period"
+      expr: meal_period
+    - name: "Notes"
+      expr: notes
+    - name: "Recording Staff Name"
+      expr: recording_staff_name
+    - name: "Storage Location"
+      expr: storage_location
+    - name: "Sustainability Impact Flag"
+      expr: sustainability_impact_flag
+    - name: "Unit Of Measure"
+      expr: unit_of_measure
   measures:
-    - name: "total_waste_cost"
-      expr: SUM(CAST(total_waste_cost AS DOUBLE))
-      comment: "Total cost of food and beverage waste. Primary waste KPI for cost control and sustainability targets."
-    - name: "total_quantity_wasted"
-      expr: SUM(CAST(quantity_wasted AS DOUBLE))
-      comment: "Total quantity of items wasted. Volume baseline for waste reduction program tracking."
-    - name: "avg_unit_waste_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost of wasted items. Identifies high-value waste categories for prioritized intervention."
-    - name: "waste_log_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of waste log entries. Frequency baseline for waste event monitoring."
-    - name: "avg_waste_cost_per_event"
-      expr: AVG(CAST(total_waste_cost AS DOUBLE))
-      comment: "Average waste cost per waste log entry. Benchmarks waste severity and informs portion control decisions."
-    - name: "sustainability_waste_cost"
-      expr: SUM(CASE WHEN sustainability_impact_flag = true THEN total_waste_cost ELSE 0 END)
-      comment: "Total waste cost flagged as having sustainability impact. Core ESG reporting metric for environmental compliance."
-    - name: "health_safety_incident_waste_count"
-      expr: SUM(CASE WHEN health_safety_incident_flag = true THEN 1 ELSE 0 END)
-      comment: "Count of waste events linked to health and safety incidents. Critical food safety KPI for regulatory compliance."
+    - name: "Distinct Waste Log"
+      expr: COUNT(DISTINCT waste_log_id)
+    - name: "Total Quantity Wasted"
+      expr: SUM(quantity_wasted)
+    - name: "Average Quantity Wasted"
+      expr: AVG(quantity_wasted)
+    - name: "Total Total Waste Cost"
+      expr: SUM(total_waste_cost)
+    - name: "Average Total Waste Cost"
+      expr: AVG(total_waste_cost)
+    - name: "Total Unit Cost"
+      expr: SUM(unit_cost)
+    - name: "Average Unit Cost"
+      expr: AVG(unit_cost)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`fnb_wine_cellar`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_wine_cellar`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Wine Cellar business metrics"
-  source: "`travel_hospitality_ecm`.`fnb`.`wine_cellar`"
+  source: "`vibe_travel_hospitality_v1`.`fnb`.`wine_cellar`"
   dimensions:
     - name: "Appellation"
       expr: appellation

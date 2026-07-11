@@ -1,298 +1,412 @@
-**Model Quality Score: 51.01999999999999/100**
+**Model Quality Score: 77.28/100**  
 
-**Static Analysis Findings (39 actionable):**
-  - [SA:unlinked_fk] Column member.identity.fhir_patient_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column enrollment.transaction.enrollment_eligibility_span_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column enrollment.transaction.hios_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column enrollment.transaction.exchange_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column enrollment.enrollment_eligibility_span.fhir_coverage_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column plan.health_plan.fhir_coverage_plan_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column provider.provider_provider.fhir_practitioner_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column claim.header.fhir_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column claim.eob.fhir_explanation_of_benefit_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column pharmacy.pharmacy_claim.fhir_medication_dispense_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column utilization.pa_request.fhir_coverage_eligibility_request_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column utilization.pa_decision.fhir_coverage_eligibility_response_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column utilization.um_program_enrollment.member_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column care.condition_registry.fhir_condition_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column care.coordinator_assignment.member_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column care.care_plan.fhir_care_plan_resource_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column contract.party.tax_id looks like an FK but has no foreign_key_to reference
-  - [SA:unlinked_fk] Column finance.legal_entity.federal_tax_id looks like an FK but has no foreign_key_to reference
-  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> employer.group -> workforce.employee
-  - [SA:fk_cycle] Circular FK dependency detected: compliance.regulatory_obligation -> compliance.regulatory_change -> compliance.regulatory_obligation
-  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> employer.group -> risk.pool -> compliance.regulatory_obligation...
-  - [SA:fk_cycle] Circular FK dependency detected: care.coordinator -> care.team -> care.coordinator
+**Static Analysis Findings (25 actionable):**
+  - [SA:unlinked_fk] Column member.subscriber.member_contact_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column member.consent.consenting_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column plan.plan_amendment.requestor_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column billing.premium_statement.inspector_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column care.questionnaire.respondent_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column credential.decision_document.subject_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column compliance.training_completion.trainee_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.rbac_assignment.assignee_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.headcount_plan.planned_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.background_check.subject_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.training_course.instructor_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:fk_cycle] Circular FK dependency detected: member.subscriber -> member.address -> member.subscriber
   - [SA:fk_cycle] Circular FK dependency detected: contract.provider_contract -> contract.fee_schedule -> contract.provider_contract
-  - [SA:fk_cycle] Circular FK dependency detected: member.subscriber -> member.member_address -> member.subscriber
-  - [SA:fk_cycle] Circular FK dependency detected: member.subscriber -> member.member_contact -> member.subscriber
-  - [SA:fk_cycle] Circular FK dependency detected: enrollment.transaction -> enrollment.edi_transaction -> enrollment.transaction
-  - [SA:fk_cycle] Circular FK dependency detected: employer.broker -> employer.broker_agreement -> employer.broker
-  - [SA:fk_cycle] Circular FK dependency detected: care.hra -> care.questionnaire -> care.hra
-  - [SA:duplicate_product_pair] Domain 'provider' has both 'provider' and 'provider_provider' — SSOT violation. Merge into 'provider'.
-  - [SA:denormalized_natural_key] Product 'compliance.audit_engagement' has both FK 'audit_id' and natural key 'audit_number' for entity 'audit'. The natural key is redundant — use the FK join instead.
-  - [SA:denormalized_natural_key] Product 'vendor.vendor_dispute' has both FK 'dispute_id' and natural key 'dispute_number' for entity 'dispute'. The natural key is redundant — use the FK join instead.
-  - [SA:cross_domain_duplicate] Potential SSOT violation: 'appeal.appeal_grievance2' and 'member.member_grievance2' have the same entity name 'grievance2' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:fk_cycle] Circular FK dependency detected: plan.plan_regulatory_obligation -> compliance.compliance_regulatory_obligation -> plan.plan_regulatory_obligation
+  - [SA:fk_cycle] Circular FK dependency detected: claim.claim_payer -> billing.billing_payer -> claim.claim_payer
+  - [SA:duplicate_product_pair] Domain 'contract' has both 'provider_contract' and 'contract_provider_contract' — SSOT violation. Merge into 'provider_contract'.
+  - [SA:duplicate_product_pair] Domain 'compliance' has both 'regulatory_obligation' and 'compliance_regulatory_obligation' — SSOT violation. Merge into 'regulatory_obligation'.
+  - [SA:denormalized_natural_key] Product 'plan.plan_amendment' has both FK 'amendment_id' and natural key 'amendment_number' for entity 'amendment'. The natural key is redundant — use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.finance_regulatory_filing' has both FK 'filing_id' and natural key 'filing_number' for entity 'filing'. The natural key is redundant — use the FK join instead.
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'appeal.appeal_document' and 'vendor.vendor_document' have the same entity name 'document' in different domains. One should be the SSOT owner, the other should reference via FK.
-  - [SA:cross_domain_duplicate] Potential SSOT violation: 'billing.dispute' and 'vendor.vendor_dispute' have the same entity name 'dispute' in different domains. One should be the SSOT owner, the other should reference via FK.
-  - [SA:cross_domain_duplicate] Potential SSOT violation: 'care.care_enrollment2' and 'member.member_enrollment2' have the same entity name 'enrollment2' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'billing.billing_dispute' and 'vendor.vendor_dispute' have the same entity name 'dispute' in different domains. One should be the SSOT owner, the other should reference via FK.
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'credential.credential_lifecycle_event' and 'member.member_lifecycle_event' have the same entity name 'lifecycle_event' in different domains. One should be the SSOT owner, the other should reference via FK.
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'credential.credential_lifecycle_event' and 'vendor.vendor_lifecycle_event' have the same entity name 'lifecycle_event' in different domains. One should be the SSOT owner, the other should reference via FK.
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'member.member_lifecycle_event' and 'vendor.vendor_lifecycle_event' have the same entity name 'lifecycle_event' in different domains. One should be the SSOT owner, the other should reference via FK.
-  - [SA:cross_domain_duplicate] Potential SSOT violation: 'employer.employer_contract' and 'pharmacy.pharmacy_contract' have the same entity name 'contract' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'employer.employer_contract' and 'vendor.vendor_contract' have the same entity name 'contract' in different domains. One should be the SSOT owner, the other should reference via FK.
 
-The model has been substantially improved from the prior run — most rename_product directives appear applied (provider.provider_provider, contract.contract_provider_contract, etc. still show old names in some FK targets but the SSOT duplicate pairs persist). The biggest remaining problems are: unresolved duplicate_product_pairs (siloed stub tables coexisting with real ones), residual unlinked FK columns, untyped MDM attributes, missing PII tags, and several stub tables still needing population. Below are the surgical fixes.
-**PRIORITY 1 — rename_product: provider.provider_provider** — rename to provider because the redundant domain-name prefix creates a confusing naming pattern (USER DIRECTIVE, still unapplied)
-**PRIORITY 2 — rename_product: contract.contract_provider_contract** — rename to provider_contract because the redundant contract prefix creates a confusing naming pattern (USER DIRECTIVE, still unapplied)
-**PRIORITY 3 — rename_product: compliance.compliance_regulatory_obligation** — rename to regulatory_obligation because the redundant compliance prefix creates a confusing naming pattern (USER DIRECTIVE, still unapplied)
-**PRIORITY 4 — rename_product: compliance.compliance_attestation** — rename to attestation because the redundant compliance prefix creates a confusing naming pattern
-**PRIORITY 5 — connect_table: member.enrollment** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because member.enrollment is ISOLATED (zero inbound and outbound FKs) and must connect to the member it enrolls
-**PRIORITY 6 — connect_table: member.enrollment** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because enrollment is scoped to a specific health plan
-**PRIORITY 7 — connect_table: member.eligibility_span** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because member.eligibility_span is ISOLATED and must connect to the subscriber whose eligibility it represents
-**PRIORITY 8 — connect_table: compliance.attestation** — add column employee_id (BIGINT) with FK to workforce.employee.employee_id because compliance.attestation is ISOLATED and attestations are signed by employees
-**PRIORITY 9 — connect_table: compliance.attestation** — add column regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id because compliance.attestation is ISOLATED and attestations satisfy regulatory obligations
-**PRIORITY 10 — connect_table: compliance.regulatory_obligation** — add column regulatory_change_id (BIGINT) with FK to compliance.regulatory_change.regulatory_change_id because compliance.regulatory_obligation is ISOLATED and obligations originate from regulatory changes
-**PRIORITY 11 — connect_table: compliance.regulatory_obligation** — add column regulator_legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id because the issuing regulator must be identifiable
-**PRIORITY 12 — connect_table: contract.provider_contract** — add column provider_id (BIGINT) with FK to provider.provider.provider_id because contract.provider_contract is ISOLATED and must link to the contracted provider
-**PRIORITY 13 — connect_table: contract.provider_contract** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because contract.provider_contract is ISOLATED and contracts tie to plans
-**PRIORITY 14 — connect_table: contract.provider_contract** — add column fee_schedule_id (BIGINT) with FK to contract.fee_schedule.fee_schedule_id because the contract must reference the priced fee schedule
-**PRIORITY 15 — connect_table: provider.provider** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id because provider.provider is ISOLATED and must connect to the graph (note: this duplicate of provider_provider should be resolved — see Priority 16)
-**PRIORITY 16 — rename_product: provider.provider** — rename to provider_party because the domain has two products (provider and provider_provider) representing the same entity; after the P1 rename collision the surviving identity table must be unambiguous and the stub must be merged/distinguished
-**PRIORITY 17 — connect_table: care.population_segment** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because population_segment must scope to a plan or LOB to be actionable
-**PRIORITY 18 — connect_table: care.population_segment** — add column risk_pool_id (BIGINT) with FK to risk.pool.pool_id because population segments stratify members within a risk pool
-**PRIORITY 19 — connect_table: care.population_segment** — add column member_risk_tier_id (BIGINT) with FK to care.member_risk_tier.member_risk_tier_id because population segments roll up risk tiers
-**PRIORITY 20 — connect_table: care.population_segment** — add column score_run_id (BIGINT) with FK to risk.score_run.score_run_id because segmentation derives from a risk score run
-**PRIORITY 21 — rename_attribute: member.subscriber** — rename column member_address_id to address_id because the unlinked FK column must be defined; then attach FK to member.member_address.member_address_id
-**PRIORITY 22 — connect_table: member.subscriber** — add column member_contact_id (BIGINT) with FK to member.member_contact.member_contact_id because this looks-like-FK column is currently unlinked
-**PRIORITY 23 — connect_table: billing.dispute** — add column contract_dispute_id (BIGINT) with FK to contract.contract_dispute.contract_dispute_id because billing.billing_dispute.contract_contract_dispute_id is an unlinked FK that should reference the contract dispute
-**PRIORITY 24 — connect_table: employer.group** — add column account_executive_employee_id (BIGINT) with FK to workforce.employee.employee_id because the unlinked account_executive_employee_id column must reference an internal employee
-**PRIORITY 25 — connect_table: employer.group** — add column underwriter_employee_id (BIGINT) with FK to workforce.employee.employee_id because the unlinked underwriter_employee_id column must reference an internal employee
-**PRIORITY 26 — connect_table: employer.broker_agreement** — add column broker_id (BIGINT) with FK to employer.broker.broker_id because the unlinked broker_id column must reference the broker party
-**PRIORITY 27 — connect_table: compliance.compliance_attestation** — add column credential_attestation_id (BIGINT) with FK to credential.credential_attestation.credential_attestation_id because the unlinked credential_attestation_id column must be resolved
-**PRIORITY 28 — remove_fk: plan.plan_provider_contract** — remove natural key column fee_schedule_code because the FK fee_schedule_id already references the entity (denormalized natural key)
-**PRIORITY 29 — remove_fk: plan.plan_provider_contract** — remove natural key column fee_schedule_reference because the FK fee_schedule_id already references the entity (denormalized natural key)
-**PRIORITY 30 — remove_fk: contract.party_regulatory_obligation_compliance** — remove natural key column obligation_reference because the FK obligation_id already references the obligation entity
-**PRIORITY 31 — remove_fk: finance.legal_entity** — remove natural key column parent_legal_entity_code because the FK parent_legal_entity_id already references the parent entity
-**PRIORITY 32 — remove_fk: workforce.training_record** — remove natural key column course_code because the FK course_id already references the course entity
-**PRIORITY 33 — connect_table: appeal.appeal_grievance** — add column member_grievance_id (BIGINT) with FK to member.member_grievance.member_grievance_id because appeal.appeal_grievance must reference the source member grievance (SSOT resolution)
-**PRIORITY 34 — connect_table: appeal.appeal_communication** — add column member_communication_id (BIGINT) with FK to member.member_communication.member_communication_id because appeal communication should reference the member communication SSOT
-**PRIORITY 35 — connect_table: appeal.appeal_document** — add column credential_document_id (BIGINT) with FK to credential.credential_document.credential_document_id is already present; instead clarify scope and add document_type_code (no FK) because document concept is duplicated across appeal/credential/vendor
-**PRIORITY 36 — connect_table: appeal.appeal_regulatory_filing** — add column regulatory_submission_id (BIGINT) with FK to compliance.regulatory_submission.regulatory_submission_id because filings roll up to compliance submissions (SSOT for regulatory_filing duplicate)
-**PRIORITY 37 — connect_table: finance.finance_regulatory_filing** — add column regulatory_submission_id (BIGINT) with FK to compliance.regulatory_submission.regulatory_submission_id because financial filings roll up to the same compliance submission SSOT
-**PRIORITY 38 — connect_table: billing.dispute** — add column vendor_dispute_id (BIGINT) with FK to vendor.vendor_dispute.vendor_dispute_id because dispute concept spans billing/contract/vendor and needs cross-linking for SSOT
-**PRIORITY 39 — connect_table: care.care_enrollment** — add column member_enrollment_id (BIGINT) with FK to member.member_enrollment.member_enrollment_id because care management enrollment must reference the health plan enrollment SSOT (already partially present; verify)
-**PRIORITY 40 — connect_table: plan.plan_regulatory_obligation** — add column regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id because the plan link must reference the compliance SSOT obligation
-**PRIORITY 41 — connect_table: credential.credential_attestation** — add column compliance_attestation_id (BIGINT) with FK to compliance.compliance_attestation.compliance_attestation_id because the provider-specific attestation subtype must reference the compliance attestation SSOT
-**PRIORITY 42 — connect_table: enrollment.enrollment_eligibility_span** — add column member_eligibility_span_id (BIGINT) with FK to member.member_eligibility_span.member_eligibility_span_id because eligibility_span SSOT is owned by member (already present; verify and keep)
-**PRIORITY 43 — connect_table: enrollment.cms_submission** — add column risk_cms_submission_id (BIGINT) with FK to risk.risk_cms_submission.risk_cms_submission_id because cms_submission concept is duplicated across enrollment and risk and needs cross-linking
-**PRIORITY 44 — connect_table: member.member_address** — add column vendor_address_link_id (BIGINT) — actually keep separate; instead designate member.member_address as PII SSOT for member addresses and vendor.vendor_address for vendor addresses by clarifying scope (no shared FK needed; flag only for tagging)
-**PRIORITY 45 — connect_table: provider.network_participation** — add column provider_id (BIGINT) with FK to provider.provider.provider_id because the network_participation SSOT (contract vs provider domains) must anchor to provider identity
-**PRIORITY 46 — connect_table: workforce.workforce_certification** — add column training_course_id (BIGINT) with FK to workforce.training_course.training_course_id because certifications are earned from courses (correct direction)
-**PRIORITY 47 — remove_fk: workforce.training_course** — remove FK on column workforce_certification_id because certifications are awarded after course completion, not a property of the course definition
-**PRIORITY 48 — connect_table: pharmacy.pharmacy_claim** — add column member_identity_id (BIGINT) with FK to member.identity.identity_id because pharmacy.pharmacy_claim (the renamed-target stub) is disconnected while pharmacy_claim2 holds the relationships; merge or connect the stub
-**PRIORITY 49 — connect_table: member.member_enrollment** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because member.member_enrollment (stub) has no table_name and no relationships and must connect to the subscriber
-**PRIORITY 50 — connect_table: member.member_grievance** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because member.member_grievance (stub) is disconnected while member_grievance2 holds relationships
-**PRIORITY 51 — rename_attribute: credential.record** — rename column record_source_system to source_system because the redundant product prefix violates naming convention
-**PRIORITY 52 — rename_attribute: credential.committee** — rename column committee_approval_document_id to approval_document_id because the redundant product prefix violates naming convention
-**PRIORITY 53 — rename_attribute: credential.committee** — rename column committee_is_active to is_active because the redundant product prefix violates naming convention
-**PRIORITY 54 — rename_attribute: credential.decision_document** — rename column decision_document_source_system to source_system because the redundant product prefix violates naming convention
-**PRIORITY 55 — rename_attribute: finance.legal_entity** — rename column legal_entity_postal_code to postal_code because the redundant product prefix violates naming convention
-**PRIORITY 56 — rename_attribute: finance.legal_entity** — rename column legal_entity_registration_date to registration_date because the redundant product prefix violates naming convention
-**PRIORITY 57 — rename_attribute: workforce.training_course** — rename column training_course_certification_id to certification_id because the redundant product prefix violates naming convention
-**PRIORITY 58 — rename_attribute: member.member_lifecycle_event** — rename column contract_lifecycle_event_id to source_contract_lifecycle_event_id because the generic FK column among three pointing to contract.contract_lifecycle_event must describe its business role
-**PRIORITY 59 — rename_attribute: member.consent** — rename column employee_id to obtained_by_employee_id because the generic FK among two pointing to workforce.employee must describe its role
-**PRIORITY 60 — rename_attribute: plan.plan_amendment** — rename column employee_id to authored_by_employee_id because the generic FK among three pointing to workforce.employee must describe its role
-**PRIORITY 61 — rename_attribute: plan.plan_regulatory_obligation** — rename column compliance_regulatory_obligation_id to regulatory_obligation_id because the generic redundant FK columns must be consolidated to a single labeled reference
-**PRIORITY 62 — rename_attribute: plan.plan_provider_contract** — rename column contract_provider_contract_id to provider_contract_id because the generic FK column must describe its business role after rename
-**PRIORITY 63 — rename_attribute: provider.practice_location** — rename column provider_id to primary_provider_id because the generic FK among three pointing to provider must describe its role
-**PRIORITY 64 — rename_attribute: claim.header** — rename column group_id to sponsor_group_id because the generic FK among two pointing to employer.group must describe its role
-**PRIORITY 65 — rename_attribute: billing.premium_statement** — rename column employee_id to prepared_by_employee_id because the generic FK among two pointing to workforce.employee must describe its role
-**PRIORITY 66 — rename_attribute: utilization.peer_to_peer_review** — rename column pa_request_id to source_pa_request_id because the generic FK among two pointing to utilization.pa_request must describe its role
-**PRIORITY 67 — rename_attribute: care.questionnaire** — rename column employee_id to created_by_employee_id because the generic FK among two pointing to workforce.employee must describe its role
-**PRIORITY 68 — rename_attribute: credential.credential_lifecycle_event** — rename column contract_lifecycle_event_id to source_contract_lifecycle_event_id because the generic FK column must describe its business role
-**PRIORITY 69 — rename_attribute: credential.decision_document** — rename column employee_id to author_employee_id because the generic FK among two pointing to workforce.employee must describe its role
-**PRIORITY 70 — rename_attribute: contract.obligation** — rename column compliance_regulatory_obligation_id to regulatory_obligation_id because the generic FK column among two must describe its role and remove redundancy
-**PRIORITY 71 — rename_attribute: compliance.mlr_calculation** — rename column health_plan_id to subject_health_plan_id because the generic FK among two pointing to plan.health_plan must describe its role
-**PRIORITY 72 — rename_attribute: compliance.training_completion** — rename column employee_id to completed_by_employee_id because the generic FK among three pointing to workforce.employee must describe its role
-**PRIORITY 73 — rename_attribute: workforce.rbac_assignment** — rename column employee_id to assigned_to_employee_id because the generic FK among three pointing to workforce.employee must describe its role
-**PRIORITY 74 — rename_attribute: workforce.headcount_plan** — rename column employee_id to planner_employee_id because the generic FK among three pointing to workforce.employee must describe its role
-**PRIORITY 75 — rename_attribute: workforce.background_check** — rename column employee_id to subject_employee_id because the generic FK among three pointing to workforce.employee must describe its role
-**PRIORITY 76 — rename_attribute: workforce.training_course** — rename column employee_id to instructor_employee_id because the generic FK among two pointing to workforce.employee must describe its role
-**PRIORITY 77 — connect_table: care.coordinator_assignment** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because the renamed-target coordinator_assignment stub (duplicate of care_coordinator_assignment) must link to the member being coordinated
-**PRIORITY 78 — connect_table: care.coordinator_assignment** — add column care_plan_id (BIGINT) with FK to care.care_plan.care_plan_id because assignments link to the active care plan
-**PRIORITY 79 — connect_table: plan.program_coverage** — add column benefit_id (BIGINT) with FK to plan.benefit.benefit_id because program coverage specifies covered benefits (stub population)
-**PRIORITY 80 — connect_table: provider.obligation_compliance** — add column obligation_mapping_id (BIGINT) with FK to credential.obligation_mapping.obligation_mapping_id because provider compliance is tracked against credentialing obligations (stub)
-**PRIORITY 81 — connect_table: utilization.um_program_enrollment** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id because UM program enrollments are member-level (stub population — already partially present; verify attributes)
-**PRIORITY 82 — connect_table: credential.contract_link** — add column provider_contract_id (BIGINT) with FK to contract.provider_contract.provider_contract_id because credential records link to provider contracts (stub)
-**PRIORITY 83 — connect_table: credential.finding** — add column committee_review_id (BIGINT) with FK to credential.committee_review.committee_review_id because findings emerge from committee reviews (stub)
-**PRIORITY 84 — connect_table: contract.obligation** — add column regulatory_change_id (BIGINT) with FK to compliance.regulatory_change.regulatory_change_id because contractual obligations track to regulatory changes (stub)
-**PRIORITY 85 — connect_table: employer.regulatory_compliance_record** — add column regulatory_submission_id (BIGINT) with FK to compliance.regulatory_submission.regulatory_submission_id because records tie to filed submissions (stub)
-**PRIORITY 86 — connect_table: care.member_risk_tier** — add column member_risk_score_id (BIGINT) with FK to risk.member_risk_score.member_risk_score_id because risk tiers derive from underlying risk scores
-**PRIORITY 87 — connect_table: utilization.clinical_criteria** — add column medical_policy_id (BIGINT) with FK to utilization.medical_policy.medical_policy_id because clinical criteria implement medical policies (verify not duplicated with parent self-ref)
-**PRIORITY 88 — connect_table: billing.rate_schedule** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because rate schedules must associate with the health plan they price
-**PRIORITY 89 — connect_table: enrollment.open_enrollment_period** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because open enrollment periods are scoped to specific plans
-**PRIORITY 90 — connect_table: network.vbc_program** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because VBC programs operate within specific plans
-**PRIORITY 91 — connect_table: utilization.um_reviewer** — add column employee_id (BIGINT) with FK to workforce.employee.employee_id because UM reviewers are internal staff (verify present)
-**PRIORITY 92 — connect_table: workforce.job_role** — add column org_unit_id (BIGINT) with FK to workforce.org_unit.org_unit_id because job roles are defined within organizational units (verify present)
-**PRIORITY 93 — connect_table: claim.ibnr** — add column actuarial_assumption_set_id (BIGINT) with FK to risk.actuarial_assumption_set.actuarial_assumption_set_id because IBNR must be MVM-grade and reference its actuarial assumptions
-**PRIORITY 94 — connect_table: utilization.episode_of_care** — add column attributed_provider_id (BIGINT) with FK to provider.provider.provider_id because episode groupers must be MVM-grade with provider attribution
-**PRIORITY 95 — connect_table: utilization.episode_of_care** — add column bundled_payment_episode_id (BIGINT) with FK to contract.bundled_payment_episode.bundled_payment_episode_id because episodes feed bundled payment settlement (verify present)
-**PRIORITY 96 — connect_table: risk.ibnr_reserve** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id because IBNR reserves are computed per plan/LOB per the MVM directive
-**PRIORITY 97 — connect_table: provider.specialty** — remove FK on column contract_provider_contract_id because specialty is a provider attribute, not a contract artifact
-**PRIORITY 98 — connect_table: provider.specialty** — add column primary_specialty_flag (no FK) because providers have multiple specialties and need to identify the primary one
-**PRIORITY 99 — connect_table: appeal.evidence** — verify SELF-REF column supporting_evidence_id references appeal.evidence.evidence_id (already renamed per P142 — confirm applied)
-**PRIORITY 100 — connect_table: vendor.spend_category** — remove duplicate self-reference column parent_category_spend_category_id keeping only parent_spend_category_id because both reference the same parent relationship
-**PRIORITY 101 — connect_table: workforce.rbac_role** — remove duplicate self-reference column role_parent_rbac_role_id keeping only parent_rbac_role_id because both reference the same parent relationship
-**PRIORITY 102 — connect_table: member.subscriber** — define data_type for columns data_quality_score, effective_end_date, effective_start_date, is_active, master_entity_identifier, record_created_at, record_source_system, record_updated_at, record_version because MDM audit attributes have no data type defined
-**PRIORITY 103 — connect_table: member.dependent** — define data_type for the same nine MDM audit columns (data_quality_score, effective dates, is_active, master_entity_identifier, record_* fields) because they have no data type defined
-**PRIORITY 104 — connect_table: member.identity** — define data_type for the same nine MDM audit columns because they have no data type defined
-**PRIORITY 105 — connect_table: member.member_address** — define data_type for data_quality_score, effective_end_date, effective_start_date (and remaining record_* MDM fields) because they have no data type defined
-**PRIORITY 106 — connect_table: claim.diagnosis** — add column icd10_code (no FK), present_on_admission_indicator, diagnosis_sequence because these critical claim attributes are thin/missing
-**PRIORITY 107 — connect_table: claim.procedure** — add column cpt_hcpcs_code (no FK), modifier_codes, procedure_date, units_billed because these interop attributes are missing
-**PRIORITY 108 — connect_table: pharmacy.drug_master** — add column ndc_code (no FK), gpi_code, rxnorm_code, brand_or_generic_indicator, ahfs_class_code because these are required for FHIR Medication interop
-**PRIORITY 109 — connect_table: risk.member_risk_score** — add column raf_score, hcc_count, score_methodology_code, payment_year because these RAF attributes are missing
-**PRIORITY 110 — connect_table: workforce.employee** — add column hire_date, termination_date, employment_status_code because basic HR attributes are missing
-**PRIORITY 111 — connect_table: finance.legal_entity** — add column naic_company_code, state_of_domicile, federal_tax_id, entity_type_code because these are required for NAIC/DOI reporting
-**PRIORITY 112 — connect_table: claim.header** — add column fhir_resource_id (no FK, VARCHAR) because the MVM claim header needs FHIR interop identifiers
-**PRIORITY 113 — connect_table: member.identity** — add column fhir_patient_resource_id (no FK, VARCHAR) because FHIR Patient interop is required
-**PRIORITY 114 — connect_table: plan.health_plan** — add column fhir_coverage_plan_resource_id (no FK, VARCHAR) because FHIR Coverage/InsurancePlan interop is required
-**PRIORITY 115 — connect_table: claim.eob** — add column fhir_explanation_of_benefit_resource_id (no FK, VARCHAR) because FHIR EOB interop is required
-**PRIORITY 116 — connect_table: enrollment.medicare_entitlement** — add column hicn_or_mbi (no FK, VARCHAR), part_a_effective_date, part_b_effective_date, part_d_effective_date, esrd_indicator, dual_eligible_flag because the table is currently thin
-**PRIORITY 117 — connect_table: member.member_enrollment** — add column coverage_start_date, coverage_end_date, coverage_status_code, election_source_code, sep_reason_code, premium_amount, subsidy_amount, tier_level_code, dependents_covered_count, paid_through_date because the thin product needs expansion
-**PRIORITY 118 — connect_table: provider.provider_network_participation** — add column participation_effective_date, participation_termination_date, participation_status_code, tier_assignment_code, capitation_eligible_flag, vbc_eligible_flag because the thin product needs expansion
-**PRIORITY 119 — connect_table: care.program_enrollment** — add column enrollment_start_date, enrollment_end_date, enrollment_status_code, consent_obtained_flag, engagement_level_code because the thin product needs expansion
-**PRIORITY 120 — connect_table: employer.employer_contract** — add column contract_effective_date, contract_termination_date, funding_arrangement_code, aso_fee_amount, stop_loss_attached_flag, total_contract_value because the thin product needs expansion
-**PRIORITY 121 — connect_table: care.coordinator** — add pii_ classification tag and restricted level to columns email_address, first_name, full_name, last_name, phone_number because they are unclassified PII candidates
-**PRIORITY 122 — connect_table: care.program** — add pii_ classification tag and confidential level to columns contact_email, contact_phone because they are unclassified PII candidates
-**PRIORITY 123 — connect_table: employer.group** — add pii_ classification tag and confidential level to columns address_line1, address_line2, email_address, phone_number, postal_code, primary_contact_name, tax_id_ein because they are unclassified PII candidates
-**PRIORITY 124 — connect_table: employer.group_contact** — add pii_ classification tag to columns address_line1, address_line2, email, first_name, full_name, last_name, phone_number, postal_code because they are unclassified PII candidates
-**PRIORITY 125 — connect_table: employer.broker** — add pii_ classification tag to columns address_line1, address_line2, email, phone, postal_code because they are unclassified PII candidates
-**PRIORITY 126 — connect_table: employer.tpa** — add pii_ classification tag to columns address_line1, contact_email, contact_name, contact_phone because they are unclassified PII candidates
-**PRIORITY 127 — connect_table: appeal.iro_organization** — add pii_ classification tag to columns address_line1, address_line2, email, phone, postal_code because they are unclassified PII candidates
-**PRIORITY 128 — connect_table: care.snf_stay** — add pii_/PHI classification tag to columns admission_diagnosis_code, admission_diagnosis_description because clinical diagnosis data is PHI
-**PRIORITY 129 — connect_table: appeal.adverse_determination** — add pii_/PHI classification tag to column diagnosis_code because clinical diagnosis data is PHI
-**PRIORITY 130 — connect_table: appeal.case** — add pii_/PHI classification tag to column related_diagnosis_code because clinical diagnosis data is PHI
-**PRIORITY 131 — connect_table: finance.legal_entity** — add pii_ classification tag to columns postal_code, address_line2, bank_account_currency, bank_account_type because they are unclassified sensitive candidates
-**PRIORITY 132 — remove_fk: appeal.appeal_grievance2** — verify and rename duplicate appeal_grievance vs appeal_grievance2 — the "2" suffix products (appeal_communication2, appeal_document2, care_enrollment2, member_enrollment2, member_grievance2, employer_contract2, provider_network_participation2, workforce_certification2, pharmacy_claim2) indicate accidental table duplication; merge each "2" variant into the base product and remove the empty stub because duplicate-pair products violate SSOT
-**PRIORITY 133 — rename_product: contract.contract_lifecycle_event** — rename to lifecycle_event because the redundant domain prefix creates a confusing naming pattern (note: resolve the contract_lifecycle_event vs contract_lifecycle_event2 duplication first)
-**PRIORITY 134 — rename_product: vendor.vendor_lifecycle_event** — rename to lifecycle_event because the redundant domain prefix creates a confusing naming pattern
-**PRIORITY 135 — rename_product: member.member_lifecycle_event** — rename to lifecycle_event because the redundant domain prefix creates a confusing naming pattern
-**PRIORITY 136 — rename_product: credential.credential_lifecycle_event** — rename to lifecycle_event because the redundant domain prefix creates a confusing naming pattern
-**PRIORITY 137 — connect_table: enrollment.medicaid_eligibility** — add column member_eligibility_span_id (BIGINT) with FK to member.member_eligibility_span.member_eligibility_span_id because Medicaid eligibility populates eligibility spans
-**PRIORITY 138 — connect_table: claim.cob** — add column member_eligibility_span_id (BIGINT) with FK to member.member_eligibility_span.member_eligibility_span_id because COB requires verifying alternate coverage spans
-**PRIORITY 139 — connect_table: provider.facility** — add column provider_id (BIGINT) with FK to provider.provider.provider_id because facilities are providers with NPIs (currently links to provider_provider stub)
-**PRIORITY 140 — connect_table: workforce.compensation** — add column payroll_run_id (BIGINT) with FK to workforce.payroll_run.payroll_run_id because compensation entries reference payroll runs (verify present)
-**PRIORITY 141 — connect_table: contract.financial_summary** — add column capitation_arrangement_id (BIGINT) with FK to contract.capitation_arrangement.capitation_arrangement_id and reporting_period_start/reporting_period_end columns because summaries report capitation performance
-**PRIORITY 142 — connect_table: pharmacy.mac_list** — add column pbm_contract_id (BIGINT) with FK to pharmacy.pbm_contract.pbm_contract_id because MAC lists belong to PBM contracts (verify present)
-**PRIORITY 143 — connect_table: vendor.insurance** — add column policy_period_start, policy_period_end, coverage_limit_amount, carrier_name (no FK) because the product has a low attribute count
-**PRIORITY 144 — connect_table: care.condition_registry** — add column hcc_mapping_id (BIGINT) with FK to risk.hcc_mapping.hcc_mapping_id because conditions map to HCCs for risk adjustment (verify present)
-**PRIORITY 145 — remove_fk: claim.header** — verify FK to plan.plan_service_area uses column plan_service_area_id (not service_area_id) for naming consistency
-**PRIORITY 146 — connect_table: enrollment.transaction** — add column edi_transaction_id (BIGINT) with FK to enrollment.edi_transaction.edi_transaction_id because many transactions originate as 834 EDIs (verify present)
-**PRIORITY 147 — move_product: care.population_segment** — keep in care but note dependency: this is the highest-risk isolated table and must receive all four FKs in Priorities 17-20 before any other work
-**PRIORITY 148 — connect_table: pharmacy.pharmacy_contract** — add column vendor_contract_id (BIGINT) with FK to vendor.vendor_contract.vendor_contract_id because the contract concept spans employer/pharmacy/vendor and needs SSOT cross-linking
-**PRIORITY 149 — connect_table: care.hedis_measure** — add column regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id because HEDIS measures are mandated by regulatory bodies (verify against renamed obligation)
-**PRIORITY 150 — connect_table: network.adequacy_standard** — add column regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id because adequacy standards derive from regulatory obligations (verify FK target after compliance rename)
+PRIORITY 1 — connect_table: billing.rate_schedule — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — rate schedules must be associated with specific health plans for premium calculation  
+PRIORITY 2 — connect_table: claim.payer — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — external payers are third‑party entities that should link to vendor master  
+PRIORITY 3 — connect_table: enrollment.open_enrollment_period — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — open enrollment periods are specific to health plan offerings  
+PRIORITY 4 — connect_table: network.adequacy_standard — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.compliance_regulatory_obligation.compliance_regulatory_obligation_id — adequacy standards derive from regulatory requirements  
+PRIORITY 5 — connect_table: network.vbc_program — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — VBC programs operate within specific health plan contexts  
+PRIORITY 6 — connect_table: utilization.um_reviewer — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — UM reviewers are internal staff members requiring workforce linkage  
+PRIORITY 7 — connect_table: utilization.um_reviewer — add column credential_record_id (BIGINT) with FK to credential.record.record_id — UM reviewers require clinical credentials for medical necessity determinations  
+PRIORITY 8 — connect_table: workforce.job_role — add column workforce_org_unit_id (BIGINT) with FK to workforce.org_unit.org_unit_id — job roles are defined within organizational unit contexts  
+PRIORITY 9 — connect_table: member.member_contact — add column member_subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id — member contacts must link to the subscriber they represent  
+PRIORITY 10 — connect_table: care.coordinator_assignment — add column member_subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id — coordinator assignments must specify which member is being assigned  
+PRIORITY 11 — connect_table: care.hedis_measure — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.compliance_regulatory_obligation.compliance_regulatory_obligation_id — HEDIS measures are regulatory quality requirements  
+PRIORITY 12 — connect_table: employer.wellness_program — add column employer_group_id (BIGINT) with FK to employer.group.group_id — wellness programs are offered to specific employer groups  
+PRIORITY 13 — connect_table: employer.tpa — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — TPAs are third‑party vendors requiring vendor master linkage  
+PRIORITY 14 — connect_table: employer.broker — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — brokers are external business partners tracked in vendor master  
+PRIORITY 15 — rename_product: provider.provider_provider — rename to provider because redundant domain‑name prefix creates confusing naming pattern  
+PRIORITY 16 — rename_product: contract.contract_provider_contract — rename to provider_contract because redundant contract prefix creates confusing naming pattern  
+PRIORITY 17 — rename_product: compliance.compliance_regulatory_obligation — rename to regulatory_obligation because redundant compliance prefix creates confusing naming pattern  
+PRIORITY 18 — rename_product: compliance.compliance_attestation — rename to attestation because redundant compliance prefix creates confusing naming pattern  
+PRIORITY 19 — rename_product: member.member_eligibility_span — rename to eligibility_span because redundant member prefix creates confusing naming pattern  
+PRIORITY 20 — rename_product: member.member_enrollment — rename to enrollment because redundant member prefix creates confusing naming pattern  
+PRIORITY 21 — rename_product: member.member_communication — rename to communication because redundant member prefix creates confusing naming pattern  
+PRIORITY 22 — rename_product: member.member_grievance — rename to grievance because redundant member prefix creates confusing naming pattern  
+PRIORITY 23 — rename_product: member.member_lifecycle_event — rename to lifecycle_event because redundant member prefix creates confusing naming pattern  
+PRIORITY 24 — rename_product: member.member_address — rename to address because redundant member prefix creates confusing naming pattern  
+PRIORITY 25 — rename_product: enrollment.enrollment_eligibility_span — rename to eligibility_span because redundant enrollment prefix creates confusing naming pattern  
+PRIORITY 26 — rename_product: enrollment.enrollment_batch — rename to batch because redundant enrollment prefix creates confusing naming pattern  
+PRIORITY 27 — rename_product: enrollment.enrollment_cms_submission — rename to cms_submission because redundant enrollment prefix creates confusing naming pattern  
+PRIORITY 28 — rename_product: provider.provider_directory_verification — rename to directory_verification because redundant provider prefix creates confusing naming pattern  
+PRIORITY 29 — rename_product: provider.provider_network_participation — rename to network_participation because redundant provider prefix creates confusing naming pattern  
+PRIORITY 30 — rename_product: provider.provider_outreach — rename to outreach because redundant provider prefix creates confusing naming pattern  
+PRIORITY 31 — rename_product: network.network_service_area — rename to service_area because redundant network prefix creates confusing naming pattern  
+PRIORITY 32 — rename_product: network.network_provider — rename to provider_assignment because redundant network prefix and clearer semantic meaning  
+PRIORITY 33 — rename_product: network.network_directory_verification — rename to directory_verification because redundant network prefix creates confusing naming pattern  
+PRIORITY 34 — rename_product: network.network_recruitment — rename to recruitment because redundant network prefix creates confusing naming pattern  
+PRIORITY 35 — rename_product: credential.credential_document — rename to document because redundant credential prefix creates confusing naming pattern  
+PRIORITY 36 — rename_product: credential.credential_appeal — rename to appeal because redundant credential prefix creates confusing naming pattern  
+PRIORITY 37 — rename_product: credential.credential_attestation — rename to attestation because redundant credential prefix creates confusing naming pattern  
+PRIORITY 38 — rename_product: credential.credential_lifecycle_event — rename to lifecycle_event because redundant credential prefix creates confusing naming pattern  
+PRIORITY 39 — rename_product: credential.credential_outreach — rename to outreach because redundant credential prefix creates confusing naming pattern  
+PRIORITY 40 — rename_product: vendor.vendor_contract — rename to contract because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 41 — rename_product: vendor.vendor_address — rename to address because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 42 — rename_product: vendor.vendor_audit — rename to audit because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 43 — rename_product: vendor.vendor_certification — rename to certification because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 44 — rename_product: vendor.vendor_contact — rename to contact because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 45 — rename_product: vendor.vendor_dispute — rename to dispute because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 46 — rename_product: vendor.vendor_document — rename to document because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 47 — rename_product: vendor.vendor_lifecycle_event — rename to lifecycle_event because redundant vendor prefix creates confusing naming pattern  
+PRIORITY 48 — rename_product: risk.risk_underwriting_case — rename to underwriting_case because redundant risk prefix creates confusing naming pattern  
+PRIORITY 49 — rename_product: risk.risk_cms_submission — rename to cms_submission because redundant risk prefix creates confusing naming pattern  
+PRIORITY 50 — rename_product: appeal.appeal_communication — rename to communication because redundant appeal prefix creates confusing naming pattern  
+PRIORITY 51 — rename_product: appeal.appeal_document — rename to document because redundant appeal prefix creates confusing naming pattern  
+PRIORITY 52 — rename_product: appeal.appeal_grievance — rename to grievance because redundant appeal prefix creates confusing naming pattern  
+PRIORITY 53 — rename_product: appeal.appeal_regulatory_filing — rename to regulatory_filing because redundant appeal prefix creates confusing naming pattern  
+PRIORITY 54 — rename_product: finance.finance_regulatory_filing — rename to regulatory_filing because redundant finance prefix creates confusing naming pattern  
+PRIORITY 55 — rename_product: workforce.workforce_certification — rename to certification because redundant workforce prefix creates confusing naming pattern  
+PRIORITY 56 — rename_product: workforce.workforce_recruitment — rename to recruitment because redundant workforce prefix creates confusing naming pattern  
+PRIORITY 57 — connect_table: utilization.clinical_criteria — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — clinical criteria sets like InterQual/MCG are licensed from vendors  
+PRIORITY 58 — connect_table: care.population_segment — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — population segments are defined within health plan contexts  
+PRIORITY 59 — connect_table: care.member_risk_tier — add column risk_pool_id (BIGINT) with FK to risk.pool.pool_id — member risk tiers feed into risk pool stratification  
+PRIORITY 60 — connect_table: pharmacy.drug_master — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.compliance_regulatory_obligation.compliance_regulatory_obligation_id — drug classifications have FDA regulatory requirements  
+PRIORITY 61 — connect_table: claim.ibnr — add column risk_pool_id (BIGINT) with FK to risk.pool.pool_id — IBNR reserves are calculated at risk pool level  
+PRIORITY 62 — connect_table: claim.ibnr — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — IBNR reserves are tracked by health plan  
+PRIORITY 63 — connect_table: finance.actuarial_reserve — add column risk_pool_id (BIGINT) with FK to risk.pool.pool_id — actuarial reserves are calculated at risk pool level  
+PRIORITY 64 — connect_table: billing.retro_adjustment — add column billing_premium_invoice_id (BIGINT) with FK to billing.premium_invoice.premium_invoice_id — retroactive adjustments apply to specific invoices  
+PRIORITY 65 — connect_table: billing.aptc_subsidy — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — APTC subsidies are specific to ACA marketplace plans  
+PRIORITY 66 — connect_table: employer.group_amendment — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — group amendments require tracking of who processed them  
+PRIORITY 67 — connect_table: employer.group_contact — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — group contacts may be assigned internal account managers  
+PRIORITY 68 — connect_table: employer.group_document — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — document uploads require audit trail of uploader  
+PRIORITY 69 — connect_table: employer.cobra_administration — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — COBRA administration is often outsourced to vendors  
+PRIORITY 70 — connect_table: employer.stop_loss_policy — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — stop loss policies are purchased from reinsurance vendors  
+PRIORITY 71 — connect_table: employer.aso_fee_schedule — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — fee schedules require tracking of who created/approved them  
+PRIORITY 72 — connect_table: employer.participation_requirement — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — participation requirements vary by plan offering  
+PRIORITY 73 — connect_table: employer.open_enrollment_window — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — enrollment windows are specific to plan offerings  
+PRIORITY 74 — connect_table: plan.plan_regulatory_obligation — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.compliance_regulatory_obligation.compliance_regulatory_obligation_id — plan regulatory obligations must link to master obligation list  
+PRIORITY 75 — connect_table: employer.erisa_plan_document — add column employer_group_id (BIGINT) with FK to employer.group.group_id — ERISA documents are filed for specific employer groups  
+PRIORITY 76 — connect_table: employer.broker_agreement — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — broker agreements are contracts with external vendor entities  
+PRIORITY 77 — remove_fk: appeal.appeal_grievance — remove FK on risk_member_risk_score_id because grievances are member complaints unrelated to actuarial risk scoring  
+PRIORITY 78 — remove_fk: appeal.case — remove FK on risk_member_risk_score_id because appeal cases are administrative processes unrelated to actuarial risk scoring  
+PRIORITY 79 — connect_table: contract.bundled_payment_episode — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — bundled payment episodes operate within specific plan contexts  
+PRIORITY 80 — connect_table: contract.bundled_payment_episode — add column provider_provider_id (BIGINT) with FK to provider.provider.provider_id — bundled payments are made to specific providers  
+PRIORITY 81 — connect_table: risk.rate_development — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — rate development is performed for specific health plans  
+PRIORITY 82 — connect_table: risk.rbc_calculation — add column finance_legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — RBC calculations are performed at legal entity level  
+PRIORITY 83 — connect_table: risk.ibnr_reserve — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — IBNR reserves are tracked by health plan  
+PRIORITY 84 — connect_table: risk.actuarial_assumption_set — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — assumption sets require actuary sign‑off tracking  
+PRIORITY 85 — connect_table: risk.hcc_mapping — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.compliance_regulatory_obligation.compliance_regulatory_obligation_id — HCC mappings follow CMS regulatory requirements  
+PRIORITY 86 — connect_table: compliance.fwa_case — add column member_subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id — FWA cases often involve specific member fraud  
+PRIORITY 87 — connect_table: compliance.fwa_case — add column provider_provider_id (BIGINT) with FK to provider.provider.provider_id — FWA cases often involve specific provider fraud  
+PRIORITY 88 — connect_table: compliance.fwa_case — add column claim_header_id (BIGINT) with FK to claim.header.header_id — FWA cases are triggered by suspicious claims  
+PRIORITY 89 — connect_table: utilization.um_delegation — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — UM delegation is to external vendor organizations  
+PRIORITY 90 — connect_table: utilization.um_delegation — add column contract_provider_contract_id (BIGINT) with FK to contract.contract_provider_contract.contract_provider_contract_id — UM delegation requires contractual agreement  
+PRIORITY 91 — connect_table: care.question_set — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — question sets require tracking of creator/owner  
+PRIORITY 92 — connect_table: pharmacy.mtm_service — add column pharmacy_dispensing_pharmacy_id (BIGINT) with FK to pharmacy.dispensing_pharmacy.dispensing_pharmacy_id — MTM services are delivered by pharmacies  
+PRIORITY 93 — connect_table: pharmacy.specialty_drug_program — add column vendor_vendor_id (BIGINT) with FK to vendor.vendor.vendor_id — specialty drug programs often involve specialty pharmacy vendors  
+PRIORITY 94 — connect_table: network.access_standard — add column plan_health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — access standards are defined per health plan  
+PRIORITY 95 — connect_table: finance.mlr_financial_entry — add column employer_group_id (BIGINT) with FK to employer.group.group_id — MLR entries may be tracked at employer group level for large groups  
+PRIORITY 96 — connect_table: claim.drg — add column provider_facility_id (BIGINT) with FK to provider.facility.facility_id — DRG assignments are specific to facility admissions  
+PRIORITY 97 — connect_table: claim.diagnosis — add column member_identity_id (BIGINT) with FK to member.identity.identity_id — diagnoses are associated with specific members  
+PRIORITY 98 — connect_table: claim.procedure — add column member_identity_id (BIGINT) with FK to member.identity.identity_id — procedures are performed on specific members  
+PRIORITY 99 — rename_product: care.care_coordinator_assignment — rename to coordinator_assignment_detail because duplicate SSOT violation  
+PRIORITY 100 — connect_table: contract.contract_provider_contract — add column fee_schedule_id (BIGINT) with FK to contract.fee_schedule.fee_schedule_id — fee_schedule_id is a foreign key referencing fee_schedule table  
+PRIORITY 101 — connect_table: member.subscriber — add column member_address_id (BIGINT) with FK to member.address.address_id — member_address_id is a foreign key referencing address table  
+PRIORITY 102 — connect_table: care.question_set — add column care_program_id (BIGINT) with FK to care.program.program_id — care_program_id is a foreign key referencing program table  
+PRIORITY 103 — connect_table: care.question_set — add column superseded_by_set_id (BIGINT) with FK to care.question_set.question_set_id — superseded_by_set_id is a foreign key referencing question_set table  
+PRIORITY 104 — connect_table: employer.broker_agreement — add column broker_id (BIGINT) with FK to employer.broker.broker_id — broker_id is a foreign key referencing broker table  
+PRIORITY 105 — connect_table: employer.broker_agreement — add column employer_group_id (BIGINT) with FK to employer.group.group_id — employer_group_id is a foreign key referencing group table  
+PRIORITY 106 — connect_table: employer.broker_agreement — add column general_agent_id (BIGINT) with FK to employer.general_agent.agent_id — general_agent_id is a foreign key referencing general_agent table  
+PRIORITY 107 — rename_attribute: vendor.vendor — rename column vendor_tier to tier because redundant product prefix removed  
+PRIORITY 108 — rename_attribute: member.policy — rename column policy_effective_date to effective_date because redundant product prefix removed  
+PRIORITY 109 — rename_attribute: member.policy — rename column policy_expiration_date to expiration_date because redundant product prefix removed  
+PRIORITY 110 — rename_attribute: member.policy — rename column policy_renewal_amount to renewal_amount because redundant product prefix removed  
+PRIORITY 111 — rename_attribute: member.policy — rename column policy_renewal_currency to renewal_currency because redundant product prefix removed  
+PRIORITY 112 — rename_attribute: member.policy — rename column policy_renewal_date to renewal_date because redundant product prefix removed  
+PRIORITY 113 — rename_attribute: member.policy — rename column policy_renewal_deductible_amount to renewal_deductible_amount because redundant product prefix removed  
+PRIORITY 114 — rename_attribute: member.policy — rename column policy_renewal_deductible_currency to renewal_deductible_currency because redundant product prefix removed  
+PRIORITY 115 — rename_attribute: member.policy — rename column policy_renewal_out_of_pocket_max_amount to renewal_out_of_pocket_max_amount because redundant product prefix removed  
+PRIORITY 116 — rename_attribute: member.policy — rename column policy_renewal_out_of_pocket_max_currency to renewal_out_of_pocket_max_currency because redundant product prefix removed  
+PRIORITY 117 — rename_attribute: member.policy — rename column policy_renewal_premium_amount to renewal_premium_amount because redundant product prefix removed  
+PRIORITY 117.5 — rename_attribute: member.policy — rename column policy_renewal_premium_currency to renewal_premium_currency because redundant product prefix removed  
+PRIORITY 118 — rename_attribute: member.policy — rename column policy_renewal_status to renewal_status because redundant product prefix removed  
+PRIORITY 119 — rename_attribute: member.policy — rename column policy_termination_date to termination_date because redundant product prefix removed  
+PRIORITY 120 — rename_attribute: member.policy — rename column policy_termination_reason to termination_reason because redundant product prefix removed  
+PRIORITY 121 — rename_attribute: billing.payer — rename column payer_address_line1 to address_line1 because redundant product prefix removed  
+PRIORITY 122 — rename_attribute: billing.payer — rename column payer_address_line2 to address_line2 because redundant product prefix removed  
+PRIORITY 123 — rename_attribute: billing.payer — rename column payer_balance_due to balance_due because redundant product prefix removed  
+PRIORITY 124 — rename_attribute: billing.payer — rename column payer_balance_outstanding to balance_outstanding because redundant product prefix removed  
+PRIORITY 125 — rename_attribute: billing.payer — rename column payer_balance_paid to balance_paid because redundant product prefix removed  
+PRIORITY 126 — rename_attribute: billing.payer — rename column payer_city to city because redundant product prefix removed  
+PRIORITY 127 — rename_attribute: billing.payer — rename column payer_communication_contact_preference to communication_contact_preference because redundant product prefix removed  
+PRIORITY 128 — rename_attribute: billing.payer — rename column payer_communication_language to communication_language because redundant product prefix removed  
+PRIORITY 129 — rename_attribute: billing.payer — rename column payer_communication_method to communication_method because redundant product prefix removed  
+PRIORITY 130 — rename_attribute: billing.payer — rename column payer_communication_preference to communication_preference because redundant product prefix removed  
+PRIORITY 131 — rename_attribute: billing.payer — rename column payer_communication_time_zone to communication_time_zone because redundant product prefix removed  
+PRIORITY 132 — rename_attribute: billing.payer — rename column payer_contact_email to contact_email because redundant product prefix removed  
+PRIORITY 133 — rename_attribute: billing.payer — rename column payer_contact_name to contact_name because redundant product prefix removed  
+PRIORITY 134 — rename_attribute: billing.payer — rename column payer_contact_phone to contact_phone because redundant product prefix removed  
+PRIORITY 135 — rename_attribute: billing.payer — rename column payer_contact_role to contact_role because redundant product prefix removed  
+PRIORITY 136 — rename_attribute: billing.payer — rename column payer_country to country because redundant product prefix removed  
+PRIORITY 137 — rename_attribute: billing.payer — rename column payer_created_at to created_at because redundant product prefix removed  
+PRIORITY 138 — rename_attribute: billing.payer — rename column payer_credit_limit to credit_limit because redundant product prefix removed  
+PRIORITY 139 — rename_attribute: billing.payer — rename column payer_currency to currency because redundant product prefix removed  
+PRIORITY 140 — rename_attribute: billing.payer — rename column payer_ein to ein because redundant product prefix removed  
+PRIORITY 141 — rename_attribute: billing.payer — rename column payer_email to email because redundant product prefix removed  
+PRIORITY 142 — rename_attribute: billing.payer — rename column payer_fax to fax because redundant product prefix removed  
+PRIORITY 143 — rename_attribute: billing.payer — rename column payer_language to language because redundant product prefix removed  
+PRIORITY 144 — rename_attribute: billing.payer — rename column payer_last_payment_amount to last_payment_amount because redundant product prefix removed  
+PRIORITY 145 — rename_attribute: billing.payer — rename column payer_last_payment_date to last_payment_date because redundant product prefix removed  
+PRIORITY 146 — rename_attribute: billing.payer — rename column payer_last_payment_method to last_payment_method because redundant product prefix removed  
+PRIORITY 147 — rename_attribute: billing.payer — rename column payer_last_payment_status to last_payment_status because redundant product prefix removed  
+PRIORITY 148 — rename_attribute: billing.payer — rename column payer_legal_name to legal_name because redundant product prefix removed  
+PRIORITY 149 — rename_attribute: billing.payer — rename column payer_payment_terms to payment_terms because redundant product prefix removed  
+PRIORITY 150 — rename_attribute: billing.payer — rename column payer_phone to phone because redundant product prefix removed  
+PRIORITY 151 — rename_attribute: billing.payer — rename column payer_postal_code to postal_code because redundant product prefix removed  
+PRIORITY 152 — rename_attribute: billing.payer — rename column payer_tax_number to tax_number because redundant product prefix removed  
+PRIORITY 153 — rename_attribute: billing.payer — rename column payer_time_zone to time_zone because redundant product prefix removed  
+PRIORITY 154 — rename_attribute: billing.payer — rename column payer_updated_at to updated_at because redundant product prefix removed  
+PRIORITY 155 — rename_attribute: billing.payer — rename column payer_website to website because redundant product prefix removed  
+PRIORITY 156 — rename_attribute: claim.payer — rename column payer_account_balance to account_balance because redundant product prefix removed  
+PRIORITY 157 — rename_attribute: claim.payer — rename column payer_account_currency to account_currency because redundant product prefix removed  
+PRIORITY 158 — rename_attribute: claim.payer — rename column payer_account_number to account_number because redundant product prefix removed  
+PRIORITY 159 — rename_attribute: claim.payer — rename column payer_account_status to account_status because redundant product prefix removed  
+PRIORITY 160 — rename_attribute: claim.payer — rename column payer_address_line1 to address_line1 because redundant product prefix removed  
+PRIORITY 161 — rename_attribute: claim.payer — rename column payer_address_line2 to address_line2 because redundant product prefix removed  
+PRIORITY 162 — rename_attribute: claim.payer — rename column payer_business_number to business_number because redundant product prefix removed  
+PRIORITY 163 — rename_attribute: claim.payer — rename column payer_city to city because redundant product prefix removed  
+PRIORITY 164 — rename_attribute: claim.payer — rename column payer_contact_email to contact_email because redundant product prefix removed  
+PRIORITY 165 — rename_attribute: claim.payer — rename column payer_contact_name to contact_name because redundant product prefix removed  
+PRIORITY 166 — rename_attribute: claim.payer — rename column payer_contact_phone to contact_phone because redundant product prefix removed  
+PRIORITY 167 — rename_attribute: claim.payer — rename column payer_contract_end_date to contract_end_date because redundant product prefix removed  
+PRIORITY 168 — rename_attribute: claim.payer — rename column payer_contract_number to contract_number because redundant product prefix removed  
+PRIORITY 169 — rename_attribute: claim.payer — rename column payer_contract_start_date to contract_start_date because redundant product prefix removed  
+PRIORITY 170 — rename_attribute: claim.payer — rename column payer_contract_status to contract_status because redundant product prefix removed  
+PRIORITY 171 — rename_attribute: claim.payer — rename column payer_country to country because redundant product prefix removed  
+PRIORITY 172 — rename_attribute: claim.payer — rename column payer_coverage_end_date to coverage_end_date because redundant product prefix removed  
+PRIORITY 173 — rename_attribute: claim.payer — rename column payer_coverage_start_date to coverage_start_date because redundant product prefix removed  
+PRIORITY 174 — rename_attribute: claim.payer — rename column payer_created_at to created_at because redundant product prefix removed  
+PRIORITY 175 — rename_attribute: claim.payer — rename column payer_deleted_at to deleted_at because redundant product prefix removed  
+PRIORITY 176 — rename_attribute: claim.payer — rename column payer_lei to lei because redundant product prefix removed  
+PRIORITY 177 — rename_attribute: claim.payer — rename column payer_logo_url to logo_url because redundant product prefix removed  
+PRIORITY 178 — rename_attribute: claim.payer — rename column payer_notes to notes because redundant product prefix removed  
+PRIORITY 179 — rename_attribute: claim.payer — rename column payer_payment_cycle to payment_cycle because redundant product prefix removed  
+PRIORITY 180 — rename_attribute: claim.payer — rename column payer_payment_frequency to payment_frequency because redundant product prefix removed  
+PRIORITY 181 — rename_attribute: claim.payer — rename column payer_payment_method to payment_method because redundant product prefix removed  
+PRIORITY 182 — rename_attribute: claim.payer — rename column payer_payment_terms to payment_terms because redundant product prefix removed  
+PRIORITY 183 — rename_attribute: claim.payer — rename column payer_rating to rating because redundant product prefix removed  
+PRIORITY 184 — rename_attribute: claim.payer — rename column payer_rating_source to rating_source because redundant product prefix removed  
+PRIORITY 185 — rename_attribute: claim.payer — rename column payer_risk_category to risk_category because redundant product prefix removed  
+PRIORITY 186 — rename_attribute: claim.payer — rename column payer_risk_score to risk_score because redundant product prefix removed  
+PRIORITY 187 — rename_attribute: claim.payer — rename column payer_tax_number to tax_number because redundant product prefix removed  
+PRIORITY 188 — rename_attribute: claim.payer — rename column payer_updated_at to updated_at because redundant product prefix removed  
+PRIORITY 189 — rename_attribute: claim.payer — rename column payer_website to website because redundant product prefix removed  
+PRIORITY 190 — rename_attribute: claim.payer — rename column payer_zip to zip because redundant product prefix removed  
+PRIORITY 191 — rename_attribute: credential.committee — rename column committee_approval_document_id to approval_document_id because redundant committee prefix removed  
+PRIORITY 192 — rename_attribute: credential.committee — rename column committee_approval_by to approval_by because redundant committee prefix removed  
+PRIORITY 193 — rename_attribute: credential.committee — rename column committee_approval_comments to approval_comments because redundant committee prefix removed  
+PRIORITY 194 — rename_attribute: credential.committee — rename column committee_approval_date to approval_date because redundant committee prefix removed  
+PRIORITY 195 — rename_attribute: credential.committee — rename column committee_approval_document_checksum to approval_document_checksum because redundant committee prefix removed  
+PRIORITY 196 — rename_attribute: credential.committee — rename column committee_approval_document_created_at to approval_document_created_at because redundant committee prefix removed  
+PRIORITY 197 — rename_attribute: credential.committee — rename column committee_approval_document_format to approval_document_format because redundant committee prefix removed  
+PRIORITY 198 — rename_attribute: credential.committee — rename column committee_approval_document_size to approval_document_size because redundant committee prefix removed  
+PRIORITY 199 — rename_attribute: credential.committee — rename column committee_approval_document_type to approval_document_type because redundant committee prefix removed  
+PRIORITY 200 — rename_attribute: credential.committee — rename column committee_approval_document_updated_at to approval_document_updated_at because redundant committee prefix removed  
+PRIORITY 201 — rename_attribute: credential.committee — rename column committee_approval_document_url to approval_document_url because redundant committee prefix removed  
+PRIORITY 202 — rename_attribute: credential.committee — rename column committee_approval_document_version to approval_document_version because redundant committee prefix removed  
+PRIORITY 203 — rename_attribute: credential.committee — rename column committee_approval_status to approval_status because redundant committee prefix removed  
+PRIORITY 204 — rename_attribute: credential.committee — rename column committee_contact_address to contact_address because redundant committee prefix removed  
+PRIORITY 205 — rename_attribute: credential.committee — rename column committee_contact_email to contact_email because redundant committee prefix removed  
+PRIORITY 206 — rename_attribute: credential.committee — rename column committee_contact_name to contact_name because redundant committee prefix removed  
+PRIORITY 207 — rename_attribute: credential.committee — rename column committee_contact_phone to contact_phone because redundant committee prefix removed  
+PRIORITY 208 — rename_attribute: credential.committee — rename column committee_created_at to created_at because redundant committee prefix removed  
+PRIORITY 209 — rename_attribute: credential.committee — rename column committee_created_by to created_by because redundant committee prefix removed  
+PRIORITY 210 — rename_attribute: credential.committee — rename column committee_end_date to end_date because redundant committee prefix removed  
+PRIORITY 211 — rename_attribute: credential.committee — rename column committee_is_active to is_active because redundant committee prefix removed  
+PRIORITY 212 — rename_attribute: credential.committee — rename column committee_is_approved to is_approved because redundant committee prefix removed  
+PRIORITY 213 — rename_attribute: credential.committee — rename column committee_is_default to is_default because redundant committee prefix removed  
+PRIORITY 214 — rename_attribute: credential.committee — rename column committee_location to location because redundant committee prefix removed  
+PRIORITY 215 — rename_attribute: credential.committee — rename column committee_start_date to start_date because redundant committee prefix removed  
+PRIORITY 216 — rename_attribute: credential.committee — rename column committee_updated_at to updated_at because redundant committee prefix removed  
+PRIORITY 217 — rename_attribute: credential.committee — rename column committee_updated_by to updated_by because redundant committee prefix removed  
+PRIORITY 218 — rename_attribute: credential.decision_document — rename column decision_document_created_at to created_at because redundant decision_document prefix removed  
+PRIORITY 219 — rename_attribute: credential.decision_document — rename column decision_document_created_by to created_by because redundant decision_document prefix removed  
+PRIORITY 220 — rename_attribute: credential.decision_document — rename column decision_document_format to format because redundant decision_document prefix removed  
+PRIORITY 221 — rename_attribute: credential.decision_document — rename column decision_document_hash to hash because redundant decision_document prefix removed  
+PRIORITY 222 — rename_attribute: credential.decision_document — rename column decision_document_language to language because redundant decision_document prefix removed  
+PRIORITY 223 — rename_attribute: credential.decision_document — rename column decision_document_revision to revision because redundant decision_document prefix removed  
+PRIORITY 224 — rename_attribute: credential.decision_document — rename column decision_document_size_bytes to size_bytes because redundant decision_document prefix removed  
+PRIORITY 225 — rename_attribute: credential.decision_document — rename column decision_document_source_system to source_system because redundant decision_document prefix removed  
+PRIORITY 226 — rename_attribute: credential.decision_document — rename column decision_document_source_system_code to source_system_code because redundant decision_document prefix removed  
+PRIORITY 227 — rename_attribute: credential.decision_document — rename column decision_document_source_system_description to source_system_description because redundant decision_document prefix removed  
+PRIORITY 228 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner to source_system_owner because redundant decision_document prefix removed  
+PRIORITY 229 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner_address to source_system_owner_address because redundant decision_document prefix removed  
+PRIORITY 230 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner_code to source_system_owner_code because redundant decision_document prefix removed  
+PRIORITY 231 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner_email to source_system_owner_email because redundant decision_document prefix removed  
+PRIORITY 232 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner_name to source_system_owner_name because redundant decision_document prefix removed  
+PRIORITY 233 — rename_attribute: credential.decision_document — rename column decision_document_source_system_owner_phone to source_system_owner_phone because redundant decision_document prefix removed  
+PRIORITY 234 — rename_attribute: credential.decision_document — rename column decision_document_source_system_status to source_system_status because redundant decision_document prefix removed  
+PRIORITY 235 — rename_attribute: credential.decision_document — rename column decision_document_source_system_timestamp to source_system_timestamp because redundant decision_document prefix removed  
+PRIORITY 236 — rename_attribute: credential.decision_document — rename column decision_document_source_system_version to source_system_version because redundant decision_document prefix removed  
+PRIORITY 237 — rename_attribute: credential.decision_document — rename column decision_document_updated_at to updated_at because redundant decision_document prefix removed  
+PRIORITY 238 — rename_attribute: credential.decision_document — rename column decision_document_updated_by to updated_by because redundant decision_document prefix removed  
+PRIORITY 239 — rename_attribute: credential.decision_document — rename column decision_document_url to url because redundant decision_document prefix removed  
+PRIORITY 240 — rename_attribute: credential.decision_document — rename column decision_document_version to version because redundant decision_document prefix removed  
+PRIORITY 241 — rename_attribute: credential.credential_document — rename column credential_document_created_at to created_at because redundant credential_document prefix removed  
+PRIORITY 242 — rename_attribute: credential.credential_document — rename column credential_document_created_by to created_by because redundant credential_document prefix removed  
+PRIORITY 243 — rename_attribute: credential.credential_document — rename column credential_document_format to format because redundant credential_document prefix removed  
+PRIORITY 244 — rename_attribute: credential.credential_document — rename column credential_document_language to language because redundant credential_document prefix removed  
+PRIORITY 245 — rename_attribute: credential.credential_document — rename column credential_document_language_code to language_code because redundant credential_document prefix removed  
+PRIORITY 246 — rename_attribute: credential.credential_document — rename column credential_document_language_description to language_description because redundant credential_document prefix removed  
+PRIORITY 247 — rename_attribute: credential.credential_document — rename column credential_document_page_count to page_count because redundant credential_document prefix removed  
+PRIORITY 248 — rename_attribute: credential.credential_document — rename column credential_document_size_bytes to size_bytes because redundant credential_document prefix removed  
+PRIORITY 249 — rename_attribute: credential.credential_document — rename column credential_document_status_reason to status_reason because redundant credential_document prefix removed  
+PRIORITY 250 — rename_attribute: credential.credential_document — rename column credential_document_title to title because redundant credential_document prefix removed  
+PRIORITY 251 — rename_attribute: credential.credential_document — rename column credential_document_updated_at to updated_at because redundant credential_document prefix removed  
+PRIORITY 252 — rename_attribute: credential.credential_document — rename column credential_document_updated_by to updated_by because redundant credential_document prefix removed  
+PRIORITY 253 — rename_attribute: credential.credential_document — rename column credential_document_url to url because redundant credential_document prefix removed  
+PRIORITY 254 — rename_attribute: credential.credential_document — rename column credential_document_version to version because redundant credential_document prefix removed  
+PRIORITY 255 — rename_attribute: employer.tpa — rename column tpa_address_line1 to address_line1 because redundant tpa prefix removed  
+PRIORITY 256 — rename_attribute: employer.tpa — rename column tpa_city to city because redundant tpa prefix removed  
+PRIORITY 257 — rename_attribute: employer.tpa — rename column tpa_contact_email to contact_email because redundant tpa prefix removed  
+PRIORITY 258 — rename_attribute: employer.tpa — rename column tpa_contact_name to contact_name because redundant tpa prefix removed  
+PRIORITY 259 — rename_attribute: employer.tpa — rename column tpa_contact_phone to contact_phone because redundant tpa prefix removed  
+PRIORITY 260 — rename_attribute: employer.tpa — rename column tpa_contract_currency to contract_currency because redundant tpa prefix removed  
+PRIORITY 261 — rename_attribute: employer.tpa — rename column tpa_contract_end_date to contract_end_date because redundant tpa prefix removed  
+PRIORITY 262 — rename_attribute: employer.tpa — rename column tpa_contract_notes to contract_notes because redundant tpa prefix removed  
+PRIORITY 263 — rename_attribute: employer.tpa — rename column tpa_contract_number to contract_number because redundant tpa prefix removed  
+PRIORITY 264 — rename_attribute: employer.tpa — rename column tpa_contract_start_date to contract_start_date because redundant tpa prefix removed  
+PRIORITY 265 — rename_attribute: employer.tpa — rename column tpa_contract_status to contract_status because redundant tpa prefix removed  
+PRIORITY 266 — rename_attribute: employer.tpa — rename column tpa_contract_type to contract_type because redundant tpa prefix removed  
+PRIORITY 267 — rename_attribute: employer.tpa — rename column tpa_contract_value to contract_value because redundant tpa prefix removed  
+PRIORITY 268 — rename_attribute: employer.tpa — rename column tpa_country to country because redundant tpa prefix removed  
+PRIORITY 269 — rename_attribute: employer.tpa — rename column tpa_coverage_end_date to coverage_end_date because redundant tpa prefix removed  
+PRIORITY 270 — rename_attribute: employer.tpa — rename column tpa_coverage_limit_amount to coverage_limit_amount because redundant tpa prefix removed  
+PRIORITY 271 — rename_attribute: employer.tpa — rename column tpa_coverage_limit_currency to coverage_limit_currency because redundant tpa prefix removed  
+PRIORITY 272 — rename_attribute: employer.tpa — rename column tpa_coverage_start_date to coverage_start_date because redundant tpa prefix removed  
+PRIORITY 273 — rename_attribute: employer.tpa — rename column tpa_coverage_status to coverage_status because redundant tpa prefix removed  
+PRIORITY 274 — rename_attribute: employer.tpa — rename column tpa_coverage_type to coverage_type because redundant tpa prefix removed  
+PRIORITY 275 — rename_attribute: employer.tpa — rename column tpa_created_at to created_at because redundant tpa prefix removed  
+PRIORITY 276 — rename_attribute: employer.tpa — rename column tpa_renewal_date to renewal_date because redundant tpa prefix removed  
+PRIORITY 277 — rename_attribute: employer.tpa — rename column tpa_renewal_status to renewal_status because redundant tpa prefix removed  
+PRIORITY 278 — rename_attribute: employer.tpa — rename column tpa_sla_end to sla_end because redundant tpa prefix removed  
+PRIORITY 279 — rename_attribute: employer.tpa — rename column tpa_sla_notes to sla_notes because redundant tpa prefix removed  
+PRIORITY 280 — rename_attribute: employer.tpa — rename column tpa_sla_start to sla_start because redundant tpa prefix removed  
+PRIORITY 281 — rename_attribute: employer.tpa — rename column tpa_sla_status to sla_status because redundant tpa prefix removed  
+PRIORITY 282 — rename_attribute: employer.tpa — rename column tpa_tax_number to tax_number because redundant tpa prefix removed  
+PRIORITY 283 — rename_attribute: employer.tpa — rename column tpa_termination_date to termination_date because redundant tpa prefix removed  
+PRIORITY 284 — rename_attribute: employer.tpa — rename column tpa_termination_reason to termination_reason because redundant tpa prefix removed  
+PRIORITY 285 — rename_attribute: employer.tpa — rename column tpa_updated_at to updated_at because redundant tpa prefix removed  
+PRIORITY 286 — rename_attribute: employer.tpa — rename column tpa_zip to zip because redundant tpa prefix removed  
+PRIORITY 287 — rename_attribute: finance.legal_entity — rename column legal_entity_address_line1 to address_line1 because redundant legal_entity prefix removed  
+PRIORITY 288 — rename_attribute: finance.legal_entity — rename column legal_entity_annual_revenue to annual_revenue because redundant legal_entity prefix removed  
+PRIORITY 289 — rename_attribute: finance.legal_entity — rename column legal_entity_bank_account_currency to bank_account_currency because redundant legal_entity prefix removed  
+PRIORITY 290 — rename_attribute: finance.legal_entity — rename column legal_entity_bank_account_number to bank_account_number because redundant legal_entity prefix removed  
+PRIORITY 291 — rename_attribute: finance.legal_entity — rename column legal_entity_bank_account_type to bank_account_type because redundant legal_entity prefix removed  
+PRIORITY 292 — rename_attribute: finance.legal_entity — rename column legal_entity_bank_name to bank_name because redundant legal_entity prefix removed  
+PRIORITY 293 — rename_attribute: finance.legal_entity — rename column legal_entity_bank_routing_number to bank_routing_number because redundant legal_entity prefix removed  
+PRIORITY 294 — rename_attribute: finance.legal_entity — rename column legal_entity_city to city because redundant legal_entity prefix removed  
+PRIORITY 295 — rename_attribute: finance.legal_entity — rename column legal_entity_compliance_notes to compliance_notes because redundant legal_entity prefix removed  
+PRIORITY 296 — rename_attribute: finance.legal_entity — rename column legal_entity_compliance_status to compliance_status because redundant legal_entity prefix removed  
+PRIORITY 297 — rename_attribute: finance.legal_entity — rename column legal_entity_country to country because redundant legal_entity prefix removed  
+PRIORITY 298 — rename_attribute: finance.legal_entity — rename column legal_entity_expiration_date to expiration_date because redundant legal_entity prefix removed  
+PRIORITY 299 — rename_attribute: finance.legal_entity — rename column legal_entity_fax to fax because redundant legal_entity prefix removed  
+PRIORITY 300 — rename_attribute: finance.legal_entity — rename column legal_entity_industry_code to industry_code because redundant legal_entity prefix removed  
+PRIORITY 301 — rename_attribute: finance.legal_entity — rename column legal_entity_industry_description to industry_description because redundant legal_entity prefix removed  
+PRIORITY 302 — rename_attribute: finance.legal_entity — rename column legal_entity_legal_status to legal_status because redundant legal_entity prefix removed  
+PRIORITY 303 — rename_attribute: finance.legal_entity — rename column legal_entity_legal_structure to legal_structure because redundant legal_entity prefix removed  
+PRIORITY 304 — rename_attribute: finance.legal_entity — rename column legal_entity_nature_of_business to nature_of_business because redundant legal_entity prefix removed  
+PRIORITY 305 — rename_attribute: finance.legal_entity — rename column legal_entity_number_of_employees to number_of_employees because redundant legal_entity prefix removed  
+PRIORITY 306 — rename_attribute: finance.legal_entity — rename column legal_entity_ownership_percentage to ownership_percentage because redundant legal_entity prefix removed  
+PRIORITY 307 — rename_attribute: finance.legal_entity — rename column legal_entity_ownership_type to ownership_type because redundant legal_entity prefix removed  
+PRIORITY 308 — rename_attribute: finance.legal_entity — rename column legal_entity_postal_code to postal_code because redundant legal_entity prefix removed  
+PRIORITY 309 — rename_attribute: finance.legal_entity — rename column legal_entity_primary_contact_email to primary_contact_email because redundant legal_entity prefix removed  
+PRIORITY 310 — rename_attribute: finance.legal_entity — rename column legal_entity_primary_contact_name to primary_contact_name because redundant legal_entity prefix removed  
+PRIORITY 311 — rename_attribute: finance.legal_entity — rename column legal_entity_primary_contact_phone to primary_contact_phone because redundant legal_entity prefix removed  
+PRIORITY 312 — rename_attribute: finance.legal_entity — rename column legal_entity_registration_date to registration_date because redundant legal_entity prefix removed  
+PRIORITY 313 — rename_attribute: finance.legal_entity — rename column legal_entity_tax_exempt_certificate_expiration_date to tax_exempt_certificate_expiration_date because redundant legal_entity prefix removed  
+PRIORITY 314 — rename_attribute: finance.legal_entity — rename column legal_entity_tax_exempt_certificate_number to tax_exempt_certificate_number because redundant legal_entity prefix removed  
+PRIORITY 315 — rename_attribute: finance.legal_entity — rename column legal_entity_tax_exempt_status to tax_exempt_status because redundant legal_entity prefix removed  
+PRIORITY 316 — rename_attribute: finance.legal_entity — rename column legal_entity_website to website because redundant legal_entity prefix removed  
+PRIORITY 317 — rename_attribute: workforce.training_course — rename column training_course_certification_id to certification_id because redundant training_course prefix removed  
+PRIORITY 318 — rename_attribute: workforce.training_course — rename column training_course_certification_awarded to certification_awarded because redundant training_course prefix removed  
+PRIORITY 319 — rename_attribute: workforce.training_course — rename column training_course_certification_validity_end to certification_validity_end because redundant training_course prefix removed  
+PRIORITY 320 — rename_attribute: workforce.training_course — rename column training_course_certification_validity_start to certification_validity_start because redundant training_course prefix removed  
+PRIORITY 321 — rename_attribute: workforce.training_course — rename column training_course_compliance_due_date to compliance_due_date because redundant training_course prefix removed  
+PRIORITY 322 — rename_attribute: workforce.training_course — rename column training_course_compliance_status to compliance_status because redundant training_course prefix removed  
+PRIORITY 323 — rename_attribute: workforce.training_course — rename column training_course_cost to cost because redundant training_course prefix removed  
+PRIORITY 324 — rename_attribute: workforce.training_course — rename column training_course_cost_center to cost_center because redundant training_course prefix removed  
+PRIORITY 325 — rename_attribute: workforce.training_course — rename column training_course_cost_currency to cost_currency because redundant training_course prefix removed  
+PRIORITY 326 — rename_attribute: workforce.training_course — rename column training_course_created_at to created_at because redundant training_course prefix removed  
+PRIORITY 327 — rename_attribute: workforce.training_course — rename column training_course_delivery_mode to delivery_mode because redundant training_course prefix removed  
+PRIORITY 328 — rename_attribute: workforce.training_course — rename column training_course_duration_hours to duration_hours because redundant training_course prefix removed  
+PRIORITY 329 — rename_attribute: workforce.training_course — rename column training_course_end_date to end_date because redundant training_course prefix removed  
+PRIORITY 330 — rename_attribute: workforce.training_course — rename column training_course_format to format because redundant training_course prefix removed  
+PRIORITY 331 — rename_attribute: workforce.training_course — rename column training
 
-Other known issues from static analysis (68):
-  - Attribute 'diagnosis_sequence' in claim.diagnosis has redundant product prefix 'diagnosis_'. Rename to 'sequence'
-  - Attribute 'team_type_code' in care.team has redundant product prefix 'team_'. Rename to 'type_code'
-  - Attribute 'finding_status_code' in credential.finding has redundant product prefix 'finding_'. Rename to 'status_code'
-  - Attribute 'party_type_code' in contract.party has redundant product prefix 'party_'. Rename to 'type_code'
-  - Attribute 'party_role_code' in contract.party has redundant product prefix 'party_'. Rename to 'role_code'
-  - Attribute 'obligation_type_code' in contract.obligation has redundant product prefix 'obligation_'. Rename to 'type_code'
-  - Attribute 'obligation_status_code' in contract.obligation has redundant product prefix 'obligation_'. Rename to 'status_code'
-  - Table member.member_contact has 3 FK columns pointing to member.subscriber (member_subscriber_id, primary_member_subscriber_id, subscriber_id) (generic/unlabeled: subscriber_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table member.consent has 2 FK columns pointing to workforce.employee (employee_id, secondary_consent_witness_employee_id) (generic/unlabeled: employee_id, secondary_consent_witness_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table enrollment.open_enrollment_period has 3 FK columns pointing to plan.health_plan (open_health_plan_id, open_plan_health_plan_id, health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table plan.submission has 2 FK columns pointing to workforce.employee (employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table plan.plan_amendment2 has 3 FK columns pointing to workforce.employee (employee_id, amendment_updated_by_user_employee_id, approver_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table plan.provider_contract_link has 2 FK columns pointing to contract.provider_contract (provider_contract_id, tertiary_provider_contract_id) (generic/unlabeled: provider_contract_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table provider.practice_location has 3 FK columns pointing to provider.provider (provider_id, secondary_practice_medicare_enrolled_provider_id, tertiary_primary_provider_id) (generic/unlabeled: provider_id, secondary_practice_medicare_enrolled_provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+Other known issues from static analysis (32):
+  - Table member.consent has 2 FK columns pointing to workforce.employee (employee_id, witnessed_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table plan.plan_amendment has 3 FK columns pointing to workforce.employee (employee_id, plan_created_by_user_employee_id, plan_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table provider.practice_location has 3 FK columns pointing to provider.provider (provider_id, practice_medicare_provider_id, primary_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table provider.group_practice has 2 FK columns pointing to provider.provider (provider_id, group_medicare_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table claim.header has 3 FK columns pointing to provider.provider (provider_id, secondary_header_rendering_provider_id, tertiary_rendering_provider_id) (generic/unlabeled: provider_id, secondary_header_rendering_provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table claim.drg has 3 FK columns pointing to claim.header (drg_claim_header_id, drg_header_id, header_id) (generic/unlabeled: header_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table claim.claim_payer has 2 FK columns pointing to plan.health_plan (health_plan_id, primary_health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table billing.premium_statement has 2 FK columns pointing to workforce.employee (employee_id, secondary_premium_statement_generator_employee_id) (generic/unlabeled: employee_id, secondary_premium_statement_generator_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table billing.rate_schedule has 3 FK columns pointing to plan.health_plan (rate_health_plan_id, rate_plan_health_plan_id, health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table utilization.peer_to_peer_review has 2 FK columns pointing to utilization.pa_request (primary_review_pa_request_id, secondary_peer_pa_request_id) (generic/unlabeled: secondary_peer_pa_request_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table utilization.um_reviewer has 2 FK columns pointing to workforce.employee (employee_id, um_workforce_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table utilization.episode_of_care has 2 FK columns pointing to provider.provider (provider_id, episode_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table care.hedis_measure has 2 FK columns pointing to compliance.regulatory_obligation (compliance_regulatory_obligation_id, regulatory_obligation_id) (generic/unlabeled: regulatory_obligation_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table care.care_plan has 2 FK columns pointing to member.subscriber (subscriber_id, plan_care_subscriber_id) (generic/unlabeled: subscriber_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table credential.decision_document has 2 FK columns pointing to workforce.employee (employee_id, secondary_decision_document_author_employee_id) (generic/unlabeled: employee_id, secondary_decision_document_author_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table network.adequacy_standard has 2 FK columns pointing to compliance.regulatory_obligation (compliance_regulatory_obligation_id, regulatory_obligation_id) (generic/unlabeled: regulatory_obligation_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table network.vbc_program has 3 FK columns pointing to plan.health_plan (vbc_health_plan_id, vbc_plan_health_plan_id, health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table employer.group has 2 FK columns pointing to workforce.employee (employee_id, group_underwriter_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table claim.header has 2 FK columns pointing to employer.group (group_id, origin_group_id) (generic/unlabeled: group_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table claim.header has 2 FK columns pointing to provider.provider (provider_id, rendering_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table claim.payment has 2 FK columns pointing to claim.header (header_id, claim_header_id) (generic/unlabeled: header_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table billing.premium_statement has 2 FK columns pointing to workforce.employee (employee_id, premium_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table care.questionnaire has 2 FK columns pointing to workforce.employee (employee_id, author_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table credential.decision_document has 2 FK columns pointing to workforce.employee (employee_id, primary_decision_approver_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table employer.group_division has 2 FK columns pointing to plan.health_plan (health_plan_id, tertiary_group_epo_plan_health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table employer.wellness_program has 3 FK columns pointing to employer.group (wellness_employer_group_id, wellness_group_id, group_id) (generic/unlabeled: group_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table employer.broker has 2 FK columns pointing to vendor.vendor (vendor_id, broker_vendor_vendor_id) (generic/unlabeled: vendor_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table employer.tpa has 2 FK columns pointing to vendor.vendor (vendor_id, tpa_vendor_vendor_id) (generic/unlabeled: vendor_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table employer.broker_agreement has 2 FK columns pointing to employer.broker (broker_id, broker) (generic/unlabeled: broker_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table contract.fee_schedule has 2 FK columns pointing to contract.provider_contract (fee_provider_contract_id, provider_contract_id) (generic/unlabeled: provider_contract_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table contract.fee_schedule has 2 FK columns pointing to contract.provider_contract (provider_contract_id, fee_provider_contract_id) (generic/unlabeled: provider_contract_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.cost_center has 2 FK columns pointing to workforce.employee (employee_id, primary_cost_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.journal_entry has 2 FK columns pointing to workforce.employee (employee_id, primary_journal_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table compliance.cap_milestone has 2 FK columns pointing to workforce.employee (employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table compliance.mlr_calculation has 2 FK columns pointing to plan.health_plan (health_plan_id, secondary_mlr_reporting_entity_health_plan_id) (generic/unlabeled: health_plan_id, secondary_mlr_reporting_entity_health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.mlr_calculation has 2 FK columns pointing to plan.health_plan (health_plan_id, mlr_reporting_health_plan_id) (generic/unlabeled: health_plan_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table compliance.policy_document has 3 FK columns pointing to workforce.employee (employee_id, primary_policy_employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table compliance.policy_review has 2 FK columns pointing to workforce.employee (employee_id, primary_policy_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table compliance.training_completion has 3 FK columns pointing to workforce.employee (employee_id, secondary_training_last_updated_by_employee_id, tertiary_training_trainee_employee_id) (generic/unlabeled: employee_id, secondary_training_last_updated_by_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.job_role has 3 FK columns pointing to workforce.org_unit (job_org_unit_id, job_workforce_org_unit_id, org_unit_id) (generic/unlabeled: org_unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.training_completion has 3 FK columns pointing to workforce.employee (employee_id, training_completed_by_employee_id, training_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.employment_record has 2 FK columns pointing to workforce.employee (employee_id, tertiary_employment_hr_business_partner_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.compensation has 2 FK columns pointing to workforce.employee (employee_id, primary_compensation_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.payroll_cost_allocation has 2 FK columns pointing to workforce.employee (employee_id, tertiary_payroll_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.rbac_assignment has 3 FK columns pointing to workforce.employee (employee_id, secondary_assignee_employee_id, tertiary_rbac_last_updated_by_employee_id) (generic/unlabeled: employee_id, secondary_assignee_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.rbac_assignment has 2 FK columns pointing to compliance.policy_document (primary_policy_document_id, secondary_rbac_policy_document_id) (generic/unlabeled: secondary_rbac_policy_document_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.headcount_plan has 3 FK columns pointing to workforce.employee (employee_id, secondary_headcount_last_updated_by_employee_id, tertiary_headcount_requisition_requestor_employee_id) (generic/unlabeled: employee_id, secondary_headcount_last_updated_by_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.rbac_assignment has 3 FK columns pointing to workforce.employee (employee_id, rbac_assigned_employee_id, rbac_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.headcount_plan has 3 FK columns pointing to workforce.employee (employee_id, headcount_updated_by_user_employee_id, primary_headcount_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.disciplinary_action has 3 FK columns pointing to workforce.employee (employee_id, tertiary_disciplinary_manager_employee_id, tertiary_quinary_disciplinary_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.background_check has 3 FK columns pointing to workforce.employee (employee_id, secondary_background_initiator_employee_id, tertiary_background_last_updated_by_employee_id) (generic/unlabeled: employee_id, secondary_background_initiator_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.training_course has 2 FK columns pointing to workforce.employee (employee_id, secondary_training_last_updated_by_employee_id) (generic/unlabeled: employee_id, secondary_training_last_updated_by_employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.background_check has 3 FK columns pointing to workforce.employee (employee_id, background_subject_employee_id, background_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.training_course has 2 FK columns pointing to workforce.employee (employee_id, training_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.workforce_recruitment has 3 FK columns pointing to workforce.employee (employee_id, recruitment_quaternary_workforce_updated_by_user_employee_id, tertiary_workforce_created_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - PII-candidate attribute contract.party.tax_id has no classification tags — expected restricted/confidential + PII tag
-  - PII-candidate attribute finance.legal_entity.federal_tax_id has no classification tags — expected restricted/confidential + PII tag
-  - FK column 'broker' in employer.broker_agreement doesn't end with target PK 'broker_id' — FK columns MUST end with the target table's PK (e.g., driver_broker_id or just broker_id)
-  - Attribute provider.obligation_compliance.remediation_plan_text has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
-  - Attribute employer.employer_contract.renewal_terms_text has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
-  - Attribute contract.party_regulatory_obligation_compliance.finding_text has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
-  - Table member.member_grievance has only 1 attribute(s) — likely incomplete or should be merged
-  - Subdomain 'regulatory_compliance' appears in 3 domains: employer, plan, provider. Consider renaming to qualified form.
-  - Subdomain 'claim_processing' appears in 2 domains: claim, pharmacy. Consider renaming to qualified form.
-  - Subdomain 'clinical_review' appears in 2 domains: pharmacy, utilization. Consider renaming to qualified form.
-  - Subdomain 'account_management' appears in 2 domains: billing, employer. Consider renaming to qualified form.
-  - 236 attribute(s) match person-data patterns but lack pii_ tags
-  - 16 non-PK attributes redundantly prefixed with their product name
+  - Subdomain 'regulatory_compliance' appears in 2 domains: appeal, plan. Consider renaming to qualified form.
+  - Subdomain 'compliance_oversight' appears in 3 domains: contract, credential, workforce. Consider renaming to qualified form.
+  - 82 attribute(s) match person-data patterns but lack pii_ tags
   - Corporate division holds 5/19 domains (26%) - exceeds the 20% cap (Operations+Business must be >=80%). Relocate or reclassify.
-  - 1 table(s) have no subdomain tag - every table MUST carry a subdomain grouping (e.g., provider.provider_provider)
-**Vibe adherence: 99.7% (299/300 VREQs applied) | Structural quality: 54/100 (reported separately, NOT blended)**
+  - 1 table(s) have no subdomain tag - every table MUST carry a subdomain grouping (e.g., compliance.compliance_regulatory_obligation)
+**Vibe adherence: 100.0% (98/98 VREQs applied) | Structural quality: 63/100 (reported separately, NOT blended)**
 
-Deterministic score: 51.01999999999999/100 (LLM assessment: 58/100)
+Deterministic score: 77.28/100 (LLM assessment: 50/100)
 
 ## MISSED VIBES (carried from the previous run — apply these THIS run; user directives first)
 
-- (USER DIRECTIVE - supreme authority) connect_table: care.team (target: care.team) [missed: vov_residual_unapplied]
-- Treat reviewer/user directives as supreme authority (target: *) [missed: orchestrator status=partial]
-- Strip redundant domain-name prefixes from all flagged products (target: member.member_eligibility_span, member.member_enrollment, appeal.appeal_grievance, appeal.appeal_document, appeal.appeal_communication, appeal.appeal_regulatory_filing, billing.billing_dispute, contract.contract_dispute, vendor.vendor_dispute, contract.contract_lifecycle_event, credential.credential_lifecycle_event, member.member_lifecycle_event, vendor.vendor_lifecycle_event, credential.credential_document, vendor.vendor_document, member.member_communication, member.member_grievance, contract.contract_audit, vendor.vendor_audit, vendor.vendor_contract, vendor.vendor_certification, care.care_enrollment, care.care_plan, care.care_coordinator_assignment, employer.employer_contract, employer.employer_underwriting_case, finance.finance_regulatory_filing, risk.risk_underwriting_case, risk.risk_cms_submission, enrollment.enrollment_eligibility_span, enrollment.enrollment_cms_submission, enrollment.enrollment_batch, workforce.workforce_certification, workforce.workforce_recruitment, provider.provider_directory_verification, provider.provider_outreach, provider.provider_network_participation, network.network_directory_verification, network.network_provider, network.network_recruitment, network.network_service_area, plan.plan_amendment, plan.plan_provider_contract, plan.plan_regulatory_obligation, plan.plan_service_area, pharmacy.pharmacy_claim, pharmacy.pharmacy_contract, credential.credential_outreach, credential.credential_attestation, credential.credential_appeal) [missed: orchestrator status=partial]
-- Resolve compliance_event naming collision with workforce (target: compliance.compliance_event, workforce.compliance_event) [missed: orchestrator status=partial]
-- Preserve broker_agreement and its broker FK (target: employer.broker_agreement) [missed: orchestrator status=failed]
-- Resolve cross-domain SSOT duplicate concepts via owner+FK (target: appeal.appeal_grievance, member.member_grievance, appeal.appeal_document, credential.credential_document, vendor.vendor_document, appeal.appeal_communication, member.member_communication, appeal.appeal_regulatory_filing, finance.finance_regulatory_filing, billing.billing_dispute, contract.contract_dispute, vendor.vendor_dispute, billing.payer, claim.payer, care.care_enrollment, member.member_enrollment, compliance.compliance_regulatory_obligation, plan.plan_regulatory_obligation, compliance.compliance_attestation, credential.credential_attestation, contract.contract_provider_contract, plan.plan_provider_contract, contract.amendment, plan.plan_amendment, contract.contract_lifecycle_event, credential.credential_lifecycle_event, member.member_lifecycle_event, vendor.vendor_lifecycle_event) [missed: orchestrator status=partial]
-- Merge intra-domain duplicate product pairs to single SSOT (target: member.eligibility_span, member.member_eligibility_span, member.enrollment, member.member_enrollment, provider.provider, provider.provider_provider, care.coordinator_assignment, care.care_coordinator_assignment, contract.provider_contract, contract.contract_provider_contract, compliance.regulatory_obligation, compliance.compliance_regulatory_obligation, compliance.attestation, compliance.compliance_attestation) [missed: orchestrator status=partial]
-- Populate credential.obligation_mapping stub (target: credential.obligation_mapping) [missed: orchestrator status=partial]
-- Rename appeal parent_X self-reference columns (target: appeal.evidence, appeal.expedited_review, appeal.outcome, appeal.penalty) [missed: orchestrator status=partial]
-- Verify claim.header service_area FK column naming (target: claim.header) [missed: orchestrator status=partial]
-- Document contract_lifecycle_event scope distinction (target: contract.contract_lifecycle_event) [missed: orchestrator status=partial]
-- Add FHIR resource identifier columns for interop (target: claim.header, member.identity, provider.provider_provider, plan.health_plan, claim.eob, utilization.pa_request, utilization.pa_decision, care.condition_registry, pharmacy.pharmacy_claim, care.care_plan, enrollment.enrollment_eligibility_span) [missed: orchestrator status=partial]
-- Populate um_program_enrollment stub (target: utilization.um_program_enrollment) [missed: orchestrator status=partial]
-- Populate coordinator_assignment stub (target: care.coordinator_assignment) [missed: orchestrator status=partial]
-- Populate plan_regulatory_obligation stub (target: plan.plan_regulatory_obligation) [missed: orchestrator status=partial]
-- Populate iro_organization accreditation attributes (target: appeal.iro_organization) [missed: orchestrator status=partial]
-- Populate care.team attributes (target: care.team) [missed: orchestrator status=partial]
-- Set missing table_name on 9 tables (target: member.member_eligibility_span, member.member_enrollment, member.eligibility_span, member.enrollment, provider.provider, contract.provider_contract, compliance.compliance_attestation, compliance.regulatory_obligation, compliance.attestation) [missed: orchestrator status=partial]
-- Rename generic duplicate FK columns to role-descriptive names (target: member.member_lifecycle_event, member.consent, plan.plan_amendment, plan.plan_regulatory_obligation, plan.plan_provider_contract, provider.practice_location, claim.header, billing.premium_statement, utilization.peer_to_peer_review, care.questionnaire, credential.credential_lifecycle_event, credential.decision_document, contract.obligation, compliance.mlr_calculation, compliance.training_completion, workforce.rbac_assignment, workforce.headcount_plan, workforce.background_check, workforce.training_course) [missed: orchestrator status=partial]
-- Define missing data types on member-domain attributes (target: member.subscriber, member.dependent, member.identity, member.member_address) [missed: orchestrator status=failed]
-- Qualify duplicate subdomain names (target: plan, provider, appeal, care, compliance) [missed: orchestrator status=partial]
-- Remove redundant value_regex on typed columns (target: *) [missed: orchestrator status=partial]
-- Build demos to test the models (target: *) [missed: orchestrator status=partial]
-- re-add metric view contract_amendment (owner contract.amendment was renamed/removed; re-point to the current product) (target: contract.amendment) [missed: mv_orphan_scrubbed]
-- re-add metric view enrollment_enrollment_batch (owner enrollment.enrollment_batch was renamed/removed; re-point to the current product) (target: enrollment.enrollment_batch) [missed: mv_orphan_scrubbed]
-- re-add metric view enrollment_enrollment_cms_submission (owner enrollment.enrollment_cms_submission was renamed/removed; re-point to the current product) (target: enrollment.enrollment_cms_submission) [missed: mv_orphan_scrubbed]
-- re-add metric view member_eligibility_span (owner member.eligibility_span was renamed/removed; re-point to the current product) (target: member.eligibility_span) [missed: mv_orphan_scrubbed]
+- Link unlinked FK member.subscriber.member_address_id (target: member.subscriber.member_address_id) [missed: orchestrator status=failed]
+- Link unlinked FK care.question_set.care_program_id (target: care.question_set.care_program_id) [missed: orchestrator status=failed]
+- Merge duplicate care.coordinator_assignment and care.care_coordinator_assignment into coordinator_assignment (target: care.coordinator_assignment, care.care_coordinator_assignment) [missed: orchestrator status=partial]
+- Resolve SSOT for duplicate 'payer' entity across billing/claim (target: billing.payer, claim.payer) [missed: orchestrator status=failed]
+- Resolve SSOT for duplicate 'regulatory_obligation' entity across compliance/plan (target: compliance.compliance_regulatory_obligation, plan.plan_regulatory_obligation) [missed: orchestrator status=failed]
+- Resolve SSOT for duplicate 'underwriting_case' entity across employer/risk (target: employer.employer_underwriting_case, risk.risk_underwriting_case) [missed: orchestrator status=failed]
+- Resolve SSOT for duplicate 'address' entity across member/vendor (target: member.member_address, vendor.vendor_address) [missed: orchestrator status=failed]
+- Resolve SSOT for duplicate 'recruitment' entity across network/workforce (target: network.network_recruitment, workforce.workforce_recruitment) [missed: orchestrator status=failed]
+- Strip redundant product-name prefixes from ~253 non-PK attributes model-wide (target: *) [missed: orchestrator status=partial]
+- Reduce outgoing FK count on claim.header (split/junction refactor) (target: claim.header) [missed: orchestrator status=failed]
 - re-add metric view network_provider (owner network.network_provider was renamed/removed; re-point to the current product) (target: network.network_provider) [missed: mv_orphan_scrubbed]

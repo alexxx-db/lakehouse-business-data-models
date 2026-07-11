@@ -1,68 +1,125 @@
--- Metric views for domain: marketing | Business: Travel Hospitality | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: marketing | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 20:28:13
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_attribution_event`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Marketing attribution and conversion analytics. Measures touchpoint effectiveness, conversion rates, and attributed revenue to optimize channel mix and campaign investment allocation."
+  comment: "Attribution Event business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`attribution_event`"
   dimensions:
-    - name: "attribution_model"
-      expr: attribution_model
-      comment: "Attribution model used (last-click, first-click, linear, data-driven) for model comparison analysis."
-    - name: "touchpoint_type"
-      expr: touchpoint_type
-      comment: "Type of marketing touchpoint (ad impression, email open, click) for touchpoint effectiveness analysis."
-    - name: "channel"
-      expr: channel
-      comment: "Marketing channel of the attribution event for channel-level conversion and revenue attribution."
-    - name: "device_type"
-      expr: device_type
-      comment: "Device type (mobile, desktop, tablet) for device-level conversion optimization."
-    - name: "geo_country_code"
-      expr: geo_country_code
-      comment: "Country of the attribution event for geographic performance analysis."
-    - name: "utm_medium"
-      expr: utm_medium
-      comment: "UTM medium parameter for paid vs. organic channel attribution analysis."
-    - name: "utm_source"
-      expr: utm_source
-      comment: "UTM source parameter for source-level attribution and traffic quality analysis."
-    - name: "utm_campaign"
-      expr: utm_campaign
-      comment: "UTM campaign tag for campaign-level attribution tracking."
-    - name: "event_month"
-      expr: DATE_TRUNC('MONTH', event_timestamp)
-      comment: "Month of the attribution event for trend analysis of conversion performance over time."
-    - name: "conversion_flag"
-      expr: conversion_flag
-      comment: "Whether the touchpoint resulted in a conversion. Used to filter conversion vs. non-conversion events."
-    - name: "ad_platform"
+    - name: "Ad Platform"
       expr: ad_platform
-      comment: "Advertising platform (Google, Meta, programmatic) for platform-level ROI comparison."
+    - name: "Attribution Model"
+      expr: attribution_model
+    - name: "Browser"
+      expr: browser
+    - name: "Channel"
+      expr: channel
+    - name: "Conversion Currency Code"
+      expr: conversion_currency_code
+    - name: "Conversion Flag"
+      expr: conversion_flag
+    - name: "Cookie Code"
+      expr: cookie_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Device Code"
+      expr: device_code
+    - name: "Device Type"
+      expr: device_type
+    - name: "Event Source System"
+      expr: event_source_system
+    - name: "Event Status"
+      expr: event_status
+    - name: "Event Timestamp"
+      expr: event_timestamp
+    - name: "Geo City"
+      expr: geo_city
+    - name: "Geo Country Code"
+      expr: geo_country_code
+    - name: "Geo Region"
+      expr: geo_region
   measures:
-    - name: "total_attribution_credit"
-      expr: SUM(CAST(attribution_credit AS DOUBLE))
-      comment: "Total attribution credit assigned across touchpoints. Measures how revenue credit is distributed across the marketing funnel."
-    - name: "total_conversion_value"
-      expr: SUM(CAST(conversion_value AS DOUBLE))
-      comment: "Total monetary value of conversions attributed to marketing touchpoints. Primary revenue attribution KPI."
-    - name: "avg_time_to_conversion_hours"
-      expr: AVG(CAST(time_to_conversion_hours AS DOUBLE))
-      comment: "Average hours from first touchpoint to conversion. Measures funnel velocity and informs retargeting window decisions."
-    - name: "conversion_event_count"
-      expr: COUNT(CASE WHEN conversion_flag = TRUE THEN attribution_event_id END)
-      comment: "Total number of converting touchpoint events. Core conversion volume KPI for campaign effectiveness."
-    - name: "total_touchpoint_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of attribution touchpoints recorded. Measures marketing reach and funnel activity volume."
-    - name: "distinct_converting_profiles"
-      expr: COUNT(DISTINCT CASE WHEN conversion_flag = TRUE THEN profile_id END)
-      comment: "Number of distinct guest profiles that converted. Measures unique customer acquisition from marketing activity."
-    - name: "avg_conversion_value"
-      expr: AVG(CAST(conversion_value AS DOUBLE))
-      comment: "Average conversion value per converting event. Benchmarks revenue quality per conversion for channel mix optimization."
+    - name: "Distinct Attribution Event"
+      expr: COUNT(DISTINCT attribution_event_id)
+    - name: "Total Attribution Credit"
+      expr: SUM(attribution_credit)
+    - name: "Average Attribution Credit"
+      expr: AVG(attribution_credit)
+    - name: "Total Conversion Value"
+      expr: SUM(conversion_value)
+    - name: "Average Conversion Value"
+      expr: AVG(conversion_value)
+    - name: "Total Time To Conversion Hours"
+      expr: SUM(time_to_conversion_hours)
+    - name: "Average Time To Conversion Hours"
+      expr: AVG(time_to_conversion_hours)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_brand`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Brand business metrics"
+  source: "`vibe_travel_hospitality_v1`.`marketing`.`brand`"
+  dimensions:
+    - name: "Brand Status"
+      expr: brand_status
+    - name: "Brand Tier"
+      expr: brand_tier
+    - name: "Brand Code"
+      expr: brand_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Brand Description"
+      expr: brand_description
+    - name: "Geographic Focus"
+      expr: geographic_focus
+    - name: "Guidelines Url"
+      expr: guidelines_url
+    - name: "Is Featured Brand"
+      expr: is_featured_brand
+    - name: "Launch Date"
+      expr: launch_date
+    - name: "Logo Url"
+      expr: logo_url
+    - name: "Loyalty Program Name"
+      expr: loyalty_program_name
+    - name: "Brand Name"
+      expr: brand_name
+    - name: "Parent Company"
+      expr: parent_company
+    - name: "Positioning Statement"
+      expr: positioning_statement
+    - name: "Primary Color Hex"
+      expr: primary_color_hex
+    - name: "Property Count"
+      expr: property_count
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Brand"
+      expr: COUNT(DISTINCT brand_id)
+    - name: "Total Average Daily Rate Target"
+      expr: SUM(average_daily_rate_target)
+    - name: "Average Average Daily Rate Target"
+      expr: AVG(average_daily_rate_target)
+    - name: "Total Guest Satisfaction Score Target"
+      expr: SUM(guest_satisfaction_score_target)
+    - name: "Average Guest Satisfaction Score Target"
+      expr: AVG(guest_satisfaction_score_target)
+    - name: "Total Marketing Budget Annual"
+      expr: SUM(marketing_budget_annual)
+    - name: "Average Marketing Budget Annual"
+      expr: AVG(marketing_budget_annual)
+    - name: "Total Net Promoter Score Target"
+      expr: SUM(net_promoter_score_target)
+    - name: "Average Net Promoter Score Target"
+      expr: AVG(net_promoter_score_target)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_campaign`
@@ -70,70 +127,86 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Campaign financial performance and budget management metrics. Tracks spend efficiency, budget utilization, and variance across campaigns to steer marketing investment decisions."
+  comment: "Campaign business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`campaign`"
   dimensions:
-    - name: "campaign_type"
-      expr: campaign_type
-      comment: "Type of marketing campaign (e.g., email, paid search, display) for performance segmentation."
-    - name: "campaign_status"
-      expr: campaign_status
-      comment: "Current lifecycle status of the campaign (active, completed, paused) for operational filtering."
-    - name: "brand_scope"
-      expr: brand_scope
-      comment: "Brand(s) targeted by the campaign, enabling brand-level budget and performance analysis."
-    - name: "property_scope"
-      expr: property_scope
-      comment: "Property scope of the campaign for property-level marketing investment analysis."
-    - name: "target_segment"
-      expr: target_segment
-      comment: "Guest segment targeted by the campaign for segment-level ROI analysis."
-    - name: "approval_status"
+    - name: "Approval Status"
       expr: approval_status
-      comment: "Approval status of the campaign budget for governance and compliance tracking."
-    - name: "budget_period"
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Brand Scope"
+      expr: brand_scope
+    - name: "Budget Currency Code"
+      expr: budget_currency_code
+    - name: "Budget Owner"
+      expr: budget_owner
+    - name: "Budget Period"
       expr: budget_period
-      comment: "Budget period (e.g., Q1 2024) for time-based budget cycle analysis."
-    - name: "campaign_start_month"
-      expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the campaign started, for trend analysis of campaign launches over time."
-    - name: "objective"
-      expr: objective
-      comment: "Strategic objective of the campaign (e.g., acquisition, retention, upsell) for objective-based performance grouping."
+    - name: "Campaign Status"
+      expr: campaign_status
+    - name: "Campaign Type"
+      expr: campaign_type
+    - name: "Campaign Code"
+      expr: campaign_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Crm Campaign Code"
+      expr: crm_campaign_code
+    - name: "Campaign Description"
+      expr: campaign_description
+    - name: "End Date"
+      expr: end_date
+    - name: "Is Active"
+      expr: is_active
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
   measures:
-    - name: "total_campaign_budget"
-      expr: SUM(CAST(total_budget_amount AS DOUBLE))
-      comment: "Total approved marketing budget across campaigns. Core financial planning KPI for CMO and finance review."
-    - name: "total_actual_spend"
-      expr: SUM(CAST(actual_spend_amount AS DOUBLE))
-      comment: "Total actual marketing spend incurred. Compared against budget to assess spend execution."
-    - name: "total_committed_spend"
-      expr: SUM(CAST(committed_spend_amount AS DOUBLE))
-      comment: "Total committed (obligated but not yet invoiced) spend. Critical for cash flow and budget forecasting."
-    - name: "total_remaining_budget"
-      expr: SUM(CAST(remaining_budget_amount AS DOUBLE))
-      comment: "Total remaining unspent budget across campaigns. Indicates available marketing investment capacity."
-    - name: "total_budget_variance"
-      expr: SUM(CAST(budget_variance_amount AS DOUBLE))
-      comment: "Total variance between planned and actual spend. Negative variance signals overspend requiring executive intervention."
-    - name: "total_email_budget"
-      expr: SUM(CAST(email_budget_amount AS DOUBLE))
-      comment: "Total budget allocated to email channel campaigns. Supports channel mix optimization decisions."
-    - name: "total_paid_search_budget"
-      expr: SUM(CAST(paid_search_budget_amount AS DOUBLE))
-      comment: "Total budget allocated to paid search campaigns. Key input for digital acquisition investment decisions."
-    - name: "total_social_budget"
-      expr: SUM(CAST(social_budget_amount AS DOUBLE))
-      comment: "Total budget allocated to social media campaigns. Supports social channel investment decisions."
-    - name: "total_display_budget"
-      expr: SUM(CAST(display_budget_amount AS DOUBLE))
-      comment: "Total budget allocated to display advertising campaigns. Supports programmatic investment decisions."
-    - name: "active_campaign_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN campaign_id END)
-      comment: "Number of currently active campaigns. Operational KPI for marketing capacity and workload management."
-    - name: "avg_campaign_budget"
-      expr: AVG(CAST(total_budget_amount AS DOUBLE))
-      comment: "Average budget per campaign. Benchmarks investment level per campaign initiative for portfolio planning."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Campaign"
+      expr: COUNT(DISTINCT campaign_id)
+    - name: "Total Actual Spend Amount"
+      expr: SUM(actual_spend_amount)
+    - name: "Average Actual Spend Amount"
+      expr: AVG(actual_spend_amount)
+    - name: "Total Budget Variance Amount"
+      expr: SUM(budget_variance_amount)
+    - name: "Average Budget Variance Amount"
+      expr: AVG(budget_variance_amount)
+    - name: "Total Committed Spend Amount"
+      expr: SUM(committed_spend_amount)
+    - name: "Average Committed Spend Amount"
+      expr: AVG(committed_spend_amount)
+    - name: "Total Display Budget Amount"
+      expr: SUM(display_budget_amount)
+    - name: "Average Display Budget Amount"
+      expr: AVG(display_budget_amount)
+    - name: "Total Email Budget Amount"
+      expr: SUM(email_budget_amount)
+    - name: "Average Email Budget Amount"
+      expr: AVG(email_budget_amount)
+    - name: "Total Other Channel Budget Amount"
+      expr: SUM(other_channel_budget_amount)
+    - name: "Average Other Channel Budget Amount"
+      expr: AVG(other_channel_budget_amount)
+    - name: "Total Paid Search Budget Amount"
+      expr: SUM(paid_search_budget_amount)
+    - name: "Average Paid Search Budget Amount"
+      expr: AVG(paid_search_budget_amount)
+    - name: "Total Remaining Budget Amount"
+      expr: SUM(remaining_budget_amount)
+    - name: "Average Remaining Budget Amount"
+      expr: AVG(remaining_budget_amount)
+    - name: "Total Social Budget Amount"
+      expr: SUM(social_budget_amount)
+    - name: "Average Social Budget Amount"
+      expr: AVG(social_budget_amount)
+    - name: "Total Total Budget Amount"
+      expr: SUM(total_budget_amount)
+    - name: "Average Total Budget Amount"
+      expr: AVG(total_budget_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_campaign_execution`
@@ -141,52 +214,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Campaign execution performance metrics covering delivery, engagement, conversion, and cost efficiency. The primary operational KPI layer for marketing channel performance and ROI measurement."
+  comment: "Campaign Execution business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`campaign_execution`"
   dimensions:
-    - name: "channel"
-      expr: channel
-      comment: "Marketing delivery channel (email, SMS, push, display) for channel-level performance analysis."
-    - name: "channel_category"
-      expr: channel_category
-      comment: "Broader channel category grouping for portfolio-level channel mix analysis."
-    - name: "execution_status"
-      expr: execution_status
-      comment: "Current status of the execution (sent, completed, failed) for operational monitoring."
-    - name: "channel_cost_model"
-      expr: channel_cost_model
-      comment: "Cost model for the channel (CPM, CPC, CPA) for cost efficiency benchmarking."
-    - name: "spend_category"
-      expr: spend_category
-      comment: "Spend category classification for budget allocation and cost center reporting."
-    - name: "attribution_model_type"
+    - name: "Ab Test Variant"
+      expr: ab_test_variant
+    - name: "Attribution Model Type"
       expr: attribution_model_type
-      comment: "Attribution model applied (last-click, first-click, linear) for revenue attribution analysis."
-    - name: "execution_month"
-      expr: DATE_TRUNC('MONTH', execution_timestamp)
-      comment: "Month of campaign execution for trend analysis of marketing activity over time."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Payment status of the execution invoice for financial reconciliation tracking."
+    - name: "Audience Size"
+      expr: audience_size
+    - name: "Bounce Count"
+      expr: bounce_count
+    - name: "Channel"
+      expr: channel
+    - name: "Channel Category"
+      expr: channel_category
+    - name: "Channel Code"
+      expr: channel_code
+    - name: "Channel Cost Model"
+      expr: channel_cost_model
+    - name: "Click Count"
+      expr: click_count
+    - name: "Completed Timestamp"
+      expr: completed_timestamp
+    - name: "Conversion Count"
+      expr: conversion_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Creative Version"
+      expr: creative_version
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Delivery Count"
+      expr: delivery_count
+    - name: "Execution Name"
+      expr: execution_name
   measures:
-    - name: "total_execution_cost"
-      expr: SUM(CAST(execution_cost AS DOUBLE))
-      comment: "Total cost incurred across all campaign executions. Primary marketing spend KPI for budget vs. actuals reporting."
-    - name: "total_revenue_attributed"
-      expr: SUM(CAST(revenue_attributed AS DOUBLE))
-      comment: "Total revenue attributed to campaign executions. Core ROI numerator for marketing effectiveness measurement."
-    - name: "avg_execution_cost"
-      expr: AVG(CAST(execution_cost AS DOUBLE))
-      comment: "Average cost per campaign execution. Benchmarks execution efficiency across channels and campaigns."
-    - name: "avg_revenue_attributed"
-      expr: AVG(CAST(revenue_attributed AS DOUBLE))
-      comment: "Average revenue attributed per execution. Indicates revenue productivity per marketing activation."
-    - name: "execution_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of campaign executions. Measures marketing activity volume for capacity and throughput analysis."
-    - name: "distinct_campaign_count"
-      expr: COUNT(DISTINCT campaign_id)
-      comment: "Number of distinct campaigns with executions. Measures breadth of active marketing program."
+    - name: "Distinct Campaign Execution"
+      expr: COUNT(DISTINCT campaign_execution_id)
+    - name: "Total Execution Cost"
+      expr: SUM(execution_cost)
+    - name: "Average Execution Cost"
+      expr: AVG(execution_cost)
+    - name: "Total Revenue Attributed"
+      expr: SUM(revenue_attributed)
+    - name: "Average Revenue Attributed"
+      expr: AVG(revenue_attributed)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_campaign_offer`
@@ -194,58 +269,71 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Campaign offer economics and configuration metrics. Tracks offer discount depth, bonus points structures, and booking window parameters to optimize promotional offer design and yield management."
+  comment: "Campaign Offer business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`campaign_offer`"
   dimensions:
-    - name: "offer_type"
-      expr: offer_type
-      comment: "Type of offer (rate discount, bonus points, complimentary upgrade) for offer category performance analysis."
-    - name: "offer_status"
-      expr: offer_status
-      comment: "Current status of the offer (active, expired, draft) for offer portfolio management."
-    - name: "discount_type"
+    - name: "Advance Booking Days"
+      expr: advance_booking_days
+    - name: "Blackout Dates"
+      expr: blackout_dates
+    - name: "Bonus Points Flat"
+      expr: bonus_points_flat
+    - name: "Booking Window End Date"
+      expr: booking_window_end_date
+    - name: "Booking Window Start Date"
+      expr: booking_window_start_date
+    - name: "Channel Restrictions"
+      expr: channel_restrictions
+    - name: "Combinable With Other Offers Flag"
+      expr: combinable_with_other_offers_flag
+    - name: "Created By User"
+      expr: created_by_user
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Discount Type"
       expr: discount_type
-      comment: "Discount mechanism (percentage, flat amount, points multiplier) for offer structure analysis."
-    - name: "member_exclusive_flag"
-      expr: member_exclusive_flag
-      comment: "Whether the offer is exclusive to loyalty members. Measures loyalty program offer value proposition."
-    - name: "enrollment_required_flag"
+    - name: "Eligible Property Codes"
+      expr: eligible_property_codes
+    - name: "Eligible Property Scope"
+      expr: eligible_property_scope
+    - name: "Eligible Rate Plans"
+      expr: eligible_rate_plans
+    - name: "Eligible Room Types"
+      expr: eligible_room_types
+    - name: "Eligible Tier Levels"
+      expr: eligible_tier_levels
+    - name: "Enrollment Required Flag"
       expr: enrollment_required_flag
-      comment: "Whether enrollment is required to access the offer. Tracks enrollment-driving offer strategy."
-    - name: "valid_from_month"
-      expr: DATE_TRUNC('MONTH', valid_from_date)
-      comment: "Month the offer becomes valid for seasonal offer portfolio analysis."
   measures:
-    - name: "avg_discount_value"
-      expr: AVG(CAST(discount_value AS DOUBLE))
-      comment: "Average discount value per offer. Benchmarks offer generosity and informs promotional pricing strategy."
-    - name: "total_discount_value"
-      expr: SUM(CAST(discount_value AS DOUBLE))
-      comment: "Total discount value across all offers. Measures aggregate promotional liability and margin exposure."
-    - name: "avg_bonus_points_multiplier"
-      expr: AVG(CAST(bonus_points_multiplier AS DOUBLE))
-      comment: "Average bonus points multiplier across offers. Measures loyalty currency generosity in promotional offers."
-    - name: "avg_tier_credit_multiplier"
-      expr: AVG(CAST(tier_credit_multiplier AS DOUBLE))
-      comment: "Average tier credit multiplier across offers. Measures tier acceleration generosity in promotional campaigns."
-    - name: "avg_minimum_spend"
-      expr: AVG(CAST(minimum_spend_amount AS DOUBLE))
-      comment: "Average minimum spend threshold per offer. Informs offer qualification design and revenue floor setting."
-    - name: "active_offer_count"
-      expr: COUNT(CASE WHEN offer_status = 'active' THEN campaign_offer_id END)
-      comment: "Number of currently active offers. Measures promotional offer portfolio depth for campaign planning."
-    - name: "member_exclusive_offer_count"
-      expr: COUNT(CASE WHEN member_exclusive_flag = TRUE THEN campaign_offer_id END)
-      comment: "Number of member-exclusive offers. Measures loyalty program offer differentiation strategy."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Campaign Offer"
+      expr: COUNT(DISTINCT campaign_offer_id)
+    - name: "Total Bonus Points Multiplier"
+      expr: SUM(bonus_points_multiplier)
+    - name: "Average Bonus Points Multiplier"
+      expr: AVG(bonus_points_multiplier)
+    - name: "Total Discount Value"
+      expr: SUM(discount_value)
+    - name: "Average Discount Value"
+      expr: AVG(discount_value)
+    - name: "Total Minimum Spend Amount"
+      expr: SUM(minimum_spend_amount)
+    - name: "Average Minimum Spend Amount"
+      expr: AVG(minimum_spend_amount)
+    - name: "Total Tier Credit Multiplier"
+      expr: SUM(tier_credit_multiplier)
+    - name: "Average Tier Credit Multiplier"
+      expr: AVG(tier_credit_multiplier)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`marketing_campaign_treatment_promotion`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_campaign_treatment_promotion`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Campaign Treatment Promotion business metrics"
-  source: "`travel_hospitality_ecm`.`marketing`.`campaign_treatment_promotion`"
+  source: "`vibe_travel_hospitality_v1`.`marketing`.`campaign_treatment_promotion`"
   dimensions:
     - name: "Booking Count"
       expr: booking_count
@@ -284,13 +372,13 @@ AS $$
       expr: AVG(revenue_generated)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`marketing_communication_template`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_communication_template`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Communication Template business metrics"
-  source: "`travel_hospitality_ecm`.`marketing`.`communication_template`"
+  source: "`vibe_travel_hospitality_v1`.`marketing`.`communication_template`"
   dimensions:
     - name: "A B Test Enabled"
       expr: a_b_test_enabled
@@ -312,8 +400,8 @@ AS $$
       expr: compliance_notes
     - name: "Created Timestamp"
       expr: created_timestamp
-    - name: "Description"
-      expr: description
+    - name: "Communication Template Description"
+      expr: communication_template_description
     - name: "Design Version"
       expr: design_version
     - name: "Effective End Date"
@@ -340,55 +428,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Marketing consent and preference management metrics. Tracks opt-in rates, consent health, and compliance posture across guest communication programs. Critical for GDPR/CCPA compliance and addressable audience sizing."
+  comment: "Consent business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`consent`"
   dimensions:
-    - name: "consent_type"
-      expr: consent_type
-      comment: "Type of consent (email marketing, SMS, data processing) for consent category compliance tracking."
-    - name: "consent_status"
+    - name: "Communication Frequency Preference"
+      expr: communication_frequency_preference
+    - name: "Consent Date"
+      expr: consent_date
+    - name: "Consent Status"
       expr: consent_status
-      comment: "Current consent status (active, withdrawn, expired) for addressable audience sizing."
-    - name: "legal_basis"
-      expr: legal_basis
-      comment: "Legal basis for data processing (consent, legitimate interest, contract) for regulatory compliance reporting."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Regulatory jurisdiction (EU, US, APAC) for jurisdiction-level compliance monitoring."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the consent record is currently active. Used to size the addressable marketing audience."
-    - name: "double_opt_in_confirmed"
+    - name: "Consent Type"
+      expr: consent_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Processing Agreement Accepted"
+      expr: data_processing_agreement_accepted
+    - name: "Double Opt In Confirmed"
       expr: double_opt_in_confirmed
-      comment: "Whether double opt-in was confirmed. Measures consent quality and deliverability compliance."
-    - name: "consent_month"
-      expr: DATE_TRUNC('MONTH', consent_date)
-      comment: "Month consent was granted for trend analysis of opt-in growth and churn."
+    - name: "Double Opt In Date"
+      expr: double_opt_in_date
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Ip Address"
+      expr: ip_address
+    - name: "Is Active"
+      expr: is_active
+    - name: "Jurisdiction"
+      expr: jurisdiction
+    - name: "Language"
+      expr: language
+    - name: "Last Communication Date"
+      expr: last_communication_date
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Legal Basis"
+      expr: legal_basis
   measures:
-    - name: "active_consent_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN consent_id END)
-      comment: "Number of active consents. Defines the addressable marketing audience size for campaign planning."
-    - name: "total_consent_records"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total consent records across all statuses. Measures consent database size for compliance audit purposes."
-    - name: "double_opt_in_confirmed_count"
-      expr: COUNT(CASE WHEN double_opt_in_confirmed = TRUE THEN consent_id END)
-      comment: "Number of consents with confirmed double opt-in. Measures high-quality consent coverage for deliverability and compliance."
-    - name: "distinct_consenting_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of distinct guest profiles with consent records. Measures consent program reach across the guest database."
-    - name: "minor_consent_required_count"
-      expr: COUNT(CASE WHEN minor_consent_required = TRUE THEN consent_id END)
-      comment: "Number of consent records requiring parental/minor consent. Tracks compliance exposure for underage data processing."
+    - name: "Distinct Consent"
+      expr: COUNT(DISTINCT consent_id)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`marketing_content_asset`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_content_asset`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Content Asset business metrics"
-  source: "`travel_hospitality_ecm`.`marketing`.`content_asset`"
+  source: "`vibe_travel_hospitality_v1`.`marketing`.`content_asset`"
   dimensions:
     - name: "Alt Text"
       expr: alt_text
@@ -404,8 +492,6 @@ AS $$
       expr: asset_name
     - name: "Asset Type"
       expr: asset_type
-    - name: "Content Asset Description"
-      expr: content_asset_description
     - name: "Content Theme"
       expr: content_theme
     - name: "Copyright Holder"
@@ -414,6 +500,8 @@ AS $$
       expr: created_timestamp
     - name: "Creator Name"
       expr: creator_name
+    - name: "Content Asset Description"
+      expr: content_asset_description
     - name: "Download Count"
       expr: download_count
     - name: "File Format"
@@ -438,52 +526,78 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Marketing experimentation and A/B test performance metrics. Tracks test outcomes, statistical significance, and estimated business impact to guide data-driven marketing decisions."
+  comment: "Experiment business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`experiment`"
   dimensions:
-    - name: "experiment_type"
-      expr: experiment_type
-      comment: "Type of experiment (A/B test, multivariate, holdout) for experiment methodology analysis."
-    - name: "experiment_status"
-      expr: experiment_status
-      comment: "Current status of the experiment (running, completed, stopped) for experiment pipeline management."
-    - name: "channel"
+    - name: "Actual Duration Days"
+      expr: actual_duration_days
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Channel"
       expr: channel
-      comment: "Marketing channel being tested for channel-level experimentation analysis."
-    - name: "primary_metric"
-      expr: primary_metric
-      comment: "Primary success metric of the experiment (conversion rate, revenue, NPS) for outcome-based grouping."
-    - name: "winning_variant"
-      expr: winning_variant
-      comment: "Winning variant of the experiment for implementation tracking and learning capture."
-    - name: "implementation_flag"
+    - name: "Experiment Code"
+      expr: experiment_code
+    - name: "Conclusion Notes"
+      expr: conclusion_notes
+    - name: "Control Variant Description"
+      expr: control_variant_description
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "End Date"
+      expr: end_date
+    - name: "Experiment Status"
+      expr: experiment_status
+    - name: "Experiment Type"
+      expr: experiment_type
+    - name: "Hypothesis"
+      expr: hypothesis
+    - name: "Impact Currency Code"
+      expr: impact_currency_code
+    - name: "Implementation Date"
+      expr: implementation_date
+    - name: "Implementation Flag"
       expr: implementation_flag
-      comment: "Whether the winning variant has been implemented. Tracks experiment-to-implementation conversion rate."
-    - name: "experiment_start_month"
-      expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the experiment started for trend analysis of experimentation cadence."
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Experiment Name"
+      expr: experiment_name
   measures:
-    - name: "total_estimated_annual_impact"
-      expr: SUM(CAST(estimated_annual_impact_amount AS DOUBLE))
-      comment: "Total estimated annual revenue impact from experiments. Quantifies the business value of the experimentation program for executive investment decisions."
-    - name: "avg_estimated_annual_impact"
-      expr: AVG(CAST(estimated_annual_impact_amount AS DOUBLE))
-      comment: "Average estimated annual impact per experiment. Benchmarks experiment value and prioritizes test roadmap."
-    - name: "avg_lift_percentage"
-      expr: AVG(CAST(lift_percentage AS DOUBLE))
-      comment: "Average percentage lift achieved by winning variants. Measures experimentation program effectiveness and optimization velocity."
-    - name: "avg_confidence_level"
-      expr: AVG(CAST(confidence_level_percentage AS DOUBLE))
-      comment: "Average statistical confidence level across experiments. Ensures decision quality and guards against false positives."
-    - name: "total_experiment_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of experiments run. Measures experimentation program cadence and innovation velocity."
-    - name: "implemented_experiment_count"
-      expr: COUNT(CASE WHEN implementation_flag = TRUE THEN experiment_id END)
-      comment: "Number of experiments where winning variants were implemented. Measures experiment-to-action conversion rate."
-    - name: "avg_p_value"
-      expr: AVG(CAST(p_value AS DOUBLE))
-      comment: "Average p-value across experiments. Statistical quality KPI ensuring experimentation rigor and decision reliability."
+    - name: "Distinct Experiment"
+      expr: COUNT(DISTINCT experiment_id)
+    - name: "Total Confidence Level Percentage"
+      expr: SUM(confidence_level_percentage)
+    - name: "Average Confidence Level Percentage"
+      expr: AVG(confidence_level_percentage)
+    - name: "Total Control Allocation Percentage"
+      expr: SUM(control_allocation_percentage)
+    - name: "Average Control Allocation Percentage"
+      expr: AVG(control_allocation_percentage)
+    - name: "Total Estimated Annual Impact Amount"
+      expr: SUM(estimated_annual_impact_amount)
+    - name: "Average Estimated Annual Impact Amount"
+      expr: AVG(estimated_annual_impact_amount)
+    - name: "Total Lift Percentage"
+      expr: SUM(lift_percentage)
+    - name: "Average Lift Percentage"
+      expr: AVG(lift_percentage)
+    - name: "Total P Value"
+      expr: SUM(p_value)
+    - name: "Average P Value"
+      expr: AVG(p_value)
+    - name: "Total Statistical Significance Threshold"
+      expr: SUM(statistical_significance_threshold)
+    - name: "Average Statistical Significance Threshold"
+      expr: AVG(statistical_significance_threshold)
+    - name: "Total Traffic Allocation Percentage"
+      expr: SUM(traffic_allocation_percentage)
+    - name: "Average Traffic Allocation Percentage"
+      expr: AVG(traffic_allocation_percentage)
+    - name: "Total Treatment Allocation Percentage"
+      expr: SUM(treatment_allocation_percentage)
+    - name: "Average Treatment Allocation Percentage"
+      expr: AVG(treatment_allocation_percentage)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_guest_communication`
@@ -491,46 +605,50 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest communication delivery and engagement metrics. Tracks email and messaging performance including delivery rates, open rates, click rates, and conversion outcomes to optimize CRM and lifecycle marketing."
+  comment: "Guest Communication business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`guest_communication`"
   dimensions:
-    - name: "channel"
+    - name: "Ab Test Variant"
+      expr: ab_test_variant
+    - name: "Body Content"
+      expr: body_content
+    - name: "Bounce Reason"
+      expr: bounce_reason
+    - name: "Bounced Timestamp"
+      expr: bounced_timestamp
+    - name: "Channel"
       expr: channel
-      comment: "Communication channel (email, SMS, push notification) for channel-level engagement analysis."
-    - name: "communication_type"
+    - name: "Clicked Timestamp"
+      expr: clicked_timestamp
+    - name: "Communication Type"
       expr: communication_type
-      comment: "Type of communication (transactional, promotional, service) for message type performance segmentation."
-    - name: "delivery_status"
-      expr: delivery_status
-      comment: "Delivery outcome (delivered, bounced, suppressed) for deliverability monitoring."
-    - name: "opt_in_status"
-      expr: opt_in_status
-      comment: "Guest opt-in status for consent-based communication compliance tracking."
-    - name: "conversion_flag"
+    - name: "Conversion Flag"
       expr: conversion_flag
-      comment: "Whether the communication resulted in a booking conversion. Used to isolate high-performing message types."
-    - name: "language_code"
+    - name: "Conversion Timestamp"
+      expr: conversion_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Crm Activity Code"
+      expr: crm_activity_code
+    - name: "Delivered Timestamp"
+      expr: delivered_timestamp
+    - name: "Delivery Status"
+      expr: delivery_status
+    - name: "Language Code"
       expr: language_code
-      comment: "Language of the communication for multilingual campaign performance analysis."
-    - name: "sent_month"
-      expr: DATE_TRUNC('MONTH', sent_timestamp)
-      comment: "Month the communication was sent for trend analysis of CRM activity and engagement over time."
+    - name: "Locale Code"
+      expr: locale_code
+    - name: "Opened Timestamp"
+      expr: opened_timestamp
   measures:
-    - name: "total_communications_sent"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of guest communications sent. Measures CRM program reach and communication volume."
-    - name: "total_conversion_value"
-      expr: SUM(CAST(conversion_value AS DOUBLE))
-      comment: "Total revenue value from communications that converted to bookings. Primary CRM revenue attribution KPI."
-    - name: "avg_conversion_value"
-      expr: AVG(CAST(conversion_value AS DOUBLE))
-      comment: "Average conversion value per communication. Benchmarks revenue productivity of CRM messages."
-    - name: "converting_communication_count"
-      expr: COUNT(CASE WHEN conversion_flag = TRUE THEN guest_communication_id END)
-      comment: "Number of communications that resulted in a conversion. Measures CRM program effectiveness."
-    - name: "distinct_reached_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of distinct guests reached by communications. Measures unique audience coverage of CRM programs."
+    - name: "Distinct Guest Communication"
+      expr: COUNT(DISTINCT guest_communication_id)
+    - name: "Total Conversion Value"
+      expr: SUM(conversion_value)
+    - name: "Average Conversion Value"
+      expr: AVG(conversion_value)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_guest_segment`
@@ -538,58 +656,75 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest segment sizing and targeting metrics. Tracks segment scale, ADR targets, LTV thresholds, and satisfaction benchmarks to guide audience strategy and personalization investment."
+  comment: "Guest Segment business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`guest_segment`"
   dimensions:
-    - name: "segment_type"
-      expr: segment_type
-      comment: "Type of guest segment (behavioral, demographic, value-based) for segmentation strategy analysis."
-    - name: "segment_status"
-      expr: segment_status
-      comment: "Current status of the segment (active, archived, draft) for segment portfolio management."
-    - name: "segment_creation_method"
-      expr: segment_creation_method
-      comment: "How the segment was created (rules-based, ML model, manual) for segment quality and methodology tracking."
-    - name: "geographic_scope"
-      expr: geographic_scope
-      comment: "Geographic scope of the segment for regional audience strategy analysis."
-    - name: "campaign_eligibility_flag"
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Campaign Eligibility Flag"
       expr: campaign_eligibility_flag
-      comment: "Whether the segment is eligible for campaign targeting. Measures addressable segment universe."
-    - name: "refresh_frequency"
-      expr: refresh_frequency
-      comment: "How frequently the segment is refreshed (daily, weekly, monthly) for data freshness governance."
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Source"
+      expr: data_source
+    - name: "Definition Criteria"
+      expr: definition_criteria
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Geographic Scope"
+      expr: geographic_scope
+    - name: "Last Refresh Date"
+      expr: last_refresh_date
+    - name: "Loyalty Tier Scope"
+      expr: loyalty_tier_scope
+    - name: "Ml Model Name"
+      expr: ml_model_name
+    - name: "Ml Model Version"
+      expr: ml_model_version
+    - name: "Modified By"
+      expr: modified_by
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Next Refresh Date"
+      expr: next_refresh_date
   measures:
-    - name: "total_estimated_audience_size"
-      expr: SUM(CAST(estimated_size AS DOUBLE))
-      comment: "Total estimated audience size across all segments. Measures addressable marketing universe for campaign reach planning."
-    - name: "avg_segment_size"
-      expr: AVG(CAST(estimated_size AS DOUBLE))
-      comment: "Average size per guest segment. Benchmarks segment granularity for personalization vs. scale trade-off decisions."
-    - name: "avg_target_adr_max"
-      expr: AVG(CAST(target_adr_max AS DOUBLE))
-      comment: "Average maximum ADR target across segments. Informs rate strategy and revenue management alignment with marketing segments."
-    - name: "avg_target_ltv_min"
-      expr: AVG(CAST(target_ltv_min AS DOUBLE))
-      comment: "Average minimum LTV threshold across segments. Measures value-based segmentation standards for high-value guest targeting."
-    - name: "avg_target_gss_min"
-      expr: AVG(CAST(target_gss_min AS DOUBLE))
-      comment: "Average minimum GSS target across segments. Aligns marketing segments with guest satisfaction quality thresholds."
-    - name: "active_segment_count"
-      expr: COUNT(CASE WHEN segment_status = 'active' THEN guest_segment_id END)
-      comment: "Number of active guest segments. Measures segmentation program breadth for personalization capability assessment."
-    - name: "ml_segment_count"
-      expr: COUNT(CASE WHEN segment_creation_method = 'ML' THEN guest_segment_id END)
-      comment: "Number of ML-generated segments. Tracks AI/ML adoption in audience strategy for innovation investment decisions."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Guest Segment"
+      expr: COUNT(DISTINCT guest_segment_id)
+    - name: "Total Estimated Size"
+      expr: SUM(estimated_size)
+    - name: "Average Estimated Size"
+      expr: AVG(estimated_size)
+    - name: "Total Target Adr Max"
+      expr: SUM(target_adr_max)
+    - name: "Average Target Adr Max"
+      expr: AVG(target_adr_max)
+    - name: "Total Target Adr Min"
+      expr: SUM(target_adr_min)
+    - name: "Average Target Adr Min"
+      expr: AVG(target_adr_min)
+    - name: "Total Target Gss Min"
+      expr: SUM(target_gss_min)
+    - name: "Average Target Gss Min"
+      expr: AVG(target_gss_min)
+    - name: "Total Target Ltv Min"
+      expr: SUM(target_ltv_min)
+    - name: "Average Target Ltv Min"
+      expr: AVG(target_ltv_min)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`marketing_marketing_calendar`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_marketing_calendar`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Marketing Calendar business metrics"
-  source: "`travel_hospitality_ecm`.`marketing`.`marketing_calendar`"
+  source: "`vibe_travel_hospitality_v1`.`marketing`.`marketing_calendar`"
   dimensions:
     - name: "Actual Campaign Count"
       expr: actual_campaign_count
@@ -635,55 +770,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Offer redemption performance metrics tracking discount economics, redemption volume, and revenue impact. Critical for evaluating promotional ROI and offer strategy effectiveness."
+  comment: "Offer Redemption business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`offer_redemption`"
   dimensions:
-    - name: "discount_type"
-      expr: discount_type
-      comment: "Type of discount applied (percentage, flat, points) for offer type performance comparison."
-    - name: "redemption_channel"
-      expr: redemption_channel
-      comment: "Channel through which the offer was redeemed (web, mobile, OTA, front desk) for channel redemption analysis."
-    - name: "market_segment_code"
-      expr: market_segment_code
-      comment: "Market segment of the redeeming guest for segment-level offer effectiveness analysis."
-    - name: "offer_code"
-      expr: offer_code
-      comment: "Specific offer code redeemed for offer-level performance tracking."
-    - name: "validation_status"
-      expr: validation_status
-      comment: "Validation outcome of the redemption (valid, rejected, expired) for redemption quality monitoring."
-    - name: "booking_month"
-      expr: DATE_TRUNC('MONTH', booking_date)
-      comment: "Month of booking associated with the redemption for seasonal offer performance analysis."
-    - name: "device_type"
+    - name: "Attribution Source"
+      expr: attribution_source
+    - name: "Booking Date"
+      expr: booking_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Device Type"
       expr: device_type
-      comment: "Device used for redemption for digital channel optimization."
+    - name: "Discount Type"
+      expr: discount_type
+    - name: "Ip Address"
+      expr: ip_address
+    - name: "Length Of Stay"
+      expr: length_of_stay
+    - name: "Market Segment Code"
+      expr: market_segment_code
+    - name: "Offer Code"
+      expr: offer_code
+    - name: "Points Earned"
+      expr: points_earned
+    - name: "Points Redeemed"
+      expr: points_redeemed
+    - name: "Promo Terms Accepted Flag"
+      expr: promo_terms_accepted_flag
+    - name: "Rate Plan Code"
+      expr: rate_plan_code
+    - name: "Redemption Channel"
+      expr: redemption_channel
+    - name: "Redemption Timestamp"
+      expr: redemption_timestamp
   measures:
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount value granted through offer redemptions. Measures promotional cost and margin impact."
-    - name: "total_final_rate_revenue"
-      expr: SUM(CAST(final_rate_amount AS DOUBLE))
-      comment: "Total revenue realized after discount application. Net revenue KPI for promotional campaign profitability."
-    - name: "total_original_rate_revenue"
-      expr: SUM(CAST(original_rate_amount AS DOUBLE))
-      comment: "Total revenue at rack/original rate before discount. Used to compute discount depth and revenue displacement."
-    - name: "avg_discount_amount"
-      expr: AVG(CAST(discount_amount AS DOUBLE))
-      comment: "Average discount per redemption. Benchmarks offer generosity and informs discount strategy calibration."
-    - name: "avg_discount_percentage"
-      expr: AVG(CAST(discount_percentage AS DOUBLE))
-      comment: "Average discount percentage per redemption. Key metric for offer depth analysis and yield management."
-    - name: "redemption_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of offer redemptions. Measures promotional uptake and campaign reach."
-    - name: "distinct_redeeming_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of distinct guests who redeemed an offer. Measures unique guest engagement with promotional campaigns."
-    - name: "avg_final_rate"
-      expr: AVG(CAST(final_rate_amount AS DOUBLE))
-      comment: "Average net rate per redemption after discount. Indicates revenue quality of promotional bookings."
+    - name: "Distinct Offer Redemption"
+      expr: COUNT(DISTINCT offer_redemption_id)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Discount Percentage"
+      expr: SUM(discount_percentage)
+    - name: "Average Discount Percentage"
+      expr: AVG(discount_percentage)
+    - name: "Total Final Rate Amount"
+      expr: SUM(final_rate_amount)
+    - name: "Average Final Rate Amount"
+      expr: AVG(final_rate_amount)
+    - name: "Total Original Rate Amount"
+      expr: SUM(original_rate_amount)
+    - name: "Average Original Rate Amount"
+      expr: AVG(original_rate_amount)
+    - name: "Total Redemption Location Latitude"
+      expr: SUM(redemption_location_latitude)
+    - name: "Average Redemption Location Latitude"
+      expr: AVG(redemption_location_latitude)
+    - name: "Total Redemption Location Longitude"
+      expr: SUM(redemption_location_longitude)
+    - name: "Average Redemption Location Longitude"
+      expr: AVG(redemption_location_longitude)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_social_post`
@@ -691,64 +841,94 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Social media performance metrics tracking engagement, reach, and content effectiveness across platforms. Informs social channel investment and content strategy decisions."
+  comment: "Social Post business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`social_post`"
   dimensions:
-    - name: "platform"
-      expr: platform
-      comment: "Social media platform (Instagram, Facebook, LinkedIn, Twitter) for platform-level performance benchmarking."
-    - name: "post_type"
-      expr: post_type
-      comment: "Type of social post (image, video, story, carousel) for content format effectiveness analysis."
-    - name: "post_status"
-      expr: post_status
-      comment: "Current status of the post (published, scheduled, deleted) for content pipeline management."
-    - name: "is_boosted"
-      expr: is_boosted
-      comment: "Whether the post was boosted with paid spend. Enables organic vs. paid performance comparison."
-    - name: "approval_status"
+    - name: "Actual Publish Timestamp"
+      expr: actual_publish_timestamp
+    - name: "Approval Status"
       expr: approval_status
-      comment: "Content approval status for governance and brand compliance tracking."
-    - name: "content_language"
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Boost Currency Code"
+      expr: boost_currency_code
+    - name: "Content Language"
       expr: content_language
-      comment: "Language of the post content for multilingual content performance analysis."
-    - name: "publish_month"
-      expr: DATE_TRUNC('MONTH', actual_publish_timestamp)
-      comment: "Month the post was published for trend analysis of social media activity and performance."
+    - name: "Content Text"
+      expr: content_text
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deleted Reason"
+      expr: deleted_reason
+    - name: "Deleted Timestamp"
+      expr: deleted_timestamp
+    - name: "Hashtags"
+      expr: hashtags
+    - name: "Is Boosted"
+      expr: is_boosted
+    - name: "Last Updated Timestamp"
+      expr: last_updated_timestamp
+    - name: "Metrics Last Refreshed Timestamp"
+      expr: metrics_last_refreshed_timestamp
+    - name: "Platform"
+      expr: platform
+    - name: "Post External Code"
+      expr: post_external_code
+    - name: "Post Status"
+      expr: post_status
   measures:
-    - name: "total_impressions"
-      expr: SUM(CAST(impressions_count AS DOUBLE))
-      comment: "Total impressions across all social posts. Measures brand awareness reach from social media activity."
-    - name: "total_engagement"
-      expr: SUM(CAST(engagement_count AS DOUBLE))
-      comment: "Total engagement actions (likes, comments, shares, saves) across posts. Core social performance KPI."
-    - name: "total_reach"
-      expr: SUM(CAST(reach_count AS DOUBLE))
-      comment: "Total unique accounts reached by social posts. Measures unduplicated audience exposure for brand campaigns."
-    - name: "total_link_clicks"
-      expr: SUM(CAST(link_clicks_count AS DOUBLE))
-      comment: "Total link clicks from social posts. Measures traffic driven to booking engine or campaign landing pages."
-    - name: "total_video_views"
-      expr: SUM(CAST(video_views_count AS DOUBLE))
-      comment: "Total video views across social posts. Key metric for video content investment decisions."
-    - name: "total_boost_spend"
-      expr: SUM(CAST(boost_budget_amount AS DOUBLE))
-      comment: "Total paid boost spend on social posts. Measures paid social investment for ROI calculation."
-    - name: "avg_engagement_rate"
-      expr: AVG(CAST(engagement_rate AS DOUBLE))
-      comment: "Average engagement rate per post. Primary content effectiveness KPI for social media strategy decisions."
-    - name: "avg_sentiment_score"
-      expr: AVG(CAST(sentiment_score AS DOUBLE))
-      comment: "Average sentiment score of social posts. Tracks brand perception trends from social content."
-    - name: "total_post_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of social posts published. Measures content production volume and publishing cadence."
-    - name: "total_likes"
-      expr: SUM(CAST(likes_count AS DOUBLE))
-      comment: "Total likes across social posts. Measures positive audience affinity with brand content."
-    - name: "total_shares"
-      expr: SUM(CAST(shares_count AS DOUBLE))
-      comment: "Total shares across social posts. Measures organic amplification and earned media value."
+    - name: "Distinct Social Post"
+      expr: COUNT(DISTINCT social_post_id)
+    - name: "Total Boost Budget Amount"
+      expr: SUM(boost_budget_amount)
+    - name: "Average Boost Budget Amount"
+      expr: AVG(boost_budget_amount)
+    - name: "Total Comments Count"
+      expr: SUM(comments_count)
+    - name: "Average Comments Count"
+      expr: AVG(comments_count)
+    - name: "Total Engagement Count"
+      expr: SUM(engagement_count)
+    - name: "Average Engagement Count"
+      expr: AVG(engagement_count)
+    - name: "Total Engagement Rate"
+      expr: SUM(engagement_rate)
+    - name: "Average Engagement Rate"
+      expr: AVG(engagement_rate)
+    - name: "Total Impressions Count"
+      expr: SUM(impressions_count)
+    - name: "Average Impressions Count"
+      expr: AVG(impressions_count)
+    - name: "Total Likes Count"
+      expr: SUM(likes_count)
+    - name: "Average Likes Count"
+      expr: AVG(likes_count)
+    - name: "Total Link Clicks Count"
+      expr: SUM(link_clicks_count)
+    - name: "Average Link Clicks Count"
+      expr: AVG(link_clicks_count)
+    - name: "Total Reach Count"
+      expr: SUM(reach_count)
+    - name: "Average Reach Count"
+      expr: AVG(reach_count)
+    - name: "Total Saves Count"
+      expr: SUM(saves_count)
+    - name: "Average Saves Count"
+      expr: AVG(saves_count)
+    - name: "Total Sentiment Score"
+      expr: SUM(sentiment_score)
+    - name: "Average Sentiment Score"
+      expr: AVG(sentiment_score)
+    - name: "Total Shares Count"
+      expr: SUM(shares_count)
+    - name: "Average Shares Count"
+      expr: AVG(shares_count)
+    - name: "Total Video Views Count"
+      expr: SUM(video_views_count)
+    - name: "Average Video Views Count"
+      expr: AVG(video_views_count)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_survey_program`
@@ -756,46 +936,62 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Survey program configuration and target metrics. Tracks response rate targets, satisfaction score goals, and program coverage to govern the guest feedback collection strategy."
+  comment: "Survey Program business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`survey_program`"
   dimensions:
-    - name: "survey_type"
-      expr: survey_type
-      comment: "Type of survey (post-stay, in-stay, event) for survey program portfolio analysis."
-    - name: "survey_category"
-      expr: survey_category
-      comment: "Category of the survey program (GSS, NPS, CSAT) for satisfaction measurement framework tracking."
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Channel used to distribute the survey (email, SMS, in-app) for distribution effectiveness analysis."
-    - name: "survey_program_status"
-      expr: survey_program_status
-      comment: "Current status of the survey program (active, paused, archived) for program portfolio management."
-    - name: "active_flag"
+    - name: "Active Flag"
       expr: active_flag
-      comment: "Whether the survey program is currently active. Used to filter active programs for operational reporting."
-    - name: "incentive_offered_flag"
+    - name: "Auto Case Creation Flag"
+      expr: auto_case_creation_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Days"
+      expr: data_retention_days
+    - name: "Distribution Channel"
+      expr: distribution_channel
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Estimated Completion Minutes"
+      expr: estimated_completion_minutes
+    - name: "Incentive Description"
+      expr: incentive_description
+    - name: "Incentive Offered Flag"
       expr: incentive_offered_flag
-      comment: "Whether an incentive is offered for survey completion. Measures incentive strategy impact on response rates."
+    - name: "Language Codes"
+      expr: language_codes
+    - name: "Max Reminders"
+      expr: max_reminders
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Privacy Notice Version"
+      expr: privacy_notice_version
+    - name: "Property Scope"
+      expr: property_scope
+    - name: "Question Count"
+      expr: question_count
   measures:
-    - name: "avg_target_response_rate_pct"
-      expr: AVG(CAST(target_response_rate_pct AS DOUBLE))
-      comment: "Average target response rate across survey programs. Benchmarks ambition level of feedback collection programs."
-    - name: "avg_target_nps_score"
-      expr: AVG(CAST(target_nps_score AS DOUBLE))
-      comment: "Average NPS target across survey programs. Measures the ambition level of guest satisfaction goals."
-    - name: "avg_target_gss_score"
-      expr: AVG(CAST(target_gss_score AS DOUBLE))
-      comment: "Average GSS target across survey programs. Tracks satisfaction score ambition for brand standards governance."
-    - name: "avg_service_recovery_threshold"
-      expr: AVG(CAST(service_recovery_threshold_score AS DOUBLE))
-      comment: "Average service recovery trigger threshold across programs. Governs when automatic case creation fires for guest recovery."
-    - name: "active_program_count"
-      expr: COUNT(CASE WHEN active_flag = TRUE THEN survey_program_id END)
-      comment: "Number of active survey programs. Measures feedback collection program coverage across the portfolio."
-    - name: "incentivized_program_count"
-      expr: COUNT(CASE WHEN incentive_offered_flag = TRUE THEN survey_program_id END)
-      comment: "Number of survey programs offering incentives. Tracks incentive strategy adoption for response rate optimization."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Survey Program"
+      expr: COUNT(DISTINCT survey_program_id)
+    - name: "Total Service Recovery Threshold Score"
+      expr: SUM(service_recovery_threshold_score)
+    - name: "Average Service Recovery Threshold Score"
+      expr: AVG(service_recovery_threshold_score)
+    - name: "Total Target Gss Score"
+      expr: SUM(target_gss_score)
+    - name: "Average Target Gss Score"
+      expr: AVG(target_gss_score)
+    - name: "Total Target Nps Score"
+      expr: SUM(target_nps_score)
+    - name: "Average Target Nps Score"
+      expr: AVG(target_nps_score)
+    - name: "Total Target Response Rate Pct"
+      expr: SUM(target_response_rate_pct)
+    - name: "Average Target Response Rate Pct"
+      expr: AVG(target_response_rate_pct)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`marketing_survey_response`
@@ -803,56 +999,60 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest satisfaction and survey response analytics. Tracks NPS, GSS, CSAT scores and response rates to steer service quality investments and identify recovery opportunities."
+  comment: "Survey Response business metrics"
   source: "`vibe_travel_hospitality_v1`.`marketing`.`survey_response`"
   dimensions:
-    - name: "response_channel"
-      expr: response_channel
-      comment: "Channel through which the survey was completed (email, in-app, kiosk) for channel response quality analysis."
-    - name: "guest_type"
-      expr: guest_type
-      comment: "Type of guest respondent (leisure, business, group) for segment-level satisfaction analysis."
-    - name: "loyalty_tier"
-      expr: loyalty_tier
-      comment: "Loyalty tier of the responding guest for tier-level satisfaction benchmarking."
-    - name: "nps_classification"
-      expr: nps_classification
-      comment: "NPS classification (Promoter, Passive, Detractor) for Net Promoter Score distribution analysis."
-    - name: "sentiment_classification"
-      expr: sentiment_classification
-      comment: "Sentiment classification of verbatim feedback (positive, neutral, negative) for qualitative trend analysis."
-    - name: "booking_channel"
+    - name: "Booking Channel"
       expr: booking_channel
-      comment: "Channel used to book the stay for channel-level satisfaction correlation."
-    - name: "response_month"
-      expr: DATE_TRUNC('MONTH', response_timestamp)
-      comment: "Month of survey response for trend analysis of satisfaction scores over time."
-    - name: "follow_up_required_flag"
+    - name: "Checkout Date"
+      expr: checkout_date
+    - name: "Contact Permission Flag"
+      expr: contact_permission_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Follow Up Required Flag"
       expr: follow_up_required_flag
-      comment: "Whether a service recovery follow-up is required. Used to track unresolved guest issues."
+    - name: "Guest Type"
+      expr: guest_type
+    - name: "Length Of Stay"
+      expr: length_of_stay
+    - name: "Loyalty Tier"
+      expr: loyalty_tier
+    - name: "Medallia Response Code"
+      expr: medallia_response_code
+    - name: "Nps Classification"
+      expr: nps_classification
+    - name: "Nps Score"
+      expr: nps_score
+    - name: "Rate Plan Code"
+      expr: rate_plan_code
+    - name: "Response Channel"
+      expr: response_channel
+    - name: "Response Status"
+      expr: response_status
+    - name: "Response Time Hours"
+      expr: response_time_hours
   measures:
-    - name: "avg_gss_score"
-      expr: AVG(CAST(gss_score AS DOUBLE))
-      comment: "Average Guest Satisfaction Score across survey responses. Primary guest experience KPI for executive dashboards and brand standards compliance."
-    - name: "avg_csat_score"
-      expr: AVG(CAST(csat_score AS DOUBLE))
-      comment: "Average Customer Satisfaction Score. Operational quality KPI used to trigger service recovery and staff coaching."
-    - name: "avg_sentiment_score"
-      expr: AVG(CAST(sentiment_score AS DOUBLE))
-      comment: "Average sentiment score from verbatim feedback analysis. Tracks qualitative guest perception trends."
-    - name: "total_survey_responses"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of survey responses received. Measures survey program reach and statistical validity of satisfaction scores."
-    - name: "follow_up_required_count"
-      expr: COUNT(CASE WHEN follow_up_required_flag = TRUE THEN survey_response_id END)
-      comment: "Number of responses requiring service recovery follow-up. Operational KPI for guest recovery workload management."
-    - name: "total_spend_amount"
-      expr: SUM(CAST(total_spend_amount AS DOUBLE))
-      comment: "Total guest spend associated with survey responses. Enables correlation of satisfaction scores with revenue contribution."
-    - name: "avg_total_spend"
-      expr: AVG(CAST(total_spend_amount AS DOUBLE))
-      comment: "Average spend per responding guest. Benchmarks revenue value of satisfied vs. dissatisfied guests."
-    - name: "distinct_responding_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of distinct guests who responded to surveys. Measures unique guest voice coverage for satisfaction programs."
+    - name: "Distinct Survey Response"
+      expr: COUNT(DISTINCT survey_response_id)
+    - name: "Total Csat Score"
+      expr: SUM(csat_score)
+    - name: "Average Csat Score"
+      expr: AVG(csat_score)
+    - name: "Total Gss Score"
+      expr: SUM(gss_score)
+    - name: "Average Gss Score"
+      expr: AVG(gss_score)
+    - name: "Total Sentiment Score"
+      expr: SUM(sentiment_score)
+    - name: "Average Sentiment Score"
+      expr: AVG(sentiment_score)
+    - name: "Total Total Spend Amount"
+      expr: SUM(total_spend_amount)
+    - name: "Average Total Spend Amount"
+      expr: AVG(total_spend_amount)
 $$;

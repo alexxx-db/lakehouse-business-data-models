@@ -1,59 +1,117 @@
--- Metric views for domain: finance | Business: Travel Hospitality | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: finance | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 20:27:42
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_allocation_rule_set`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Allocation Rule Set business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set`"
+  dimensions:
+    - name: "Allocation Basis"
+      expr: allocation_basis
+    - name: "Allocation Frequency"
+      expr: allocation_frequency
+    - name: "Allocation Method"
+      expr: allocation_method
+    - name: "Approval Workflow Code"
+      expr: approval_workflow_code
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Audit Trail Required"
+      expr: audit_trail_required
+    - name: "Business Justification"
+      expr: business_justification
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Filter"
+      expr: department_filter
+    - name: "Allocation Rule Set Description"
+      expr: allocation_rule_set_description
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "External Reference Code"
+      expr: external_reference_code
+    - name: "Gl Account Filter"
+      expr: gl_account_filter
+    - name: "Is Automated"
+      expr: is_automated
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Allocation Rule Set"
+      expr: COUNT(DISTINCT allocation_rule_set_id)
+    - name: "Total Allocation Percentage"
+      expr: SUM(allocation_percentage)
+    - name: "Average Allocation Percentage"
+      expr: AVG(allocation_percentage)
+    - name: "Total Maximum Threshold Amount"
+      expr: SUM(maximum_threshold_amount)
+    - name: "Average Maximum Threshold Amount"
+      expr: AVG(maximum_threshold_amount)
+    - name: "Total Minimum Threshold Amount"
+      expr: SUM(minimum_threshold_amount)
+    - name: "Average Minimum Threshold Amount"
+      expr: AVG(minimum_threshold_amount)
+$$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_allocation_run`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Cost allocation run metrics tracking allocation volumes, amounts, variance, and execution quality for management accounting and cost center performance management."
+  comment: "Allocation Run business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`allocation_run`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the allocation run for property-level cost allocation management."
-    - name: "allocation_run_status"
-      expr: allocation_run_status
-      comment: "Current run status (Completed, Failed, Reversed) for allocation process monitoring."
-    - name: "run_type"
-      expr: run_type
-      comment: "Type of allocation run (Actual, Budget, Forecast) for allocation category analysis."
-    - name: "allocation_method"
-      expr: allocation_method
-      comment: "Allocation method used (Headcount, Square Footage, Revenue) for methodology analysis."
-    - name: "allocation_basis"
-      expr: allocation_basis
-      comment: "Basis for cost allocation for management accounting transparency."
-    - name: "accounting_period"
+    - name: "Accounting Period"
       expr: accounting_period
-      comment: "Accounting period for monthly allocation tracking."
-    - name: "gl_posting_status"
+    - name: "Actual Execution Timestamp"
+      expr: actual_execution_timestamp
+    - name: "Allocation Basis"
+      expr: allocation_basis
+    - name: "Allocation Line Count"
+      expr: allocation_line_count
+    - name: "Allocation Method"
+      expr: allocation_method
+    - name: "Approval Timestamp"
+      expr: approval_timestamp
+    - name: "Completion Timestamp"
+      expr: completion_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Error Message"
+      expr: error_message
+    - name: "Gl Posting Date"
+      expr: gl_posting_date
+    - name: "Gl Posting Status"
       expr: gl_posting_status
-      comment: "GL posting status for close process and sub-ledger reconciliation monitoring."
-    - name: "reversal_flag"
-      expr: reversal_flag
-      comment: "Indicates reversed allocation runs for error rate and reprocessing analysis."
-    - name: "is_automated"
+    - name: "Is Automated"
       expr: is_automated
-      comment: "Indicates automated vs. manual allocation runs for process efficiency analysis."
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Reconciliation Status"
+      expr: reconciliation_status
   measures:
-    - name: "total_amount_allocated"
-      expr: SUM(CAST(total_amount_allocated AS DOUBLE))
-      comment: "Total cost amount allocated across cost centers — primary management accounting KPI for cost distribution analysis."
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total allocation variance amount for reconciliation quality and exception management."
-    - name: "allocation_run_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of allocation runs for process throughput and close completeness monitoring."
-    - name: "failed_run_count"
-      expr: COUNT(CASE WHEN allocation_run_status = 'Failed' THEN 1 END)
-      comment: "Number of failed allocation runs — a process quality KPI requiring operational intervention."
-    - name: "reversal_run_count"
-      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
-      comment: "Number of reversed allocation runs indicating errors or period adjustments."
-    - name: "avg_amount_allocated"
-      expr: AVG(CAST(total_amount_allocated AS DOUBLE))
-      comment: "Average amount allocated per run for benchmarking and anomaly detection."
+    - name: "Distinct Allocation Run"
+      expr: COUNT(DISTINCT allocation_run_id)
+    - name: "Total Total Amount Allocated"
+      expr: SUM(total_amount_allocated)
+    - name: "Average Total Amount Allocated"
+      expr: AVG(total_amount_allocated)
+    - name: "Total Variance Amount"
+      expr: SUM(variance_amount)
+    - name: "Average Variance Amount"
+      expr: AVG(variance_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_ap_invoice`
@@ -61,70 +119,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts Payable invoice metrics tracking vendor payment obligations, aging, discount capture, and invoice processing efficiency across properties and vendors."
+  comment: "Ap Invoice business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`ap_invoice`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the AP invoice for property-level spend analysis."
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current status of the invoice (e.g., Open, Paid, Disputed) for pipeline analysis."
-    - name: "invoice_type"
-      expr: invoice_type
-      comment: "Type of invoice (e.g., Standard, Credit Memo) for categorization."
-    - name: "expense_category"
-      expr: expense_category
-      comment: "Expense category for spend classification and budget variance analysis."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (e.g., ACH, Check, Wire) for treasury analysis."
-    - name: "approval_status"
+    - name: "Approval Status"
       expr: approval_status
-      comment: "Approval status of the invoice for workflow monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the invoice for period-over-period comparison."
-    - name: "fiscal_period"
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Date"
+      expr: approved_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Ap Invoice Description"
+      expr: ap_invoice_description
+    - name: "Dispute Date"
+      expr: dispute_date
+    - name: "Dispute Reason"
+      expr: dispute_reason
+    - name: "Due Date"
+      expr: due_date
+    - name: "Expense Category"
+      expr: expense_category
+    - name: "Fiscal Period"
       expr: fiscal_period
-      comment: "Fiscal period of the invoice for monthly reporting."
-    - name: "invoice_date"
-      expr: DATE_TRUNC('month', invoice_date)
-      comment: "Invoice date truncated to month for trend analysis."
-    - name: "three_way_match_status"
-      expr: three_way_match_status
-      comment: "Three-way match status (PO/GR/Invoice) for procurement compliance monitoring."
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Invoice Date"
+      expr: invoice_date
+    - name: "Invoice Number"
+      expr: invoice_number
+    - name: "Invoice Status"
+      expr: invoice_status
+    - name: "Invoice Type"
+      expr: invoice_type
   measures:
-    - name: "total_gross_invoice_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross AP invoice amount representing total vendor obligations. Drives cash flow forecasting and spend management decisions."
-    - name: "total_net_invoice_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net AP invoice amount after discounts, representing actual payable liability."
-    - name: "total_outstanding_amount"
-      expr: SUM(CAST(outstanding_amount AS DOUBLE))
-      comment: "Total outstanding AP balance — key liquidity and working capital metric for CFO review."
-    - name: "total_paid_amount"
-      expr: SUM(CAST(paid_amount AS DOUBLE))
-      comment: "Total amount paid to vendors in the period, used for cash disbursement reporting."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount on AP invoices for tax liability reporting and compliance."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early-payment discounts captured, a direct cost-saving KPI for treasury."
-    - name: "invoice_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of AP invoices processed, used for workload and throughput analysis."
-    - name: "avg_invoice_amount"
-      expr: AVG(CAST(gross_amount AS DOUBLE))
-      comment: "Average gross invoice amount per invoice, used to benchmark vendor transaction sizes."
-    - name: "disputed_invoice_count"
-      expr: COUNT(CASE WHEN dispute_reason IS NOT NULL THEN 1 END)
-      comment: "Number of invoices with active disputes — a vendor relationship and process quality KPI."
-    - name: "three_way_match_failure_count"
-      expr: COUNT(CASE WHEN three_way_match_status NOT IN ('Matched', 'Approved') THEN 1 END)
-      comment: "Count of invoices failing three-way match, indicating procurement control breakdowns requiring intervention."
+    - name: "Distinct Ap Invoice"
+      expr: COUNT(DISTINCT ap_invoice_id)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Gross Amount"
+      expr: SUM(gross_amount)
+    - name: "Average Gross Amount"
+      expr: AVG(gross_amount)
+    - name: "Total Net Amount"
+      expr: SUM(net_amount)
+    - name: "Average Net Amount"
+      expr: AVG(net_amount)
+    - name: "Total Outstanding Amount"
+      expr: SUM(outstanding_amount)
+    - name: "Average Outstanding Amount"
+      expr: AVG(outstanding_amount)
+    - name: "Total Paid Amount"
+      expr: SUM(paid_amount)
+    - name: "Average Paid Amount"
+      expr: AVG(paid_amount)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_ap_payment`
@@ -132,58 +190,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts Payable payment execution metrics tracking disbursement volumes, reversal rates, discount capture, and payment method mix for treasury and cash management."
+  comment: "Ap Payment business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`ap_payment`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the payment for property-level cash management."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method (ACH, Wire, Check) for treasury channel analysis."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Current payment status for pipeline and exception monitoring."
-    - name: "payment_type"
-      expr: payment_type
-      comment: "Type of payment for categorization and reporting."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for period-over-period cash disbursement analysis."
-    - name: "fiscal_period"
+    - name: "Approval Status"
+      expr: approval_status
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Base Currency Code"
+      expr: base_currency_code
+    - name: "Check Number"
+      expr: check_number
+    - name: "Clearing Date"
+      expr: clearing_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Fiscal Period"
       expr: fiscal_period
-      comment: "Fiscal period for monthly cash disbursement reporting."
-    - name: "payment_date"
-      expr: DATE_TRUNC('month', payment_date)
-      comment: "Payment date truncated to month for trend analysis."
-    - name: "reversal_flag"
-      expr: reversal_flag
-      comment: "Indicates whether the payment was reversed, used for exception and error rate analysis."
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Gl Posting Date"
+      expr: gl_posting_date
+    - name: "Modified By"
+      expr: modified_by
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Payment Currency Code"
+      expr: payment_currency_code
+    - name: "Payment Date"
+      expr: payment_date
+    - name: "Payment Description"
+      expr: payment_description
+    - name: "Payment Method"
+      expr: payment_method
   measures:
-    - name: "total_payment_amount"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total gross payment amount disbursed to vendors — primary cash outflow KPI for treasury."
-    - name: "total_net_payment_amount"
-      expr: SUM(CAST(net_payment_amount AS DOUBLE))
-      comment: "Total net payment amount after fees and discounts, representing actual cash out."
-    - name: "total_discount_captured"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early-payment discounts captured, a direct cost-saving metric for CFO review."
-    - name: "total_withholding_tax"
-      expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
-      comment: "Total withholding tax deducted from vendor payments for tax compliance reporting."
-    - name: "total_bank_fees"
-      expr: SUM(CAST(bank_fee_amount AS DOUBLE))
-      comment: "Total bank fees incurred on payments, a controllable cost metric for treasury optimization."
-    - name: "payment_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of AP payments processed for throughput and workload analysis."
-    - name: "reversal_count"
-      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
-      comment: "Number of reversed payments indicating payment errors or disputes requiring investigation."
-    - name: "avg_payment_amount"
-      expr: AVG(CAST(payment_amount AS DOUBLE))
-      comment: "Average payment amount per transaction for benchmarking and anomaly detection."
+    - name: "Distinct Ap Payment"
+      expr: COUNT(DISTINCT ap_payment_id)
+    - name: "Total Bank Fee Amount"
+      expr: SUM(bank_fee_amount)
+    - name: "Average Bank Fee Amount"
+      expr: AVG(bank_fee_amount)
+    - name: "Total Base Currency Amount"
+      expr: SUM(base_currency_amount)
+    - name: "Average Base Currency Amount"
+      expr: AVG(base_currency_amount)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Exchange Rate"
+      expr: SUM(exchange_rate)
+    - name: "Average Exchange Rate"
+      expr: AVG(exchange_rate)
+    - name: "Total Net Payment Amount"
+      expr: SUM(net_payment_amount)
+    - name: "Average Net Payment Amount"
+      expr: AVG(net_payment_amount)
+    - name: "Total Payment Amount"
+      expr: SUM(payment_amount)
+    - name: "Average Payment Amount"
+      expr: AVG(payment_amount)
+    - name: "Total Withholding Tax Amount"
+      expr: SUM(withholding_tax_amount)
+    - name: "Average Withholding Tax Amount"
+      expr: AVG(withholding_tax_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_ar_invoice`
@@ -191,70 +265,94 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts Receivable invoice metrics tracking revenue billed, collections performance, aging, and write-off risk across properties, guests, and corporate accounts."
+  comment: "Ar Invoice business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`ar_invoice`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the AR invoice for property-level revenue and collections analysis."
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current invoice status (Open, Paid, Written-Off) for collections pipeline management."
-    - name: "invoice_type"
-      expr: invoice_type
-      comment: "Type of AR invoice for revenue categorization."
-    - name: "billing_entity_type"
-      expr: billing_entity_type
-      comment: "Type of billing entity (Guest, Corporate, Group) for segment-level AR analysis."
-    - name: "collection_status"
-      expr: collection_status
-      comment: "Collections status for aging and dunning workflow management."
-    - name: "aging_bucket"
+    - name: "Aging Bucket"
       expr: aging_bucket
-      comment: "Aging bucket (Current, 30, 60, 90+ days) for DSO and collections risk reporting."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method for revenue channel analysis."
-    - name: "invoice_date"
-      expr: DATE_TRUNC('month', invoice_date)
-      comment: "Invoice date truncated to month for revenue trend analysis."
-    - name: "currency_code"
+    - name: "Billing Address Line1"
+      expr: billing_address_line1
+    - name: "Billing Address Line2"
+      expr: billing_address_line2
+    - name: "Billing City"
+      expr: billing_city
+    - name: "Billing Contact Email"
+      expr: billing_contact_email
+    - name: "Billing Contact Phone"
+      expr: billing_contact_phone
+    - name: "Billing Country Code"
+      expr: billing_country_code
+    - name: "Billing Entity Name"
+      expr: billing_entity_name
+    - name: "Billing Entity Type"
+      expr: billing_entity_type
+    - name: "Billing Postal Code"
+      expr: billing_postal_code
+    - name: "Billing State Province"
+      expr: billing_state_province
+    - name: "Collection Status"
+      expr: collection_status
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Invoice currency for multi-currency revenue reporting."
+    - name: "Days Outstanding"
+      expr: days_outstanding
+    - name: "Dispute Flag"
+      expr: dispute_flag
   measures:
-    - name: "total_invoice_amount"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total AR invoice amount billed — primary revenue recognition KPI for finance leadership."
-    - name: "total_outstanding_balance"
-      expr: SUM(CAST(outstanding_balance AS DOUBLE))
-      comment: "Total outstanding AR balance — critical liquidity and collections KPI for CFO."
-    - name: "total_paid_amount"
-      expr: SUM(CAST(paid_amount AS DOUBLE))
-      comment: "Total amount collected against AR invoices for cash receipts reporting."
-    - name: "total_room_revenue_billed"
-      expr: SUM(CAST(room_revenue_amount AS DOUBLE))
-      comment: "Total room revenue billed on AR invoices for rooms revenue reconciliation."
-    - name: "total_fnb_revenue_billed"
-      expr: SUM(CAST(fnb_revenue_amount AS DOUBLE))
-      comment: "Total F&B revenue billed on AR invoices for F&B revenue reconciliation."
-    - name: "total_event_revenue_billed"
-      expr: SUM(CAST(event_revenue_amount AS DOUBLE))
-      comment: "Total event revenue billed on AR invoices for events revenue reconciliation."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax billed on AR invoices for tax liability and compliance reporting."
-    - name: "total_write_off_amount"
-      expr: SUM(CASE WHEN write_off_flag = TRUE THEN total_amount ELSE 0 END)
-      comment: "Total amount written off as uncollectable — a credit risk and collections quality KPI."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discounts applied on AR invoices for revenue leakage analysis."
-    - name: "invoice_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of AR invoices issued for billing volume and throughput analysis."
-    - name: "disputed_invoice_count"
-      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
-      comment: "Number of disputed AR invoices — a guest/corporate satisfaction and billing accuracy KPI."
+    - name: "Distinct Ar Invoice"
+      expr: COUNT(DISTINCT ar_invoice_id)
+    - name: "Total Adjustment Amount"
+      expr: SUM(adjustment_amount)
+    - name: "Average Adjustment Amount"
+      expr: AVG(adjustment_amount)
+    - name: "Total Ancillary Revenue Amount"
+      expr: SUM(ancillary_revenue_amount)
+    - name: "Average Ancillary Revenue Amount"
+      expr: AVG(ancillary_revenue_amount)
+    - name: "Total Discount Amount"
+      expr: SUM(discount_amount)
+    - name: "Average Discount Amount"
+      expr: AVG(discount_amount)
+    - name: "Total Event Revenue Amount"
+      expr: SUM(event_revenue_amount)
+    - name: "Average Event Revenue Amount"
+      expr: AVG(event_revenue_amount)
+    - name: "Total Fnb Revenue Amount"
+      expr: SUM(fnb_revenue_amount)
+    - name: "Average Fnb Revenue Amount"
+      expr: AVG(fnb_revenue_amount)
+    - name: "Total Outstanding Balance"
+      expr: SUM(outstanding_balance)
+    - name: "Average Outstanding Balance"
+      expr: AVG(outstanding_balance)
+    - name: "Total Paid Amount"
+      expr: SUM(paid_amount)
+    - name: "Average Paid Amount"
+      expr: AVG(paid_amount)
+    - name: "Total Room Revenue Amount"
+      expr: SUM(room_revenue_amount)
+    - name: "Average Room Revenue Amount"
+      expr: AVG(room_revenue_amount)
+    - name: "Total Service Charge Amount"
+      expr: SUM(service_charge_amount)
+    - name: "Average Service Charge Amount"
+      expr: AVG(service_charge_amount)
+    - name: "Total Subtotal Amount"
+      expr: SUM(subtotal_amount)
+    - name: "Average Subtotal Amount"
+      expr: AVG(subtotal_amount)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Total Amount"
+      expr: SUM(total_amount)
+    - name: "Average Total Amount"
+      expr: AVG(total_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_ar_payment`
@@ -262,259 +360,149 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts Receivable payment receipt metrics tracking cash collections, refund rates, advance deposits, and payment channel mix for revenue and treasury management."
+  comment: "Ar Payment business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`ar_payment`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the AR payment for property-level cash receipts analysis."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method (Credit Card, Cash, Wire) for payment channel mix analysis."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Current payment status for collections pipeline monitoring."
-    - name: "payment_channel"
-      expr: payment_channel
-      comment: "Channel through which payment was received (Front Desk, OTA, Direct) for channel analysis."
-    - name: "card_type"
+    - name: "Authorization Code"
+      expr: authorization_code
+    - name: "Bank Name"
+      expr: bank_name
+    - name: "Base Currency Code"
+      expr: base_currency_code
+    - name: "Card Last Four"
+      expr: card_last_four
+    - name: "Card Type"
       expr: card_type
-      comment: "Card type (Visa, Mastercard, Amex) for payment processing cost analysis."
-    - name: "is_advance_deposit"
+    - name: "Cardholder Name"
+      expr: cardholder_name
+    - name: "Check Number"
+      expr: check_number
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deposit Date"
+      expr: deposit_date
+    - name: "Is Advance Deposit"
       expr: is_advance_deposit
-      comment: "Indicates advance deposit payments for deposit liability tracking."
-    - name: "is_refund"
+    - name: "Is Refund"
       expr: is_refund
-      comment: "Indicates refund transactions for refund rate and guest satisfaction analysis."
-    - name: "payment_date"
-      expr: DATE_TRUNC('month', payment_date)
-      comment: "Payment date truncated to month for cash receipts trend analysis."
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Payment Channel"
+      expr: payment_channel
+    - name: "Payment Currency Code"
+      expr: payment_currency_code
+    - name: "Payment Date"
+      expr: payment_date
+    - name: "Payment Method"
+      expr: payment_method
   measures:
-    - name: "total_payment_amount"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total AR payments received — primary cash receipts KPI for treasury and revenue management."
-    - name: "total_net_payment_amount"
-      expr: SUM(CAST(net_payment_amount AS DOUBLE))
-      comment: "Total net payment amount after fees, representing actual cash collected."
-    - name: "total_applied_amount"
-      expr: SUM(CAST(applied_amount AS DOUBLE))
-      comment: "Total amount applied to AR invoices for collections effectiveness measurement."
-    - name: "total_unapplied_amount"
-      expr: SUM(CAST(unapplied_amount AS DOUBLE))
-      comment: "Total unapplied cash — a cash application backlog KPI requiring operational action."
-    - name: "total_transaction_fees"
-      expr: SUM(CAST(transaction_fee AS DOUBLE))
-      comment: "Total payment processing fees incurred — a controllable cost KPI for treasury optimization."
-    - name: "total_advance_deposits"
-      expr: SUM(CASE WHEN is_advance_deposit = TRUE THEN payment_amount ELSE 0 END)
-      comment: "Total advance deposit receipts for deposit liability and revenue recognition tracking."
-    - name: "total_refund_amount"
-      expr: SUM(CASE WHEN is_refund = TRUE THEN payment_amount ELSE 0 END)
-      comment: "Total refunds issued — a guest satisfaction and revenue leakage KPI."
-    - name: "payment_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of AR payment transactions for volume and throughput analysis."
-    - name: "avg_payment_amount"
-      expr: AVG(CAST(payment_amount AS DOUBLE))
-      comment: "Average AR payment amount per transaction for benchmarking and anomaly detection."
+    - name: "Distinct Ar Payment"
+      expr: COUNT(DISTINCT ar_payment_id)
+    - name: "Total Applied Amount"
+      expr: SUM(applied_amount)
+    - name: "Average Applied Amount"
+      expr: AVG(applied_amount)
+    - name: "Total Base Currency Amount"
+      expr: SUM(base_currency_amount)
+    - name: "Average Base Currency Amount"
+      expr: AVG(base_currency_amount)
+    - name: "Total Exchange Rate"
+      expr: SUM(exchange_rate)
+    - name: "Average Exchange Rate"
+      expr: AVG(exchange_rate)
+    - name: "Total Net Payment Amount"
+      expr: SUM(net_payment_amount)
+    - name: "Average Net Payment Amount"
+      expr: AVG(net_payment_amount)
+    - name: "Total Payment Amount"
+      expr: SUM(payment_amount)
+    - name: "Average Payment Amount"
+      expr: AVG(payment_amount)
+    - name: "Total Shift Code"
+      expr: SUM(shift_code)
+    - name: "Average Shift Code"
+      expr: AVG(shift_code)
+    - name: "Total Transaction Fee"
+      expr: SUM(transaction_fee)
+    - name: "Average Transaction Fee"
+      expr: AVG(transaction_fee)
+    - name: "Total Unapplied Amount"
+      expr: SUM(unapplied_amount)
+    - name: "Average Unapplied Amount"
+      expr: AVG(unapplied_amount)
 $$;
 
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`finance_bank_account`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_bank_account`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Bank account metrics tracking cash positions, account balances, reconciliation status, and treasury management performance"
-  source: "`travel_hospitality_ecm`.`finance`.`bank_account`"
+  comment: "Bank Account business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`bank_account`"
   dimensions:
-    - name: "account_status"
-      expr: account_status
-      comment: "Current status of the bank account (e.g., active, closed, dormant)"
-    - name: "account_type"
-      expr: account_type
-      comment: "Type of bank account (e.g., checking, savings, money market, payroll)"
-    - name: "account_purpose"
+    - name: "Account Closed Date"
+      expr: account_closed_date
+    - name: "Account Name"
+      expr: account_name
+    - name: "Account Number"
+      expr: account_number
+    - name: "Account Number Masked"
+      expr: account_number_masked
+    - name: "Account Opened Date"
+      expr: account_opened_date
+    - name: "Account Purpose"
       expr: account_purpose
-      comment: "Business purpose of the account (e.g., operating, payroll, reserve, escrow)"
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Current reconciliation status of the account"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency in which the account is denominated"
-    - name: "is_primary_account"
-      expr: is_primary_account
-      comment: "Indicates whether this is the primary operating account"
-    - name: "is_zero_balance_account"
-      expr: is_zero_balance_account
-      comment: "Indicates whether this is a zero-balance account (ZBA)"
-    - name: "interest_bearing"
-      expr: interest_bearing
-      comment: "Indicates whether the account earns interest"
-    - name: "electronic_banking_enabled"
-      expr: electronic_banking_enabled
-      comment: "Indicates whether electronic banking is enabled"
-    - name: "positive_pay_enabled"
-      expr: positive_pay_enabled
-      comment: "Indicates whether positive pay fraud prevention is enabled"
+    - name: "Account Status"
+      expr: account_status
+    - name: "Account Type"
+      expr: account_type
+    - name: "Ach Enabled"
+      expr: ach_enabled
+    - name: "Bank Branch Name"
+      expr: bank_branch_name
+    - name: "Bank Code"
+      expr: bank_code
+    - name: "Bank Contact Email"
+      expr: bank_contact_email
+    - name: "Bank Contact Name"
+      expr: bank_contact_name
+    - name: "Bank Contact Phone"
+      expr: bank_contact_phone
+    - name: "Bank Name"
+      expr: bank_name
+    - name: "Company Code"
+      expr: company_code
   measures:
-    - name: "total_account_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of bank accounts"
-    - name: "total_current_balance"
-      expr: SUM(CAST(current_balance AS DOUBLE))
-      comment: "Total current balance across all bank accounts"
-    - name: "total_available_balance"
-      expr: SUM(CAST(available_balance AS DOUBLE))
-      comment: "Total available balance across all bank accounts"
-    - name: "total_opening_balance"
-      expr: SUM(CAST(opening_balance AS DOUBLE))
-      comment: "Total opening balance when accounts were established"
-    - name: "total_last_statement_balance"
-      expr: SUM(CAST(last_statement_balance AS DOUBLE))
-      comment: "Total balance from most recent bank statements"
-    - name: "total_minimum_balance_required"
-      expr: SUM(CAST(minimum_balance_required AS DOUBLE))
-      comment: "Total minimum balance requirements across all accounts"
-    - name: "avg_current_balance"
-      expr: AVG(CAST(current_balance AS DOUBLE))
-      comment: "Average current balance per bank account"
-    - name: "avg_interest_rate"
-      expr: AVG(CAST(interest_rate AS DOUBLE))
-      comment: "Average interest rate across interest-bearing accounts"
-    - name: "active_account_count"
-      expr: SUM(CASE WHEN account_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Count of active bank accounts"
-    - name: "reconciled_account_count"
-      expr: SUM(CASE WHEN reconciliation_status = 'reconciled' THEN 1 ELSE 0 END)
-      comment: "Count of bank accounts that are fully reconciled"
-    - name: "interest_bearing_account_count"
-      expr: SUM(CASE WHEN interest_bearing = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of accounts that earn interest"
-    - name: "positive_pay_enabled_count"
-      expr: SUM(CASE WHEN positive_pay_enabled = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of accounts with positive pay fraud prevention enabled"
-$$;
-
-CREATE OR REPLACE VIEW `travel_hospitality_ecm`.`_metrics`.`finance_budget_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Budget line item metrics tracking planned spend, budget utilization, and variance analysis for financial planning and control"
-  source: "`travel_hospitality_ecm`.`finance`.`budget_line`"
-  dimensions:
-    - name: "budget_type"
-      expr: budget_type
-      comment: "Type of budget (e.g., operating, capital, project)"
-    - name: "budget_category"
-      expr: budget_category
-      comment: "Category of budget line (e.g., labor, supplies, utilities, marketing)"
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the budget line"
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for the budget"
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for the budget"
-    - name: "department_code"
-      expr: department_code
-      comment: "Department code responsible for the budget line"
-    - name: "budget_version"
-      expr: budget_version
-      comment: "Version of the budget (e.g., original, revised, forecast)"
-    - name: "locked_flag"
-      expr: locked_flag
-      comment: "Indicates whether the budget line is locked from further changes"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency in which the budget is denominated"
-    - name: "allocation_method"
-      expr: allocation_method
-      comment: "Method used to allocate budget across periods or entities"
-  measures:
-    - name: "total_budget_line_count"
-      expr: COUNT(1)
-      comment: "Total number of budget line items"
-    - name: "total_planned_amount"
-      expr: SUM(CAST(planned_amount AS DOUBLE))
-      comment: "Total planned budget amount across all line items"
-    - name: "total_prior_year_actual"
-      expr: SUM(CAST(prior_year_actual_amount AS DOUBLE))
-      comment: "Total prior year actual spend for comparison"
-    - name: "yoy_budget_growth_pct"
-      expr: ROUND(100.0 * (SUM(CAST(planned_amount AS DOUBLE)) - SUM(CAST(prior_year_actual_amount AS DOUBLE))) / NULLIF(SUM(CAST(prior_year_actual_amount AS DOUBLE)), 0), 2)
-      comment: "Year-over-year budget growth percentage compared to prior year actuals"
-    - name: "avg_planned_amount"
-      expr: AVG(CAST(planned_amount AS DOUBLE))
-      comment: "Average planned amount per budget line"
-    - name: "avg_variance_threshold_pct"
-      expr: AVG(CAST(variance_threshold_percent AS DOUBLE))
-      comment: "Average variance threshold percentage for budget monitoring"
-    - name: "approved_budget_line_count"
-      expr: SUM(CASE WHEN approval_status = 'approved' THEN 1 ELSE 0 END)
-      comment: "Count of budget lines that have been approved"
-    - name: "locked_budget_line_count"
-      expr: SUM(CASE WHEN locked_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of budget lines locked from further changes"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_capex_request`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Capital expenditure request metrics tracking CapEx pipeline, approval rates, ROI targets, and budget utilization for capital allocation and asset management decisions."
-  source: "`vibe_travel_hospitality_v1`.`finance`.`capex_request`"
-  dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the CapEx request for property-level capital planning."
-    - name: "request_status"
-      expr: request_status
-      comment: "Current request status (Submitted, Approved, Rejected, In Progress) for pipeline management."
-    - name: "request_type"
-      expr: request_type
-      comment: "Type of CapEx request (PIP, Maintenance, Expansion) for capital category analysis."
-    - name: "asset_category"
-      expr: asset_category
-      comment: "Asset category for CapEx spend categorization and depreciation planning."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the CapEx request for capital allocation decision-making."
-    - name: "budget_year"
-      expr: budget_year
-      comment: "Budget year for annual CapEx planning and tracking."
-    - name: "is_multi_year_project"
-      expr: is_multi_year_project
-      comment: "Indicates multi-year CapEx projects for long-term capital commitment tracking."
-    - name: "approval_authority_level"
-      expr: approval_authority_level
-      comment: "Approval authority level required for governance and delegation of authority compliance."
-  measures:
-    - name: "total_requested_amount"
-      expr: SUM(CAST(requested_amount AS DOUBLE))
-      comment: "Total CapEx requested — primary capital demand KPI for capital allocation committee review."
-    - name: "total_approved_amount"
-      expr: SUM(CAST(approved_amount AS DOUBLE))
-      comment: "Total CapEx approved — actual capital commitment for cash flow and financing planning."
-    - name: "capex_request_count"
-      expr: COUNT(1)
-      comment: "Total number of CapEx requests for pipeline volume and governance monitoring."
-    - name: "approved_request_count"
-      expr: COUNT(CASE WHEN request_status = 'Approved' THEN 1 END)
-      comment: "Number of approved CapEx requests for approval rate calculation."
-    - name: "avg_roi_percentage"
-      expr: AVG(CAST(roi_percentage AS DOUBLE))
-      comment: "Average ROI percentage across CapEx requests — a capital efficiency KPI for investment committee decisions."
-    - name: "avg_requested_amount"
-      expr: AVG(CAST(requested_amount AS DOUBLE))
-      comment: "Average CapEx request size for benchmarking and anomaly detection."
-    - name: "sox_controlled_request_count"
-      expr: COUNT(CASE WHEN sox_control_required = TRUE THEN 1 END)
-      comment: "Number of CapEx requests requiring SOX controls for compliance monitoring."
+    - name: "Distinct Bank Account"
+      expr: COUNT(DISTINCT bank_account_id)
+    - name: "Total Available Balance"
+      expr: SUM(available_balance)
+    - name: "Average Available Balance"
+      expr: AVG(available_balance)
+    - name: "Total Current Balance"
+      expr: SUM(current_balance)
+    - name: "Average Current Balance"
+      expr: AVG(current_balance)
+    - name: "Total Interest Rate"
+      expr: SUM(interest_rate)
+    - name: "Average Interest Rate"
+      expr: AVG(interest_rate)
+    - name: "Total Last Statement Balance"
+      expr: SUM(last_statement_balance)
+    - name: "Average Last Statement Balance"
+      expr: AVG(last_statement_balance)
+    - name: "Total Minimum Balance Required"
+      expr: SUM(minimum_balance_required)
+    - name: "Average Minimum Balance Required"
+      expr: AVG(minimum_balance_required)
+    - name: "Total Opening Balance"
+      expr: SUM(opening_balance)
+    - name: "Average Opening Balance"
+      expr: AVG(opening_balance)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_budget`
@@ -522,76 +510,322 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Finance budget metrics tracking budgeted performance targets across revenue, expense, profitability, and operational KPIs for property-level budget management and variance analysis."
+  comment: "Budget business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`finance_budget`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the budget for property-level budget management."
-    - name: "budget_type"
-      expr: budget_type
-      comment: "Type of budget (Operating, Capital, Forecast) for budget category analysis."
-    - name: "budget_status"
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Date"
+      expr: approved_date
+    - name: "Budget Number"
+      expr: budget_number
+    - name: "Budget Status"
       expr: budget_status
-      comment: "Current budget status (Draft, Approved, Locked) for budget governance monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the budget for annual planning and comparison."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly budget tracking."
-    - name: "budget_category"
+    - name: "Budget Type"
+      expr: budget_type
+    - name: "Budgeted Available Rooms"
+      expr: budgeted_available_rooms
+    - name: "Budgeted Covers"
+      expr: budgeted_covers
+    - name: "Budgeted Room Nights"
+      expr: budgeted_room_nights
+    - name: "Budget Category"
       expr: budget_category
-      comment: "Budget category for departmental budget analysis."
-    - name: "currency_code"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Budget currency for multi-currency budget reporting."
-    - name: "version"
-      expr: version
-      comment: "Budget version for tracking revisions and reforecasts."
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
   measures:
-    - name: "total_budgeted_revenue"
-      expr: SUM(CAST(budgeted_total_revenue AS DOUBLE))
-      comment: "Total budgeted revenue across all streams — primary top-line budget KPI for executive review."
-    - name: "total_budgeted_rooms_revenue"
-      expr: SUM(CAST(budgeted_rooms_revenue AS DOUBLE))
-      comment: "Total budgeted rooms revenue for rooms department budget management."
-    - name: "total_budgeted_fnb_revenue"
-      expr: SUM(CAST(budgeted_fnb_revenue AS DOUBLE))
-      comment: "Total budgeted F&B revenue for F&B department budget management."
-    - name: "total_budgeted_events_revenue"
-      expr: SUM(CAST(budgeted_events_revenue AS DOUBLE))
-      comment: "Total budgeted events revenue for events department budget management."
-    - name: "total_budgeted_gop"
-      expr: SUM(CAST(budgeted_gop AS DOUBLE))
-      comment: "Total budgeted Gross Operating Profit — a primary profitability target KPI for ownership review."
-    - name: "total_budgeted_ebitda"
-      expr: SUM(CAST(budgeted_ebitda AS DOUBLE))
-      comment: "Total budgeted EBITDA — a key investor and ownership profitability target."
-    - name: "total_budgeted_noi"
-      expr: SUM(CAST(budgeted_noi AS DOUBLE))
-      comment: "Total budgeted Net Operating Income — critical for owner distribution and HMA compliance."
-    - name: "total_budgeted_labor_expense"
-      expr: SUM(CAST(budgeted_labor_expense AS DOUBLE))
-      comment: "Total budgeted labor expense — largest controllable cost line for operational management."
-    - name: "total_budgeted_operating_expense"
-      expr: SUM(CAST(budgeted_operating_expense AS DOUBLE))
-      comment: "Total budgeted operating expenses for cost management and efficiency analysis."
-    - name: "avg_budgeted_adr"
-      expr: AVG(CAST(budgeted_adr AS DOUBLE))
-      comment: "Average budgeted ADR (Average Daily Rate) across properties for rate strategy benchmarking."
-    - name: "avg_budgeted_revpar"
-      expr: AVG(CAST(budgeted_revpar AS DOUBLE))
-      comment: "Average budgeted RevPAR across properties — the hospitality industry's primary revenue efficiency KPI."
-    - name: "avg_budgeted_goppar"
-      expr: AVG(CAST(budgeted_goppar AS DOUBLE))
-      comment: "Average budgeted GOPPAR (GOP Per Available Room) — a key profitability efficiency KPI for ownership."
-    - name: "avg_budgeted_occupancy_rate"
-      expr: AVG(CAST(budgeted_occupancy_rate AS DOUBLE))
-      comment: "Average budgeted occupancy rate for demand planning and rate strategy."
-    - name: "budget_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Number of budget records for budget governance and completeness monitoring."
+    - name: "Distinct Budget"
+      expr: COUNT(DISTINCT budget_id)
+    - name: "Total Amount"
+      expr: SUM(amount)
+    - name: "Average Amount"
+      expr: AVG(amount)
+    - name: "Total Budgeted Adr"
+      expr: SUM(budgeted_adr)
+    - name: "Average Budgeted Adr"
+      expr: AVG(budgeted_adr)
+    - name: "Total Budgeted Cpor"
+      expr: SUM(budgeted_cpor)
+    - name: "Average Budgeted Cpor"
+      expr: AVG(budgeted_cpor)
+    - name: "Total Budgeted Ebitda"
+      expr: SUM(budgeted_ebitda)
+    - name: "Average Budgeted Ebitda"
+      expr: AVG(budgeted_ebitda)
+    - name: "Total Budgeted Events Revenue"
+      expr: SUM(budgeted_events_revenue)
+    - name: "Average Budgeted Events Revenue"
+      expr: AVG(budgeted_events_revenue)
+    - name: "Total Budgeted Fnb Revenue"
+      expr: SUM(budgeted_fnb_revenue)
+    - name: "Average Budgeted Fnb Revenue"
+      expr: AVG(budgeted_fnb_revenue)
+    - name: "Total Budgeted Gop"
+      expr: SUM(budgeted_gop)
+    - name: "Average Budgeted Gop"
+      expr: AVG(budgeted_gop)
+    - name: "Total Budgeted Goppar"
+      expr: SUM(budgeted_goppar)
+    - name: "Average Budgeted Goppar"
+      expr: AVG(budgeted_goppar)
+    - name: "Total Budgeted Labor Expense"
+      expr: SUM(budgeted_labor_expense)
+    - name: "Average Budgeted Labor Expense"
+      expr: AVG(budgeted_labor_expense)
+    - name: "Total Budgeted Noi"
+      expr: SUM(budgeted_noi)
+    - name: "Average Budgeted Noi"
+      expr: AVG(budgeted_noi)
+    - name: "Total Budgeted Occupancy Rate"
+      expr: SUM(budgeted_occupancy_rate)
+    - name: "Average Budgeted Occupancy Rate"
+      expr: AVG(budgeted_occupancy_rate)
+    - name: "Total Budgeted Operating Expense"
+      expr: SUM(budgeted_operating_expense)
+    - name: "Average Budgeted Operating Expense"
+      expr: AVG(budgeted_operating_expense)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_budget_line`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Budget Line business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`budget_line`"
+  dimensions:
+    - name: "Allocation Driver"
+      expr: allocation_driver
+    - name: "Allocation Method"
+      expr: allocation_method
+    - name: "Approval Status"
+      expr: approval_status
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Budget Category"
+      expr: budget_category
+    - name: "Budget Owner"
+      expr: budget_owner
+    - name: "Budget Type"
+      expr: budget_type
+    - name: "Budget Version"
+      expr: budget_version
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Code"
+      expr: department_code
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Budget Line"
+      expr: COUNT(DISTINCT budget_line_id)
+    - name: "Total Planned Amount"
+      expr: SUM(planned_amount)
+    - name: "Average Planned Amount"
+      expr: AVG(planned_amount)
+    - name: "Total Prior Year Actual Amount"
+      expr: SUM(prior_year_actual_amount)
+    - name: "Average Prior Year Actual Amount"
+      expr: AVG(prior_year_actual_amount)
+    - name: "Total Quantity"
+      expr: SUM(quantity)
+    - name: "Average Quantity"
+      expr: AVG(quantity)
+    - name: "Total Unit Price"
+      expr: SUM(unit_price)
+    - name: "Average Unit Price"
+      expr: AVG(unit_price)
+    - name: "Total Variance Threshold Percent"
+      expr: SUM(variance_threshold_percent)
+    - name: "Average Variance Threshold Percent"
+      expr: AVG(variance_threshold_percent)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_capex_request`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Capex Request business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`capex_request`"
+  dimensions:
+    - name: "Actual Completion Date"
+      expr: actual_completion_date
+    - name: "Actual Start Date"
+      expr: actual_start_date
+    - name: "Approval Authority Level"
+      expr: approval_authority_level
+    - name: "Approval Date"
+      expr: approval_date
+    - name: "Approver Name"
+      expr: approver_name
+    - name: "Asset Category"
+      expr: asset_category
+    - name: "Budget Year"
+      expr: budget_year
+    - name: "Business Justification"
+      expr: business_justification
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Code"
+      expr: department_code
+    - name: "Depreciation Method"
+      expr: depreciation_method
+    - name: "Environmental Impact Assessment"
+      expr: environmental_impact_assessment
+    - name: "Expected Useful Life Years"
+      expr: expected_useful_life_years
+    - name: "Gl Account Code"
+      expr: gl_account_code
+    - name: "Is Multi Year Project"
+      expr: is_multi_year_project
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Capex Request"
+      expr: COUNT(DISTINCT capex_request_id)
+    - name: "Total Approved Amount"
+      expr: SUM(approved_amount)
+    - name: "Average Approved Amount"
+      expr: AVG(approved_amount)
+    - name: "Total Requested Amount"
+      expr: SUM(requested_amount)
+    - name: "Average Requested Amount"
+      expr: AVG(requested_amount)
+    - name: "Total Roi Percentage"
+      expr: SUM(roi_percentage)
+    - name: "Average Roi Percentage"
+      expr: AVG(roi_percentage)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_cost_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Cost Center business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`cost_center`"
+  dimensions:
+    - name: "Audit Trail Required Flag"
+      expr: audit_trail_required_flag
+    - name: "Budget Allocation Flag"
+      expr: budget_allocation_flag
+    - name: "Cost Center Code"
+      expr: cost_center_code
+    - name: "Company Code"
+      expr: company_code
+    - name: "Controlling Area"
+      expr: controlling_area
+    - name: "Cost Allocation Method"
+      expr: cost_allocation_method
+    - name: "Cost Center Status"
+      expr: cost_center_status
+    - name: "Cost Center Type"
+      expr: cost_center_type
+    - name: "Created By User"
+      expr: created_by_user
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Category"
+      expr: department_category
+    - name: "Cost Center Description"
+      expr: cost_center_description
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "External Reporting Flag"
+      expr: external_reporting_flag
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Cost Center"
+      expr: COUNT(DISTINCT cost_center_id)
+    - name: "Total Annual Budget Amount"
+      expr: SUM(annual_budget_amount)
+    - name: "Average Annual Budget Amount"
+      expr: AVG(annual_budget_amount)
+    - name: "Total Square Footage"
+      expr: SUM(square_footage)
+    - name: "Average Square Footage"
+      expr: AVG(square_footage)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_fiscal_period`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Fiscal Period business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`fiscal_period`"
+  dimensions:
+    - name: "Budget Version"
+      expr: budget_version
+    - name: "Business Days In Period"
+      expr: business_days_in_period
+    - name: "Calendar Month"
+      expr: calendar_month
+    - name: "Calendar Quarter"
+      expr: calendar_quarter
+    - name: "Calendar Year"
+      expr: calendar_year
+    - name: "Close Date"
+      expr: close_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Days In Period"
+      expr: days_in_period
+    - name: "Fiscal Period Description"
+      expr: fiscal_period_description
+    - name: "End Date"
+      expr: end_date
+    - name: "Fiscal Month"
+      expr: fiscal_month
+    - name: "Fiscal Quarter"
+      expr: fiscal_quarter
+    - name: "Fiscal Week"
+      expr: fiscal_week
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Is Adjustment Period"
+      expr: is_adjustment_period
+    - name: "Is Leap Year"
+      expr: is_leap_year
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Fiscal Period"
+      expr: COUNT(DISTINCT fiscal_period_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_fixed_asset`
@@ -599,64 +833,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Fixed asset metrics tracking asset book values, accumulated depreciation, impairment, disposal gains/losses, and FF&E reserve eligibility for asset management and financial reporting."
+  comment: "Fixed Asset business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`fixed_asset`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the fixed asset for property-level asset register management."
-    - name: "asset_status"
-      expr: asset_status
-      comment: "Current asset status (Active, Disposed, Impaired) for asset lifecycle management."
-    - name: "asset_category"
+    - name: "Acquisition Date"
+      expr: acquisition_date
+    - name: "Asset Category"
       expr: asset_category
-      comment: "Asset category (FF&E, Building, Equipment) for asset class analysis."
-    - name: "asset_class"
+    - name: "Asset Class"
       expr: asset_class
-      comment: "Asset class for depreciation and financial reporting classification."
-    - name: "depreciation_method"
+    - name: "Asset Name"
+      expr: asset_name
+    - name: "Asset Number"
+      expr: asset_number
+    - name: "Asset Status"
+      expr: asset_status
+    - name: "Capex Approval Status"
+      expr: capex_approval_status
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Depreciation Method"
       expr: depreciation_method
-      comment: "Depreciation method (Straight-Line, Declining Balance) for depreciation policy analysis."
-    - name: "ffe_reserve_eligible"
+    - name: "Depreciation Start Date"
+      expr: depreciation_start_date
+    - name: "Disposal Date"
+      expr: disposal_date
+    - name: "Disposal Method"
+      expr: disposal_method
+    - name: "Ffe Reserve Eligible"
       expr: ffe_reserve_eligible
-      comment: "Indicates FF&E reserve eligible assets for reserve adequacy analysis."
-    - name: "impairment_indicator"
+    - name: "Impairment Indicator"
       expr: impairment_indicator
-      comment: "Indicates impaired assets for impairment review and financial reporting."
-    - name: "acquisition_date"
-      expr: DATE_TRUNC('year', acquisition_date)
-      comment: "Acquisition date truncated to year for asset vintage analysis."
+    - name: "Insurance Policy Number"
+      expr: insurance_policy_number
   measures:
-    - name: "total_acquisition_cost"
-      expr: SUM(CAST(acquisition_cost AS DOUBLE))
-      comment: "Total gross acquisition cost of fixed assets — primary asset base KPI for balance sheet reporting."
-    - name: "total_net_book_value"
-      expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value of fixed assets — key balance sheet metric for asset valuation and financing."
-    - name: "total_accumulated_depreciation"
-      expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation for asset age and replacement planning analysis."
-    - name: "total_impairment_loss"
-      expr: SUM(CAST(impairment_loss AS DOUBLE))
-      comment: "Total impairment losses recognized — a financial risk and asset quality KPI for auditors and investors."
-    - name: "total_disposal_proceeds"
-      expr: SUM(CAST(disposal_proceeds AS DOUBLE))
-      comment: "Total proceeds from asset disposals for asset recycling and capital recovery analysis."
-    - name: "total_gain_loss_on_disposal"
-      expr: SUM(CAST(gain_loss_on_disposal AS DOUBLE))
-      comment: "Total gain or loss on asset disposals for P&L impact and asset management effectiveness."
-    - name: "total_salvage_value"
-      expr: SUM(CAST(salvage_value AS DOUBLE))
-      comment: "Total salvage value of fixed assets for residual value planning."
-    - name: "asset_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of fixed assets in the register for asset completeness and audit purposes."
-    - name: "impaired_asset_count"
-      expr: COUNT(CASE WHEN impairment_indicator = TRUE THEN 1 END)
-      comment: "Number of impaired assets requiring write-down — a financial risk KPI for audit and investor reporting."
-    - name: "avg_net_book_value"
-      expr: AVG(CAST(net_book_value AS DOUBLE))
-      comment: "Average net book value per asset for asset portfolio benchmarking."
+    - name: "Distinct Fixed Asset"
+      expr: COUNT(DISTINCT fixed_asset_id)
+    - name: "Total Accumulated Depreciation"
+      expr: SUM(accumulated_depreciation)
+    - name: "Average Accumulated Depreciation"
+      expr: AVG(accumulated_depreciation)
+    - name: "Total Acquisition Cost"
+      expr: SUM(acquisition_cost)
+    - name: "Average Acquisition Cost"
+      expr: AVG(acquisition_cost)
+    - name: "Total Disposal Proceeds"
+      expr: SUM(disposal_proceeds)
+    - name: "Average Disposal Proceeds"
+      expr: AVG(disposal_proceeds)
+    - name: "Total Gain Loss On Disposal"
+      expr: SUM(gain_loss_on_disposal)
+    - name: "Average Gain Loss On Disposal"
+      expr: AVG(gain_loss_on_disposal)
+    - name: "Total Impairment Loss"
+      expr: SUM(impairment_loss)
+    - name: "Average Impairment Loss"
+      expr: AVG(impairment_loss)
+    - name: "Total Net Book Value"
+      expr: SUM(net_book_value)
+    - name: "Average Net Book Value"
+      expr: AVG(net_book_value)
+    - name: "Total Salvage Value"
+      expr: SUM(salvage_value)
+    - name: "Average Salvage Value"
+      expr: AVG(salvage_value)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_gl_batch`
@@ -664,58 +908,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "General Ledger batch metrics tracking posting volumes, control totals, reversal rates, and batch processing quality for financial close management and audit compliance."
+  comment: "Gl Batch business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`gl_batch`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the GL batch for property-level close management."
-    - name: "batch_status"
-      expr: batch_status
-      comment: "Current batch status (Open, Posted, Reversed) for close process monitoring."
-    - name: "batch_type"
-      expr: batch_type
-      comment: "Type of GL batch (Manual, System, Recurring) for batch categorization."
-    - name: "source_module"
-      expr: source_module
-      comment: "Source module that generated the batch (AR, AP, Payroll) for sub-ledger reconciliation."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the GL batch for period-over-period close analysis."
-    - name: "accounting_period"
+    - name: "Accounting Period"
       expr: accounting_period
-      comment: "Accounting period for monthly close tracking."
-    - name: "posting_date"
-      expr: DATE_TRUNC('month', posting_date)
-      comment: "Posting date truncated to month for close timeline analysis."
-    - name: "is_recurring"
-      expr: is_recurring
-      comment: "Indicates recurring batches for automated close process monitoring."
-    - name: "is_balanced"
-      expr: is_balanced
-      comment: "Indicates whether the batch is balanced (debits = credits) for control quality monitoring."
+    - name: "Approval Required"
+      expr: approval_required
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Batch Name"
+      expr: batch_name
+    - name: "Batch Number"
+      expr: batch_number
+    - name: "Batch Status"
+      expr: batch_status
+    - name: "Batch Type"
+      expr: batch_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Code"
+      expr: department_code
+    - name: "Gl Batch Description"
+      expr: gl_batch_description
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Entry Count"
+      expr: entry_count
+    - name: "External Reference"
+      expr: external_reference
+    - name: "Fiscal Year"
+      expr: fiscal_year
   measures:
-    - name: "total_debit_amount"
-      expr: SUM(CAST(total_debit_amount AS DOUBLE))
-      comment: "Total debit amount across GL batches for ledger volume and close completeness analysis."
-    - name: "total_credit_amount"
-      expr: SUM(CAST(total_credit_amount AS DOUBLE))
-      comment: "Total credit amount across GL batches for ledger balance verification."
-    - name: "total_control_amount"
-      expr: SUM(CAST(control_total AS DOUBLE))
-      comment: "Total control total across batches for batch integrity and reconciliation."
-    - name: "batch_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of GL batches processed — a financial close throughput KPI."
-    - name: "unbalanced_batch_count"
-      expr: COUNT(CASE WHEN is_balanced = FALSE THEN 1 END)
-      comment: "Number of unbalanced GL batches — a critical financial control quality KPI requiring immediate remediation."
-    - name: "reversal_batch_count"
-      expr: COUNT(CASE WHEN gl_reversal_batch_id IS NOT NULL THEN 1 END)
-      comment: "Number of reversed GL batches indicating posting errors or period adjustments."
-    - name: "avg_control_total"
-      expr: AVG(CAST(control_total AS DOUBLE))
-      comment: "Average control total per GL batch for batch size benchmarking and anomaly detection."
+    - name: "Distinct Gl Batch"
+      expr: COUNT(DISTINCT gl_batch_id)
+    - name: "Total Control Total"
+      expr: SUM(control_total)
+    - name: "Average Control Total"
+      expr: AVG(control_total)
+    - name: "Total Total Credit Amount"
+      expr: SUM(total_credit_amount)
+    - name: "Average Total Credit Amount"
+      expr: AVG(total_credit_amount)
+    - name: "Total Total Debit Amount"
+      expr: SUM(total_debit_amount)
+    - name: "Average Total Debit Amount"
+      expr: AVG(total_debit_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_hma_contract`
@@ -723,58 +967,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Hotel Management Agreement contract metrics tracking fee structures, contract terms, performance test flags, and renewal pipeline for ownership and operator governance."
+  comment: "Hma Contract business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`hma_contract`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the HMA contract for property-level contract management."
-    - name: "contract_status"
+    - name: "Accounting Standard"
+      expr: accounting_standard
+    - name: "Amendment Count"
+      expr: amendment_count
+    - name: "Assignment Rights Flag"
+      expr: assignment_rights_flag
+    - name: "Audit Rights Flag"
+      expr: audit_rights_flag
+    - name: "Budget Approval Authority"
+      expr: budget_approval_authority
+    - name: "Confidentiality Period Years"
+      expr: confidentiality_period_years
+    - name: "Contract Name"
+      expr: contract_name
+    - name: "Contract Notes"
+      expr: contract_notes
+    - name: "Contract Number"
+      expr: contract_number
+    - name: "Contract Status"
       expr: contract_status
-      comment: "Current contract status (Active, Expired, Terminated) for contract lifecycle management."
-    - name: "contract_type"
+    - name: "Contract Type"
       expr: contract_type
-      comment: "Type of HMA contract for contract structure analysis."
-    - name: "fee_calculation_basis"
-      expr: fee_calculation_basis
-      comment: "Basis for fee calculation (Gross Revenue, Total Revenue) for fee structure benchmarking."
-    - name: "performance_test_flag"
-      expr: performance_test_flag
-      comment: "Indicates contracts with performance tests for operator accountability monitoring."
-    - name: "effective_date"
-      expr: DATE_TRUNC('year', effective_date)
-      comment: "Contract effective date truncated to year for contract vintage analysis."
-    - name: "currency_code"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Contract currency for multi-currency HMA portfolio analysis."
-    - name: "governing_law_jurisdiction"
-      expr: governing_law_jurisdiction
-      comment: "Governing law jurisdiction for legal risk and compliance analysis."
+    - name: "Data Classification"
+      expr: data_classification
+    - name: "Dispute Resolution Method"
+      expr: dispute_resolution_method
+    - name: "Effective Date"
+      expr: effective_date
   measures:
-    - name: "total_minimum_annual_fee"
-      expr: SUM(CAST(minimum_annual_fee_amount AS DOUBLE))
-      comment: "Total minimum annual management fee commitments across HMA contracts — a guaranteed fee obligation KPI for ownership."
-    - name: "total_working_capital"
-      expr: SUM(CAST(working_capital_amount AS DOUBLE))
-      comment: "Total working capital committed under HMA contracts for liquidity planning."
-    - name: "total_indemnification_cap"
-      expr: SUM(CAST(indemnification_cap_amount AS DOUBLE))
-      comment: "Total indemnification cap exposure across HMA contracts for legal risk quantification."
-    - name: "avg_base_management_fee_pct"
-      expr: AVG(CAST(base_management_fee_percentage AS DOUBLE))
-      comment: "Average base management fee percentage across HMA contracts for fee benchmarking and negotiation."
-    - name: "avg_incentive_fee_pct"
-      expr: AVG(CAST(incentive_fee_percentage AS DOUBLE))
-      comment: "Average incentive management fee percentage for performance-linked fee analysis."
-    - name: "avg_ffe_reserve_pct"
-      expr: AVG(CAST(capital_expenditure_reserve_percentage AS DOUBLE))
-      comment: "Average FF&E reserve percentage across contracts for capital maintenance commitment analysis."
-    - name: "contract_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of HMA contracts for portfolio size and governance monitoring."
-    - name: "performance_test_contract_count"
-      expr: COUNT(CASE WHEN performance_test_flag = TRUE THEN 1 END)
-      comment: "Number of HMA contracts with performance tests — an operator accountability and termination risk KPI."
+    - name: "Distinct Hma Contract"
+      expr: COUNT(DISTINCT hma_contract_id)
+    - name: "Total Base Management Fee Percentage"
+      expr: SUM(base_management_fee_percentage)
+    - name: "Average Base Management Fee Percentage"
+      expr: AVG(base_management_fee_percentage)
+    - name: "Total Capital Expenditure Reserve Percentage"
+      expr: SUM(capital_expenditure_reserve_percentage)
+    - name: "Average Capital Expenditure Reserve Percentage"
+      expr: AVG(capital_expenditure_reserve_percentage)
+    - name: "Total Incentive Fee Percentage"
+      expr: SUM(incentive_fee_percentage)
+    - name: "Average Incentive Fee Percentage"
+      expr: AVG(incentive_fee_percentage)
+    - name: "Total Indemnification Cap Amount"
+      expr: SUM(indemnification_cap_amount)
+    - name: "Average Indemnification Cap Amount"
+      expr: AVG(indemnification_cap_amount)
+    - name: "Total Minimum Annual Fee Amount"
+      expr: SUM(minimum_annual_fee_amount)
+    - name: "Average Minimum Annual Fee Amount"
+      expr: AVG(minimum_annual_fee_amount)
+    - name: "Total Working Capital Amount"
+      expr: SUM(working_capital_amount)
+    - name: "Average Working Capital Amount"
+      expr: AVG(working_capital_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_journal_entry`
@@ -782,58 +1038,172 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Journal entry metrics tracking posting volumes, debit/credit balances, reversal rates, and intercompany activity for financial close quality and audit compliance."
+  comment: "Journal Entry business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`journal_entry`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the journal entry for property-level ledger analysis."
-    - name: "posting_status"
-      expr: posting_status
-      comment: "Posting status of the journal entry for close process monitoring."
-    - name: "document_type"
-      expr: document_type
-      comment: "Document type (SA, AA, KR) for journal entry categorization."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for period-over-period journal entry analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly close analysis."
-    - name: "posting_date"
-      expr: DATE_TRUNC('month', posting_date)
-      comment: "Posting date truncated to month for close timeline analysis."
-    - name: "intercompany_indicator"
-      expr: intercompany_indicator
-      comment: "Indicates intercompany journal entries for elimination and consolidation analysis."
-    - name: "capex_indicator"
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Audit Trail Notes"
+      expr: audit_trail_notes
+    - name: "Capex Indicator"
       expr: capex_indicator
-      comment: "Indicates CapEx journal entries for capital expenditure tracking."
-    - name: "reversal_indicator"
-      expr: reversal_indicator
-      comment: "Indicates reversed journal entries for error rate and close quality analysis."
+    - name: "Company Code"
+      expr: company_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Journal Entry Description"
+      expr: journal_entry_description
+    - name: "Document Number"
+      expr: document_number
+    - name: "Document Type"
+      expr: document_type
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Functional Currency Code"
+      expr: functional_currency_code
+    - name: "Intercompany Indicator"
+      expr: intercompany_indicator
+    - name: "Intercompany Partner Code"
+      expr: intercompany_partner_code
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Posted Timestamp"
+      expr: posted_timestamp
+    - name: "Posting Date"
+      expr: posting_date
   measures:
-    - name: "total_debit_amount"
-      expr: SUM(CAST(debit_amount AS DOUBLE))
-      comment: "Total debit amount posted across journal entries — primary ledger volume KPI for close management."
-    - name: "total_credit_amount"
-      expr: SUM(CAST(credit_amount AS DOUBLE))
-      comment: "Total credit amount posted across journal entries for ledger balance verification."
-    - name: "journal_entry_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of journal entries posted for close throughput and workload analysis."
-    - name: "reversal_entry_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed journal entries — a financial close quality and error rate KPI."
-    - name: "intercompany_entry_count"
-      expr: COUNT(CASE WHEN intercompany_indicator = TRUE THEN 1 END)
-      comment: "Number of intercompany journal entries for consolidation and elimination monitoring."
-    - name: "capex_entry_count"
-      expr: COUNT(CASE WHEN capex_indicator = TRUE THEN 1 END)
-      comment: "Number of CapEx journal entries for capital expenditure tracking and budget compliance."
-    - name: "avg_debit_amount"
-      expr: AVG(CAST(debit_amount AS DOUBLE))
-      comment: "Average debit amount per journal entry for benchmarking and anomaly detection."
+    - name: "Distinct Journal Entry"
+      expr: COUNT(DISTINCT journal_entry_id)
+    - name: "Total Credit Amount"
+      expr: SUM(credit_amount)
+    - name: "Average Credit Amount"
+      expr: AVG(credit_amount)
+    - name: "Total Debit Amount"
+      expr: SUM(debit_amount)
+    - name: "Average Debit Amount"
+      expr: AVG(debit_amount)
+    - name: "Total Exchange Rate"
+      expr: SUM(exchange_rate)
+    - name: "Average Exchange Rate"
+      expr: AVG(exchange_rate)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_journal_entry_line`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Journal Entry Line business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`journal_entry_line`"
+  dimensions:
+    - name: "Asset Number"
+      expr: asset_number
+    - name: "Assignment Field"
+      expr: assignment_field
+    - name: "Baseline Payment Date"
+      expr: baseline_payment_date
+    - name: "Business Area Code"
+      expr: business_area_code
+    - name: "Capex Indicator"
+      expr: capex_indicator
+    - name: "Clearing Date"
+      expr: clearing_date
+    - name: "Clearing Document Number"
+      expr: clearing_document_number
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Customer Code"
+      expr: customer_code
+    - name: "Debit Credit Indicator"
+      expr: debit_credit_indicator
+    - name: "Functional Area Code"
+      expr: functional_area_code
+    - name: "Group Currency Code"
+      expr: group_currency_code
+    - name: "Line Item Text"
+      expr: line_item_text
+    - name: "Line Number"
+      expr: line_number
+    - name: "Local Currency Code"
+      expr: local_currency_code
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Journal Entry Line"
+      expr: COUNT(DISTINCT journal_entry_line_id)
+    - name: "Total Amount Group Currency"
+      expr: SUM(amount_group_currency)
+    - name: "Average Amount Group Currency"
+      expr: AVG(amount_group_currency)
+    - name: "Total Amount Local Currency"
+      expr: SUM(amount_local_currency)
+    - name: "Average Amount Local Currency"
+      expr: AVG(amount_local_currency)
+    - name: "Total Amount Transaction Currency"
+      expr: SUM(amount_transaction_currency)
+    - name: "Average Amount Transaction Currency"
+      expr: AVG(amount_transaction_currency)
+    - name: "Total Exchange Rate"
+      expr: SUM(exchange_rate)
+    - name: "Average Exchange Rate"
+      expr: AVG(exchange_rate)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_ledger`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Ledger business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`ledger`"
+  dimensions:
+    - name: "Account Category"
+      expr: account_category
+    - name: "Account Name"
+      expr: account_name
+    - name: "Account Number"
+      expr: account_number
+    - name: "Account Subcategory"
+      expr: account_subcategory
+    - name: "Account Type"
+      expr: account_type
+    - name: "Audit Trail Required"
+      expr: audit_trail_required
+    - name: "Balance Sheet Section"
+      expr: balance_sheet_section
+    - name: "Cash Flow Classification"
+      expr: cash_flow_classification
+    - name: "Consolidation Account"
+      expr: consolidation_account
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Ledger Description"
+      expr: ledger_description
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Functional Area"
+      expr: functional_area
+    - name: "Income Statement Section"
+      expr: income_statement_section
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Ledger"
+      expr: COUNT(DISTINCT ledger_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_management_fee`
@@ -841,55 +1211,66 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Hotel Management Agreement fee metrics tracking base and incentive fee accruals, payment status, and fee rate performance for ownership and operator financial governance."
+  comment: "Management Fee business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`management_fee`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the management fee for property-level HMA compliance."
-    - name: "fee_type"
-      expr: fee_type
-      comment: "Type of management fee (Base, Incentive, Other) for fee structure analysis."
-    - name: "fee_status"
-      expr: fee_status
-      comment: "Current fee status (Accrued, Paid, Disputed) for payment pipeline monitoring."
-    - name: "approval_status"
+    - name: "Adjustment Reason"
+      expr: adjustment_reason
+    - name: "Approval Status"
       expr: approval_status
-      comment: "Approval status of the management fee for governance and control monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for annual fee performance analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly fee accrual tracking."
-    - name: "calculation_basis"
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Calculation Basis"
       expr: calculation_basis
-      comment: "Basis for fee calculation (Gross Revenue, GOP) for fee structure analysis."
-    - name: "intercompany_indicator"
+    - name: "Calculation Date"
+      expr: calculation_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Fee Number"
+      expr: fee_number
+    - name: "Fee Status"
+      expr: fee_status
+    - name: "Fee Type"
+      expr: fee_type
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Intercompany Indicator"
       expr: intercompany_indicator
-      comment: "Indicates intercompany management fees for consolidation and elimination."
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Payment Date"
+      expr: payment_date
   measures:
-    - name: "total_fee_amount"
-      expr: SUM(CAST(fee_amount AS DOUBLE))
-      comment: "Total management fee amount accrued — primary HMA financial obligation KPI for ownership review."
-    - name: "total_net_fee_amount"
-      expr: SUM(CAST(net_fee_amount AS DOUBLE))
-      comment: "Total net management fee after adjustments — actual fee liability for cash planning."
-    - name: "total_basis_amount"
-      expr: SUM(CAST(basis_amount AS DOUBLE))
-      comment: "Total fee calculation basis amount (revenue or GOP) for fee rate verification."
-    - name: "total_adjustment_amount"
-      expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total fee adjustments applied — a fee dispute and reconciliation KPI."
-    - name: "avg_fee_rate_percentage"
-      expr: AVG(CAST(fee_rate_percentage AS DOUBLE))
-      comment: "Average management fee rate percentage across properties for HMA benchmarking."
-    - name: "fee_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of management fee records for accrual completeness monitoring."
-    - name: "reversal_fee_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed management fees indicating disputes or calculation errors."
+    - name: "Distinct Management Fee"
+      expr: COUNT(DISTINCT management_fee_id)
+    - name: "Total Adjustment Amount"
+      expr: SUM(adjustment_amount)
+    - name: "Average Adjustment Amount"
+      expr: AVG(adjustment_amount)
+    - name: "Total Basis Amount"
+      expr: SUM(basis_amount)
+    - name: "Average Basis Amount"
+      expr: AVG(basis_amount)
+    - name: "Total Fee Amount"
+      expr: SUM(fee_amount)
+    - name: "Average Fee Amount"
+      expr: AVG(fee_amount)
+    - name: "Total Fee Rate Percentage"
+      expr: SUM(fee_rate_percentage)
+    - name: "Average Fee Rate Percentage"
+      expr: AVG(fee_rate_percentage)
+    - name: "Total Net Fee Amount"
+      expr: SUM(net_fee_amount)
+    - name: "Average Net Fee Amount"
+      expr: AVG(net_fee_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_owner_distribution`
@@ -897,61 +1278,94 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Owner distribution metrics tracking NOI, GOP, distribution amounts, FFE reserve contributions, and debt service for ownership entity financial performance and HMA compliance."
+  comment: "Owner Distribution business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`owner_distribution`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the owner distribution for property-level ownership performance."
-    - name: "distribution_status"
-      expr: distribution_status
-      comment: "Current distribution status (Calculated, Approved, Paid) for distribution pipeline monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for annual ownership return analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly distribution tracking."
-    - name: "dispute_flag"
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Calculation Date"
+      expr: calculation_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Dispute Date"
+      expr: dispute_date
+    - name: "Dispute Flag"
       expr: dispute_flag
-      comment: "Indicates disputed distributions for ownership dispute monitoring."
-    - name: "period_start_date"
-      expr: DATE_TRUNC('month', period_start_date)
-      comment: "Distribution period start date truncated to month for trend analysis."
+    - name: "Dispute Reason"
+      expr: dispute_reason
+    - name: "Distribution Number"
+      expr: distribution_number
+    - name: "Distribution Status"
+      expr: distribution_status
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Gl Posting Date"
+      expr: gl_posting_date
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Payment Date"
+      expr: payment_date
+    - name: "Payment Due Date"
+      expr: payment_due_date
   measures:
-    - name: "total_distribution_amount"
-      expr: SUM(CAST(distribution_amount AS DOUBLE))
-      comment: "Total owner distribution amount — primary ownership return KPI for investor and board reporting."
-    - name: "total_noi_amount"
-      expr: SUM(CAST(noi_amount AS DOUBLE))
-      comment: "Total Net Operating Income — the key profitability metric driving owner distributions and asset valuation."
-    - name: "total_gop_amount"
-      expr: SUM(CAST(gop_amount AS DOUBLE))
-      comment: "Total Gross Operating Profit for operational performance benchmarking against budget."
-    - name: "total_gross_revenue"
-      expr: SUM(CAST(gross_revenue_amount AS DOUBLE))
-      comment: "Total gross revenue used as distribution calculation basis for HMA compliance verification."
-    - name: "total_ffe_reserve_contribution"
-      expr: SUM(CAST(ffe_reserve_contribution_amount AS DOUBLE))
-      comment: "Total FF&E reserve contributions — a capital maintenance compliance KPI for ownership and brand standards."
-    - name: "total_debt_service"
-      expr: SUM(CAST(debt_service_amount AS DOUBLE))
-      comment: "Total debt service deducted from distributions for leverage and coverage ratio analysis."
-    - name: "total_base_management_fee"
-      expr: SUM(CAST(base_management_fee_amount AS DOUBLE))
-      comment: "Total base management fees deducted for HMA fee compliance monitoring."
-    - name: "total_incentive_management_fee"
-      expr: SUM(CAST(incentive_management_fee_amount AS DOUBLE))
-      comment: "Total incentive management fees paid — a performance-linked fee KPI for operator accountability."
-    - name: "total_operating_expenses"
-      expr: SUM(CAST(total_operating_expenses_amount AS DOUBLE))
-      comment: "Total operating expenses for cost efficiency and NOI margin analysis."
-    - name: "distribution_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Number of owner distribution records for distribution completeness and governance monitoring."
-    - name: "avg_ffe_reserve_balance"
-      expr: AVG(CAST(ffe_reserve_balance AS DOUBLE))
-      comment: "Average FF&E reserve balance across properties for capital maintenance adequacy assessment."
+    - name: "Distinct Owner Distribution"
+      expr: COUNT(DISTINCT owner_distribution_id)
+    - name: "Total Base Management Fee Amount"
+      expr: SUM(base_management_fee_amount)
+    - name: "Average Base Management Fee Amount"
+      expr: AVG(base_management_fee_amount)
+    - name: "Total Debt Service Amount"
+      expr: SUM(debt_service_amount)
+    - name: "Average Debt Service Amount"
+      expr: AVG(debt_service_amount)
+    - name: "Total Distribution Amount"
+      expr: SUM(distribution_amount)
+    - name: "Average Distribution Amount"
+      expr: AVG(distribution_amount)
+    - name: "Total Ffe Reserve Balance"
+      expr: SUM(ffe_reserve_balance)
+    - name: "Average Ffe Reserve Balance"
+      expr: AVG(ffe_reserve_balance)
+    - name: "Total Ffe Reserve Contribution Amount"
+      expr: SUM(ffe_reserve_contribution_amount)
+    - name: "Average Ffe Reserve Contribution Amount"
+      expr: AVG(ffe_reserve_contribution_amount)
+    - name: "Total Gop Amount"
+      expr: SUM(gop_amount)
+    - name: "Average Gop Amount"
+      expr: AVG(gop_amount)
+    - name: "Total Gross Revenue Amount"
+      expr: SUM(gross_revenue_amount)
+    - name: "Average Gross Revenue Amount"
+      expr: AVG(gross_revenue_amount)
+    - name: "Total Incentive Management Fee Amount"
+      expr: SUM(incentive_management_fee_amount)
+    - name: "Average Incentive Management Fee Amount"
+      expr: AVG(incentive_management_fee_amount)
+    - name: "Total Insurance Premium Amount"
+      expr: SUM(insurance_premium_amount)
+    - name: "Average Insurance Premium Amount"
+      expr: AVG(insurance_premium_amount)
+    - name: "Total Noi Amount"
+      expr: SUM(noi_amount)
+    - name: "Average Noi Amount"
+      expr: AVG(noi_amount)
+    - name: "Total Other Deductions Amount"
+      expr: SUM(other_deductions_amount)
+    - name: "Average Other Deductions Amount"
+      expr: AVG(other_deductions_amount)
+    - name: "Total Property Tax Amount"
+      expr: SUM(property_tax_amount)
+    - name: "Average Property Tax Amount"
+      expr: AVG(property_tax_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_payment_run`
@@ -959,52 +1373,176 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment run execution metrics tracking disbursement success rates, failed payments, processing fees, and reconciliation status for treasury operations management."
+  comment: "Payment Run business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`payment_run`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the payment run for property-level treasury management."
-    - name: "payment_run_status"
-      expr: payment_run_status
-      comment: "Current payment run status (Completed, Failed, Partial) for treasury operations monitoring."
-    - name: "run_type"
-      expr: run_type
-      comment: "Type of payment run (Regular, Emergency, Reversal) for payment categorization."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method (ACH, Wire, Check) for payment channel analysis."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Reconciliation status for bank reconciliation completeness monitoring."
-    - name: "scheduled_date"
-      expr: DATE_TRUNC('month', scheduled_date)
-      comment: "Scheduled payment date truncated to month for cash flow planning."
-    - name: "approval_required_flag"
+    - name: "Approval Required Flag"
       expr: approval_required_flag
-      comment: "Indicates payment runs requiring approval for governance and control monitoring."
+    - name: "Approval Timestamp"
+      expr: approval_timestamp
+    - name: "Completion Timestamp"
+      expr: completion_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Payment Run Description"
+      expr: payment_run_description
+    - name: "Error Message"
+      expr: error_message
+    - name: "Execution Timestamp"
+      expr: execution_timestamp
+    - name: "External Reference Code"
+      expr: external_reference_code
+    - name: "Failed Payment Count"
+      expr: failed_payment_count
+    - name: "Gl Posting Date"
+      expr: gl_posting_date
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Payment File Format"
+      expr: payment_file_format
+    - name: "Payment File Name"
+      expr: payment_file_name
+    - name: "Payment Method"
+      expr: payment_method
   measures:
-    - name: "total_disbursement_amount"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total payment run disbursement amount — primary cash outflow KPI for treasury management."
-    - name: "total_successful_amount"
-      expr: SUM(CAST(successful_amount AS DOUBLE))
-      comment: "Total successfully disbursed amount for payment execution effectiveness measurement."
-    - name: "total_failed_amount"
-      expr: SUM(CAST(failed_amount AS DOUBLE))
-      comment: "Total failed payment amount — a payment operations quality KPI requiring immediate remediation."
-    - name: "total_net_disbursement_amount"
-      expr: SUM(CAST(net_disbursement_amount AS DOUBLE))
-      comment: "Total net disbursement after fees for actual cash outflow reporting."
-    - name: "total_processing_fees"
-      expr: SUM(CAST(processing_fee_amount AS DOUBLE))
-      comment: "Total payment processing fees — a controllable treasury cost KPI."
-    - name: "payment_run_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of payment runs for treasury throughput and workload analysis."
-    - name: "avg_disbursement_amount"
-      expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average disbursement amount per payment run for benchmarking and anomaly detection."
+    - name: "Distinct Payment Run"
+      expr: COUNT(DISTINCT payment_run_id)
+    - name: "Total Failed Amount"
+      expr: SUM(failed_amount)
+    - name: "Average Failed Amount"
+      expr: AVG(failed_amount)
+    - name: "Total Net Disbursement Amount"
+      expr: SUM(net_disbursement_amount)
+    - name: "Average Net Disbursement Amount"
+      expr: AVG(net_disbursement_amount)
+    - name: "Total Processing Fee Amount"
+      expr: SUM(processing_fee_amount)
+    - name: "Average Processing Fee Amount"
+      expr: AVG(processing_fee_amount)
+    - name: "Total Successful Amount"
+      expr: SUM(successful_amount)
+    - name: "Average Successful Amount"
+      expr: AVG(successful_amount)
+    - name: "Total Total Amount"
+      expr: SUM(total_amount)
+    - name: "Average Total Amount"
+      expr: AVG(total_amount)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_profit_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Profit Center business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`profit_center`"
+  dimensions:
+    - name: "Address Line 1"
+      expr: address_line_1
+    - name: "Address Line 2"
+      expr: address_line_2
+    - name: "Brand Code"
+      expr: brand_code
+    - name: "Business Area Code"
+      expr: business_area_code
+    - name: "City"
+      expr: city
+    - name: "Closure Date"
+      expr: closure_date
+    - name: "Profit Center Code"
+      expr: profit_center_code
+    - name: "Company Code"
+      expr: company_code
+    - name: "Controlling Area Code"
+      expr: controlling_area_code
+    - name: "Country Code"
+      expr: country_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Profit Center Description"
+      expr: profit_center_description
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Email Address"
+      expr: email_address
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Profit Center"
+      expr: COUNT(DISTINCT profit_center_id)
+    - name: "Total Square Footage"
+      expr: SUM(square_footage)
+    - name: "Average Square Footage"
+      expr: AVG(square_footage)
+    - name: "Total Star Rating"
+      expr: SUM(star_rating)
+    - name: "Average Star Rating"
+      expr: AVG(star_rating)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_recurring_entry_template`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Recurring Entry Template business metrics"
+  source: "`vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template`"
+  dimensions:
+    - name: "Amount Type"
+      expr: amount_type
+    - name: "Approval Required Flag"
+      expr: approval_required_flag
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Approver Role"
+      expr: approver_role
+    - name: "Auto Post Flag"
+      expr: auto_post_flag
+    - name: "Business Justification"
+      expr: business_justification
+    - name: "Calculation Formula"
+      expr: calculation_formula
+    - name: "Capex Ffe Flag"
+      expr: capex_ffe_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Department Code"
+      expr: department_code
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Entry Type"
+      expr: entry_type
+    - name: "Gaap Reference"
+      expr: gaap_reference
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Recurring Entry Template"
+      expr: COUNT(DISTINCT recurring_entry_template_id)
+    - name: "Total Fixed Amount"
+      expr: SUM(fixed_amount)
+    - name: "Average Fixed Amount"
+      expr: AVG(fixed_amount)
+    - name: "Total Sox Control Code"
+      expr: SUM(sox_control_code)
+    - name: "Average Sox Control Code"
+      expr: AVG(sox_control_code)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`finance_tax_posting`
@@ -1012,53 +1550,56 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tax posting metrics tracking tax liabilities, filing status, exemptions, and tax type mix for tax compliance, regulatory reporting, and jurisdiction-level tax management."
+  comment: "Tax Posting business metrics"
   source: "`vibe_travel_hospitality_v1`.`finance`.`tax_posting`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the tax posting for property-level tax compliance."
-    - name: "tax_type"
-      expr: tax_type
-      comment: "Type of tax (VAT, Occupancy Tax, Sales Tax) for tax liability categorization."
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax code for detailed tax rate and jurisdiction analysis."
-    - name: "jurisdiction_code"
-      expr: jurisdiction_code
-      comment: "Tax jurisdiction for multi-jurisdiction compliance reporting."
-    - name: "filing_status"
-      expr: filing_status
-      comment: "Tax filing status (Filed, Pending, Overdue) for compliance deadline monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for annual tax liability analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly tax accrual tracking."
-    - name: "exemption_indicator"
+    - name: "Adjustment Reason"
+      expr: adjustment_reason
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Document Number"
+      expr: document_number
+    - name: "Due Date"
+      expr: due_date
+    - name: "Exemption Certificate Number"
+      expr: exemption_certificate_number
+    - name: "Exemption Indicator"
       expr: exemption_indicator
-      comment: "Indicates tax-exempt transactions for exemption rate and compliance analysis."
-    - name: "reversal_indicator"
-      expr: reversal_indicator
-      comment: "Indicates reversed tax postings for error rate and adjustment analysis."
+    - name: "Filing Date"
+      expr: filing_date
+    - name: "Filing Status"
+      expr: filing_status
+    - name: "Fiscal Period"
+      expr: fiscal_period
+    - name: "Fiscal Year"
+      expr: fiscal_year
+    - name: "Jurisdiction Code"
+      expr: jurisdiction_code
+    - name: "Modified By"
+      expr: modified_by
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Payment Date"
+      expr: payment_date
   measures:
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount posted — primary tax liability KPI for regulatory compliance and cash planning."
-    - name: "total_tax_base_amount"
-      expr: SUM(CAST(tax_base_amount AS DOUBLE))
-      comment: "Total taxable base amount for effective tax rate calculation and audit support."
-    - name: "avg_tax_rate_percentage"
-      expr: AVG(CAST(tax_rate_percentage AS DOUBLE))
-      comment: "Average effective tax rate across postings for tax rate benchmarking and jurisdiction analysis."
-    - name: "tax_posting_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of tax postings for compliance volume and filing completeness monitoring."
-    - name: "exempt_posting_count"
-      expr: COUNT(CASE WHEN exemption_indicator = TRUE THEN 1 END)
-      comment: "Number of tax-exempt postings for exemption compliance and audit risk monitoring."
-    - name: "reversal_posting_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed tax postings indicating adjustments or errors requiring investigation."
+    - name: "Distinct Tax Posting"
+      expr: COUNT(DISTINCT tax_posting_id)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Tax Base Amount"
+      expr: SUM(tax_base_amount)
+    - name: "Average Tax Base Amount"
+      expr: AVG(tax_base_amount)
+    - name: "Total Tax Rate Percentage"
+      expr: SUM(tax_rate_percentage)
+    - name: "Average Tax Rate Percentage"
+      expr: AVG(tax_rate_percentage)
 $$;

@@ -1,5 +1,5 @@
 -- Schema for Domain: loyalty | Business: Travel_Hospitality | Version: v2_mvm
--- Generated on: 2026-06-27 02:37:16
+-- Generated on: 2026-07-10 22:20:55
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`loyalty` COMMENT 'Guest loyalty program management including membership enrollment, tier management, points accrual and redemption, elite status benefits, partner integrations, and rewards fulfillment. Tracks member activity, lifetime value (LTV), engagement metrics, SALT (Satisfaction and Loyalty Tracking), and program economics. Supports personalized offers, tier upgrades, and retention campaigns.';
@@ -7,17 +7,18 @@ CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`loyalty` COMMENT 'Gu
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` (
     `member_id` BIGINT COMMENT 'Unique identifier for the loyalty program member. Primary key.',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Member acquisition channel attribution: marketing ROI reporting requires knowing which booking/distribution channel drove each loyalty enrollment. Revenue and loyalty teams track channel-sourced membe',
-    `profile_id` BIGINT COMMENT 'FK to guest.profile.profile_id — MUST-HAVE: Loyalty member must resolve to guest identity for personalization, stay history correlation, and profile merge operations. Without this FK, loyalty benefits cannot be applied at check-in.',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Member currency preference normalization: member.currency_preference is a denormalized currency reference used for statement generation and points valuation display. FK to currency enables proper curr',
     `property_id` BIGINT COMMENT 'Foreign key reference to the property where the member enrolled in the loyalty program, if enrollment occurred at a physical location.',
+    `member_property_id` BIGINT COMMENT 'Foreign key reference to the property that the member visits most frequently or has designated as their preferred location.',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Pre-arrival room assignment and upgrade processing require resolving a members preferred room type to a valid inventory room_type record. Loyalty operations teams use this for personalization reports',
     `tier_id` BIGINT COMMENT 'Foreign key reference to the loyalty tier product. Represents the current tier assignment (e.g., Silver, Gold, Platinum, Elite).',
     `account_closure_date` DATE COMMENT 'Date when the membership account was closed or terminated. Null for active accounts.',
     `account_closure_reason` STRING COMMENT 'Reason for membership account closure. Used for churn analysis and program improvement.. Valid values are `member_request|inactivity|fraud|policy_violation|deceased|duplicate`',
     `communication_opt_in` BOOLEAN COMMENT 'Indicates whether the member has opted in to receive marketing communications and promotional offers from the loyalty program.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the member record was first created in the system. Used for audit trail and data lineage.',
-    `currency_preference` STRING COMMENT 'Members preferred currency for displaying points value and pricing. Three-letter ISO 4217 currency code.. Valid values are `^[A-Z]{3}$`',
     `current_points_balance` BIGINT COMMENT 'Current available points balance that can be redeemed by the member. Reflects earned points minus redeemed and expired points.',
     `email_opt_in` BOOLEAN COMMENT 'Indicates whether the member has consented to receive email communications. Separate from general communication opt-in for channel-specific consent.',
+    `enrollment_channel` STRING COMMENT 'Channel through which the member enrolled in the loyalty program. Used for channel effectiveness analysis.. Valid values are `web|mobile_app|front_desk|call_center|partner|event`',
     `enrollment_date` DATE COMMENT 'Date when the guest enrolled in the loyalty program. Marks the beginning of the member lifecycle.',
     `language_preference` STRING COMMENT 'Members preferred language for communications and service delivery. Three-letter ISO 639-2 language code.. Valid values are `^[A-Z]{3}$`',
     `last_stay_date` DATE COMMENT 'Date of the members most recent completed stay. Used for recency analysis and churn prediction.',
@@ -32,7 +33,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` (
     `partner_sharing_consent` BOOLEAN COMMENT 'Indicates whether the member has consented to share their data with loyalty program partners (airlines, car rentals, etc.) for cross-program benefits.',
     `points_expired` BIGINT COMMENT 'Total cumulative points that have expired due to inactivity or program rules.',
     `points_redeemed` BIGINT COMMENT 'Total cumulative points redeemed by the member for rewards, upgrades, or benefits since enrollment.',
-    `preferred_room_type` STRING COMMENT 'Members preferred room type for reservations. Used for personalized booking experiences and upgrade offers.. Valid values are `standard|deluxe|suite|executive|presidential|accessible`',
     `salt_score` DECIMAL(18,2) COMMENT 'SALT (Satisfaction and Loyalty Tracking) composite score measuring member satisfaction and loyalty. Proprietary metric combining multiple engagement and satisfaction indicators.',
     `sms_opt_in` BOOLEAN COMMENT 'Indicates whether the member has consented to receive SMS/text message communications.',
     `tier_expiration_date` DATE COMMENT 'Date when the members current tier status expires. Used for tier renewal campaigns and retention efforts.',
@@ -47,6 +47,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` (
     `tier_id` BIGINT COMMENT 'Unique identifier for the loyalty program tier. Primary key.',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Tier qualification currency normalization: tier.qualification_currency_code is a denormalized currency reference used to evaluate spend thresholds. FK to currency enables consistent exchange rate appl',
     `bonus_points_on_enrollment` STRING COMMENT 'Number of bonus loyalty points awarded to a member upon first achieving this tier status.',
     `breakfast_benefit_flag` BOOLEAN COMMENT 'Indicates whether members at this tier receive complimentary breakfast during their stays.',
     `tier_code` STRING COMMENT 'Short alphanumeric code uniquely identifying the tier (e.g., SILVER, GOLD, PLATINUM, DIAMOND). Used for system integration and display.. Valid values are `^[A-Z0-9_]{2,20}$`',
@@ -68,7 +69,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` (
     `tier_name` STRING COMMENT 'Full display name of the loyalty tier (e.g., Silver Elite, Gold Premier, Platinum Honors, Diamond Ambassador).',
     `points_earning_multiplier` DECIMAL(18,2) COMMENT 'Multiplier applied to base points earning for members at this tier (e.g., 1.5 means 50% bonus points, 2.0 means double points).',
     `priority_reservation_flag` BOOLEAN COMMENT 'Indicates whether members at this tier receive priority handling for reservations and waitlist requests.',
-    `qualification_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the qualification spend threshold (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `qualification_nights_threshold` STRING COMMENT 'Minimum number of qualifying nights required to achieve or maintain this tier status within the qualification period.',
     `qualification_period_months` STRING COMMENT 'Number of months over which qualification activity is measured (e.g., 12 for annual qualification, 24 for rolling two-year window).',
     `qualification_points_threshold` STRING COMMENT 'Minimum number of loyalty points required to achieve or maintain this tier status within the qualification period.',
@@ -81,68 +81,23 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` (
     CONSTRAINT pk_tier PRIMARY KEY(`tier_id`)
 ) COMMENT 'Reference master defining the loyalty program tier hierarchy (e.g., Silver, Gold, Platinum, Diamond). Captures tier name, tier code, qualification thresholds (nights, stays, points, spend), benefit entitlements, upgrade/downgrade rules, tier validity period, and display order. Governs tier assignment logic and benefit eligibility across the program.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` (
-    `tier_history_id` BIGINT COMMENT 'Unique identifier for this tier status change record. Primary key for the tier history entity.',
-    `member_id` BIGINT COMMENT 'Reference to the loyalty member who experienced this tier status change.',
-    `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: tier_history has new_tier_code (STRING) but no FK to the tier entity. Adding new_tier_id FK formalizes the link to the tier entity for the new tier, enabling tier-level history analysis and ensuring r',
-    `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.promotion. Business justification: tier_history has promotional_campaign_code (STRING) for tier changes resulting from promotional campaigns. Adding promotion_id FK formalizes this relationship, enabling promotion-driven tier change tr',
-    `bonus_points_awarded` DECIMAL(18,2) COMMENT 'Number of bonus loyalty points awarded to the member as a welcome benefit or incentive for achieving this new tier status.',
-    `change_number` STRING COMMENT 'Business identifier for this tier change event, used for external reference and audit tracking.',
-    `change_reason_code` STRING COMMENT 'Categorical code indicating the business reason for this tier status change.. Valid values are `earned_upgrade|annual_requalification|downgrade|manual_override|status_match|promotional_grant`',
-    `change_reason_description` STRING COMMENT 'Detailed narrative explanation of why this tier change occurred, including any special circumstances or manual intervention rationale.',
-    `change_timestamp` TIMESTAMP COMMENT 'The precise date and time when this tier status change was processed and recorded in the system.',
-    `change_type` STRING COMMENT 'Classification of the directional nature of this tier change relative to the tier hierarchy.. Valid values are `upgrade|downgrade|lateral|initial_enrollment|reinstatement`',
-    `effective_date` DATE COMMENT 'The date on which the new tier status became active and benefits became available to the member.',
-    `expiry_date` DATE COMMENT 'The date on which this tier status is scheduled to expire, requiring requalification or resulting in downgrade.',
-    `is_current_tier_flag` BOOLEAN COMMENT 'Indicates whether this tier history record represents the members current active tier status (true) or a historical tier status (false).',
-    `notification_sent_flag` BOOLEAN COMMENT 'Indicates whether a notification (email, SMS, app push) was successfully sent to the member informing them of this tier change.',
-    `notification_sent_timestamp` TIMESTAMP COMMENT 'The date and time when the tier change notification was sent to the member.',
-    `override_approval_code` STRING COMMENT 'Authorization or approval code for manual tier overrides, used for audit and compliance tracking of non-standard tier grants.',
-    `override_justification` STRING COMMENT 'Detailed business justification provided by the approving authority for manual tier status overrides.',
-    `previous_tier_code` STRING COMMENT 'The tier status code the member held immediately before this change (e.g., SILVER, GOLD, PLATINUM).',
-    `qualification_basis` STRING COMMENT 'The primary metric or criteria used to determine eligibility for this tier change (nights, stays, points, spend, or combination thereof). [ENUM-REF-CANDIDATE: qualifying_nights|qualifying_stays|qualifying_points|qualifying_spend|combination|status_match|manual — 7 candidates stripped; promote to reference product]',
-    `qualifying_nights_achieved` STRING COMMENT 'Total number of qualifying nights the member accumulated during the qualifying period that contributed to this tier change.',
-    `qualifying_period_end_date` DATE COMMENT 'The end date of the measurement period during which qualifying activity was accumulated for this tier change.',
-    `qualifying_period_start_date` DATE COMMENT 'The start date of the measurement period during which qualifying activity was accumulated for this tier change.',
-    `qualifying_points_achieved` DECIMAL(18,2) COMMENT 'Total number of qualifying loyalty points the member earned during the qualifying period that contributed to this tier change.',
-    `qualifying_spend_amount` DECIMAL(18,2) COMMENT 'Total monetary spend amount in the program currency that the member accumulated during the qualifying period that contributed to this tier change.',
-    `qualifying_spend_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the qualifying spend amount.. Valid values are `^[A-Z]{3}$`',
-    `qualifying_stays_achieved` STRING COMMENT 'Total number of qualifying stays the member completed during the qualifying period that contributed to this tier change.',
-    `record_created_timestamp` TIMESTAMP COMMENT 'The date and time when this tier history record was first created in the lakehouse silver layer.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'The date and time when this tier history record was last modified in the lakehouse silver layer.',
-    `rollover_nights_granted` STRING COMMENT 'Number of qualifying nights carried forward or granted as a tier benefit to assist with future requalification.',
-    `source_record_reference` STRING COMMENT 'The unique identifier of this tier change record in the source operational system, used for data lineage and reconciliation.',
-    `source_system_code` STRING COMMENT 'Code identifying the operational system of record from which this tier history record originated (e.g., SFDC_CRM, OPERA_PMS).',
-    `status_match_source_program` STRING COMMENT 'Name of the external loyalty program from which status was matched, if this tier change resulted from a competitive status match offer.',
-    `status_match_source_tier` STRING COMMENT 'The tier level held by the member in the external program that was matched to grant this tier status.',
-    `threshold_nights_required` STRING COMMENT 'The minimum number of qualifying nights required to achieve or maintain the new tier status at the time of this change.',
-    `threshold_points_required` DECIMAL(18,2) COMMENT 'The minimum number of qualifying points required to achieve or maintain the new tier status at the time of this change.',
-    `threshold_spend_required` DECIMAL(18,2) COMMENT 'The minimum monetary spend amount required to achieve or maintain the new tier status at the time of this change.',
-    `threshold_stays_required` STRING COMMENT 'The minimum number of qualifying stays required to achieve or maintain the new tier status at the time of this change.',
-    `tier_extension_granted_flag` BOOLEAN COMMENT 'Indicates whether an extension of the tier expiry date was granted as part of this change (e.g., due to service recovery, pandemic policy, or loyalty gesture).',
-    `tier_extension_months` STRING COMMENT 'Number of months by which the tier expiry date was extended beyond the standard qualification period.',
-    `triggered_by_system` STRING COMMENT 'Name or identifier of the system that initiated or triggered this tier change (e.g., Salesforce CRM, batch requalification job, manual override interface).',
-    CONSTRAINT pk_tier_history PRIMARY KEY(`tier_history_id`)
-) COMMENT 'Transactional record of every tier status change for a loyalty member, including the qualification evidence that triggered the change. Captures previous tier, new tier, effective date, expiry date, qualification basis (nights/stays/points/spend achieved), qualifying period, qualifying activity summary (total qualifying nights, stays, spend in period), change reason (earned upgrade, annual requalification, downgrade, manual override, status match), and the agent or system that triggered the change. This is the SSOT for tier progression audit trail and requalification decisions — replacing the need for a separate qualifying_activity entity.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` (
     `points_ledger_id` BIGINT COMMENT 'Unique identifier for each points ledger transaction entry. Primary key for the points ledger.',
     `accrual_rule_id` BIGINT COMMENT 'Foreign key linking to loyalty.accrual_rule. Business justification: Points accrual transactions should reference the rule that governed the earning calculation. Currently points_ledger has earn_multiplier (DECIMAL) but no FK to the rule. Adding accrual_rule_id enables',
-    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Members earn loyalty points on event/MICE spend (F&B, space rental, AV). points_ledger already has reservation_booking_id for hotel stays; event_booking_id is the parallel FK for MICE transactions. Re',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Points ledger financial integrity: base_currency_code is a denormalized currency reference on every financial transaction. FK to currency enables proper exchange rate lookups, multi-currency points va',
+    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Members earn points for hosting events (MICE spend). The points_ledger already links to reservation_booking for transient stays but has no event_booking reference. Linking to event_booking enables eve',
     `member_id` BIGINT COMMENT 'Reference to the loyalty program member who owns this points transaction.',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Points ledger transactions must link to distribution channel for analyzing points accrual patterns by booking channel, understanding channel-specific earning behavior, and calculating true channel pro',
     `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.promotion. Business justification: points_ledger has promotion_code (STRING) for bonus points earned via promotions. Adding promotion_id FK formalizes this relationship, enabling promotion-level points tracking and ROI analysis. Nullab',
-    `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Loyalty finance reconciliation requires linking points accrual/redemption transactions to specific properties for revenue allocation and inter-company settlements. Currently property_code is text; FK ',
+    `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Loyalty finance reconciliation requires linking points accrual/redemption transactions to specific properties for revenue allocation and inter-company settlements. Currently property_code is text; FK',
     `redemption_id` BIGINT COMMENT 'Foreign key linking to loyalty.redemption. Business justification: Points ledger entries of transaction_type redemption should link to the redemption transaction that caused the points burn. Creates bidirectional navigation between ledger and redemption. Nullable (',
     `redemption_rule_id` BIGINT COMMENT 'Foreign key linking to loyalty.redemption_rule. Business justification: Points redemption/burn transactions should reference the rule that governed the redemption calculation. Enables rule-level reporting and ensures redemptions can be traced to their governing rules. Nul',
     `reversal_reference_points_ledger_id` BIGINT COMMENT 'Points ledger ID of the original transaction that this entry reverses. Null for original transactions. Creates audit trail for cancelled transactions.',
-    `appointment_id` BIGINT COMMENT 'Foreign key linking to spa.appointment. Business justification: Points ledger entries for spa activities must reference the originating spa appointment for accrual audit and spa-revenue-to-points reconciliation. Currently points_ledger has reservation_booking_id b',
     `activity_date` DATE COMMENT 'Date when the underlying business activity occurred (e.g., stay checkout date, F&B transaction date, partner purchase date). This is the business event date, distinct from posting date.',
     `adjustment_notes` STRING COMMENT 'Free-text explanation for manual adjustments or reversals, providing context for audit and member service. Null for standard transactions.',
     `adjustment_reason_code` STRING COMMENT 'Standardized code explaining why a manual adjustment or reversal was made (e.g., service recovery, system error correction, duplicate posting). Null for standard transactions.',
     `balance_after_transaction` DECIMAL(18,2) COMMENT 'Members total points balance immediately after this transaction was posted. Provides running balance for audit and reconciliation.',
     `base_amount` DECIMAL(18,2) COMMENT 'Monetary amount in base currency that generated the points accrual (e.g., room revenue, F&B spend). Used to calculate points earned. Null for non-monetary transactions.',
-    `base_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code of the underlying monetary transaction that generated points (e.g., USD, EUR, GBP). Null for non-monetary point awards.. Valid values are `^[A-Z]{3}$`',
     `conversion_rate` DECIMAL(18,2) COMMENT 'Exchange rate applied when converting points between hotel program and partner program (e.g., 1.5 means 1 hotel point = 1.5 partner points). Null for non-transfer transactions.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp when this ledger entry was first created in the database. Used for audit trail and data lineage.',
     `expiry_date` DATE COMMENT 'Date when these points will expire if not redeemed. Null for non-expiring points or debit transactions. Used to enforce points expiration policies.',
@@ -164,19 +119,21 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` (
     `accrual_rule_id` BIGINT COMMENT 'Unique identifier for the loyalty points accrual rule. Primary key for the accrual rule configuration entity.',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Points earning rule configuration by channel: direct bookings earn 3x points while OTA bookings earn 1x. Loyalty operations teams configure channel-specific accrual multipliers. Replaces denormalized ',
-    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Outlet-level points earning configuration: revenue and loyalty managers define outlet-specific accrual rates (e.g., 3x points at the rooftop bar). accrual_rule has property_id but not outlet granulari',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Accrual rules are scoped to specific distribution channels (direct=3x, GDS=1x, OTA=1x). Loyalty operations teams configure channel-specific earning multipliers. The existing booking_channel_restricti',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Accrual rule currency normalization: accrual_rule.currency_code governs points_per_currency_unit and minimum_transaction_amount calculations. FK to currency enables proper multi-currency earning rate ',
+    `hierarchy_id` BIGINT COMMENT 'Foreign key linking to property.hierarchy. Business justification: Loyalty operations: accrual rules are scoped to brand portfolios, geographic regions, or management groups — all modeled as hierarchy nodes. FK to hierarchy replaces denormalized applicable_regions/ap',
+    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Accrual rules are frequently segment-restricted (e.g., corporate segment earns 3x points, leisure earns 1x). The existing member_segment_restriction is a denormalized text field. A proper FK to market',
     `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Property revenue managers need to forecast loyalty liability by analyzing which accrual rules apply to their property. Currently applicable_property_ids is a text list; FK enables property-specific ea',
-    `segment_id` BIGINT COMMENT 'Foreign key linking to guest.segment. Business justification: Accrual rules in loyalty programs are configured with segment-specific earning multipliers and eligibility restrictions. This FK normalizes the denormalized member_segment_restriction string, enabling',
-    `applicable_brands` STRING COMMENT 'Comma-separated list of brand codes where this rule applies (e.g., luxury, premium, select-service). Used when property_applicability is brand_specific. Null indicates all brands.',
+    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: Outlet-specific earning rules: hotel loyalty programs configure bonus point multipliers for specific F&B outlets (e.g., 3x points at the signature restaurant). FK to property_outlet enables outlet-lev',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Accrual rules are applied per room type (e.g., 3x points for Suite bookings, bonus multiplier for premium room categories). Points posting engines require accrual_rule.room_type_id to match the booked',
+    `segment_id` BIGINT COMMENT 'Foreign key linking to guest.segment. Business justification: Accrual rules are restricted by market segment (e.g., Corporate earns 2x points, Wholesale earns 0). Replacing the denormalized member_segment_restriction string with a proper FK to guest.segment enab',
+    `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Accrual rules are frequently tier-specific — e.g., Gold members earn 3x points under a particular rule. The existing member_tier_restriction column is a denormalized STRING that should be replaced by ',
     `applicable_property_ids` STRING COMMENT 'Comma-separated list of property identifiers where this rule applies. Used when property_applicability is property_list. Null indicates rule applies per property_applicability setting.',
-    `applicable_regions` STRING COMMENT 'Comma-separated list of geographic region codes where this rule applies (e.g., NORAM, EMEA, APAC, LATAM). Used when property_applicability is region_specific. Null indicates all regions.',
     `approval_status` STRING COMMENT 'Workflow approval status for the accrual rule configuration. Used for governance and change control before rules are activated in production.. Valid values are `pending|approved|rejected`',
     `approved_by` STRING COMMENT 'User ID or name of the business owner or system administrator who approved this accrual rule for production use. Used for audit trail and accountability.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when this accrual rule was approved for production use. Part of the governance audit trail.',
     `blackout_dates` STRING COMMENT 'Comma-separated list of date ranges (YYYY-MM-DD:YYYY-MM-DD) during which this accrual rule does not apply. Used for promotional exclusions or high-demand periods. Null indicates no blackouts.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this accrual rule record was first created in the system. Part of the standard audit trail.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the earning basis (e.g., USD, EUR, GBP). Defines the currency in which the points-per-currency-unit rate applies.. Valid values are `^[A-Z]{3}$`',
     `day_of_week_restriction` STRING COMMENT 'Comma-separated list of days of week (MON, TUE, WED, THU, FRI, SAT, SUN) when this rule applies. Used for promotional rules targeting specific days. Null indicates all days are eligible.',
     `earning_basis` STRING COMMENT 'The transaction component or activity on which points accrual is calculated: room_revenue (ADR-based), fnb_spend (Food and Beverage), spa_spend, ancillary_spend (parking, resort fees), partner_spend (co-branded partners), nights_stayed (per-night basis), qualifying_stays (per-stay basis). [ENUM-REF-CANDIDATE: room_revenue|fnb_spend|spa_spend|ancillary_spend|partner_spend|nights_stayed|qualifying_stays — 7 candidates stripped; promote to reference product]',
     `effective_end_date` DATE COMMENT 'Date when this accrual rule expires and stops applying to transactions. Null indicates the rule is open-ended with no expiration. Part of the rules temporal validity window.',
@@ -190,7 +147,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this accrual rule record was last updated. Part of the standard audit trail for configuration change management.',
     `marketing_message` STRING COMMENT 'Member-facing promotional message describing the earning opportunity (e.g., Earn 2X points on weekend stays!). Used in marketing campaigns and member communications.',
     `maximum_points_per_transaction` STRING COMMENT 'Cap on the number of points that can be earned in a single transaction under this rule. Used to prevent abuse and manage program liability. Null indicates no cap.',
-    `member_tier_restriction` STRING COMMENT 'Comma-separated list of loyalty tier codes (base, silver, gold, platinum, diamond) eligible for this accrual rule. Used for tier-specific promotional rules. Null indicates all tiers are eligible.',
     `minimum_transaction_amount` DECIMAL(18,2) COMMENT 'Minimum spend threshold required for the accrual rule to apply. Transactions below this amount do not earn points under this rule. Null indicates no minimum.',
     `points_per_currency_unit` DECIMAL(18,2) COMMENT 'Base rate of loyalty points earned per unit of currency spent (e.g., 10.0000 points per USD, 5.0000 points per EUR). Used as the multiplier in the points calculation engine.',
     `program_liability_impact` STRING COMMENT 'Assessment of the financial liability impact this accrual rule has on the loyalty programs balance sheet: low (minimal incremental liability), medium (moderate impact), high (significant liability increase). Used for program economics monitoring.. Valid values are `low|medium|high`',
@@ -211,14 +167,15 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` (
     `redemption_rule_id` BIGINT COMMENT 'Unique identifier for the loyalty redemption rule. Primary key for the redemption rule configuration entity.',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Redemption eligibility by channel: free-night redemptions may only be permitted via direct booking channels, not OTAs. Loyalty operations configure channel-scoped redemption rules. Replaces denormaliz',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Redemption rules restrict which channels can process points redemptions (e.g., free night redemptions only via direct channels, not OTA). Loyalty program managers configure channel-specific redemption',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Redemption rule currency normalization: redemption_rule.currency_code governs points_rate and monetary value calculations. FK to currency ensures consistent exchange rate application for multi-currenc',
+    `hierarchy_id` BIGINT COMMENT 'Foreign key linking to property.hierarchy. Business justification: Redemption rule scoping: rules governing point redemption rates are applied at brand, region, or portfolio level — all hierarchy nodes. FK to hierarchy enables regional redemption policy management an',
     `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Property finance teams track redemption rule applicability for revenue recognition and liability management. Currently eligible_property_codes is text; FK enables property-specific redemption forecast',
     `advance_booking_days` STRING COMMENT 'Minimum number of days in advance a reservation must be made for this rule to apply. Used for early booking incentives.',
     `blackout_dates` STRING COMMENT 'Comma-separated list of date ranges (YYYY-MM-DD:YYYY-MM-DD) when this rule is not applicable. Used for peak season restrictions.',
     `calculation_basis` STRING COMMENT 'Defines the monetary or transactional basis for points calculation. Determines which revenue component is used for earn rate application.. Valid values are `gross_revenue|net_revenue|base_rate|total_spend|transaction_count`',
     `combinable_with_promotions` BOOLEAN COMMENT 'Indicates whether this redemption rule can be combined with other promotional offers. False means this rule is exclusive.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this redemption rule record was first created in the system. Audit trail for rule configuration.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for monetary earn rules. Defines the currency basis for points calculation.. Valid values are `^[A-Z]{3}$`',
     `redemption_rule_description` STRING COMMENT 'Detailed business description of the redemption rule including terms, conditions, and member-facing explanation.',
     `effective_end_date` DATE COMMENT 'Date when this redemption rule expires and is no longer applied. Nullable for open-ended rules.',
     `effective_start_date` DATE COMMENT 'Date when this redemption rule becomes active and eligible for application. Part of the rule validity window.',
@@ -255,21 +212,22 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule`
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` (
     `redemption_id` BIGINT COMMENT 'Unique identifier for the loyalty points redemption transaction. Primary key.',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Redemptions must link to distribution channel for channel-specific redemption performance analysis, understanding which channels drive points burn vs. cash bookings, and calculating true channel profi',
-    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Members redeem points against event bookings (e.g., points for complimentary meeting room or F&B credit on a corporate event). redemption already has reservation_booking_id for hotel stays; event_book',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Redemption financial normalization: redemption.currency_code is a denormalized currency reference for cash_amount and monetary_equivalent_value calculations. FK to currency enables consistent exchange',
+    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Members redeem points for event/meeting space (free boardroom, complimentary event package). redemption already links to reservation_booking for room redemptions but lacks an event_booking reference. ',
+    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: F&B loyalty redemptions (complimentary meals, dining credits) must record the specific outlet where fulfilled for outlet-level revenue accounting, inventory cost allocation, and USALI F&B reporting. R',
     `member_id` BIGINT COMMENT 'Identifier of the loyalty program member who initiated the redemption.',
     `pos_check_id` BIGINT COMMENT 'Identifier of the POS transaction associated with this redemption, if applicable (e.g., F&B voucher redemption). Nullable for non-POS redemptions.',
-    `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.promotion. Business justification: A redemption event can be triggered by or associated with a specific loyalty promotion (e.g., a promotional free-night redemption, a bonus redemption offer during a campaign period). The redemption ta',
-    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: F&B redemptions (complimentary meal, dining credit) occur at a specific outlet. A direct property_outlet_id on redemption enables outlet-level redemption volume reporting, revenue impact analysis per ',
+    `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.certificate. Business justification: Redemptions can involve certificate usage (e.g., redeeming a free night certificate). Adding certificate_id FK links redemptions that consumed a certificate, enabling certificate lifecycle tracking. N',
+    `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Point redemptions reduce loyalty liability and may trigger revenue recognition. Monthly financial close requires posting redemption transactions to specific GL liability accounts. Essential for balanc',
     `redemption_rule_id` BIGINT COMMENT 'Foreign key linking to loyalty.redemption_rule. Business justification: Redemptions should reference the rule that governed the redemption calculation and eligibility. Enables rule-level redemption reporting and ensures redemptions can be audited against their governing r',
     `revenue_rate_plan_id` BIGINT COMMENT 'Foreign key linking to revenue.revenue_rate_plan. Business justification: Loyalty redemptions for free night awards or discounted stays must link to the specific rate plan used for the redemption. This FK enables revenue displacement analysis, rate plan performance tracking',
     `reward_catalog_id` BIGINT COMMENT 'Foreign key linking to loyalty.reward_catalog. Business justification: Redemptions of type reward should reference the catalog item being redeemed. Currently redemption has reward_description and reward_category (STRING) but no FK. Adding reward_catalog_id formalizes t',
-    `appointment_id` BIGINT COMMENT 'Foreign key linking to spa.appointment. Business justification: When points are redeemed for a spa treatment, the resulting appointment must be traceable to the redemption record for audit, reconciliation, and fulfillment verification. No existing column on redemp',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Room upgrade and free night redemptions are fulfilled against a specific room type. Redemption fulfillment tracking and inventory impact reporting require room_type_id on redemption to measure points-',
     `cancellation_reason` STRING COMMENT 'Reason for redemption cancellation (e.g., member request, system error, fraud detection, reward unavailable). Nullable if not cancelled.',
     `cancellation_timestamp` TIMESTAMP COMMENT 'Timestamp when the redemption was cancelled. Nullable if not cancelled.',
     `cash_amount` DECIMAL(18,2) COMMENT 'Cash component paid by the member for cash-and-points redemptions. Zero for pure points redemptions.',
     `confirmation_timestamp` TIMESTAMP COMMENT 'Timestamp when the redemption was confirmed and points were deducted from the member account. Nullable if still pending.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this redemption record was first created in the source system.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the cash component (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `expiration_date` DATE COMMENT 'Date by which the redemption must be fulfilled or the reward will expire. Nullable for redemptions without expiration.',
     `fulfillment_channel` STRING COMMENT 'Channel through which the reward was delivered: at property, physical mail, email, partner fulfillment, digital delivery, or in-app delivery.. Valid values are `property|mail|email|partner|digital_delivery|in_app`',
     `fulfillment_date` DATE COMMENT 'Date when the reward was delivered or service was rendered to the member. Nullable if not yet fulfilled.',
@@ -280,7 +238,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` (
     `partner_code` STRING COMMENT 'Code of the partner organization fulfilling the reward (e.g., airline, car rental, merchandise vendor). Nullable for internal redemptions.',
     `points_redeemed` BIGINT COMMENT 'Total number of loyalty points deducted from the member account for this redemption.',
     `points_refunded` BIGINT COMMENT 'Number of points returned to the member account due to cancellation or reversal. Zero if no refund occurred.',
-    `property_code` STRING COMMENT 'Code of the property where the redemption was fulfilled, if applicable. Nullable for non-property redemptions (e.g., partner rewards, merchandise).',
     `redemption_number` STRING COMMENT 'Externally-visible unique business identifier for the redemption transaction, used for guest communication and service recovery.',
     `redemption_status` STRING COMMENT 'Current lifecycle status of the redemption: pending approval, confirmed and awaiting fulfillment, fulfilled and completed, cancelled by member or system, expired before fulfillment, or reversed due to service recovery or fraud.. Valid values are `pending|confirmed|fulfilled|cancelled|expired|reversed`',
     `redemption_type` STRING COMMENT 'Category of reward being redeemed: free night award, room upgrade, F&B voucher, partner airline/car rental reward, merchandise, curated experience, points transfer to another member, cash plus points combination, or gift certificate. [ENUM-REF-CANDIDATE: free_night|room_upgrade|fnb_voucher|partner_reward|merchandise|experience|points_transfer|cash_and_points|gift_certificate — 9 candidates stripped; promote to reference product]',
@@ -294,19 +251,17 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` (
     `reward_catalog_id` BIGINT COMMENT 'Unique identifier for the reward catalog entry. Primary key for the reward catalog product.',
-    `catering_menu_id` BIGINT COMMENT 'Foreign key linking to event.catering_menu. Business justification: Loyalty rewards include catering packages redeemable with points (e.g., Private dinner for 10). Linking reward_catalog to catering_menu enables accurate points cost calculation based on menu price_p',
-    `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Loyalty reward catalog items include function space rentals (e.g., Redeem 10,000 points for a private boardroom). Linking reward_catalog to the specific function_space enables inventory management, ',
-    `menu_item_id` BIGINT COMMENT 'Foreign key linking to fnb.menu_item. Business justification: Specific menu item rewards (complimentary signature dish, welcome amenity F&B item) are a standard loyalty catalog construct. Fulfillment and inventory reservation require the exact menu_item_id. Mirr',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.property_facility. Business justification: Reward fulfillment operations require knowing which specific facility (spa, pool, gym) a reward item maps to for inventory allocation, scheduling, and capacity management. A loyalty manager configurin',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Reward catalog items are redeemable only through specific channels (mobile app, front desk, brand.com). Channel-scoped reward availability is a core loyalty operations constraint. The existing redemp',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Reward catalog monetary value normalization: reward_catalog.currency_code governs monetary_value display and points_cost calculations. FK to currency enables consistent multi-currency reward pricing, ',
+    `facility_id` BIGINT COMMENT 'Foreign key linking to property.property_facility. Business justification: Loyalty reward fulfillment: spa, pool, fitness center, and other facilities are offered as point-redemption rewards. FK to property_facility enables precise reward scoping, capacity management, and el',
+    `hierarchy_id` BIGINT COMMENT 'Foreign key linking to property.hierarchy. Business justification: Regional reward availability: reward catalog entries are scoped to geographic regions, brand portfolios, or management clusters. FK to hierarchy replaces the denormalized geographic_restriction text f',
+    `meeting_space_id` BIGINT COMMENT 'Foreign key linking to property.meeting_space. Business justification: Loyalty reward fulfillment: members redeem points for complimentary meeting room use. A direct FK to meeting_space enables precise inventory management, availability checking, and fulfillment tracking',
     `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Property operations teams manage inventory and fulfillment of property-specific rewards (spa treatments, dining credits, room upgrades). Currently property_restriction is text; FK enables property-lev',
-    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: F&B dining rewards (complimentary dinner, dining credit) are a core loyalty reward category tied to a specific outlet. Linking reward_catalog to property_outlet enables outlet-level reward inventory c',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Reward availability by channel: certain catalog rewards (e.g., room upgrades) are only redeemable through direct channels. Loyalty merchandising teams configure channel-specific reward availability. R',
-    `package_id` BIGINT COMMENT 'Foreign key linking to spa.package. Business justification: Loyalty reward catalog items include spa packages (bundled experiences), not just individual treatments. The existing spa_treatment_id covers single treatments; spa_package_id enables redemption catal',
-    `treatment_id` BIGINT COMMENT 'Foreign key linking to spa.treatment. Business justification: Reward catalog includes spa treatments as points redemption options. Required for spa treatment redemption processing, points pricing management, and catalog-driven spa booking integration for loyalty',
+    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: F&B loyalty rewards: complimentary dining credits or meals at specific hotel outlets are a core reward catalog type. FK to property_outlet enables outlet-specific reward configuration, operating hours',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Free night and room upgrade rewards in the catalog are tied to specific room types (e.g., Complimentary Deluxe King Night). Reward fulfillment validation requires checking room_type availability; re',
     `availability_type` STRING COMMENT 'Classification of reward availability pattern determining inventory management and member access rules.. Valid values are `always_on|limited|seasonal|promotional|exclusive`',
     `blackout_dates` STRING COMMENT 'Specific dates or date ranges when the reward cannot be redeemed or used, typically for high-demand periods.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the reward catalog entry was first created in the system.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the monetary value of the reward.. Valid values are `^[A-Z]{3}$`',
     `display_order` STRING COMMENT 'Numeric sequence controlling the presentation order of rewards in catalog listings and member interfaces.',
     `effective_end_date` DATE COMMENT 'Date when the reward is no longer available for redemption. Null indicates no planned end date for always-on rewards.',
     `effective_start_date` DATE COMMENT 'Date when the reward becomes available for redemption in the loyalty program catalog.',
@@ -315,7 +270,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` 
     `eligible_tier_platinum` BOOLEAN COMMENT 'Indicates whether Platinum tier members are eligible to redeem this reward.',
     `eligible_tier_silver` BOOLEAN COMMENT 'Indicates whether Silver tier members are eligible to redeem this reward.',
     `featured_flag` BOOLEAN COMMENT 'Indicates whether this reward is featured or promoted in member communications and catalog displays.',
-    `geographic_restriction` STRING COMMENT 'Geographic limitations on where the reward can be redeemed, specified as regions, countries, or property lists.',
     `image_url` STRING COMMENT 'URL path to the primary marketing image for the reward displayed in digital catalogs and member portals.',
     `inventory_count` STRING COMMENT 'Current available quantity of the reward for redemption. Null indicates unlimited availability for always-on rewards.',
     `inventory_threshold` STRING COMMENT 'Minimum inventory level that triggers replenishment alerts or availability status changes for limited inventory rewards.',
@@ -344,14 +298,12 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` 
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` (
     `benefit_entitlement_id` BIGINT COMMENT 'Unique identifier for the benefit entitlement record. Primary key.',
-    `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate accounts negotiate specific loyalty benefit entitlements (guaranteed upgrades, lounge access, bonus points) as part of their hotel contracts. This FK supports corporate benefit auditing repo',
-    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Tier benefits (e.g., complimentary meeting room, F&B credit) are consumed against specific event bookings. Linking benefit_entitlement to event_booking enables benefit usage auditing, prevents double-',
+    `currency_id` BIGINT COMMENT 'Foreign key linking to property.currency. Business justification: Benefit monetary value normalization: benefit_entitlement.currency_code governs monetary_value of entitled benefits. FK to currency enables consistent multi-currency benefit valuation, exchange rate a',
+    `facility_id` BIGINT COMMENT 'Foreign key linking to property.property_facility. Business justification: Facility-specific tier benefits: spa access, fitness center passes, and lounge access are standard loyalty tier entitlements referencing specific property facilities. FK to property_facility enables p',
     `member_id` BIGINT COMMENT 'Reference to the loyalty program member who holds this benefit entitlement.',
-    `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.promotion. Business justification: Benefit entitlements can be granted as a direct result of a loyalty promotion (e.g., a member completing a targeted campaign earns complimentary breakfast for 3 months, or a status match promotion gra',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.property_facility. Business justification: Tier benefits such as lounge access, fitness center access, and pool access are facility-specific. Linking benefit_entitlement to property_facility enables automated entitlement validation at facility',
-    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: F&B tier benefits (complimentary breakfast, happy hour discount at hotel bar) are outlet-specific entitlements. Linking benefit_entitlement to property_outlet enables automated benefit validation at o',
-    `package_id` BIGINT COMMENT 'Foreign key linking to spa.package. Business justification: Loyalty tier benefits include complimentary spa packages (e.g., Gold members receive an annual spa day package). Distinct from treatment-level entitlements; spa packages are bundled multi-service offe',
-    `treatment_id` BIGINT COMMENT 'Foreign key linking to spa.treatment. Business justification: Loyalty tier benefits include complimentary specific spa treatments (e.g., Platinum members receive a free 60-min massage). benefit_entitlement tracks granted benefits; linking to spa.treatment.treatm',
+    `promotion_id` BIGINT COMMENT 'Foreign key linking to loyalty.promotion. Business justification: A benefit entitlement can be granted as a result of a specific promotion (e.g., a double-upgrade promotion grants a room upgrade entitlement). The existing entitlement_source STRING captures the sourc',
+    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Benefit fulfillment process: when a loyalty benefit (free breakfast, room upgrade, late checkout) is applied during a stay, it must be tied to the specific reservation booking for folio posting, audit',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Room upgrade benefits are granted to specific room types (e.g., upgrade to Junior Suite). Benefit fulfillment at check-in requires resolving the entitled room_type against available inventory. A roo',
     `tier_id` BIGINT COMMENT 'Reference to the loyalty tier that grants this benefit as a standard entitlement. Null if the benefit is individually granted outside of tier benefits.',
     `advance_booking_required_days` STRING COMMENT 'The minimum number of days in advance that a reservation must be made to redeem this benefit. Null if no advance booking requirement exists.',
     `auto_apply_flag` BOOLEAN COMMENT 'Indicates whether this benefit is automatically applied to eligible reservations or requires manual member selection. True if auto-applied, False if opt-in required.',
@@ -361,7 +313,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlem
     `blackout_dates` STRING COMMENT 'Comma-separated list of date ranges during which this benefit cannot be redeemed, typically during peak demand periods or special events.',
     `brand_restriction` STRING COMMENT 'The brand code if this benefit is restricted to properties within a specific brand. Null if no brand restriction applies.',
     `combinable_flag` BOOLEAN COMMENT 'Indicates whether this benefit can be combined with other benefits or promotions during the same stay. True if combinable, False if mutually exclusive.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the monetary value of this benefit.. Valid values are `^[A-Z]{3}$`',
     `effective_date` DATE COMMENT 'The date from which this benefit entitlement becomes valid and can be redeemed by the member.',
     `eligible_property_list` STRING COMMENT 'Comma-separated list of property codes where this benefit can be redeemed. Populated only when property_restriction is SPECIFIC.',
     `entitlement_source` STRING COMMENT 'The origin or reason for granting this benefit. Tier standard benefits are automatic based on member tier; status match benefits are granted when matching status from another program; manual grants are discretionary; promotion benefits are campaign-driven; compensation benefits are service recovery; partner benefits come from co-branded or partner integrations.. Valid values are `TIER_STANDARD|STATUS_MATCH|MANUAL_GRANT|PROMOTION|COMPENSATION|PARTNER`',
@@ -389,12 +340,15 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlem
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` (
     `promotion_id` BIGINT COMMENT 'Unique identifier for the loyalty promotion. Primary key.',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Promotion channel attribution and marketing spend reporting: loyalty promotions are launched through specific distribution channels (email, OTA, direct web). Marketing teams track promotion performanc',
-    `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: OTA co-marketing promotion attribution: loyalty promotions are co-funded by OTA partners (e.g., Booking.com Genius, Expedia Member Deals). Finance and partnerships teams track co-funded promotion cost',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.property_facility. Business justification: Facility-specific promotions (e.g., double points at the spa, bonus points for gym visits) are a standard hotel loyalty marketing tactic. A structured property_facility_id FK on promotion enables camp',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Loyalty promotions are frequently channel-specific (e.g., Book direct, earn double points). Marketing and loyalty teams run channel-exclusive promotions and need FK-level reporting on promotion perf',
+    `hierarchy_id` BIGINT COMMENT 'Foreign key linking to property.hierarchy. Business justification: Regional promotion management: loyalty promotions are frequently scoped to a brand portfolio, geographic region, or management cluster. FK to hierarchy replaces the denormalized qualifying_property_li',
+    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Loyalty promotions are targeted at specific market segments (corporate, leisure, group). Segment-specific bonus campaigns are a standard revenue-loyalty co-process used in demand stimulation. No exist',
+    `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member_segment. Business justification: promotion has target_segment (STRING) describing which member segment the promotion targets. Adding member_segment_id FK formalizes this relationship, enabling segment-level promotion management and t',
     `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Property marketing teams analyze which promotions drive enrollment and stays at their property for campaign ROI measurement. Currently qualifying_property_list is text; FK enables property-level promo',
-    `property_outlet_id` BIGINT COMMENT 'Foreign key linking to property.property_outlet. Business justification: Outlet-specific promotions (e.g., earn 500 bonus points dining at The Grill this weekend) are a standard hotel loyalty marketing tactic. A direct property_outlet_id enables structured outlet-scoped ',
-    `segment_id` BIGINT COMMENT 'Foreign key linking to guest.segment. Business justification: Loyalty promotions are routinely targeted at specific guest segments (lapsed guests, high-value transient, corporate). This FK supports targeted promotion deployment workflows, segment-level campaign ',
+    `revenue_rate_plan_id` BIGINT COMMENT 'Foreign key linking to revenue.revenue_rate_plan. Business justification: Loyalty promotions require guests to book specific rate plans to qualify (e.g., Book Rate X, earn 2x points). Promotion eligibility validation during booking is a core loyalty-revenue integration pr',
+    `reward_catalog_id` BIGINT COMMENT 'Foreign key linking to loyalty.reward_catalog. Business justification: A promotion may award a specific reward from the reward catalog (e.g., a Stay 3 nights, earn a free night promotion references a specific free-night reward in the catalog). Adding reward_catalog_id ',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Loyalty promotions are frequently room-type-specific (e.g., Double points on Suite stays, Bonus nights for Deluxe bookings). Marketing and revenue teams need promotion.room_type_id to enforce elig',
+    `segment_id` BIGINT COMMENT 'Foreign key linking to guest.segment. Business justification: Loyalty promotions are routinely targeted at specific guest market segments (e.g., Double points for Leisure segment). A direct FK enables segment-targeted promotion configuration, campaign eligibil',
     `tier_id` BIGINT COMMENT 'Reference to the loyalty tier required to participate in this promotion. Null if promotion is open to all tiers. Used to restrict offers to specific membership levels (e.g., Gold, Platinum, Diamond).',
     `approval_date` DATE COMMENT 'Date when this promotion was formally approved for launch. Null if promotion is still in draft or pending approval. Used for campaign governance and audit trail.',
     `approved_by` STRING COMMENT 'Username or employee ID of the manager or director who approved this promotion for launch. Null if promotion is still in draft status. Used for governance and approval workflow tracking.',
@@ -408,13 +362,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` (
     `promotion_code` STRING COMMENT 'Externally-known unique alphanumeric code for the promotion, used in marketing materials and member enrollment. Example: BONUS2024, WELCOME500.. Valid values are `^[A-Z0-9]{6,20}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this promotion record was first created in the system. Used for audit trail and data lineage.',
     `end_date` DATE COMMENT 'Date when the promotion expires. Qualifying activity after this date does not count toward the promotion. Null for open-ended promotions.',
+    `exclusion_list` STRING COMMENT 'Comma-separated list of member IDs or segments explicitly excluded from this promotion (e.g., employees, test accounts, members who opted out). Null if no exclusions apply.',
     `minimum_nights` STRING COMMENT 'Minimum number of qualifying nights required to earn the promotion bonus. Null if nights are not a qualifying criterion.',
     `minimum_spend_amount` DECIMAL(18,2) COMMENT 'Minimum total spend (in base currency) required to qualify for the promotion. Null if spend is not a qualifying criterion. Typically measured in USD or property local currency.',
     `promotion_name` STRING COMMENT 'Human-readable name of the promotion displayed to members and in marketing channels. Example: Double Points Summer Getaway, Elite Status Fast Track.',
     `promotion_status` STRING COMMENT 'Current lifecycle state of the promotion. Values: draft (being designed), scheduled (approved, not yet live), active (currently running), paused (temporarily suspended), completed (ended successfully), cancelled (terminated early).. Valid values are `draft|scheduled|active|paused|completed|cancelled`',
     `promotion_type` STRING COMMENT 'Classification of the promotion mechanism. Values: bonus_points_multiplier (earn extra points per dollar), double_nights (accelerate tier qualification), targeted_offer (personalized to segment), welcome_back (re-engagement), birthday_bonus (member birthday reward), spend_challenge (gamified spending goal).. Valid values are `bonus_points_multiplier|double_nights|targeted_offer|welcome_back|birthday_bonus|spend_challenge`',
     `qualifying_criteria_description` STRING COMMENT 'Detailed narrative of the requirements a member must meet to earn the promotion bonus. Examples: Complete 3 stays between June 1 and August 31, Spend minimum $500 on F&B (Food and Beverage) during stay, Book via mobile app using rate code MOBILE2024.',
-    `qualifying_property_list` STRING COMMENT 'Comma-separated list of property IDs or property codes where stays qualify for this promotion. Null or ALL if promotion applies to all properties. Example: PROP001,PROP045,PROP102 or ALL.',
     `qualifying_rate_codes` STRING COMMENT 'Comma-separated list of rate codes (BAR - Best Available Rate, corporate codes, promotional codes) that qualify for this promotion. Null or ALL if all rate codes qualify. Example: BAR,CORP,PROMO2024.',
     `registration_required_flag` BOOLEAN COMMENT 'Indicates whether members must explicitly register or opt-in to participate in this promotion. True = registration required before qualifying activity counts; False = automatic enrollment for eligible members.',
     `stackable_flag` BOOLEAN COMMENT 'Indicates whether this promotion can be combined with other active promotions. True = member can earn bonuses from multiple promotions simultaneously; False = this promotion cannot be stacked with others.',
@@ -427,35 +381,41 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` (
     CONSTRAINT pk_promotion PRIMARY KEY(`promotion_id`)
 ) COMMENT 'Master entity defining loyalty program promotions and bonus offers, including member participation tracking. Captures promotion name, type (bonus points multiplier, double nights, targeted offer, welcome back, birthday bonus, spend challenge), target segment or tier, qualifying criteria (minimum nights, minimum spend, specific properties, specific rate codes), bonus awarded, registration requirement, start/end dates, and budget cap. For member participation: enrollment date, enrollment channel, member promotion status (enrolled, in-progress, completed, expired, awarded), qualifying activity progress, bonus awarded flag, award date, and opt-out date. Drives personalized offer delivery, campaign economics, and promotion fulfillment tracking.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` (
-    `promotion_enrollment_id` BIGINT COMMENT 'Primary key for the promotion_enrollment association',
-    `member_id` BIGINT COMMENT 'Foreign key linking this enrollment record to the specific loyalty program member who is participating in the promotion.',
-    `promotion_id` BIGINT COMMENT 'Foreign key linking this enrollment record to the specific loyalty promotion the member is participating in.',
-    `award_date` DATE COMMENT 'Date when the bonus points or nights were actually posted to the members account for this promotion. May differ from completion_date due to fulfillment processing lag. Sourced from Product A description.',
-    `bonus_awarded_flag` BOOLEAN COMMENT 'Indicates whether the bonus for this promotion has been successfully posted to the members account. Used for fulfillment reconciliation and exception handling. Sourced from Product A description.',
-    `completion_date` DATE COMMENT 'Date when the member successfully completed all qualifying criteria for this promotion. Null if the promotion has not yet been completed or was not completed.',
-    `completion_timestamp` TIMESTAMP COMMENT 'Precise timestamp when the members qualifying activity crossed the completion threshold for this promotion. Used for fulfillment SLA tracking and audit.',
-    `enrollment_channel` STRING COMMENT 'Channel through which the member enrolled in this promotion. Sourced from promotion description which explicitly references enrollment_channel as a tracked participation attribute.',
-    `enrollment_date` DATE COMMENT 'Date when the member enrolled or was auto-enrolled in this specific promotion. Marks the start of the members participation lifecycle for this promotion instance.',
-    `exclusion_list` STRING COMMENT 'Comma-separated list of member IDs or segments explicitly excluded from this promotion (e.g., employees, test accounts, members who opted out). Null if no exclusions apply. [Moved from promotion: The exclusion_list on the promotion entity is a denormalized comma-separated string of member IDs representing members excluded from the promotion. This is an anti-pattern that should be replaced by explicit enrollment records with status=opted_out or a separate exclusion flag on the enrollment record. The exclusion_list attribute on promotion should be deprecated in favor of the normalized enrollment association.]',
-    `opt_out_date` DATE COMMENT 'Date when the member opted out of this specific promotion enrollment. Null if the member has not opted out. Sourced from Product A description which explicitly lists opt_out_date as a participation tracking attribute.',
-    `points_awarded` STRING COMMENT 'Actual number of bonus loyalty points credited to the member upon successful completion of this promotion. May differ from the promotions bonus_points_amount if partial awards or multipliers apply. Belongs to the enrollment record, not the promotion or member master.',
-    `promotion_enrollment_status` STRING COMMENT 'Current lifecycle state of this members participation in the promotion. Tracks progression from enrollment through qualifying activity to final outcome. Corresponds to member promotion status described in the promotion product.',
-    `qualifying_activity_count` STRING COMMENT 'Running count of qualifying activities (nights stayed, spend accumulated, etc.) the member has accumulated toward meeting this promotions threshold criteria. Belongs to the enrollment, not the member or promotion master records.',
-    CONSTRAINT pk_promotion_enrollment PRIMARY KEY(`promotion_enrollment_id`)
-) COMMENT 'This association product represents the Enrollment event between a loyalty promotion and a loyalty member. It captures the full lifecycle of a members participation in a specific promotion — from initial enrollment through qualifying activity progress to completion, expiry, or cancellation. Each record links one promotion to one member and carries attributes that exist only in the context of this specific participation instance: when the member enrolled, their current status, how much qualifying activity they have accumulated, and what bonus was ultimately awarded. This is the operational system of record for promotion fulfillment tracking and campaign economics reporting.. Existence Justification: In loyalty program operations, members actively enroll in promotions and the business tracks each enrollment as a distinct operational record with its own lifecycle (enrolled → in-progress → completed/expired/awarded). One promotion has many enrolled members, and one member participates in many promotions simultaneously or over time. This is a textbook operational M:N: the business explicitly manages member promotion enrollment as a tracked business concept, evidenced by aggregate fields (total_enrollments, total_completions, registration_required_flag) on the promotion entity and the detection phase explicitly identifying enrollment_date, completion_date, enrollment_status, points_awarded, and qualifying_activity_count as relationship-level attributes.';
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` (
+    `member_preference_id` BIGINT COMMENT 'Unique identifier for the member preference record. Primary key.',
+    `member_id` BIGINT COMMENT 'Reference to the loyalty member who holds this preference. Links to the loyalty member master record.',
+    `property_id` BIGINT COMMENT 'Foreign key linking to property.property. Business justification: Property guest services teams honor member preferences (e.g., never book me at this property, preferred property for business travel) during reservation and check-in. Currently restricted_property',
+    `brand_restriction` STRING COMMENT 'The brand code if this preference is restricted to a specific brand within the portfolio. Nullable if preference applies across all brands.',
+    `confidence_level` STRING COMMENT 'The confidence or reliability level of this preference. Stated preferences have highest confidence; inferred preferences are scored based on frequency and recency of observed behavior.. Valid values are `stated|inferred_high|inferred_medium|inferred_low`',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this preference record was first created in the loyalty system. Audit trail for record creation.',
+    `effective_date` DATE COMMENT 'The date from which this preference becomes active and should be applied to member experiences.',
+    `expiration_date` DATE COMMENT 'The date after which this preference is no longer valid or should no longer be applied. Nullable for preferences with no expiration.',
+    `last_confirmed_date` DATE COMMENT 'The date when the member explicitly confirmed or reaffirmed this preference. Distinct from last_updated_date which may include system-inferred updates.',
+    `last_observed_date` DATE COMMENT 'The most recent date when this preference was observed in a stay or interaction. Used for recency scoring in confidence calculations.',
+    `last_updated_date` DATE COMMENT 'The date when this preference was last modified or confirmed by the member or system. Used to track recency for confidence scoring.',
+    `notes` STRING COMMENT 'Free-text notes or additional context about this preference. May include special instructions, member comments, or operational guidance.',
+    `observation_count` STRING COMMENT 'The number of times this preference has been observed in the members stay history or interactions. Used to calculate confidence level for inferred preferences.',
+    `override_flag` BOOLEAN COMMENT 'Indicates whether this preference can be overridden by operational constraints or property-level decisions. True if override is allowed; false if preference must be honored.',
+    `preference_category` STRING COMMENT 'The category or domain of the preference (e.g., room type, pillow type, floor preference, amenity preferences, dietary restrictions, communication channel, language, newspaper, housekeeping schedule). Classifies the type of personalization being captured. [ENUM-REF-CANDIDATE: room_type|pillow_type|floor_preference|amenity|dietary_restriction|communication_channel|language|newspaper|housekeeping_schedule — promote to reference product]. Valid values are `room_type|pillow_type|floor_preference|amenity|dietary_restriction|communication_channel`',
+    `preference_source` STRING COMMENT 'The origin or channel through which this preference was captured (e.g., stated at enrollment, updated via mobile app, updated via website, captured by call center, inferred from stay history, imported from PMS profile).. Valid values are `enrollment|mobile_app|website|call_center|stay_history|pms_profile`',
+    `preference_status` STRING COMMENT 'Current lifecycle status of this preference record. Active preferences are used for personalization; inactive or expired preferences are retained for historical analysis.. Valid values are `active|inactive|expired|overridden`',
+    `preference_value` DECIMAL(18,2) COMMENT 'The specific value or selection for this preference (e.g., King Bed, Hypoallergenic Pillow, High Floor, Vegetarian, Email). Free-text or structured value depending on category.',
+    `priority_rank` STRING COMMENT 'The priority or importance ranking of this preference relative to other preferences for the same member. Lower numbers indicate higher priority. Used when preferences conflict.',
+    `property_restriction` STRING COMMENT 'Indicates whether this preference applies to all properties, a specific property, a brand, or a region. Supports property-specific personalization.. Valid values are `all_properties|specific_property|brand_level|region_level`',
+    `source_system_code` STRING COMMENT 'The unique identifier for this preference record in the source system. Used for data lineage and reconciliation.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this preference record was last modified. Audit trail for record updates.',
+    CONSTRAINT pk_member_preference PRIMARY KEY(`member_preference_id`)
+) COMMENT 'Master record of a loyalty members stated and inferred preferences used to personalize the hospitality experience. Captures preference category (room type, pillow type, floor preference, amenity preferences, dietary restrictions, communication channel, language, newspaper, housekeeping schedule), preference source (stated at enrollment, updated via app, inferred from stay history), confidence level, and last updated date. Distinct from guest domain preferences as this is loyalty-program-managed personalization data.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ADD CONSTRAINT `fk_loyalty_member_tier_id` FOREIGN KEY (`tier_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`tier`(`tier_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ADD CONSTRAINT `fk_loyalty_tier_history_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ADD CONSTRAINT `fk_loyalty_tier_history_tier_id` FOREIGN KEY (`tier_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`tier`(`tier_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ADD CONSTRAINT `fk_loyalty_tier_history_promotion_id` FOREIGN KEY (`promotion_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`promotion`(`promotion_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_accrual_rule_id` FOREIGN KEY (`accrual_rule_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule`(`accrual_rule_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_promotion_id` FOREIGN KEY (`promotion_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`promotion`(`promotion_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_redemption_id` FOREIGN KEY (`redemption_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`redemption`(`redemption_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_redemption_rule_id` FOREIGN KEY (`redemption_rule_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule`(`redemption_rule_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ADD CONSTRAINT `fk_loyalty_points_ledger_reversal_reference_points_ledger_id` FOREIGN KEY (`reversal_reference_points_ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger`(`points_ledger_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ADD CONSTRAINT `fk_loyalty_accrual_rule_tier_id` FOREIGN KEY (`tier_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`tier`(`tier_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ADD CONSTRAINT `fk_loyalty_redemption_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ADD CONSTRAINT `fk_loyalty_redemption_promotion_id` FOREIGN KEY (`promotion_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`promotion`(`promotion_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ADD CONSTRAINT `fk_loyalty_redemption_redemption_rule_id` FOREIGN KEY (`redemption_rule_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule`(`redemption_rule_id`);
@@ -463,39 +423,38 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ADD CONSTRAINT `
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ADD CONSTRAINT `fk_loyalty_benefit_entitlement_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ADD CONSTRAINT `fk_loyalty_benefit_entitlement_promotion_id` FOREIGN KEY (`promotion_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`promotion`(`promotion_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ADD CONSTRAINT `fk_loyalty_benefit_entitlement_tier_id` FOREIGN KEY (`tier_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`tier`(`tier_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ADD CONSTRAINT `fk_loyalty_promotion_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ADD CONSTRAINT `fk_loyalty_promotion_reward_catalog_id` FOREIGN KEY (`reward_catalog_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog`(`reward_catalog_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ADD CONSTRAINT `fk_loyalty_promotion_tier_id` FOREIGN KEY (`tier_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`tier`(`tier_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ADD CONSTRAINT `fk_loyalty_promotion_enrollment_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ADD CONSTRAINT `fk_loyalty_promotion_enrollment_promotion_id` FOREIGN KEY (`promotion_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`promotion`(`promotion_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ADD CONSTRAINT `fk_loyalty_member_preference_member_id` FOREIGN KEY (`member_id`) REFERENCES `vibe_travel_hospitality_v1`.`loyalty`.`member`(`member_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`loyalty` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`loyalty` SET TAGS ('dbx_domain' = 'loyalty');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` SET TAGS ('dbx_subdomain' = 'member_enrollment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` SET TAGS ('dbx_subdomain' = 'member_engagement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Channel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Member Guest Profile Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `member_property_id` SET TAGS ('dbx_business_glossary_term' = 'Preferred Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Preferred Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Tier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `account_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Account Closure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `account_closure_reason` SET TAGS ('dbx_business_glossary_term' = 'Account Closure Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `account_closure_reason` SET TAGS ('dbx_value_regex' = 'member_request|inactivity|fraud|policy_violation|deceased|duplicate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `communication_opt_in` SET TAGS ('dbx_business_glossary_term' = 'Communication Opt-In');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `currency_preference` SET TAGS ('dbx_business_glossary_term' = 'Currency Preference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `currency_preference` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `current_points_balance` SET TAGS ('dbx_business_glossary_term' = 'Current Points Balance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_business_glossary_term' = 'Email Opt-In');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `email_opt_in` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `enrollment_channel` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `enrollment_channel` SET TAGS ('dbx_value_regex' = 'web|mobile_app|front_desk|call_center|partner|event');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `language_preference` SET TAGS ('dbx_business_glossary_term' = 'Language Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `language_preference` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `language_preference` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `last_stay_date` SET TAGS ('dbx_business_glossary_term' = 'Last Stay Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `lifetime_nights` SET TAGS ('dbx_business_glossary_term' = 'Lifetime Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `lifetime_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Lifetime Points Earned');
@@ -503,18 +462,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `lifeti
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `lifetime_stays` SET TAGS ('dbx_business_glossary_term' = 'Lifetime Stays');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_number` SET TAGS ('dbx_business_glossary_term' = 'Membership Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,15}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_status` SET TAGS ('dbx_business_glossary_term' = 'Membership Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `membership_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|closed|pending');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `next_stay_date` SET TAGS ('dbx_business_glossary_term' = 'Next Stay Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `nps_score` SET TAGS ('dbx_business_glossary_term' = 'Net Promoter Score (NPS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `partner_sharing_consent` SET TAGS ('dbx_business_glossary_term' = 'Partner Sharing Consent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `partner_sharing_consent` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `points_expired` SET TAGS ('dbx_business_glossary_term' = 'Points Expired');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `points_redeemed` SET TAGS ('dbx_business_glossary_term' = 'Points Redeemed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `preferred_room_type` SET TAGS ('dbx_business_glossary_term' = 'Preferred Room Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `preferred_room_type` SET TAGS ('dbx_value_regex' = 'standard|deluxe|suite|executive|presidential|accessible');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `salt_score` SET TAGS ('dbx_business_glossary_term' = 'Satisfaction and Loyalty Tracking (SALT) Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `sms_opt_in` SET TAGS ('dbx_business_glossary_term' = 'SMS Opt-In');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `tier_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Tier Expiration Date');
@@ -525,8 +479,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `ytd_ni
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `ytd_revenue` SET TAGS ('dbx_business_glossary_term' = 'Year-to-Date (YTD) Revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member` ALTER COLUMN `ytd_stays` SET TAGS ('dbx_business_glossary_term' = 'Year-to-Date (YTD) Stays');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` SET TAGS ('dbx_subdomain' = 'member_enrollment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` SET TAGS ('dbx_subdomain' = 'member_engagement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Tier ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `bonus_points_on_enrollment` SET TAGS ('dbx_business_glossary_term' = 'Bonus Points on Enrollment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `breakfast_benefit_flag` SET TAGS ('dbx_business_glossary_term' = 'Breakfast Benefit Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `tier_code` SET TAGS ('dbx_business_glossary_term' = 'Tier Code');
@@ -550,8 +505,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `lounge_a
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `tier_name` SET TAGS ('dbx_business_glossary_term' = 'Tier Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `points_earning_multiplier` SET TAGS ('dbx_business_glossary_term' = 'Points Earning Multiplier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `priority_reservation_flag` SET TAGS ('dbx_business_glossary_term' = 'Priority Reservation Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `qualification_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Qualification Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `qualification_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `qualification_nights_threshold` SET TAGS ('dbx_business_glossary_term' = 'Qualification Nights Threshold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `qualification_period_months` SET TAGS ('dbx_business_glossary_term' = 'Qualification Period Months');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `qualification_points_threshold` SET TAGS ('dbx_business_glossary_term' = 'Qualification Points Threshold');
@@ -562,57 +515,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `tier_sta
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `tier_status` SET TAGS ('dbx_value_regex' = 'active|inactive|discontinued|pending');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `validity_months` SET TAGS ('dbx_business_glossary_term' = 'Tier Validity Months');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier` ALTER COLUMN `welcome_amenity_flag` SET TAGS ('dbx_business_glossary_term' = 'Welcome Amenity Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` SET TAGS ('dbx_subdomain' = 'member_enrollment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `tier_history_id` SET TAGS ('dbx_business_glossary_term' = 'Tier History ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'New Tier Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `bonus_points_awarded` SET TAGS ('dbx_business_glossary_term' = 'Bonus Points Awarded');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_number` SET TAGS ('dbx_business_glossary_term' = 'Tier Change Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Tier Change Reason Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_value_regex' = 'earned_upgrade|annual_requalification|downgrade|manual_override|status_match|promotional_grant');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_reason_description` SET TAGS ('dbx_business_glossary_term' = 'Tier Change Reason Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Tier Change Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_type` SET TAGS ('dbx_business_glossary_term' = 'Tier Change Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `change_type` SET TAGS ('dbx_value_regex' = 'upgrade|downgrade|lateral|initial_enrollment|reinstatement');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Tier Effective Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Tier Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `is_current_tier_flag` SET TAGS ('dbx_business_glossary_term' = 'Is Current Tier Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `notification_sent_flag` SET TAGS ('dbx_business_glossary_term' = 'Notification Sent Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `notification_sent_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Notification Sent Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `override_approval_code` SET TAGS ('dbx_business_glossary_term' = 'Override Approval Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `override_justification` SET TAGS ('dbx_business_glossary_term' = 'Override Justification');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `previous_tier_code` SET TAGS ('dbx_business_glossary_term' = 'Previous Tier Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualification_basis` SET TAGS ('dbx_business_glossary_term' = 'Qualification Basis');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_nights_achieved` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Nights Achieved');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Period End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Period Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_points_achieved` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Points Achieved');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_spend_amount` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Spend Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_spend_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Spend Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_spend_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `qualifying_stays_achieved` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Stays Achieved');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `rollover_nights_granted` SET TAGS ('dbx_business_glossary_term' = 'Rollover Nights Granted');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `status_match_source_program` SET TAGS ('dbx_business_glossary_term' = 'Status Match Source Program');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `status_match_source_tier` SET TAGS ('dbx_business_glossary_term' = 'Status Match Source Tier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `threshold_nights_required` SET TAGS ('dbx_business_glossary_term' = 'Threshold Nights Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `threshold_points_required` SET TAGS ('dbx_business_glossary_term' = 'Threshold Points Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `threshold_spend_required` SET TAGS ('dbx_business_glossary_term' = 'Threshold Spend Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `threshold_stays_required` SET TAGS ('dbx_business_glossary_term' = 'Threshold Stays Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `tier_extension_granted_flag` SET TAGS ('dbx_business_glossary_term' = 'Tier Extension Granted Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `tier_extension_months` SET TAGS ('dbx_business_glossary_term' = 'Tier Extension Months');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`tier_history` ALTER COLUMN `triggered_by_system` SET TAGS ('dbx_business_glossary_term' = 'Triggered By System');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` SET TAGS ('dbx_subdomain' = 'points_redemption');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `points_ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Points Ledger ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `accrual_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Accrual Rule Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
@@ -623,14 +530,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `redemption_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `redemption_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Rule Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `reversal_reference_points_ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Reference ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Appointment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `activity_date` SET TAGS ('dbx_business_glossary_term' = 'Activity Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `adjustment_notes` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `adjustment_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `balance_after_transaction` SET TAGS ('dbx_business_glossary_term' = 'Balance After Transaction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `base_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `base_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Base Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `base_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `conversion_rate` SET TAGS ('dbx_business_glossary_term' = 'Conversion Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`points_ledger` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
@@ -653,20 +557,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` SET TAGS ('dbx
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` SET TAGS ('dbx_subdomain' = 'points_redemption');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `accrual_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Accrual Rule ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `hierarchy_id` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Property Outlet Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `segment_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `applicable_brands` SET TAGS ('dbx_business_glossary_term' = 'Applicable Brands');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `applicable_property_ids` SET TAGS ('dbx_business_glossary_term' = 'Applicable Property IDs');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `applicable_regions` SET TAGS ('dbx_business_glossary_term' = 'Applicable Regions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `day_of_week_restriction` SET TAGS ('dbx_business_glossary_term' = 'Day of Week Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `earning_basis` SET TAGS ('dbx_business_glossary_term' = 'Earning Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
@@ -679,9 +584,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `marketing_message` SET TAGS ('dbx_business_glossary_term' = 'Marketing Message');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `marketing_message` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `maximum_points_per_transaction` SET TAGS ('dbx_business_glossary_term' = 'Maximum Points Per Transaction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `member_tier_restriction` SET TAGS ('dbx_business_glossary_term' = 'Member Tier Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `minimum_transaction_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Transaction Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `points_per_currency_unit` SET TAGS ('dbx_business_glossary_term' = 'Points Per Currency Unit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule` ALTER COLUMN `program_liability_impact` SET TAGS ('dbx_business_glossary_term' = 'Program Liability Impact');
@@ -705,6 +608,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` SET TAGS ('
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` SET TAGS ('dbx_subdomain' = 'points_redemption');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `redemption_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Rule ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `hierarchy_id` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
@@ -712,8 +617,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `calculation_basis` SET TAGS ('dbx_value_regex' = 'gross_revenue|net_revenue|base_rate|total_spend|transaction_count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `combinable_with_promotions` SET TAGS ('dbx_business_glossary_term' = 'Combinable With Promotions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `redemption_rule_description` SET TAGS ('dbx_business_glossary_term' = 'Rule Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption_rule` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
@@ -752,24 +655,24 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` SET TAGS ('dbx_d
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` SET TAGS ('dbx_subdomain' = 'points_redemption');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `redemption_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Channel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Transaction ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Property Outlet Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Certificate Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `redemption_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Rule Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `reward_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Reward Catalog Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Appointment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `cash_amount` SET TAGS ('dbx_business_glossary_term' = 'Cash Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `confirmation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Redemption Confirmation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Redemption Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `fulfillment_channel` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Channel');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `fulfillment_channel` SET TAGS ('dbx_value_regex' = 'property|mail|email|partner|digital_delivery|in_app');
@@ -781,7 +684,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `no
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `partner_code` SET TAGS ('dbx_business_glossary_term' = 'Partner Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `points_redeemed` SET TAGS ('dbx_business_glossary_term' = 'Points Redeemed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `points_refunded` SET TAGS ('dbx_business_glossary_term' = 'Points Refunded');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `property_code` SET TAGS ('dbx_business_glossary_term' = 'Property Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `redemption_number` SET TAGS ('dbx_business_glossary_term' = 'Redemption Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `redemption_status` SET TAGS ('dbx_business_glossary_term' = 'Redemption Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `redemption_status` SET TAGS ('dbx_value_regex' = 'pending|confirmed|fulfilled|cancelled|expired|reversed');
@@ -794,23 +696,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`redemption` ALTER COLUMN `ti
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` SET TAGS ('dbx_subdomain' = 'points_redemption');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `reward_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Reward Catalog ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `catering_menu_id` SET TAGS ('dbx_business_glossary_term' = 'Catering Menu Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `menu_item_id` SET TAGS ('dbx_business_glossary_term' = 'Menu Item Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Property Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Property Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `hierarchy_id` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `meeting_space_id` SET TAGS ('dbx_business_glossary_term' = 'Meeting Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Property Outlet Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Redemption Channel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `availability_type` SET TAGS ('dbx_business_glossary_term' = 'Availability Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `availability_type` SET TAGS ('dbx_value_regex' = 'always_on|limited|seasonal|promotional|exclusive');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `display_order` SET TAGS ('dbx_business_glossary_term' = 'Display Order');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
@@ -819,10 +716,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `eligible_tier_platinum` SET TAGS ('dbx_business_glossary_term' = 'Eligible Tier Platinum');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `eligible_tier_silver` SET TAGS ('dbx_business_glossary_term' = 'Eligible Tier Silver');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `featured_flag` SET TAGS ('dbx_business_glossary_term' = 'Featured Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `geographic_restriction` SET TAGS ('dbx_business_glossary_term' = 'Geographic Restriction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `geographic_restriction` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `image_url` SET TAGS ('dbx_business_glossary_term' = 'Image URL');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `image_url` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `inventory_count` SET TAGS ('dbx_business_glossary_term' = 'Inventory Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `inventory_threshold` SET TAGS ('dbx_business_glossary_term' = 'Inventory Threshold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `maximum_stay_nights` SET TAGS ('dbx_business_glossary_term' = 'Maximum Stay Nights');
@@ -849,20 +743,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `total_redemptions` SET TAGS ('dbx_business_glossary_term' = 'Total Redemptions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`reward_catalog` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` SET TAGS ('dbx_subdomain' = 'member_enrollment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` SET TAGS ('dbx_subdomain' = 'member_engagement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `benefit_entitlement_id` SET TAGS ('dbx_business_glossary_term' = 'Benefit Entitlement ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `currency_id` SET TAGS ('dbx_business_glossary_term' = 'Currency Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Property Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Property Facility Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Property Outlet Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `advance_booking_required_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Required Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `auto_apply_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto Apply Flag');
@@ -873,8 +763,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `brand_restriction` SET TAGS ('dbx_business_glossary_term' = 'Brand Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `combinable_flag` SET TAGS ('dbx_business_glossary_term' = 'Combinable Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `eligible_property_list` SET TAGS ('dbx_business_glossary_term' = 'Eligible Property List');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `entitlement_source` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Source');
@@ -894,23 +782,25 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `property_restriction` SET TAGS ('dbx_value_regex' = 'ALL|SPECIFIC|BRAND|REGION');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `region_restriction` SET TAGS ('dbx_business_glossary_term' = 'Region Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `remaining_usage` SET TAGS ('dbx_business_glossary_term' = 'Remaining Usage Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `remaining_usage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `revocation_reason` SET TAGS ('dbx_business_glossary_term' = 'Revocation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `revoked_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Revoked Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `transferable_flag` SET TAGS ('dbx_business_glossary_term' = 'Transferable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `usage_count` SET TAGS ('dbx_business_glossary_term' = 'Usage Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `usage_count` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `usage_limit` SET TAGS ('dbx_business_glossary_term' = 'Usage Limit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement` ALTER COLUMN `usage_limit` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` SET TAGS ('dbx_subdomain' = 'promotional_campaigns');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` SET TAGS ('dbx_subdomain' = 'member_engagement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Channel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Partner Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Property Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `hierarchy_id` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Segment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Property Outlet Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Revenue Rate Plan Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `reward_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Reward Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `segment_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Tier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
@@ -920,14 +810,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `bon
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `bonus_points_amount` SET TAGS ('dbx_business_glossary_term' = 'Bonus Points Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `bonus_points_multiplier` SET TAGS ('dbx_business_glossary_term' = 'Bonus Points Multiplier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `budget_cap_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Cap Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `budget_cap_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `budget_consumed_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Consumed Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `budget_consumed_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_code` SET TAGS ('dbx_business_glossary_term' = 'Promotion Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Promotion End Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `exclusion_list` SET TAGS ('dbx_business_glossary_term' = 'Exclusion List');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `minimum_nights` SET TAGS ('dbx_business_glossary_term' = 'Minimum Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `minimum_spend_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Spend Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_name` SET TAGS ('dbx_business_glossary_term' = 'Promotion Name');
@@ -936,7 +825,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `pro
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_type` SET TAGS ('dbx_business_glossary_term' = 'Promotion Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `promotion_type` SET TAGS ('dbx_value_regex' = 'bonus_points_multiplier|double_nights|targeted_offer|welcome_back|birthday_bonus|spend_challenge');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `qualifying_criteria_description` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Criteria Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `qualifying_property_list` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Property List');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `qualifying_rate_codes` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Rate Codes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `registration_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Registration Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `stackable_flag` SET TAGS ('dbx_business_glossary_term' = 'Stackable Flag');
@@ -947,22 +835,34 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `tot
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `total_enrollments` SET TAGS ('dbx_business_glossary_term' = 'Total Enrollments');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` SET TAGS ('dbx_subdomain' = 'promotional_campaigns');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` SET TAGS ('dbx_association_edges' = 'loyalty.promotion,loyalty.member');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `promotion_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Enrollment - Promotion Enrollment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Enrollment - Member Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Promotion Enrollment - Promotion Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `award_date` SET TAGS ('dbx_business_glossary_term' = 'Award Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `bonus_awarded_flag` SET TAGS ('dbx_business_glossary_term' = 'Bonus Awarded Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completion Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `enrollment_channel` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Channel');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `exclusion_list` SET TAGS ('dbx_business_glossary_term' = 'Exclusion List');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `opt_out_date` SET TAGS ('dbx_business_glossary_term' = 'Opt-Out Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `points_awarded` SET TAGS ('dbx_business_glossary_term' = 'Points Awarded');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `promotion_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment` ALTER COLUMN `qualifying_activity_count` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Activity Count');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` SET TAGS ('dbx_subdomain' = 'member_engagement');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `member_preference_id` SET TAGS ('dbx_business_glossary_term' = 'Member Preference ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `brand_restriction` SET TAGS ('dbx_business_glossary_term' = 'Brand Restriction');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `confidence_level` SET TAGS ('dbx_business_glossary_term' = 'Confidence Level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `confidence_level` SET TAGS ('dbx_value_regex' = 'stated|inferred_high|inferred_medium|inferred_low');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `last_confirmed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Confirmed Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `last_observed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Observed Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `last_updated_date` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Preference Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `observation_count` SET TAGS ('dbx_business_glossary_term' = 'Observation Count');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `override_flag` SET TAGS ('dbx_business_glossary_term' = 'Override Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_category` SET TAGS ('dbx_business_glossary_term' = 'Preference Category');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_category` SET TAGS ('dbx_value_regex' = 'room_type|pillow_type|floor_preference|amenity|dietary_restriction|communication_channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_source` SET TAGS ('dbx_business_glossary_term' = 'Preference Source');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_source` SET TAGS ('dbx_value_regex' = 'enrollment|mobile_app|website|call_center|stay_history|pms_profile');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_status` SET TAGS ('dbx_business_glossary_term' = 'Preference Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_status` SET TAGS ('dbx_value_regex' = 'active|inactive|expired|overridden');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `preference_value` SET TAGS ('dbx_business_glossary_term' = 'Preference Value');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `property_restriction` SET TAGS ('dbx_business_glossary_term' = 'Property Restriction');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `property_restriction` SET TAGS ('dbx_value_regex' = 'all_properties|specific_property|brand_level|region_level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`loyalty`.`member_preference` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

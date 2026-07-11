@@ -1,5 +1,5 @@
--- Schema for Domain: channel | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:40
+-- Schema for Domain: channel | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:49
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`channel` COMMENT 'Distribution channel management including OTA partnerships, GDS connectivity, direct booking channels, CRS (Sabre SynXis) channel mapping, and rate parity monitoring. Manages channel performance, commission structures, connectivity fees, booking source attribution, and channel mix optimization. Tracks cost of acquisition and channel contribution to revenue.';
@@ -7,9 +7,9 @@ CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`channel` COMMENT 'Di
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` (
     `channel_id` BIGINT COMMENT 'Primary key for channel',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Channel managers are employees who own distribution channel relationships, manage OTA partnerships, and handle channel performance. Standard hospitality practice tracks which employee owns each channe',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Distribution channels incur operating costs (connectivity fees, commissions, marketing) that must be allocated to cost centers for USALI-compliant departmental P&L reporting and budget variance analys',
-    `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: Many distribution channels are operated by OTA partners (e.g., Expedia operates multiple channels/brands). This FK establishes the ownership relationship. Removes redundant platform_name which can be ',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Channel managers are employees who own distribution channel relationships, manage OTA partnerships, and handle channel performance. Standard hospitality practice tracks which employee owns each channe',
+    `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: Many distribution channels are operated by OTA partners (e.g., Expedia operates multiple channels/brands). This FK establishes the ownership relationship. Removes redundant platform_name which can be',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Distribution channels often have primary marketing campaigns driving bookings. This FK enables attribution analysis and campaign performance tracking by channel. Essential for marketing ROI measuremen',
     `activation_date` DATE COMMENT 'Date on which this distribution channel was first activated and began accepting live bookings. Distinct from contract_start_date which reflects the commercial agreement date. Used for channel onboarding tracking and performance benchmarking from go-live.',
     `bar_eligible` BOOLEAN COMMENT 'Indicates whether this channel is eligible to display and sell the Best Available Rate (BAR) — the lowest publicly available rate at the time of booking. True = BAR rates are distributed to this channel; False = channel receives only specific contracted or negotiated rates. Drives rate distribution strategy in IDeaS G3 RMS and Sabre SynXis CRS.',
@@ -18,7 +18,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` (
     `channel_category` STRING COMMENT 'High-level grouping of the channel by booking relationship: DIRECT = guest books directly with the property (web, mobile, voice, corporate direct); INDIRECT = third-party intermediary involved (OTA, GDS, wholesaler, metasearch); OPAQUE = rate and property identity concealed until after booking (e.g., Hotwire, Priceline opaque). Drives cost-of-acquisition analysis and channel mix strategy.. Valid values are `DIRECT|INDIRECT|OPAQUE`',
     `channel_status` STRING COMMENT 'Current operational lifecycle status of the distribution channel. active = channel is live and accepting bookings; inactive = channel is configured but not currently selling; suspended = channel temporarily halted (e.g., rate parity violation, connectivity issue); pending_activation = channel onboarded but not yet live; decommissioned = channel permanently retired.. Valid values are `active|inactive|suspended|pending_activation|decommissioned`',
     `channel_type` STRING COMMENT 'Categorical classification of the distribution channel by its market segment and technology interface. OTA = Online Travel Agency (e.g., Expedia, Booking.com); GDS = Global Distribution System (e.g., Sabre, Amadeus, Galileo); DIRECT_WEB = brand.com web booking; DIRECT_MOBILE = brand mobile app; VOICE = call center reservations; CORPORATE_DIRECT = negotiated corporate accounts; WHOLESALER = tour operators and bed banks; METASEARCH = Google Hotel Ads, Trivago. [ENUM-REF-CANDIDATE: OTA|GDS|DIRECT_WEB|DIRECT_MOBILE|VOICE|CORPORATE_DIRECT|WHOLESALER|METASEARCH — promote to reference product]',
-    `channel_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the distribution channel across enterprise systems including Sabre SynXis CRS, Oracle OPERA PMS, and IDeaS G3 RMS. Used for channel mapping and cross-system reconciliation. [DQ: denormalized natural key flagged for normalization to SSOT FK]. Valid values are `^[A-Z0-9_]{2,20}$`',
+    `channel_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the distribution channel across enterprise systems including Sabre SynXis CRS, Oracle OPERA PMS, and IDeaS G3 RMS. Used for channel mapping and cross-system reconciliation.. Valid values are `^[A-Z0-9_]{2,20}$`',
     `commission_basis` STRING COMMENT 'The commercial model under which commission is calculated for this channel. NET_RATE = channel marks up a net rate provided by the property; GROSS_RATE = commission deducted from the gross rate charged to the guest; MARKUP = channel applies a markup over the propertys net rate; FLAT_FEE = fixed fee per booking regardless of rate. Critical for accurate revenue and cost-of-acquisition reporting.. Valid values are `NET_RATE|GROSS_RATE|MARKUP|FLAT_FEE`',
     `commission_rate_pct` DECIMAL(18,2) COMMENT 'Standard commission percentage charged by this distribution channel on each booking, expressed as a percentage of the room revenue (e.g., 15.00 for 15%). Drives cost-of-acquisition calculations and net revenue reporting per USALI standards. Confidential as it reflects negotiated commercial terms.',
     `connectivity_fee_usd` DECIMAL(18,2) COMMENT 'Annual or periodic connectivity/subscription fee charged by the channel or switch provider for maintaining the technical integration, expressed in USD. Included in total cost-of-acquisition analysis alongside commission. Confidential as it reflects negotiated commercial terms.',
@@ -27,7 +27,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` (
     `contract_end_date` DATE COMMENT 'Date on which the commercial agreement with this distribution channel expires or is scheduled to terminate. Null for evergreen/open-ended agreements. Used for contract renewal management and channel lifecycle planning. Stored in yyyy-MM-dd format.',
     `contract_start_date` DATE COMMENT 'Date on which the commercial agreement with this distribution channel became effective. Used for contract lifecycle management, commission audit trails, and regulatory compliance. Stored in yyyy-MM-dd format.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this distribution channel record was first created in the enterprise data platform. Stored in yyyy-MM-ddTHH:mm:ss.SSSXXX format. Used for audit trail, data lineage, and record lifecycle management.',
-    `crs_channel_code` STRING COMMENT 'Channel identifier as configured in the Sabre SynXis Central Reservation System (CRS). Used for cross-system reconciliation between the enterprise data lakehouse and the CRS source of record. Enables traceability of bookings back to the originating CRS channel configuration. [DQ: denormalized natural key flagged for normalization to SSOT FK]',
+    `crs_channel_code` STRING COMMENT 'Channel identifier as configured in the Sabre SynXis Central Reservation System (CRS). Used for cross-system reconciliation between the enterprise data lakehouse and the CRS source of record. Enables traceability of bookings back to the originating CRS channel configuration.',
     `deactivation_date` DATE COMMENT 'Date on which this distribution channel was deactivated or decommissioned. Null for currently active channels. Used for channel lifecycle management, historical reporting, and audit trails. Stored in yyyy-MM-dd format.',
     `channel_description` STRING COMMENT 'Free-text description of the distribution channel, including its market positioning, target guest segment, special contractual terms, or operational notes. Used for channel management documentation and onboarding reference.',
     `gdpr_data_processor` BOOLEAN COMMENT 'Indicates whether this distribution channel acts as a GDPR data processor for guest personal data collected during the booking process. True = a Data Processing Agreement (DPA) is in place with this channel; False = channel does not process personal data on behalf of the property. Required for GDPR compliance and data governance.',
@@ -57,6 +57,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` (
     `ota_partner_id` BIGINT COMMENT 'Unique surrogate identifier for the OTA partner record in the silver layer lakehouse. Primary key for the ota_partner master data product.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: OTA account managers are employees managing partner relationships, negotiating contracts, and resolving disputes. Essential for accountability in partnership management, performance tracking, and esca',
+    `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: OTA partnerships are brand-specific in multi-brand hospitality companies; Marriott Bonvoy partners differ from Ritz-Carlton partners. Brand-level partnership management, commission structures, and con',
     `third_party_due_diligence_id` BIGINT COMMENT 'Foreign key linking to compliance.third_party_due_diligence. Business justification: OTA partners are third-party processors of guest PII and payment data, requiring due diligence screening for GDPR compliance, sanctions screening, cybersecurity assessment, and financial stability. Re',
     `affiliate_network` BOOLEAN COMMENT 'Indicates whether the OTA partner operates an affiliate or sub-distribution network through which third-party websites or agents can book on behalf of the OTA. True = affiliate network active; False = direct OTA platform only. Relevant for booking source attribution accuracy.',
     `base_commission_rate_pct` DECIMAL(18,2) COMMENT 'Standard commission percentage charged by the OTA partner on each confirmed booking, expressed as a percentage of the gross booking value (e.g., 15.00 = 15%). Foundational input for cost-of-acquisition (COA) and channel profitability analysis.',
@@ -201,7 +202,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_pla
     `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Promotional rate plans operationalize marketing offers; a "Summer Sale" campaign offer manifests as specific rate plans loaded into distribution channels. Linking rate plans to offers enables offer pe',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Each channel-specific rate plan configuration belongs to one distribution channel. Many rate plans per channel. Removes redundant channel_code, channel_name, and channel_type which can be retrieved vi',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property for which this channel rate plan configuration applies. Enables property-level rate plan and channel management across a multi-property portfolio.',
-    `revenue_rate_plan_id` BIGINT COMMENT 'add column revenue_rate_plan_id (BIGINT) with FK to revenue.revenue_rate_plan.revenue_rate_plan_id - channel rate plans must derive from the revenue master rate plan to resolve SSOT duplicate.',
+    `revenue_rate_plan_id` BIGINT COMMENT 'SSOT reference to owning entity.',
     `advance_purchase_days` STRING COMMENT 'Minimum number of days in advance of arrival that a booking must be made to qualify for this rate plan on this channel. For example, a value of 7 means the guest must book at least 7 days before check-in. Supports advance purchase rate strategies and demand management.',
     `approved_by` STRING COMMENT 'Name or identifier of the revenue management or distribution team member who approved this channel rate plan configuration for publication. Supports governance, approval workflow tracking, and audit compliance for rate distribution decisions.',
     `base_rate_amount` DECIMAL(18,2) COMMENT 'The base room rate amount (in property currency) from which the channel-specific rate is derived. For BAR-derived plans, this is the current BAR value. For flat rates, this is the fixed rate. Expressed per room per night. Supports rate parity monitoring and channel pricing strategy analysis.',
@@ -242,11 +243,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_pla
     `stay_date_start` DATE COMMENT 'The earliest arrival date for which this channel rate plan is valid. Bookings made under this rate plan must have an arrival date on or after this date. Supports seasonal rate plan publishing and blackout date management.',
     `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this channel rate plan configuration record was most recently modified. Supports change tracking, audit trail, and incremental data processing in the Silver Layer lakehouse.',
     CONSTRAINT pk_channel_rate_plan PRIMARY KEY(`channel_rate_plan_id`)
-) COMMENT 'Single source of truth is revenue.revenue_rate_plan. Channel-specific rate plan configurations defining which rate plans (BAR, NRR, LRA, corporate, package) are published to which channels, with channel-specific pricing adjustments, markup/markdown rules, and rate loading schedules. Captures rate plan code, channel applicability, rate derivation method (flat, percentage, derived from BAR), advance purchase restrictions, and cancellation policy linkage. Supports rate parity compliance and channel-specific pricing strategy. SSOT: defers to revenue.revenue_rate_plan (MVM).revenue_rate_plan as single source of truth] [SSOT:rate_plan] Canonical single-source-of-truth for the rate_plan concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical revenue.revenue_rate_plan (MVM cross-domain dedup).';
+) COMMENT 'Channel-specific rate plan configurations defining which rate plans (BAR, NRR, LRA, corporate, package) are published to which channels, with channel-specific pricing adjustments, markup/markdown rules, and rate loading schedules. Captures rate plan code, channel applicability, rate derivation method (flat, percentage, derived from BAR), advance purchase restrictions, and cancellation policy linkage. Supports rate parity compliance and channel-specific pricing strategy.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` (
     `booking_source_id` BIGINT COMMENT 'Unique surrogate identifier for each booking source attribution record in the channel distribution master. Primary key for the booking_source reference master. [ROLE: REFERENCE_LOOKUP — this entity is a reference master / code list for booking source attribution codes; per canonical-attrs-enforced rule, REFERENCE_LOOKUP role is exempt from per-role minimums. _canonical_skip_reason: booking_source is a reference master / code table classifying reservation origin at sub-channel granularity; it does not represent a party, agreement, resource, transaction, or event log.]',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Booking source is a granular attribution code that rolls up to a parent distribution channel. Many booking sources belong to one channel. Removes redundant parent_channel_code and parent_channel_name ',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Booking source is a granular attribution code that rolls up to a parent distribution channel. Many booking sources belong to one channel. Removes redundant parent_channel_code and parent_channel_name',
     `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: Booking sources may be associated with specific OTA partners for attribution and commission tracking. Many booking sources can belong to one OTA partner. Removes redundant ota_partner_code which can b',
     `activation_date` DATE COMMENT 'Date on which this booking source was first activated and made live for reservation acceptance in the CRS and PMS. Used for channel performance benchmarking (measuring ramp-up period) and historical channel mix analysis.',
     `api_connectivity_type` STRING COMMENT 'Technical connectivity method used to exchange availability, rates, and inventory (ARI) data between the hotels CRS/PMS and this booking source. Determines integration complexity, latency, and update frequency for rate and inventory distribution.. Valid values are `direct_connect|ota_extranet|gds_switch|channel_manager|manual`',
@@ -289,64 +290,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` 
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this booking source record was last modified in the data platform. Used for incremental ETL processing, change data capture, and audit trail maintenance. Conforms to ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX).',
     CONSTRAINT pk_booking_source PRIMARY KEY(`booking_source_id`)
 ) COMMENT 'Reference master for booking source attribution codes classifying the origin of each reservation at sub-channel granularity. Captures source code, source name, parent channel association, source category (OTA desktop, OTA mobile, GDS corporate, direct web, direct app, voice, group, wholesale), and attribution hierarchy for revenue reporting. SSOT for booking source classification used across reservation and revenue domains for channel mix analysis, cost-of-acquisition attribution, and marketing campaign effectiveness measurement.';
-
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` (
-    `channel_inventory_allocation_id` BIGINT COMMENT 'Unique surrogate identifier for each inventory allocation record in the channel distribution system. Primary key for the inventory_allocation data product.',
-    `channel_rate_plan_id` BIGINT COMMENT 'Reference to the rate plan associated with this inventory allocation. Determines which pricing rules apply to the allocated inventory on this channel.',
-    `channel_id` BIGINT COMMENT 'Reference to the distribution channel (OTA, GDS, direct, voice, etc.) to which this inventory allocation applies. Sourced from Sabre SynXis CRS channel configuration.',
-    `room_type_id` BIGINT COMMENT 'Reference to the room type (e.g., standard king, deluxe double, suite) for which inventory is being allocated to the channel.',
-    `property_id` BIGINT COMMENT 'Reference to the property for which inventory is being allocated. Links to the property master record in Oracle OPERA PMS.',
-    `action_type` STRING COMMENT 'The type of inventory control action that generated this record. CREATE indicates a new allocation was established; UPDATE modifies an existing allocation; CLOSE applies a stop-sell or close-out; REOPEN lifts a restriction; RELEASE returns unsold inventory to the pool; OVERRIDE applies a manual revenue management override.. Valid values are `create|update|close|reopen|release|override`',
-    `active_status` STRING COMMENT 'Current operational status of this channel inventory allocation. Active allocations are enforced by the channel management system.',
-    `allocated_units` STRING COMMENT 'The total number of room nights (units) assigned to this channel for the specified stay date range and room type. Represents the allotment block size or sell limit granted to the channel.',
-    `allocation_reference_number` STRING COMMENT 'Externally-known alphanumeric reference number assigned by the Central Reservation System (CRS) or Property Management System (PMS) to uniquely identify this inventory allocation action. Used for cross-system reconciliation between Sabre SynXis CRS and Oracle OPERA PMS.',
-    `allocation_status` STRING COMMENT 'Current lifecycle state of the inventory allocation record. ACTIVE indicates the allocation is live and controlling channel availability; INACTIVE means it has been superseded; EXPIRED means the stay date range has passed; CANCELLED means it was manually revoked; PENDING means it is awaiting activation.. Valid values are `active|inactive|expired|cancelled|pending`',
-    `allocation_type` STRING COMMENT 'Method by which inventory is allocated to this channel for this room type. POOLED = shared inventory pool, ALLOCATED = fixed allocation, FREESALE = unlimited access, BLOCKED = no access.',
-    `allotment_type` STRING COMMENT 'Classification of the inventory allotment method applied to this channel. FREE_SELL allows the channel to sell without a fixed block; ALLOCATION assigns a fixed block of rooms; STOP_SELL halts sales on the channel; CLOSE_OUT removes all availability; ON_REQUEST requires manual confirmation before booking is confirmed.. Valid values are `free_sell|allocation|stop_sell|close_out|on_request`',
-    `applied_by_user` STRING COMMENT 'The username or employee identifier of the revenue manager or system user who applied this inventory control action. Used for audit trail, accountability, and change management reporting.',
-    `available_units` STRING COMMENT 'The number of room nights currently available for sale on this channel, calculated as allocated_units minus consumed_units. Represents the real-time sellable inventory for the channel on the specified stay dates.',
-    `cancellation_count` STRING COMMENT 'The number of bookings cancelled on this channel allocation since the last reporting snapshot. Used to track net pickup and assess channel-level cancellation patterns for demand forecasting.',
-    `channel_allocation_pct` DECIMAL(18,2) COMMENT 'Percentage of total room type inventory allocated to this channel. Used for allocation-based inventory management strategies.',
-    `channel_type` STRING COMMENT 'The category of distribution channel for this allocation. OTA (Online Travel Agency), GDS (Global Distribution System), DIRECT_WEB (brand.com), VOICE (call center), GSO (Global Sales Office), WHOLESALE (tour operators/wholesalers), METASEARCH (Google, Trivago, etc.). Supports channel mix optimization analysis. [ENUM-REF-CANDIDATE: ota|gds|direct_web|voice|gso|wholesale|metasearch — 7 candidates stripped; promote to reference product]',
-    `commission_rate` DECIMAL(18,2) COMMENT 'The commission rate (expressed as a decimal, e.g., 0.15 for 15%) payable to the distribution channel for bookings made under this allocation. Used for cost of acquisition analysis and channel profitability reporting.',
-    `connectivity_fee` DECIMAL(18,2) COMMENT 'The fixed or per-transaction connectivity fee charged by the GDS or CRS for distributing inventory through this channel. Expressed in the propertys local currency. Used for total cost of distribution analysis.',
-    `consumed_units` STRING COMMENT 'The number of allocated room nights that have been booked or consumed by the channel as of the last system update. Used to calculate remaining availability and monitor channel pickup performance.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this allocation record was created in the system.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this inventory allocation record was first created in the system. Provides the audit trail creation timestamp for data lineage and compliance purposes.',
-    `currency_code` STRING COMMENT 'The ISO 4217 three-letter currency code applicable to financial fields (connectivity_fee) in this allocation record (e.g., USD, EUR, GBP). Ensures consistent multi-currency reporting across global properties.. Valid values are `^[A-Z]{3}$`',
-    `days_out` STRING COMMENT 'The number of days between the allocation action date and the stay_date_from (booking window). Used in revenue management analysis to understand how far in advance inventory controls are being applied relative to the arrival date.',
-    `effective_end_date` DATE COMMENT 'Date when this channel inventory allocation configuration expires. Null for currently active allocations.',
-    `effective_start_date` DATE COMMENT 'Date when this channel inventory allocation configuration becomes effective.',
-    `effective_timestamp` TIMESTAMP COMMENT 'The date and time when this inventory allocation action became effective and was applied to the channel. Represents the business event timestamp when the allocation, stop-sell, or restriction was activated in the CRS.',
-    `is_closed_to_arrival` BOOLEAN COMMENT 'Indicates whether arrivals are blocked on the first date of the stay period for this channel and room type. When TRUE, guests cannot check in on the stay_date_from date, preventing new bookings that start on that date.',
-    `is_closed_to_departure` BOOLEAN COMMENT 'Indicates whether departures are blocked on the stay_date_to date for this channel and room type. When TRUE, guests cannot check out on that date, preventing bookings that end on that date.',
-    `is_rms_generated` BOOLEAN COMMENT 'Indicates whether this inventory allocation action was automatically generated by the Revenue Management System (IDeaS G3 RMS or Infor EzRMS) as opposed to being manually entered by a revenue manager. Supports analysis of automation adoption and RMS recommendation acceptance rates.',
-    `is_stop_sell` BOOLEAN COMMENT 'Indicates whether a stop-sell control has been applied to this channel for the specified stay dates and room type. When TRUE, the channel is prevented from accepting new bookings regardless of remaining available units.',
-    `last_modified_date` TIMESTAMP COMMENT 'Timestamp when this allocation record was last updated.',
-    `last_room_availability` BOOLEAN COMMENT 'Indicates whether Last Room Availability (LRA) is contractually required for this channel. When TRUE, the channel must be offered the last available room at the property, typically a contractual obligation with certain OTA or corporate accounts.',
-    `lift_timestamp` TIMESTAMP COMMENT 'The date and time when this inventory allocation action was lifted, reversed, or superseded. Null if the allocation is still active. Used to track the full lifecycle of each inventory control action.',
-    `lra_enabled_flag` BOOLEAN COMMENT 'Indicates whether Last Room Availability is enabled for this room-type-channel combination, overriding property-level LRA settings.',
-    `max_los` STRING COMMENT 'The maximum number of nights a guest is permitted to stay under this allocation. Enforced when restriction_type is MAX_LOS. Null indicates no maximum stay restriction is applied.',
-    `maximum_los_override` STRING COMMENT 'Channel-specific maximum length of stay restriction for this room type, overriding property-level defaults.',
-    `min_los` STRING COMMENT 'The minimum number of nights a guest must stay to be eligible to book under this allocation. Enforced when restriction_type is MIN_LOS. A value of 1 means no effective minimum restriction.',
-    `minimum_los_override` STRING COMMENT 'Channel-specific minimum length of stay requirement for this room type, overriding property-level defaults.',
-    `overbooking_allowance` STRING COMMENT 'The number of additional room nights above the physical inventory that this channel is permitted to sell as part of the propertys overbooking strategy. A value of 0 means no overbooking is permitted on this channel.',
-    `overbooking_limit_pct` DECIMAL(18,2) COMMENT 'Maximum overbooking percentage allowed for this room type on this channel. Used for revenue management optimization.',
-    `pickup_count` STRING COMMENT 'The number of new bookings received on this channel allocation since the last reporting snapshot. Supports pickup reporting and demand forecasting in the Revenue Management System (RMS).',
-    `priority_rank` STRING COMMENT 'Priority ranking for this channel when allocating inventory for this room type. Lower numbers indicate higher priority.',
-    `rate_parity_enforcement_flag` BOOLEAN COMMENT 'Indicates whether rate parity rules are actively enforced for this room type on this channel.',
-    `rate_parity_flag` BOOLEAN COMMENT 'Indicates whether rate parity compliance is enforced for this channel allocation. When TRUE, the allocated inventory must be offered at rates consistent with other channels per rate parity agreements. Used for OTA contract compliance monitoring.',
-    `reason_code` STRING COMMENT 'Standardized code identifying the business reason for the inventory control action (e.g., HIGH_DEMAND, GROUP_BLOCK, OVERBOOKING_PROTECTION, RATE_PARITY_VIOLATION, CHANNEL_PERFORMANCE, MAINTENANCE). Used for revenue management analysis and audit reporting. [ENUM-REF-CANDIDATE: HIGH_DEMAND|GROUP_BLOCK|OVERBOOKING_PROTECTION|RATE_PARITY_VIOLATION|CHANNEL_PERFORMANCE|MAINTENANCE|FORECAST_ADJUSTMENT|COMPETITIVE_RESPONSE — promote to reference product]',
-    `reason_description` STRING COMMENT 'Free-text narrative providing additional context for the inventory control action beyond the standardized reason_code. Captures specific business justification entered by the revenue manager or system.',
-    `release_date` DATE COMMENT 'The date on which any unsold allocated inventory is released back to the general property inventory pool. After this date, the channel no longer holds exclusive rights to the allocated units, enabling the property to sell them through other channels.',
-    `restriction_type` STRING COMMENT 'The type of booking restriction applied to this inventory allocation. MIN_LOS enforces a minimum Length of Stay (LOS); MAX_LOS enforces a maximum LOS; CLOSED_TO_ARRIVAL (CTA) prevents new arrivals on the specified date; CLOSED_TO_DEPARTURE (CTD) prevents departures; FULL_PATTERN_LENGTH requires exact stay duration; NONE means no restriction is applied.. Valid values are `min_los|max_los|closed_to_arrival|closed_to_departure|full_pattern_length|none`',
-    `sell_limit` STRING COMMENT 'The maximum number of room nights the channel is permitted to sell regardless of total property availability. Acts as a cap to prevent overselling on a specific channel and supports channel mix optimization.',
-    `stay_date_from` DATE COMMENT 'The first date of the stay period for which this inventory allocation is effective. Defines the start of the date range over which the allocated room nights apply.',
-    `stay_date_to` DATE COMMENT 'The last date of the stay period for which this inventory allocation is effective. Defines the end of the date range over which the allocated room nights apply.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this inventory allocation record was last modified. Tracks the most recent change to the allocation for audit trail and change management purposes.',
-    `version_number` STRING COMMENT 'Monotonically incrementing version counter for this inventory allocation record. Incremented each time the allocation is modified, enabling optimistic concurrency control and historical version tracking in the Silver layer.',
-    CONSTRAINT pk_channel_inventory_allocation PRIMARY KEY(`channel_inventory_allocation_id`)
-) COMMENT 'Transactional records of inventory (room nights) allocated to specific channels per property, room type, and date range, including all inventory control actions (allocations, stop-sells, close-outs, and restrictions). Captures allocation quantity, sell limit, allotment type (free-sell, allocation, stop-sell), release date, consumed vs. available units, restriction type (minimum LOS, closed to arrival, closed to departure), reason code, applied-by user, effective and lift timestamps. Supports channel-level inventory controls, allotment management, revenue management restriction actions, and prevents overselling across distribution channels. SSOT: defers to canonical channel.inventory_allocation (MVM cross-domain dedup).';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` (
     `rate_parity_audit_id` BIGINT COMMENT 'Unique surrogate identifier for each rate parity audit record captured during channel monitoring. Primary key for this transactional audit entity.',
@@ -397,7 +340,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking`
     `booking_source_id` BIGINT COMMENT 'Foreign key linking to channel.booking_source. Business justification: Each booking transaction is attributed to a specific booking source for granular channel performance analysis. Many bookings per booking source. Removes redundant booking_source_code which can be retr',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Channel bookings result from marketing campaigns; attribution tracking requires linking bookings to originating campaigns for ROI measurement, campaign performance analysis, and marketing spend reconc',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel master record through which this booking was received (e.g., OTA, GDS, direct web, voice, CRS). Core dimension for channel mix and cost-of-acquisition analysis.',
-    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Group bookings made through distribution channels (GDS, OTA, direct) must link to the master group block for rooming list reconciliation, group pickup tracking, billing consolidation to master folio, ',
+    `channel_rate_plan_id` BIGINT COMMENT 'Foreign key linking to channel.channel_rate_plan. Business justification: Channel bookings use channel-specific rate plans. The channel_booking table currently has rate_plan_id pointing to revenue.revenue_rate_plan (cross-domain) and rate_plan_code (STRING). Adding channel_',
+    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Group bookings made through distribution channels (GDS, OTA, direct) must link to the master group block for rooming list reconciliation, group pickup tracking, billing consolidation to master folio,',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile record associated with this booking. Enables guest-level channel attribution, loyalty linkage, and lifetime value analysis. PARTY_REFERENCE per TRANSACTION_HEADER canonical role.',
     `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Channel bookings must reference the actual inventory room type sold for revenue attribution by room category, inventory consumption tracking, channel performance analysis, and commission calculation a',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Channel bookings must link to loyalty member for points accrual calculation, tier benefit application at booking time, member revenue attribution reporting, and loyalty program liability accounting. C',
@@ -405,7 +349,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking`
     `reservation_booking_id` BIGINT COMMENT 'Reference to the parent reservation record in the PMS. Links the channel booking transaction to the operational reservation for end-to-end booking lifecycle tracking.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Reference to the rate plan applied to this booking (e.g., BAR, LRA, NRR, corporate, package). Used for rate parity monitoring and revenue contribution analysis.',
     `sanction_screening_id` BIGINT COMMENT 'Foreign key linking to compliance.sanction_screening. Business justification: Bookings from international channels require sanctions screening of guest names against OFAC/EU/UN lists, especially for high-risk jurisdictions. Real business process: automated sanctions screening d',
-    `channel_rate_plan_id` BIGINT COMMENT 'Foreign key linking to channel.channel_rate_plan. Business justification: Channel bookings use channel-specific rate plans. The channel_booking table currently has rate_plan_id pointing to channel.revenue_rate_plan (cross-domain) and rate_plan_code (STRING). Adding channel_',
     `adr` DECIMAL(18,2) COMMENT 'The Average Daily Rate (ADR) for this booking, calculated as gross booking value divided by length of stay nights. Stored as a business attribute to support channel-level ADR benchmarking and STR STAR Report comparisons without requiring runtime calculation.',
     `booking_status` STRING COMMENT 'Current lifecycle status of the channel booking transaction. Drives channel performance reporting, cancellation rate analysis, and no-show tracking. LIFECYCLE_STATUS per TRANSACTION_HEADER canonical role. [ENUM-REF-CANDIDATE: confirmed|cancelled|modified|no_show|waitlisted|tentative — promote to reference product if additional statuses are required]. Valid values are `confirmed|cancelled|modified|no_show|waitlisted|tentative`',
     `booking_timestamp` TIMESTAMP COMMENT 'The exact date and time when the booking was received through the distribution channel. BUSINESS_EVENT_TIMESTAMP per TRANSACTION_HEADER canonical role. Used for booking pace analysis, lead time calculation, and channel demand pattern reporting.',
@@ -439,7 +382,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking`
     `source_country` STRING COMMENT 'The ISO 3166-1 alpha-3 country code of the origin from which the booking was made through the channel. Used for geographic demand analysis, international vs. domestic channel mix reporting, and targeted marketing attribution.. Valid values are `^[A-Z]{3}$`',
     `travel_agent_iata_number` STRING COMMENT 'The 8-digit IATA (International Air Transport Association) accreditation number of the travel agency that made this booking. Used for travel agent commission processing, GDS attribution, and agency performance reporting.. Valid values are `^[0-9]{8}$`',
     CONSTRAINT pk_channel_booking PRIMARY KEY(`channel_booking_id`)
-) COMMENT 'Single source of truth is reservation.reservation_booking. Transactional record of each booking received through a distribution channel, capturing channel-level booking metadata including channel identifier, booking source, OTA confirmation number, GDS segment number, booking timestamp, property, room type, rate plan, stay dates, gross booking value, channel commission amount, net revenue to property, and booking modification/cancellation flags. Primary fact table for channel contribution and cost-of-acquisition analysis. SSOT: defers to reservation.reservation_booking (MVM).reservation_booking as single source of truth] [SSOT:booking] Canonical single-source-of-truth for the booking concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical reservation.reservation_booking (MVM cross-domain dedup).';
+) COMMENT 'Transactional record of each booking received through a distribution channel, capturing channel-level booking metadata including channel identifier, booking source, OTA confirmation number, GDS segment number, booking timestamp, property, room type, rate plan, stay dates, gross booking value, channel commission amount, net revenue to property, and booking modification/cancellation flags. Primary fact table for channel contribution and cost-of-acquisition analysis.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` (
     `commission_schedule_id` BIGINT COMMENT 'Unique surrogate identifier for each commission or fee schedule record in the channel distribution cost management system. Primary key for the commission_schedule data product.',
@@ -493,13 +436,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accru
     `commission_accrual_id` BIGINT COMMENT 'Unique surrogate identifier for each commission accrual record in the Databricks Silver Layer. Primary key for this transactional entity. ROLE: TRANSACTION_HEADER.',
     `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Commission accruals need to link to AR invoices for revenue recognition and reconciliation. When commissions are invoiced to OTA partners, this FK tracks the billing document. This is a standard finan',
     `booking_source_id` BIGINT COMMENT 'Foreign key linking to channel.booking_source. Business justification: Commission accruals are tracked by booking source for cost-of-acquisition analysis and channel attribution. Many accruals per booking source. Removes redundant booking_source_code which can be retriev',
-    `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: Commission accruals are calculated per channel booking transaction. The commission_accrual table currently has booking_id pointing to channel.reservation_booking (cross-domain). Adding channel_boo',
+    `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: Commission accruals are calculated per channel booking transaction. The commission_accrual table currently has booking_id pointing to reservation.reservation_booking (cross-domain). Adding channel_boo',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel through which the booking was made (e.g., OTA, GDS, direct web, voice). Links to the channel master in the channel domain for channel mix and cost-of-acquisition reporting.',
     `channel_rate_plan_id` BIGINT COMMENT 'Foreign key linking to channel.channel_rate_plan. Business justification: Commission rates vary by channel rate plan. The commission_accrual table has rate_plan_code (STRING) which should be normalized to channel_rate_plan via FK. This links commission accruals to the speci',
     `commission_schedule_id` BIGINT COMMENT 'Reference to the commission schedule or rate agreement applied to this accrual record. Determines the applicable commission rate tier, calculation method, and contractual terms with the OTA or GDS partner.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Commission accruals are distribution expenses requiring cost center allocation for accurate departmental financial statements, enabling proper matching of channel costs to revenue per USALI reporting ',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Commission accruals are distribution expenses requiring cost center allocation for accurate departmental financial statements, enabling proper matching of channel costs to revenue per USALI reporting',
     `ota_partner_id` BIGINT COMMENT 'Reference to the OTA or GDS partner entity responsible for the booking. Populated when the channel type is OTA or GDS; null for direct bookings. Supports OTA partnership performance and commission reconciliation reporting.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property for which the commission is being accrued. Enables property-level commission cost reporting and CPOR (Cost Per Occupied Room) analysis.',
+    `regulatory_filing_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_filing. Business justification: Commission payments to foreign OTAs trigger tax withholding and regulatory filing requirements (IRS 1099 reporting, VAT filings, cross-border payment reporting). Real business process: tax compliance',
     `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Commission accruals must link directly to reservations for reconciliation, dispute resolution, cancellation-driven commission reversals, and complete audit trail from booking to financial posting. Cur',
     `accrual_date` DATE COMMENT 'The accounting date on which the commission liability was recognized in the general ledger. Aligns with USALI period-end accrual practices and SAP S/4HANA GL posting date. Satisfies TRANSACTION_HEADER BUSINESS_EVENT_TIMESTAMP category.',
     `accrual_status` STRING COMMENT 'Current lifecycle state of the commission accrual record. Drives AP (Accounts Payable) workflow in SAP S/4HANA: accrued = liability recognized; invoiced = OTA invoice received; paid = payment disbursed; disputed = under reconciliation review; cancelled = booking cancelled before stay; reversed = accrual reversed due to no-show or refund. Satisfies TRANSACTION_HEADER LIFECYCLE_STATUS category.. Valid values are `accrued|invoiced|paid|disputed|cancelled|reversed`',
@@ -577,14 +521,15 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` (
     `channel_contract_id` BIGINT COMMENT 'Unique surrogate identifier for the channel contract record in the lakehouse silver layer. Primary key for this entity.',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Channel partnership contracts include co-marketing commitments and campaign obligations; linking contracts to campaigns tracks fulfillment of marketing cooperation clauses, validates co-op spend, and',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel (OTA, GDS, direct, etc.) that is party to this contract.',
     `gds_connection_id` BIGINT COMMENT 'Foreign key linking to channel.gds_connection. Business justification: Channel contracts may reference specific GDS connection configurations, particularly for chain-level GDS agreements that are implemented at the property connection level. Many contracts per GDS connec',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Channel contracts create financial obligations requiring GL account assignment for proper revenue/expense recognition, audit trail compliance, and financial statement preparation per accounting standa',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Channel contracts create specific compliance obligations including rate parity enforcement, data processing requirements under GDPR DPAs, commission reporting, and content accuracy requirements. Real ',
+    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Channel contracts create specific compliance obligations including rate parity enforcement, data processing requirements under GDPR DPAs, commission reporting, and content accuracy requirements. Real',
     `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: Channel contracts are commercial agreements signed with OTA partners, defining commission rates, rate parity obligations, and terms. Many contracts per OTA partner (e.g., master agreement, property-sp',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Channel contracts require employee ownership for accountability in contract management, renewal tracking, and performance monitoring. Standard practice in hospitality to assign contract ownership to s',
-    `procurement_contract_id` BIGINT COMMENT 'add column procurement_contract_id (BIGINT) with FK to procurement.procurement_contract.procurement_contract_id - channel contracts should reference the master contract entity to resolve SSOT.',
     `property_id` BIGINT COMMENT 'Reference to the property or portfolio of properties covered by this contract. Null if the contract applies at the brand or enterprise level.',
+    `vendor_contract_id` BIGINT COMMENT 'SSOT reference to owning entity.',
     `bar_access` BOOLEAN COMMENT 'Indicates whether the channel is contractually entitled to receive the Best Available Rate (BAR) as defined in the Revenue Management System. Drives rate loading rules in Sabre SynXis CRS.',
     `cancellation_policy_code` STRING COMMENT 'Code referencing the contracted cancellation and no-show policy applicable to bookings made through this channel (e.g., 24H, 48H, NON_REF). Loaded into Oracle OPERA PMS and Sabre SynXis CRS.',
     `commission_basis` STRING COMMENT 'Defines the revenue base on which the commission rate is applied: net rate (after discounts), gross rate (before discounts), room revenue only, or total revenue including F&B and ancillaries.. Valid values are `net_rate|gross_rate|room_revenue|total_revenue`',
@@ -619,7 +564,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract
     `termination_date` DATE COMMENT 'Actual date the contract was terminated early, if applicable. Distinct from expiration_date which is the scheduled end. Populated only when contract_status is terminated.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this contract record. Used for change data capture (CDC) in the lakehouse ETL pipeline and audit compliance.',
     CONSTRAINT pk_channel_contract PRIMARY KEY(`channel_contract_id`)
-) COMMENT 'Single source of truth is procurement.procurement_contract. Master records for commercial contracts with OTA partners and GDS providers, capturing contract type, effective and expiration dates, contracted commission rates, rate parity clauses, last-room-availability (LRA) obligations, preferred partner program terms, marketing co-op commitments, and dispute resolution terms. Distinct from commission_schedule (which captures the rate structure) — this is the legal agreement record. SSOT: defers to procurement.procurement_contract (MVM).procurement_contract as single source of truth] [SSOT:contract] Canonical single-source-of-truth for the contract concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical procurement.procurement_contract (MVM cross-domain dedup).';
+) COMMENT 'Master records for commercial contracts with OTA partners and GDS providers, capturing contract type, effective and expiration dates, contracted commission rates, rate parity clauses, last-room-availability (LRA) obligations, preferred partner program terms, marketing co-op commitments, and dispute resolution terms. Distinct from commission_schedule (which captures the rate structure) — this is the legal agreement record.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` (
     `stop_sell_id` BIGINT COMMENT 'Unique surrogate identifier for each channel stop-sell, close-out, or restriction control record in the Silver layer lakehouse. Primary key for this transactional entity.',
@@ -673,7 +618,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listi
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Metasearch advertising (Google Hotel Ads, TripAdvisor) is campaign-driven; each listing/bid strategy belongs to a specific marketing campaign for budget tracking, performance attribution, and ROI meas',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel record representing the metasearch platform (e.g., Google Hotel Ads, TripAdvisor, Trivago, Kayak, Skyscanner) through which this listing is managed.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Metasearch advertising spend (Google Hotel Ads, TripAdvisor) is a marketing expense requiring cost center allocation for budget tracking, ROI analysis, and departmental P&L reporting.',
+    `account_id` BIGINT COMMENT 'Event Account Id for metasearch listing',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Metasearch bid updates by employees require tracking for operational accountability and performance analysis. Essential for understanding who manages metasearch campaigns and optimizing bid strategies',
+    `platform_account_id` BIGINT COMMENT 'The account or hotel ID assigned by the metasearch platform (e.g., Google Hotel Center property ID, TripAdvisor hotel ID) to identify this property on the platform. Used for API authentication, platform-side reporting reconciliation, and connectivity management.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property associated with this metasearch listing. Links the listing to the property master record for performance attribution and bid management.',
     `bid_amount` DECIMAL(18,2) COMMENT 'The monetary bid amount configured for this listing under the active bid strategy. For CPC, represents the maximum cost-per-click in the listing currency. For CPA, represents the target cost-per-acquisition. For commission-based, this field is null (see commission_rate_pct). Serves as the principal quantitative fact (MEASUREMENT_OR_VALUE) for this MASTER_RESOURCE entity.',
     `bid_multiplier` DECIMAL(18,2) COMMENT 'A multiplier applied to the base bid amount for specific market or device segments (e.g., 1.20 = 20% bid increase for mobile). Enables granular bid adjustment strategies without changing the base bid. Used in conjunction with bid_amount for effective bid calculation.',
@@ -764,13 +711,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiat
     `channel_negotiated_rate_id` BIGINT COMMENT 'Primary key for negotiated_rate',
     `booking_source_id` BIGINT COMMENT 'Foreign key linking to channel.booking_source. Business justification: Corporate negotiated rates (LNR) are loaded for specific booking sources such as TMCs (Travel Management Companies) and consortia. The channel_negotiated_rate table has iata_number (STRING) which shou',
     `channel_contract_id` BIGINT COMMENT 'Foreign key linking to channel.channel_contract. Business justification: Corporate negotiated rates are governed by channel contracts with TMCs, consortia, and corporate accounts. Adding nullable channel_contract_id FK links negotiated rates to their governing contract. Re',
-    `corporate_account_id` BIGINT COMMENT 'Reference to the corporate account entity that holds this negotiated rate agreement. Links to the CRM or PMS corporate account master.',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel (GDS, TMC, direct, OTA) through which this negotiated rate is loaded and distributed.',
-    `channel_tmc_corporate_account_id` BIGINT COMMENT 'Reference to the Travel Management Company (TMC) associated with this negotiated rate agreement. TMCs manage corporate travel programs and book through GDS channels.',
+    `corporate_account_id` BIGINT COMMENT 'Reference to the corporate account entity that holds this negotiated rate agreement. Links to the CRM or PMS corporate account master.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Corporate rate loading by employees requires tracking for operational accountability and audit trails. Essential for understanding who loaded negotiated rates into systems and ensuring data quality in',
     `property_id` BIGINT COMMENT 'Reference to the property at which this negotiated rate is applicable. A single corporate agreement may have multiple records — one per property.',
-    `revenue_negotiated_rate_id` BIGINT COMMENT 'add column revenue_negotiated_rate_id (BIGINT) with FK to revenue.revenue_negotiated_rate.revenue_negotiated_rate_id - channel negotiated rates are channel projections of the revenue master negotiated rate.',
+    `revenue_negotiated_rate_id` BIGINT COMMENT 'SSOT reference to owning entity.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Reference to the rate plan master record associated with this negotiated rate agreement.',
+    `tmc_corporate_account_id` BIGINT COMMENT 'Reference to the Travel Management Company (TMC) associated with this negotiated rate agreement. TMCs manage corporate travel programs and book through GDS channels.',
     `advance_purchase_days` STRING COMMENT 'Minimum number of days in advance that a booking must be made to qualify for this negotiated rate. Zero indicates no advance purchase requirement.',
     `agreement_status` STRING COMMENT 'Current lifecycle status of the negotiated rate agreement. Controls whether the rate is bookable through distribution channels.. Valid values are `active|inactive|pending|expired|suspended|terminated`',
     `amount` DECIMAL(18,2) COMMENT 'The agreed nightly room rate (ADR equivalent) for this corporate negotiated rate agreement, expressed in the agreement currency. This is the principal monetary value of the rate record.',
@@ -804,13 +751,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiat
     `tmc_name` STRING COMMENT 'Name of the Travel Management Company (TMC) managing the corporate travel program for this negotiated rate (e.g., American Express Global Business Travel, BCD Travel, CWT).',
     `volume_commitment_room_nights` STRING COMMENT 'Contractually committed number of room nights the corporate account has agreed to consume during the agreement period. Used for production tracking and rate renegotiation.',
     CONSTRAINT pk_channel_negotiated_rate PRIMARY KEY(`channel_negotiated_rate_id`)
-) COMMENT 'Single source of truth is revenue.revenue_negotiated_rate. Master records for corporate negotiated rate agreements (LNR — Local Negotiated Rates) loaded and managed through distribution channels. Captures corporate account identifier, negotiated rate amount, rate plan code, applicable properties, room type inclusions, blackout dates, volume commitment, TMC (Travel Management Company) association, consortia membership, and GDS loading status per channel. Lives in the channel domain because these rates are operationally managed through the channel distribution workflow — loaded to GDS, distributed via TMC channels, and tracked for production/consumption at the channel level. SSOT: defers to revenue.revenue_negotiated_rate (MVM).revenue_negotiated_rate as single source of truth] [SSOT:negotiated_rate] Canonical single-source-of-truth for the negotiated_rate concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical revenue.revenue_negotiated_rate (MVM cross-domain dedup).';
+) COMMENT 'Master records for corporate negotiated rate agreements (LNR — Local Negotiated Rates) loaded and managed through distribution channels. Captures corporate account identifier, negotiated rate amount, rate plan code, applicable properties, room type inclusions, blackout dates, volume commitment, TMC (Travel Management Company) association, consortia membership, and GDS loading status per channel. Lives in the channel domain because these rates are operationally managed through the channel distribution workflow — loaded to GDS, distributed via TMC channels, and tracked for production/consumption at the channel level.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` (
     `package_rate_id` BIGINT COMMENT 'Unique identifier for this channel-package rate configuration. Primary key.',
     `channel_rate_plan_id` BIGINT COMMENT 'Foreign key linking to channel.channel_rate_plan. Business justification: Package rates distributed through channels may be based on or derived from channel rate plans. Adding nullable channel_rate_plan_id FK allows linking package pricing to the underlying rate plan when a',
     `channel_id` BIGINT COMMENT 'Foreign key linking to the distribution channel through which the spa package is offered',
     `package_id` BIGINT COMMENT 'Foreign key linking to the spa package being distributed through the channel',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - package rates are property-specific pricing constructs',
     `cancellation_policy_override` STRING COMMENT 'Channel-specific cancellation policy code that overrides the packages default cancellation policy. Used when channel agreements require different cancellation terms (e.g., OTAs may require more flexible cancellation than direct bookings).',
     `channel_package_price` DECIMAL(18,2) COMMENT 'Channel-specific price for this spa package. May differ from rack rate due to channel agreements, commissions, or promotional strategies. This is the price displayed and charged through this specific channel.',
     `commission_rate` DECIMAL(18,2) COMMENT 'Commission percentage charged by this channel for bookings of this specific package. May override the channels default commission rate for strategic packages or promotional periods.',
@@ -829,6 +777,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_par
     `ota_campaign_participation_id` BIGINT COMMENT 'Unique identifier for this OTA partners participation in a specific campaign. Primary key.',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to the marketing campaign in which the OTA partner participates',
     `ota_partner_id` BIGINT COMMENT 'Foreign key linking to the OTA partner participating in this campaign',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - OTA campaign participation is property-specific for rate and availability decisions',
     `actual_booking_volume` STRING COMMENT 'Actual number of bookings generated by this OTA partner during the campaign period. Updated as campaign progresses.',
     `actual_revenue_amount` DECIMAL(18,2) COMMENT 'Actual revenue generated from bookings attributed to this OTA partner during the campaign period.',
     `agreement_reference` STRING COMMENT 'Reference number or identifier for the co-marketing agreement or insertion order governing this OTA partners participation in this campaign.',
@@ -851,103 +800,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_par
     CONSTRAINT pk_ota_campaign_participation PRIMARY KEY(`ota_campaign_participation_id`)
 ) COMMENT 'This association product represents the participation contract between OTA partners and marketing campaigns. It captures co-operative marketing agreements where OTA partners participate in hotel-led campaigns with negotiated budget contributions, performance incentives, and content requirements. Each record links one OTA partner to one campaign with financial terms, performance tracking, and partnership-specific campaign execution details that exist only in the context of this co-marketing relationship.. Existence Justification: In travel hospitality, OTA co-marketing campaigns are a standard operational practice where hotels negotiate participation agreements with multiple OTA partners (Expedia, Booking.com, Agoda) for seasonal promotions, new property launches, and loyalty tie-ins. Each OTA partner participates in multiple campaigns throughout the year, and each campaign involves multiple OTA partners with partner-specific budget contributions, performance targets, content requirements, and promotional placements. Marketing teams actively manage these participation agreements as distinct business entities with negotiated terms, financial tracking, and performance measurement.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` (
-    `channel_wholesale_inventory_allocation_id` BIGINT COMMENT 'Primary key for inventory_allocation',
-    `channel_rate_plan_id` BIGINT COMMENT 'Channel rate plan associated with the allocation.',
-    `channel_id` BIGINT COMMENT 'Distribution channel that receives this inventory allocation.',
-    `primary_channel_rate_plan_id` BIGINT COMMENT 'FK to the channel rate plan the allocation is published under.',
-    `property_id` BIGINT COMMENT 'Property the allocation applies to.',
-    `room_type_id` BIGINT COMMENT 'Room type whose inventory is allocated to the channel.',
-    `source_channel_id` BIGINT COMMENT 'FK to the distribution channel receiving the allocation.',
-    `tertiary_distribution_channel_id` BIGINT COMMENT '',
-    `allocated_percentage` DECIMAL(18,2) COMMENT 'Percentage of available inventory allocated to the channel.',
-    `allocated_rate_amount` DECIMAL(18,2) COMMENT 'Rate amount tied to the allocation.',
-    `allocated_room_count` BIGINT COMMENT 'Populated stub attribute from business context',
-    `allocated_rooms` STRING COMMENT 'Number of rooms allocated to the channel for the date.',
-    `allocated_units` STRING COMMENT 'Number of rooms/units allocated to the channel.',
-    `allocation_code` STRING COMMENT 'Business code identifying this allocation.',
-    `allocation_date` DATE COMMENT 'Stay date for which the inventory is allocated.',
-    `allocation_end_date` DATE COMMENT 'Last date in the allocation date range.',
-    `allocation_method` STRING COMMENT 'Allocation method: FREE_SELL, ALLOTMENT, ON_REQUEST, GUARANTEED.',
-    `allocation_name` STRING COMMENT 'Human-readable name of the allocation.',
-    `allocation_reference_code` BIGINT COMMENT 'Natural/business identifier for the allocation.',
-    `allocation_start_date` DATE COMMENT 'First date in the allocation date range.',
-    `allocation_status` STRING COMMENT 'Populated stub attribute from business context',
-    `allocation_type` STRING COMMENT 'Populated stub attribute from business context',
-    `allotment_units` STRING COMMENT 'Number of room units allotted to the channel.',
-    `auto_release_enabled` BOOLEAN COMMENT 'Whether unsold units auto-release at cutoff.',
-    `base_rate_amount` DECIMAL(18,2) COMMENT '',
-    `closed_to_arrival` BOOLEAN COMMENT 'Whether arrivals are restricted on covered dates.',
-    `closed_to_arrival_flag` BOOLEAN COMMENT 'Closed-to-arrival restriction flag.',
-    `closed_to_departure` BOOLEAN COMMENT 'Whether departures are restricted on covered dates.',
-    `closed_to_departure_flag` BOOLEAN COMMENT 'Closed-to-departure restriction flag.',
-    `commission_pct` DECIMAL(18,2) COMMENT 'Commission percentage applicable to channel bookings.',
-    `commission_percentage` DECIMAL(18,2) COMMENT 'Commission percentage applicable to the channel.',
-    `commission_rate_pct` DECIMAL(18,2) COMMENT 'Commission percentage applicable to bookings on this allocation.',
-    `created_at` TIMESTAMP COMMENT 'Record creation timestamp.',
-    `created_timestamp` TIMESTAMP COMMENT 'Populated stub attribute from business context',
-    `currency_code` STRING COMMENT 'Populated stub attribute from business context',
-    `cutoff_date` DATE COMMENT 'Date after which the allocation is automatically released.',
-    `cutoff_days` STRING COMMENT 'Days before arrival when unsold allocation is released.',
-    `day_of_week` STRING COMMENT 'Day-of-week pattern the allocation applies to.',
-    `effective_end_date` DATE COMMENT 'Last date the allocation is effective.',
-    `effective_from` TIMESTAMP COMMENT 'Timestamp when the allocation becomes effective.',
-    `effective_start_date` DATE COMMENT 'First date the allocation is effective.',
-    `effective_to` TIMESTAMP COMMENT 'Timestamp when the allocation expires.',
-    `end_date` DATE COMMENT 'Populated stub attribute from business context',
-    `guaranteed_units` STRING COMMENT '',
-    `inventory_allocation_status` STRING COMMENT 'Lifecycle status of the allocation record.',
-    `is_active` BOOLEAN COMMENT 'Whether the allocation is currently active.',
-    `is_guaranteed` BOOLEAN COMMENT 'Whether the allocation is a guaranteed (committed) block.',
-    `last_pickup_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent pickup against the allocation.',
-    `last_sync_timestamp` TIMESTAMP COMMENT 'Last time the allocation was synchronized to the channel.',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp.',
-    `max_allocation_ceiling` STRING COMMENT 'Maximum number of rooms the channel may receive.',
-    `max_length_of_stay` STRING COMMENT 'Maximum length of stay permitted for bookings under this allocation.',
-    `max_los` STRING COMMENT 'Maximum length of stay restriction for the allocation.',
-    `min_allocation_floor` STRING COMMENT 'Minimum number of rooms guaranteed to the channel.',
-    `min_length_of_stay` STRING COMMENT 'Minimum length of stay enforced for bookings under this allocation.',
-    `min_los` STRING COMMENT 'Minimum length of stay restriction for the allocation.',
-    `min_units_threshold` STRING COMMENT 'Minimum unit floor that triggers a low-availability alert.',
-    `notes` STRING COMMENT 'Free-text notes about the allocation.',
-    `overbooking_allowance` STRING COMMENT 'Permitted overbooking count for the allocation.',
-    `overbooking_allowed` BOOLEAN COMMENT 'Populated stub attribute from business context',
-    `overbooking_allowed_flag` BOOLEAN COMMENT '',
-    `overbooking_buffer` STRING COMMENT 'Permitted overbooking buffer for the allocation.',
-    `overbooking_limit` STRING COMMENT '',
-    `overbooking_units` STRING COMMENT 'Additional units beyond physical inventory permitted as overbooking.',
-    `priority_rank` STRING COMMENT 'Priority ordering when multiple allocations compete for inventory.',
-    `rate_amount` DECIMAL(18,2) COMMENT 'Populated stub attribute from business context',
-    `rate_parity_required` BOOLEAN COMMENT 'Whether rate parity must be maintained for this allocation.',
-    `release_back_days` STRING COMMENT 'Days before stay date allocation auto-releases.',
-    `release_date` DATE COMMENT 'Populated stub attribute from business context',
-    `release_days` STRING COMMENT 'Number of days before arrival that unsold inventory is released.',
-    `release_days_before_arrival` STRING COMMENT 'Number of days before arrival at which unsold units are released back to general inventory.',
-    `release_period_days` STRING COMMENT 'Days before stay date that unsold allocation is released.',
-    `released_room_count` STRING COMMENT 'Rooms released back to general inventory.',
-    `released_rooms` STRING COMMENT 'Number of allocated rooms released back to general inventory.',
-    `released_units` STRING COMMENT 'Units released back to general inventory.',
-    `remaining_count` BIGINT COMMENT 'Number of rooms still available in the allocation.',
-    `remaining_room_count` BIGINT COMMENT 'Populated stub attribute from business context',
-    `remaining_rooms` STRING COMMENT 'Remaining unsold rooms in the allocation.',
-    `remaining_units` STRING COMMENT 'Units still available.',
-    `sold_count` BIGINT COMMENT 'Number of rooms sold against the allocation.',
-    `sold_room_count` BIGINT COMMENT 'Populated stub attribute from business context',
-    `sold_rooms` STRING COMMENT 'Number of allocated rooms already sold via the channel.',
-    `sold_units` STRING COMMENT 'Units sold against the allocation.',
-    `source_record_reference` STRING COMMENT 'Source system reference identifier.',
-    `start_date` DATE COMMENT 'Populated stub attribute from business context',
-    `stay_date` DATE COMMENT 'Stay date the allocation applies to.',
-    `stop_sell_flag` BOOLEAN COMMENT 'Indicates whether sales are stopped for this allocation.',
-    `sync_status` STRING COMMENT 'Synchronization status with the external channel.',
-    `units_remaining` STRING COMMENT 'Units still available for sale.',
-    `units_sold` STRING COMMENT 'Units already sold against this allocation.',
-    `updated_at` TIMESTAMP COMMENT 'Record last-updated timestamp.',
-    `updated_by` STRING COMMENT 'User or process that last updated the record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Populated stub attribute from business context',
-    `utilization_pct` DECIMAL(18,2) COMMENT 'Percentage of the allocation consumed.',
-    `created_by` STRING COMMENT 'User or process that created the allocation.',
-    CONSTRAINT pk_channel_wholesale_inventory_allocation PRIMARY KEY(`channel_wholesale_inventory_allocation_id`)
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` (
+    `channel_inventory_control_id` BIGINT COMMENT 'Primary key for channel_inventory_control',
+    `channel_id` BIGINT COMMENT 'Auto-generated FK linking siloed inventory_allocation to channel',
+    `inventory_allocation_code` BIGINT COMMENT 'Primary key for inventory_allocation',
+    CONSTRAINT pk_inventory_allocation PRIMARY KEY(`channel_inventory_control_id`)
 ) COMMENT 'This association product represents the inventory allocation contract between room types and distribution channels. It captures channel-specific inventory controls, sell limits, rate parity enforcement, and allocation rules that exist only in the context of a specific room-type-channel pairing. Each record links one room type to one distribution channel with operational controls that govern how that room type is sold through that specific channel.. Existence Justification: In hotel revenue management operations, each room type is distributed across multiple channels (OTA, GDS, direct, wholesale) with channel-specific inventory controls, and each channel sells multiple room types with distinct allocation rules. Revenue management teams actively manage these allocations by setting sell limits, LRA flags, rate parity enforcement, and allocation percentages for each room-type-channel pair. This is a core operational relationship with substantial relationship-specific data.';
 
 -- ========= FOREIGN KEYS =========
@@ -961,13 +818,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ADD CON
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ADD CONSTRAINT `fk_channel_channel_rate_plan_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ADD CONSTRAINT `fk_channel_booking_source_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ADD CONSTRAINT `fk_channel_booking_source_ota_partner_id` FOREIGN KEY (`ota_partner_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`ota_partner`(`ota_partner_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_inventory_allocation_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_inventory_allocation_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ADD CONSTRAINT `fk_channel_rate_parity_audit_channel_contract_id` FOREIGN KEY (`channel_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_contract`(`channel_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ADD CONSTRAINT `fk_channel_rate_parity_audit_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ADD CONSTRAINT `fk_channel_rate_parity_audit_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ADD CONSTRAINT `fk_channel_channel_booking_booking_source_id` FOREIGN KEY (`booking_source_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`booking_source`(`booking_source_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ADD CONSTRAINT `fk_channel_channel_booking_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ADD CONSTRAINT `fk_channel_channel_booking_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ADD CONSTRAINT `fk_channel_commission_schedule_channel_contract_id` FOREIGN KEY (`channel_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_contract`(`channel_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ADD CONSTRAINT `fk_channel_commission_schedule_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ADD CONSTRAINT `fk_channel_commission_schedule_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
@@ -1001,31 +857,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ADD
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ADD CONSTRAINT `fk_channel_package_rate_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ADD CONSTRAINT `fk_channel_package_rate_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ADD CONSTRAINT `fk_channel_ota_campaign_participation_ota_partner_id` FOREIGN KEY (`ota_partner_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`ota_partner`(`ota_partner_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_wholesale_inventory_allocation_channel_rate_plan_id` FOREIGN KEY (`channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_wholesale_inventory_allocation_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_wholesale_inventory_allocation_primary_channel_rate_plan_id` FOREIGN KEY (`primary_channel_rate_plan_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan`(`channel_rate_plan_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_wholesale_inventory_allocation_source_channel_id` FOREIGN KEY (`source_channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ADD CONSTRAINT `fk_channel_channel_wholesale_inventory_allocation_tertiary_distribution_channel_id` FOREIGN KEY (`tertiary_distribution_channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` ADD CONSTRAINT `fk_channel_channel_inventory_control_channel_id` FOREIGN KEY (`channel_id`) REFERENCES `vibe_travel_hospitality_v1`.`channel`.`channel`(`channel_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`channel` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`channel` SET TAGS ('dbx_domain' = 'channel');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Manager Employee Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Partner Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `activation_date` SET TAGS ('dbx_business_glossary_term' = 'Channel Activation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `bar_eligible` SET TAGS ('dbx_business_glossary_term' = 'Best Available Rate (BAR) Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `booking_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `booking_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Channel Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_category` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_category` SET TAGS ('dbx_value_regex' = 'DIRECT|INDIRECT|OPAQUE');
@@ -1034,14 +880,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `chann
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_code` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_code` SET TAGS ('dbx_data_quality' = 'denormalized_natural_key');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_code` SET TAGS ('dbx_normalize_to_ssot' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `commission_basis` SET TAGS ('dbx_business_glossary_term' = 'Channel Commission Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `commission_basis` SET TAGS ('dbx_value_regex' = 'NET_RATE|GROSS_RATE|MARKUP|FLAT_FEE');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Channel Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `connectivity_method` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `connectivity_method` SET TAGS ('dbx_value_regex' = 'API|XML|SFTP|DIRECT_CONNECT|SWITCH|MANUAL');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `content_distribution_enabled` SET TAGS ('dbx_business_glossary_term' = 'Content Distribution Enabled Flag');
@@ -1049,18 +891,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `contr
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Channel Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `crs_channel_code` SET TAGS ('dbx_business_glossary_term' = 'Central Reservation System (CRS) Channel ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `crs_channel_code` SET TAGS ('dbx_data_quality' = 'denormalized_natural_key');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `crs_channel_code` SET TAGS ('dbx_normalize_to_ssot' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `deactivation_date` SET TAGS ('dbx_business_glossary_term' = 'Channel Deactivation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `channel_description` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Data Processor Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `gds_chain_code` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Chain Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `gds_chain_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_business_glossary_term' = 'Channel Geographic Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_value_regex' = 'GLOBAL|REGIONAL|DOMESTIC|LOCAL');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `inventory_allocation_method` SET TAGS ('dbx_business_glossary_term' = 'Channel Inventory Allocation Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `inventory_allocation_method` SET TAGS ('dbx_value_regex' = 'POOLED|ALLOTMENT|FREE_SALE|ON_REQUEST');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `last_room_availability` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Flag');
@@ -1074,7 +911,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `payme
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `pci_compliant` SET TAGS ('dbx_business_glossary_term' = 'Payment Card Industry (PCI) Compliant Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_business_glossary_term' = 'Channel Primary Market Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Channel Priority Rank');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `rate_parity_required` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `rate_parity_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Type');
@@ -1085,75 +921,52 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `sla_r
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `sla_uptime_pct` SET TAGS ('dbx_business_glossary_term' = 'Channel Service Level Agreement (SLA) Uptime Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `supported_currencies` SET TAGS ('dbx_business_glossary_term' = 'Channel Supported Currencies');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `supported_languages` SET TAGS ('dbx_business_glossary_term' = 'Channel Supported Languages');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel` ALTER COLUMN `supported_languages` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Partner ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Account Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `third_party_due_diligence_id` SET TAGS ('dbx_business_glossary_term' = 'Third Party Due Diligence Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `affiliate_network` SET TAGS ('dbx_business_glossary_term' = 'OTA Affiliate Network Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `base_commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Base Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `base_commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `cancellation_policy_type` SET TAGS ('dbx_business_glossary_term' = 'OTA Default Cancellation Policy Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `cancellation_policy_type` SET TAGS ('dbx_value_regex' = 'flexible|moderate|strict|non_refundable');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `channel_manager_platform` SET TAGS ('dbx_business_glossary_term' = 'Channel Manager Platform Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `channel_manager_platform` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `commission_model` SET TAGS ('dbx_business_glossary_term' = 'OTA Commission Model');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `commission_model` SET TAGS ('dbx_value_regex' = 'net_rate|merchant|agency|retail|opaque');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_fee_frequency` SET TAGS ('dbx_business_glossary_term' = 'OTA Connectivity Fee Billing Frequency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_fee_frequency` SET TAGS ('dbx_value_regex' = 'annual|monthly|per_booking|one_time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'OTA Connectivity Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_protocol` SET TAGS ('dbx_business_glossary_term' = 'OTA Connectivity Protocol');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `connectivity_protocol` SET TAGS ('dbx_value_regex' = 'XML|REST_API|GDS|SFTP|OTA_XML|HTNG');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `content_score` SET TAGS ('dbx_business_glossary_term' = 'OTA Content Completeness Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_effective_date` SET TAGS ('dbx_business_glossary_term' = 'OTA Contract Effective Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_effective_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'OTA Contract Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_expiry_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_reference` SET TAGS ('dbx_business_glossary_term' = 'OTA Distribution Contract Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `contract_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `data_sharing_agreement` SET TAGS ('dbx_business_glossary_term' = 'OTA Data Sharing Agreement Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_business_glossary_term' = 'GDPR Data Processor Designation Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `gdpr_data_processor` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `gds_chain_code` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Chain Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `gds_chain_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `hq_country_code` SET TAGS ('dbx_business_glossary_term' = 'OTA Headquarters Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `hq_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `hq_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `inventory_allocation_model` SET TAGS ('dbx_business_glossary_term' = 'OTA Inventory Allocation Model');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `inventory_allocation_model` SET TAGS ('dbx_value_regex' = 'free_sell|allotment|on_request');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `last_room_availability` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `legal_entity_name` SET TAGS ('dbx_business_glossary_term' = 'OTA Partner Legal Entity Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `legal_entity_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `market_coverage` SET TAGS ('dbx_business_glossary_term' = 'OTA Market Coverage Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `market_coverage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_business_glossary_term' = 'OTA Mobile App Channel Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `mobile_app_channel` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_business_glossary_term' = 'OTA-Side Account Manager Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_name` SET TAGS ('dbx_business_glossary_term' = 'OTA-Side Account Manager Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_name` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_business_glossary_term' = 'OTA-Side Account Manager Phone Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `ota_account_manager_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `partner_code` SET TAGS ('dbx_business_glossary_term' = 'OTA Partner Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `partner_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `partner_status` SET TAGS ('dbx_business_glossary_term' = 'OTA Partner Status');
@@ -1163,34 +976,25 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `p
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `payment_collection_party` SET TAGS ('dbx_business_glossary_term' = 'Payment Collection Party');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `payment_collection_party` SET TAGS ('dbx_value_regex' = 'hotel|ota|split');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `preferred_commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Preferred Partner Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `preferred_commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `preferred_partner` SET TAGS ('dbx_business_glossary_term' = 'Preferred Partner Designation Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_business_glossary_term' = 'OTA Primary Market Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `primary_market_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `rate_parity_clause` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Clause Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `rate_parity_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `rate_parity_type` SET TAGS ('dbx_value_regex' = 'broad|narrow|none');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `remittance_cycle_days` SET TAGS ('dbx_business_glossary_term' = 'OTA Commission Remittance Cycle (Days)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `remittance_cycle_days` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `review_count` SET TAGS ('dbx_business_glossary_term' = 'OTA Guest Review Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `review_score` SET TAGS ('dbx_business_glossary_term' = 'OTA Guest Review Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `tax_registration_number` SET TAGS ('dbx_business_glossary_term' = 'OTA Tax Registration Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `tax_registration_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `trade_name` SET TAGS ('dbx_business_glossary_term' = 'OTA Partner Trade Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_partner` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `gds_connection_id` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Connection ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Gds Account Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `third_party_due_diligence_id` SET TAGS ('dbx_business_glossary_term' = 'Third Party Due Diligence Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `activation_date` SET TAGS ('dbx_business_glossary_term' = 'GDS Connection Activation Date');
@@ -1198,11 +1002,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `availability_sync_method` SET TAGS ('dbx_value_regex' = 'real_time|batch|on_request|seamless');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `chain_code` SET TAGS ('dbx_business_glossary_term' = 'GDS Chain Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'GDS Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connection_status` SET TAGS ('dbx_business_glossary_term' = 'GDS Connection Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connection_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|pending_activation|decommissioned');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connectivity_fee_monthly_usd` SET TAGS ('dbx_business_glossary_term' = 'Monthly GDS Connectivity Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connectivity_fee_monthly_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_business_glossary_term' = 'GDS Connectivity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_value_regex' = 'direct_connect|switch_connect|seamless|standard');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_business_glossary_term' = 'GDS Contract End Date');
@@ -1222,11 +1024,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `gds_tier` SET TAGS ('dbx_value_regex' = 'preferred|standard|basic');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `health_check_status` SET TAGS ('dbx_business_glossary_term' = 'GDS Connectivity Health Check Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `health_check_status` SET TAGS ('dbx_value_regex' = 'healthy|degraded|failed|unknown');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `health_check_status` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `health_check_status` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `last_health_check_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last GDS Connectivity Health Check Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `last_health_check_timestamp` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `last_health_check_timestamp` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `lra_enabled` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `market_segment_code` SET TAGS ('dbx_business_glossary_term' = 'GDS Market Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `max_advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Maximum Advance Booking Days');
@@ -1235,7 +1033,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `nrr_supported` SET TAGS ('dbx_business_glossary_term' = 'Non-Refundable Rate (NRR) Supported Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `property_code_gds` SET TAGS ('dbx_business_glossary_term' = 'GDS Property Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `pseudo_city_code` SET TAGS ('dbx_business_glossary_term' = 'Pseudo City Code (PCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `pseudo_city_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `rate_loading_protocol` SET TAGS ('dbx_business_glossary_term' = 'GDS Rate Loading Protocol');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `rate_loading_protocol` SET TAGS ('dbx_value_regex' = 'HTNG|OTA|DHISCO|manual|API');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `rate_parity_enforced` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Enforcement Flag');
@@ -1245,20 +1042,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `segment_fee_currency` SET TAGS ('dbx_business_glossary_term' = 'GDS Segment Fee Currency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `segment_fee_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `segment_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'GDS Segment Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `segment_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_business_glossary_term' = 'GDS Technical Support Contact Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `support_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `switch_provider` SET TAGS ('dbx_business_glossary_term' = 'GDS Switch Provider');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`gds_connection` ALTER COLUMN `uptime_sla_pct` SET TAGS ('dbx_business_glossary_term' = 'GDS Connectivity Uptime Service Level Agreement (SLA) Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `crs_channel_mapping_id` SET TAGS ('dbx_business_glossary_term' = 'Central Reservation System (CRS) Channel Mapping ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
@@ -1268,13 +1060,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `channel_contract_reference` SET TAGS ('dbx_business_glossary_term' = 'Channel Distribution Contract Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `channel_contract_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `channel_property_code` SET TAGS ('dbx_business_glossary_term' = 'Channel Property Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Channel Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Fee (USD)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `connectivity_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `connectivity_protocol` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Protocol');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `content_sync_enabled` SET TAGS ('dbx_business_glossary_term' = 'Content Synchronization Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -1290,10 +1079,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `inventory_allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Inventory Allocation Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `inventory_allocation_type` SET TAGS ('dbx_value_regex' = 'pooled|allotment|free_sell|on_request');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_business_glossary_term' = 'Mobile Optimized Channel Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `is_mobile_optimized` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `last_sync_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Channel Synchronization Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `lra_flag` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `mapping_code` SET TAGS ('dbx_business_glossary_term' = 'Channel Mapping Code');
@@ -1318,41 +1105,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `sync_frequency_minutes` SET TAGS ('dbx_business_glossary_term' = 'Channel Synchronization Frequency (Minutes)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`crs_channel_mapping` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_subdomain' = 'rate_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_reference' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_concept' = 'rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_references' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_authority_defer_to' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_ref' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_group' = 'rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_canonical' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_ssot_owner' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Rate Plan Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `advance_purchase_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Purchase Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `base_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `base_rate_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `booking_window_end_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Window End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `booking_window_start_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Window Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `channel_rate_plan_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|pending|expired|draft');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `close_out_days` SET TAGS ('dbx_business_glossary_term' = 'Close-Out Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `crs_rate_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Central Reservation System (CRS) Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `crs_rate_plan_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
@@ -1363,7 +1135,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `is_package_rate` SET TAGS ('dbx_business_glossary_term' = 'Is Package Rate Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `is_package_rate` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `is_rate_parity_applicable` SET TAGS ('dbx_business_glossary_term' = 'Is Rate Parity Applicable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `is_refundable` SET TAGS ('dbx_business_glossary_term' = 'Is Refundable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `last_loaded_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Rate Loaded Timestamp');
@@ -1393,9 +1164,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `stay_date_start` SET TAGS ('dbx_business_glossary_term' = 'Stay Date Start');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_rate_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Partner Id (Foreign Key)');
@@ -1414,14 +1183,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `commission_basis` SET TAGS ('dbx_business_glossary_term' = 'Commission Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `commission_basis` SET TAGS ('dbx_value_regex' = 'net_rate|gross_rate|flat_fee|per_segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `commission_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `connectivity_fee_applicable` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Applicable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `crs_source_code` SET TAGS ('dbx_business_glossary_term' = 'Central Reservation System (CRS) Source Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `crs_source_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
@@ -1432,7 +1197,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `gds_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,6}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_business_glossary_term' = 'Geographic Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_value_regex' = 'global|regional|domestic|property_specific');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `iata_code` SET TAGS ('dbx_business_glossary_term' = 'International Air Transport Association (IATA) Agency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `iata_code` SET TAGS ('dbx_value_regex' = '^[0-9]{7,8}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `inventory_update_frequency` SET TAGS ('dbx_business_glossary_term' = 'Inventory Update Frequency');
@@ -1461,78 +1225,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `traveler_segment` SET TAGS ('dbx_business_glossary_term' = 'Traveler Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `traveler_segment` SET TAGS ('dbx_value_regex' = 'leisure|corporate|group|mice|wholesale|fit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`booking_source` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_subdomain' = 'channel_inventory_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_ssot' = 'derived');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` SET TAGS ('dbx_ssot_ref' = 'channel.inventory_allocation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `channel_inventory_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Inventory Allocation ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `action_type` SET TAGS ('dbx_business_glossary_term' = 'Inventory Control Action Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `action_type` SET TAGS ('dbx_value_regex' = 'create|update|close|reopen|release|override');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Active Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allocated_units` SET TAGS ('dbx_business_glossary_term' = 'Allocated Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allocation_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Allocation Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_value_regex' = 'active|inactive|expired|cancelled|pending');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allotment_type` SET TAGS ('dbx_business_glossary_term' = 'Allotment Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `allotment_type` SET TAGS ('dbx_value_regex' = 'free_sell|allocation|stop_sell|close_out|on_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `applied_by_user` SET TAGS ('dbx_business_glossary_term' = 'Applied By User');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `applied_by_user` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `available_units` SET TAGS ('dbx_business_glossary_term' = 'Available Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `cancellation_count` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `channel_allocation_pct` SET TAGS ('dbx_business_glossary_term' = 'Channel Allocation Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Channel Commission Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `commission_rate` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `connectivity_fee` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Fee');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `connectivity_fee` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `consumed_units` SET TAGS ('dbx_business_glossary_term' = 'Consumed Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Created Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `days_out` SET TAGS ('dbx_business_glossary_term' = 'Days Out');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `effective_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Effective Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `is_closed_to_arrival` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `is_closed_to_departure` SET TAGS ('dbx_business_glossary_term' = 'Closed to Departure (CTD) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `is_rms_generated` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Generated Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `is_stop_sell` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `last_modified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `last_room_availability` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `lift_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Lift Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `lra_enabled_flag` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability Enabled');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `max_los` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (Max LOS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `maximum_los_override` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay Override');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `min_los` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (Min LOS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `minimum_los_override` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay Override');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `overbooking_allowance` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Allowance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `overbooking_limit_pct` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Limit Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `pickup_count` SET TAGS ('dbx_business_glossary_term' = 'Pickup Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `rate_parity_enforcement_flag` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Enforcement Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `rate_parity_flag` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Inventory Action Reason Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `reason_description` SET TAGS ('dbx_business_glossary_term' = 'Inventory Action Reason Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `restriction_type` SET TAGS ('dbx_business_glossary_term' = 'Restriction Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `restriction_type` SET TAGS ('dbx_value_regex' = 'min_los|max_los|closed_to_arrival|closed_to_departure|full_pattern_length|none');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `sell_limit` SET TAGS ('dbx_business_glossary_term' = 'Sell Limit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `stay_date_from` SET TAGS ('dbx_business_glossary_term' = 'Stay Date From');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `stay_date_to` SET TAGS ('dbx_business_glossary_term' = 'Stay Date To');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_inventory_allocation` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Record Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` SET TAGS ('dbx_subdomain' = 'rate_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_parity_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Audit ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'OTA Distribution Contract ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
@@ -1550,12 +1244,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `channel_rate_url` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate URL');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `contracted_parity_rate` SET TAGS ('dbx_business_glossary_term' = 'Contracted Parity Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `contracted_parity_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `direct_rate` SET TAGS ('dbx_business_glossary_term' = 'Direct Booking Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `direct_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `dispute_raised_date` SET TAGS ('dbx_business_glossary_term' = 'Parity Dispute Raised Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `dispute_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Parity Dispute Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `dispute_resolved_date` SET TAGS ('dbx_business_glossary_term' = 'Parity Dispute Resolved Date');
@@ -1567,14 +1259,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `monitoring_source` SET TAGS ('dbx_business_glossary_term' = 'Rate Monitoring Source');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `monitoring_source` SET TAGS ('dbx_value_regex' = 'automated_scraper|manual_review|ota_alert|partner_report|revenue_manager');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `observed_rate` SET TAGS ('dbx_business_glossary_term' = 'Observed Channel Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `observed_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_shopping_tool` SET TAGS ('dbx_business_glossary_term' = 'Rate Shopping Tool Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_variance` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Variance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_variance` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_variance_pct` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Variance Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `rate_variance_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_business_glossary_term' = 'Parity Dispute Resolution Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `review_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Review Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `reviewed_by` SET TAGS ('dbx_business_glossary_term' = 'Reviewed By');
@@ -1587,35 +1276,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `violation_type` SET TAGS ('dbx_business_glossary_term' = 'Parity Violation Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`rate_parity_audit` ALTER COLUMN `violation_type` SET TAGS ('dbx_value_regex' = 'below_direct|below_contracted|below_both|no_violation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_subdomain' = 'booking_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_reference' = 'reservation.reservation_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_concept' = 'booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_references' = 'reservation.reservation_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_authority_defer_to' = 'reservation.reservation_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_ref' = 'reservation.reservation_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_group' = 'booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_canonical' = 'reservation.reservation_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `sanction_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Sanction Screening Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `adr` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `booking_status` SET TAGS ('dbx_business_glossary_term' = 'Booking Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `booking_status` SET TAGS ('dbx_value_regex' = 'confirmed|cancelled|modified|no_show|waitlisted|tentative');
@@ -1623,15 +1297,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_commission_amount` SET TAGS ('dbx_business_glossary_term' = 'Channel Commission Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_commission_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_commission_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `check_in_date` SET TAGS ('dbx_business_glossary_term' = 'Check-In Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `check_out_date` SET TAGS ('dbx_business_glossary_term' = 'Check-Out Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `corporate_account_code` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `crs_booking_reference` SET TAGS ('dbx_business_glossary_term' = 'Central Reservation System (CRS) Booking ID');
@@ -1639,8 +1309,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `gds_segment_number` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Segment Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_business_glossary_term' = 'Gross Booking Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `is_cancelled` SET TAGS ('dbx_business_glossary_term' = 'Booking Cancelled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `is_modified` SET TAGS ('dbx_business_glossary_term' = 'Booking Modified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `is_rate_parity_compliant` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Compliance Flag');
@@ -1649,8 +1317,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `length_of_stay_nights` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `market_segment_code` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `net_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `net_revenue_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `net_revenue_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `number_of_guests` SET TAGS ('dbx_business_glossary_term' = 'Number of Guests');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `number_of_rooms` SET TAGS ('dbx_business_glossary_term' = 'Number of Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `ota_confirmation_number` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Confirmation Number');
@@ -1658,14 +1324,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `rate_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `source_country` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Source Country');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `source_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `source_country` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `travel_agent_iata_number` SET TAGS ('dbx_business_glossary_term' = 'Travel Agent IATA Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `travel_agent_iata_number` SET TAGS ('dbx_value_regex' = '^[0-9]{8}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_booking` ALTER COLUMN `travel_agent_iata_number` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` SET TAGS ('dbx_subdomain' = 'cost_tracking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` SET TAGS ('dbx_subdomain' = 'financial_settlement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `commission_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Commission Schedule ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract Id (Foreign Key)');
@@ -1687,7 +1349,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `commission_basis` SET TAGS ('dbx_business_glossary_term' = 'Commission Calculation Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `commission_basis` SET TAGS ('dbx_value_regex' = 'per_booking|per_room_night|per_segment|per_transaction|per_period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
@@ -1698,15 +1359,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `fee_type` SET TAGS ('dbx_business_glossary_term' = 'Fee Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `fee_type` SET TAGS ('dbx_value_regex' = 'commission|per_segment_fee|per_transaction_fee|connectivity_fee|subscription_fee|override_commission');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `flat_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Flat Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `flat_fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `los_min_nights` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `market_segment_code` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `max_commission_amount` SET TAGS ('dbx_business_glossary_term' = 'Maximum Commission Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `max_commission_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `min_commission_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Commission Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `min_commission_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `negotiated_by` SET TAGS ('dbx_business_glossary_term' = 'Negotiated By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Commission Schedule Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `payment_terms_days` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Days');
@@ -1719,18 +1377,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_business_glossary_term' = 'Commission Schedule Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|expired|terminated|draft');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_1_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Tier 1 Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_1_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_1_threshold` SET TAGS ('dbx_business_glossary_term' = 'Tier 1 Volume Threshold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_1_threshold` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_2_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Tier 2 Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_2_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_2_threshold` SET TAGS ('dbx_business_glossary_term' = 'Tier 2 Volume Threshold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `tier_2_threshold` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` SET TAGS ('dbx_subdomain' = 'cost_tracking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` SET TAGS ('dbx_subdomain' = 'financial_settlement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_accrual_id` SET TAGS ('dbx_business_glossary_term' = 'Commission Accrual ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
@@ -1741,6 +1393,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Partner ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `accrual_date` SET TAGS ('dbx_business_glossary_term' = 'Commission Accrual Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `accrual_status` SET TAGS ('dbx_business_glossary_term' = 'Commission Accrual Status');
@@ -1750,26 +1403,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `channel_type` SET TAGS ('dbx_value_regex' = 'OTA|GDS|direct_web|voice|corporate|wholesale');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_base` SET TAGS ('dbx_business_glossary_term' = 'Commission Amount Base Currency');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_base` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_base` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_local` SET TAGS ('dbx_business_glossary_term' = 'Commission Amount Local Currency');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_local` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_amount_local` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_basis` SET TAGS ('dbx_business_glossary_term' = 'Commission Calculation Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_basis` SET TAGS ('dbx_value_regex' = 'room_revenue|total_revenue|net_revenue|flat_fee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_type` SET TAGS ('dbx_business_glossary_term' = 'Commission Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `commission_type` SET TAGS ('dbx_value_regex' = 'standard|override|promotional|group|negotiated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Channel Connectivity Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `connectivity_fee_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `dispute_notes` SET TAGS ('dbx_business_glossary_term' = 'Commission Dispute Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `fx_rate` SET TAGS ('dbx_business_glossary_term' = 'Foreign Exchange (FX) Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_business_glossary_term' = 'Gross Booking Value (GBV)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `gross_booking_value` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `invoice_date` SET TAGS ('dbx_business_glossary_term' = 'Commission Invoice Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `invoice_number` SET TAGS ('dbx_business_glossary_term' = 'Commission Invoice Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `is_commissionable` SET TAGS ('dbx_business_glossary_term' = 'Is Commissionable Flag');
@@ -1783,13 +1428,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `reversal_reason` SET TAGS ('dbx_value_regex' = 'cancellation|no_show|rate_correction|duplicate|dispute_resolved|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `room_nights` SET TAGS ('dbx_business_glossary_term' = 'Room Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `total_cost_of_acquisition` SET TAGS ('dbx_business_glossary_term' = 'Total Cost of Acquisition (CoA)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `total_cost_of_acquisition` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `total_cost_of_acquisition` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`commission_accrual` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` SET TAGS ('dbx_subdomain' = 'cost_tracking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` SET TAGS ('dbx_subdomain' = 'financial_settlement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `connectivity_fee_id` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract Id (Foreign Key)');
@@ -1808,7 +1449,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Fee Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `effective_to_date` SET TAGS ('dbx_business_glossary_term' = 'Fee Effective To Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `fee_basis` SET TAGS ('dbx_business_glossary_term' = 'Fee Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `fee_basis` SET TAGS ('dbx_value_regex' = 'flat_rate|percentage|tiered|per_room_night|per_booking');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `fee_currency` SET TAGS ('dbx_business_glossary_term' = 'Fee Currency Code');
@@ -1825,9 +1465,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `is_negotiated_rate` SET TAGS ('dbx_business_glossary_term' = 'Is Negotiated Rate Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `is_waived` SET TAGS ('dbx_business_glossary_term' = 'Is Fee Waived Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `maximum_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Maximum Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `maximum_fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `minimum_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `minimum_fee_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = 'net_15|net_30|net_45|net_60|immediate|prepaid');
@@ -1839,50 +1477,33 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `tax_applicable` SET TAGS ('dbx_business_glossary_term' = 'Tax Applicable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `tax_rate` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `vendor_account_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Account Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `vendor_account_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `vendor_account_number` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `vendor_account_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `vendor_account_number` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `volume_tier_threshold` SET TAGS ('dbx_business_glossary_term' = 'Volume Tier Threshold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`connectivity_fee` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Fee Waiver Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_subdomain' = 'distribution_setup');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_reference' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_concept' = 'contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_references' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_authority_defer_to' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_ref' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_group' = 'contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_canonical' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `gds_connection_id` SET TAGS ('dbx_business_glossary_term' = 'Gds Connection Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Partner Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Owner Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Contract Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `bar_access` SET TAGS ('dbx_business_glossary_term' = 'Best Available Rate (BAR) Access Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `commission_basis` SET TAGS ('dbx_business_glossary_term' = 'Commission Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `commission_basis` SET TAGS ('dbx_value_regex' = 'net_rate|gross_rate|room_revenue|total_revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Contracted Commission Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `commission_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `connectivity_fee` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `connectivity_fee` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `connectivity_fee_type` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Fee Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `connectivity_fee_type` SET TAGS ('dbx_value_regex' = 'per_booking|per_segment|annual_flat|monthly_flat');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `content_requirements` SET TAGS ('dbx_business_glossary_term' = 'Content Requirements Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_name` SET TAGS ('dbx_business_glossary_term' = 'Contract Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_status` SET TAGS ('dbx_business_glossary_term' = 'Contract Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_status` SET TAGS ('dbx_value_regex' = 'draft|pending_signature|active|suspended|expired|terminated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `contract_type` SET TAGS ('dbx_business_glossary_term' = 'Contract Type');
@@ -1897,14 +1518,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Effective Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `gdpr_dpa_reference` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Data Processing Agreement (DPA) Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `gdpr_dpa_reference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `gdpr_dpa_reference` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `gdpr_dpa_reference` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `invoice_frequency` SET TAGS ('dbx_business_glossary_term' = 'Invoice Frequency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `invoice_frequency` SET TAGS ('dbx_value_regex' = 'weekly|bi_weekly|monthly|quarterly');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `lra_obligation` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Obligation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `marketing_coop_amount` SET TAGS ('dbx_business_glossary_term' = 'Marketing Co-Op Commitment Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `marketing_coop_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `nrr_allowed` SET TAGS ('dbx_business_glossary_term' = 'Non-Refundable Rate (NRR) Allowed Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `payment_model` SET TAGS ('dbx_business_glossary_term' = 'Payment Model');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `payment_model` SET TAGS ('dbx_value_regex' = 'merchant|agency|net_rate|wholesale');
@@ -1921,9 +1538,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Termination Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_contract` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` SET TAGS ('dbx_subdomain' = 'channel_inventory_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `stop_sell_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Stop-Sell ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel ID');
@@ -1934,13 +1549,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `act
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `action_type` SET TAGS ('dbx_value_regex' = 'apply|lift|modify|auto_apply|auto_lift');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `adr_at_apply` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR) at Apply');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `applied_by_user` SET TAGS ('dbx_business_glossary_term' = 'Applied By User');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `applied_by_user` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `approved_by_user` SET TAGS ('dbx_business_glossary_term' = 'Approved By User');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `approved_by_user` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `channel_manager_reference` SET TAGS ('dbx_business_glossary_term' = 'Channel Manager Reference ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `channel_manager_reference` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1953,7 +1565,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `is_
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `lift_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Lift Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `lift_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Lift Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `lifted_by_user` SET TAGS ('dbx_business_glossary_term' = 'Lifted By User');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `lifted_by_user` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `market_segment_code` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `max_los` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (LOS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `min_los` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS)');
@@ -1976,42 +1587,34 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `tra
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `transmission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Channel Transmission Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`stop_sell` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` SET TAGS ('dbx_subdomain' = 'booking_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `metasearch_listing_id` SET TAGS ('dbx_business_glossary_term' = 'Metasearch Listing ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Event Account Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Bid Updated By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `platform_account_id` SET TAGS ('dbx_business_glossary_term' = 'Platform Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `bid_amount` SET TAGS ('dbx_business_glossary_term' = 'Bid Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `bid_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `bid_multiplier` SET TAGS ('dbx_business_glossary_term' = 'Bid Multiplier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `bid_strategy_type` SET TAGS ('dbx_business_glossary_term' = 'Bid Strategy Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `bid_strategy_type` SET TAGS ('dbx_value_regex' = 'CPC|CPA|commission|target_ROAS|manual');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `booking_count` SET TAGS ('dbx_business_glossary_term' = 'Booking Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `booking_revenue` SET TAGS ('dbx_business_glossary_term' = 'Booking Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `booking_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `click_count` SET TAGS ('dbx_business_glossary_term' = 'Click Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `click_through_rate` SET TAGS ('dbx_business_glossary_term' = 'Click-Through Rate (CTR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_value_regex' = 'direct_api|gds_feed|crs_feed|third_party_aggregator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `conversion_rate` SET TAGS ('dbx_business_glossary_term' = 'Conversion Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `cpa_actual` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Per Acquisition (CPA)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `cpa_actual` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `cpc_actual` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Per Click (CPC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `cpc_actual` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `daily_budget_cap` SET TAGS ('dbx_business_glossary_term' = 'Daily Budget Cap');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `daily_budget_cap` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `device_type` SET TAGS ('dbx_business_glossary_term' = 'Device Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `device_type` SET TAGS ('dbx_value_regex' = 'desktop|mobile|tablet|all');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `direct_booking_url` SET TAGS ('dbx_business_glossary_term' = 'Direct Booking URL');
@@ -2030,23 +1633,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `listing_type` SET TAGS ('dbx_business_glossary_term' = 'Listing Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `listing_type` SET TAGS ('dbx_value_regex' = 'standard|sponsored|featured|free_booking_links');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `monthly_budget_cap` SET TAGS ('dbx_business_glossary_term' = 'Monthly Budget Cap');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `monthly_budget_cap` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `platform_name` SET TAGS ('dbx_business_glossary_term' = 'Metasearch Platform Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `rate_parity_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `rate_parity_status` SET TAGS ('dbx_value_regex' = 'parity|disparity_detected|under_review|exempt');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `return_on_ad_spend` SET TAGS ('dbx_business_glossary_term' = 'Return on Ad Spend (ROAS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `return_on_ad_spend` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `target_market` SET TAGS ('dbx_business_glossary_term' = 'Target Market');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `total_spend` SET TAGS ('dbx_business_glossary_term' = 'Total Spend');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `total_spend` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`metasearch_listing` ALTER COLUMN `utm_campaign_code` SET TAGS ('dbx_business_glossary_term' = 'UTM Campaign Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` SET TAGS ('dbx_subdomain' = 'channel_inventory_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `wholesale_allotment_id` SET TAGS ('dbx_business_glossary_term' = 'Wholesale Allotment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
@@ -2065,7 +1663,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `booking_deadline_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Deadline Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `cancellation_count` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `commission_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_business_glossary_term' = 'Connectivity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `connectivity_type` SET TAGS ('dbx_value_regex' = 'api|gds|xml|manual|sftp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `consumed_units` SET TAGS ('dbx_business_glossary_term' = 'Consumed Units');
@@ -2073,7 +1670,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `contract_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `contracted_allotment_size` SET TAGS ('dbx_business_glossary_term' = 'Contracted Allotment Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `contracted_net_rate` SET TAGS ('dbx_business_glossary_term' = 'Contracted Net Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `contracted_net_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2089,7 +1685,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Allotment Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `pickup_count` SET TAGS ('dbx_business_glossary_term' = 'Pickup Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `rack_rate` SET TAGS ('dbx_business_glossary_term' = 'Rack Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `rack_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `rate_parity_flag` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `release_period_days` SET TAGS ('dbx_business_glossary_term' = 'Release Period Days');
@@ -2098,43 +1693,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `stay_date_to` SET TAGS ('dbx_business_glossary_term' = 'Stay Date To');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`wholesale_allotment` ALTER COLUMN `wash_factor_pct` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_subdomain' = 'rate_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_reference' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_concept' = 'negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_references' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_authority_defer_to' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_ref' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_group' = 'negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_canonical' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `channel_negotiated_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `channel_negotiated_rate_id` SET TAGS ('dbx_ssot_owner' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Contract Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `channel_tmc_corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Travel Management Company (TMC) ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Loaded By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `revenue_negotiated_rate_id` SET TAGS ('dbx_ssot_owner' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `revenue_negotiated_rate_id` SET TAGS ('dbx_ssot_entity' = 'negotiated_rate');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `revenue_negotiated_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Negotiated Rate Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `tmc_corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Travel Management Company (TMC) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `advance_purchase_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Purchase Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Agreement Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `agreement_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|expired|suspended|terminated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `approved_by_user` SET TAGS ('dbx_business_glossary_term' = 'Approved By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `consortia_code` SET TAGS ('dbx_business_glossary_term' = 'Consortia Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `consortia_name` SET TAGS ('dbx_business_glossary_term' = 'Consortia Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -2166,21 +1744,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `room_type_inclusion` SET TAGS ('dbx_business_glossary_term' = 'Room Type Inclusion');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `tmc_name` SET TAGS ('dbx_business_glossary_term' = 'Travel Management Company (TMC) Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `volume_commitment_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Volume Commitment Room Nights');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_negotiated_rate` ALTER COLUMN `volume_commitment_room_nights` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_subdomain' = 'rate_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_subdomain' = 'rate_distribution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_association_edges' = 'channel.channel,spa.spa_package');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `package_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Package Rate ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `package_rate_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Package Rate - Distribution Channel Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Package Rate - Spa Package Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `package_id` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `cancellation_policy_override` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Override');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `channel_package_price` SET TAGS ('dbx_business_glossary_term' = 'Channel Package Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `channel_package_price` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Created Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
@@ -2191,13 +1764,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `modified_date` SET TAGS ('dbx_business_glossary_term' = 'Modified Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`package_rate` ALTER COLUMN `rate_loading_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Loading Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_subdomain' = 'booking_operations');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_association_edges' = 'channel.ota_partner,marketing.campaign');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `ota_campaign_participation_id` SET TAGS ('dbx_business_glossary_term' = 'OTA Campaign Participation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Campaign Participation - Campaign Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Campaign Participation - Ota Partner Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `actual_booking_volume` SET TAGS ('dbx_business_glossary_term' = 'Actual Booking Volume');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `actual_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Revenue Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `agreement_reference` SET TAGS ('dbx_business_glossary_term' = 'Agreement Reference');
@@ -2217,106 +1789,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `target_booking_volume` SET TAGS ('dbx_business_glossary_term' = 'Target Booking Volume');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `target_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Target Revenue Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`ota_campaign_participation` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_subdomain' = 'channel_inventory_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_association_edges' = 'inventory.room_type,channel.channel');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `channel_wholesale_inventory_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'inventory_allocation Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `primary_channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Rate Plan Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `source_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Source Channel Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `tertiary_distribution_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_percentage` SET TAGS ('dbx_business_glossary_term' = 'Allocated Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Allocated Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_room_count` SET TAGS ('dbx_business_glossary_term' = 'Allocated Room Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_rooms` SET TAGS ('dbx_business_glossary_term' = 'Allocated Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocated_units` SET TAGS ('dbx_business_glossary_term' = 'Allocated Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_code` SET TAGS ('dbx_business_glossary_term' = 'Allocation Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_end_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_method` SET TAGS ('dbx_business_glossary_term' = 'Allocation Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_name` SET TAGS ('dbx_business_glossary_term' = 'Allocation Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_reference_code` SET TAGS ('dbx_business_glossary_term' = 'Allocation Reference Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_start_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `allotment_units` SET TAGS ('dbx_business_glossary_term' = 'Allotment Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `auto_release_enabled` SET TAGS ('dbx_business_glossary_term' = 'Auto Release Enabled');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `base_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `closed_to_arrival` SET TAGS ('dbx_business_glossary_term' = 'Closed To Arrival');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `closed_to_arrival_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed To Arrival Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `closed_to_departure` SET TAGS ('dbx_business_glossary_term' = 'Closed To Departure');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `closed_to_departure_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed To Departure Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `commission_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Pct');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `commission_percentage` SET TAGS ('dbx_business_glossary_term' = 'Commission Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `commission_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Pct');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Created At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `cutoff_date` SET TAGS ('dbx_business_glossary_term' = 'Cutoff Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `cutoff_days` SET TAGS ('dbx_business_glossary_term' = 'Cutoff Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `day_of_week` SET TAGS ('dbx_business_glossary_term' = 'Day Of Week');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `effective_to` SET TAGS ('dbx_business_glossary_term' = 'Effective To');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `guaranteed_units` SET TAGS ('dbx_business_glossary_term' = 'Guaranteed Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `inventory_allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Inventory Allocation Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `is_guaranteed` SET TAGS ('dbx_business_glossary_term' = 'Is Guaranteed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `last_pickup_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Pickup Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `last_sync_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Sync Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `max_allocation_ceiling` SET TAGS ('dbx_business_glossary_term' = 'Max Allocation Ceiling');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `max_length_of_stay` SET TAGS ('dbx_business_glossary_term' = 'Max Length Of Stay');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `max_los` SET TAGS ('dbx_business_glossary_term' = 'Max Los');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `min_allocation_floor` SET TAGS ('dbx_business_glossary_term' = 'Min Allocation Floor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `min_length_of_stay` SET TAGS ('dbx_business_glossary_term' = 'Min Length Of Stay');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `min_los` SET TAGS ('dbx_business_glossary_term' = 'Min Los');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `min_units_threshold` SET TAGS ('dbx_business_glossary_term' = 'Min Units Threshold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_allowance` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Allowance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_allowed` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Allowed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Allowed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_buffer` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Buffer');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_limit` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Limit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `overbooking_units` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `rate_parity_required` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `release_back_days` SET TAGS ('dbx_business_glossary_term' = 'Release Back Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `release_days` SET TAGS ('dbx_business_glossary_term' = 'Release Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `release_days_before_arrival` SET TAGS ('dbx_business_glossary_term' = 'Release Days Before Arrival');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `release_period_days` SET TAGS ('dbx_business_glossary_term' = 'Release Period Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `released_room_count` SET TAGS ('dbx_business_glossary_term' = 'Released Room Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `released_rooms` SET TAGS ('dbx_business_glossary_term' = 'Released Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `released_units` SET TAGS ('dbx_business_glossary_term' = 'Released Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `remaining_count` SET TAGS ('dbx_business_glossary_term' = 'Remaining Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `remaining_room_count` SET TAGS ('dbx_business_glossary_term' = 'Remaining Room Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `remaining_rooms` SET TAGS ('dbx_business_glossary_term' = 'Remaining Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `remaining_units` SET TAGS ('dbx_business_glossary_term' = 'Remaining Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `sold_count` SET TAGS ('dbx_business_glossary_term' = 'Sold Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `sold_room_count` SET TAGS ('dbx_business_glossary_term' = 'Sold Room Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `sold_rooms` SET TAGS ('dbx_business_glossary_term' = 'Sold Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `sold_units` SET TAGS ('dbx_business_glossary_term' = 'Sold Units');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `stop_sell_flag` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `sync_status` SET TAGS ('dbx_business_glossary_term' = 'Sync Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `units_remaining` SET TAGS ('dbx_business_glossary_term' = 'Units Remaining');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `units_sold` SET TAGS ('dbx_business_glossary_term' = 'Units Sold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Updated At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `utilization_pct` SET TAGS ('dbx_business_glossary_term' = 'Utilization Pct');
-ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`channel_wholesale_inventory_allocation` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` SET TAGS ('dbx_subdomain' = 'rate_distribution');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` SET TAGS ('dbx_association_edges' = 'inventory.room_type,channel.channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` ALTER COLUMN `channel_inventory_control_id` SET TAGS ('dbx_business_glossary_term' = 'channel_inventory_control Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Reference to channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`channel`.`inventory_allocation` ALTER COLUMN `inventory_allocation_code` SET TAGS ('dbx_business_glossary_term' = 'inventory_allocation Identifier');

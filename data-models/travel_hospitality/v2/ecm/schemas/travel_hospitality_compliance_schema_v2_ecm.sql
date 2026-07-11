@@ -1,5 +1,5 @@
--- Schema for Domain: compliance | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:41
+-- Schema for Domain: compliance | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:50
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`compliance` COMMENT 'Regulatory compliance, risk management, health and safety, data privacy (GDPR/CCPA), ADA accessibility, fire safety, liquor licensing, food safety certifications, and audit management across all properties and jurisdictions.';
@@ -7,12 +7,13 @@ CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`compliance` COMMENT 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` (
     `obligation_id` BIGINT COMMENT 'Unique identifier for the compliance obligation record. Primary key for the compliance obligation entity.',
+    `created_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that created this compliance obligation record.',
+    `employee_id` BIGINT COMMENT 'Identifier of the employee or role responsible for ensuring compliance with this obligation at the property level.',
     `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Internal compliance policies create specific obligations that employees and properties must fulfill (training requirements, acknowledgment deadlines, operational procedures). One policy generates mult',
-    `employee_id` BIGINT COMMENT 'Identifier of the user or system account that created this compliance obligation record.',
     `property_id` BIGINT COMMENT 'Identifier of the property or organizational unit to which this compliance obligation applies.',
     `regulatory_requirement_id` BIGINT COMMENT 'Identifier of the specific regulatory requirement that creates this obligation.',
     `superseded_obligation_id` BIGINT COMMENT 'Self-referencing FK on obligation (superseded_obligation_id)',
-    `tertiary_obligation_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that last modified this compliance obligation record.',
+    `updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that last modified this compliance obligation record.',
     `applicable_department` STRING COMMENT 'Name or code of the department within the property that is primarily responsible for this compliance obligation (e.g., Food and Beverage, Housekeeping, Front Desk, Engineering, Security).',
     `audit_trail_reference` STRING COMMENT 'Reference identifier linking to detailed audit logs, inspection reports, or compliance documentation stored in external systems.',
     `certification_expiry_date` DATE COMMENT 'Date on which the certification or license expires and must be renewed to maintain compliance.',
@@ -129,7 +130,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewa
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` (
     `audit_id` BIGINT COMMENT 'Unique identifier for the compliance audit record. Primary key.',
+    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: External audit costs (audit_cost field) are paid via AP invoices. Linking audit records to invoices enables cost center allocation, budget variance analysis, and SOX audit trail for compliance expendi',
     `follow_up_audit_id` BIGINT COMMENT 'Self-referencing FK on audit (follow_up_audit_id)',
+    `program_config_id` BIGINT COMMENT 'Foreign key linking to loyalty.program_config. Business justification: Loyalty program compliance audits (points liability accounting, breakage assumptions, regulatory filings) must reference which program configuration version was in effect during the audit period. Esse',
     `property_id` BIGINT COMMENT 'Identifier of the property where the audit was conducted.',
     `actual_end_date` DATE COMMENT 'The date on which the audit fieldwork was completed and exit conference conducted.',
     `actual_start_date` DATE COMMENT 'The date on which the audit fieldwork actually commenced. May differ from scheduled date due to operational constraints or rescheduling.',
@@ -177,10 +180,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding
     `audit_id` BIGINT COMMENT 'Reference to the parent compliance audit or regulatory inspection during which this finding was identified.',
     `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Audit findings often relate to specific compliance obligations that were not met (e.g., failure to complete required training, missed permit renewal deadline, incomplete regulatory filing). One findin',
     `org_unit_id` BIGINT COMMENT 'Reference to the department responsible for addressing this finding (e.g., Housekeeping, Food and Beverage, Front Desk, Engineering).',
-    `parent_audit_finding_id` BIGINT COMMENT 'Self-referencing FK on audit_finding (related_audit_finding_id)',
     `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Audit findings often relate to specific permit violations (e.g., liquor license violations, health permit deficiencies, fire safety certificate non-compliance). One finding relates to one permit. This',
     `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Audit findings often cite specific policy violations (e.g., failure to follow Code of Conduct, non-compliance with Data Privacy Policy, violation of Safety Procedures). One finding relates to one poli',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or property where this finding was identified.',
+    `related_audit_finding_id` BIGINT COMMENT 'Self-referencing FK on audit_finding (related_audit_finding_id)',
+    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Audit findings frequently reference specific reservation transactions for rate integrity audits, booking policy violations, commission compliance checks, and revenue recognition issues. Auditors need',
     `certification_impact` STRING COMMENT 'Assessment of the findings impact on property certifications, accreditations, or licenses (e.g., ISO 22000, LEED, AAA Diamond Rating, liquor license). Indicates whether the finding jeopardizes certification status.. Valid values are `none|warning|suspension_risk|revocation_risk`',
     `closure_date` DATE COMMENT 'Date on which the finding was formally closed in the audit management system after successful verification of corrective action.',
     `compliance_domain` STRING COMMENT 'High-level compliance domain or regulatory area to which this finding pertains, enabling categorization and trend analysis across compliance frameworks. [ENUM-REF-CANDIDATE: health_safety|data_privacy|accessibility|fire_safety|food_safety|liquor_licensing|financial_controls|environmental|labor_employment|other — 10 candidates stripped; promote to reference product]',
@@ -227,8 +231,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_ac
     `employee_id` BIGINT COMMENT 'Reference to the employee responsible for implementing and completing the corrective action.',
     `privacy_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.privacy_incident. Business justification: Privacy incidents require corrective actions (CAPA) to remediate data breaches and prevent recurrence. One privacy incident can generate multiple corrective actions addressing different aspects of the',
     `property_id` BIGINT COMMENT 'Reference to the hotel property or resort where the corrective action is being implemented.',
-    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Corrective actions stem from reservation-related incidents like overbooking compensation, rate discrepancy corrections, booking policy breaches, and commission disputes. Operations teams need to link ',
-    `whistleblower_report_id` BIGINT COMMENT 'Foreign key linking to compliance.whistleblower_report. Business justification: Whistleblower reports alleging ethics violations or compliance breaches require corrective actions to address the identified issues. One report can generate multiple corrective actions (disciplinary, ',
+    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Corrective actions stem from reservation-related incidents like overbooking compensation, rate discrepancy corrections, booking policy breaches, and commission disputes. Operations teams need to link',
+    `whistleblower_report_id` BIGINT COMMENT 'Foreign key linking to compliance.whistleblower_report. Business justification: Whistleblower reports alleging ethics violations or compliance breaches require corrective actions to address the identified issues. One report can generate multiple corrective actions (disciplinary,',
     `actual_completion_date` DATE COMMENT 'Actual date when the corrective action was completed and ready for verification.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Actual financial cost incurred to implement the corrective action.',
     `assigned_department` STRING COMMENT 'Department or functional area responsible for implementing the corrective action (e.g., Housekeeping, Food and Beverage, Front Desk, Engineering).',
@@ -265,10 +269,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety
     `health_safety_incident_id` BIGINT COMMENT 'Unique identifier for the health and safety incident record. Primary key.',
     `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Health/safety incidents during group events (weddings, conferences, MICE) require group block context for liability assessment, insurance claims, contract review, and group leader notification. Critic',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Guest incidents involving loyalty members require member linkage for benefit entitlements (compensation points, tier protection during medical absences, service recovery). Already has profile_id FK; t',
-    `parent_health_safety_incident_id` BIGINT COMMENT 'Self-referencing FK on health_safety_incident (related_health_safety_incident_id)',
     `employee_id` BIGINT COMMENT 'Identifier of the employee involved in the incident, if applicable. Nullable for non-employee incidents.',
     `profile_id` BIGINT COMMENT 'Identifier of the guest involved in the incident, if applicable. Nullable for non-guest incidents.',
     `property_id` BIGINT COMMENT 'Identifier of the property where the incident occurred.',
+    `related_health_safety_incident_id` BIGINT COMMENT 'Self-referencing FK on health_safety_incident (related_health_safety_incident_id)',
     `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Health and safety incidents involving guests should link to their reservation for complete incident context, service recovery coordination, and liability tracking. This FK enables cross-referencing be',
     `tertiary_health_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last updated this incident record.',
     `corrective_actions_taken` STRING COMMENT 'Description of corrective and preventive actions implemented to prevent recurrence of similar incidents.',
@@ -357,11 +361,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incid
     `communication_consent_id` BIGINT COMMENT 'Foreign key linking to guest.communication_consent. Business justification: Privacy incidents may stem from consent violations (unauthorized marketing, improper data sharing). Linking incident to specific consent record supports root cause analysis, regulatory investigation r',
     `dpia_id` BIGINT COMMENT 'Foreign key linking to compliance.dpia. Business justification: Privacy incidents (data breaches) may trigger the requirement for a Data Protection Impact Assessment (DPIA) to evaluate the privacy risks of the affected processing activity and determine required sa',
     `identity_document_id` BIGINT COMMENT 'Foreign key linking to guest.identity_document. Business justification: Data breaches exposing identity documents (passports, IDs) require tracking which specific documents were compromised for breach notification, fraud monitoring, and regulatory reporting. Essential for',
-    `parent_privacy_incident_id` BIGINT COMMENT 'Self-referencing FK on privacy_incident (related_privacy_incident_id)',
     `employee_id` BIGINT COMMENT 'Identifier of the employee or Data Protection Officer (DPO) responsible for managing and coordinating the incident response.',
     `privacy_request_id` BIGINT COMMENT 'Foreign key linking to guest.privacy_request. Business justification: Privacy incidents often trigger data subject access requests (DSARs) or erasure requests. Linking incident to originating request supports incident investigation, regulatory response coordination, and',
     `profile_id` BIGINT COMMENT 'Foreign key linking to guest.profile. Business justification: Privacy incidents (data breaches, unauthorized access) in hospitality must track affected guest profiles for GDPR/CCPA breach notification, regulatory reporting, and guest communication. Essential for',
     `property_id` BIGINT COMMENT 'Identifier of the property where the privacy incident occurred or was discovered.',
+    `related_privacy_incident_id` BIGINT COMMENT 'Self-referencing FK on privacy_incident (related_privacy_incident_id)',
     `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Privacy breaches often involve specific guest reservations (unauthorized booking access, PII exposure, payment data leaks). GDPR/CCPA breach notification requires identifying affected bookings, notify',
     `tertiary_privacy_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that last updated the privacy incident record.',
     `breach_notification_required_flag` BOOLEAN COMMENT 'Indicates whether regulatory breach notification to supervisory authorities is required under applicable data protection laws.',
@@ -405,6 +409,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` (
     `employee_id` BIGINT COMMENT 'Identifier of the user who created this DPIA record, supporting audit trail and accountability requirements.',
     `property_id` BIGINT COMMENT 'Identifier of the property or business unit to which this DPIA applies. Links to the property master data.',
     `superseded_dpia_id` BIGINT COMMENT 'Self-referencing FK on dpia (superseded_dpia_id)',
+    `updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last updated this DPIA record, supporting audit trail and accountability requirements.',
     `approval_date` DATE COMMENT 'Date on which the DPIA was formally approved.',
     `approval_status` STRING COMMENT 'Current approval status of the DPIA within the organizations governance workflow.. Valid values are `draft|pending_review|approved|rejected|requires_revision`',
     `approved_by_name` STRING COMMENT 'Full name of the individual who approved the DPIA (typically a senior privacy officer, legal counsel, or executive).',
@@ -449,7 +454,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` (
     `food_safety_cert_id` BIGINT COMMENT 'Unique identifier for the food safety certification record. Primary key.',
     `fnb_outlet_id` BIGINT COMMENT 'Reference to the specific F&B outlet, kitchen, or catering operation covered by this certification.',
-    `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Food safety certifications are regulatory permits/licenses. The food_safety_cert table has certification_number, certifying_body, status, and lifecycle dates that duplicate permit master data. Adding ',
+    `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Food safety certifications are regulatory permits/licenses. The food_safety_cert table has certification_number, certifying_body, status, and lifecycle dates that duplicate permit master data. Adding',
     `employee_id` BIGINT COMMENT 'Reference to the employee or manager responsible for maintaining this certification and ensuring ongoing compliance.',
     `property_id` BIGINT COMMENT 'Reference to the property where this food safety certification applies.',
     `renewed_food_safety_cert_id` BIGINT COMMENT 'Self-referencing FK on food_safety_cert (renewed_food_safety_cert_id)',
@@ -577,7 +582,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_tr
     `property_id` BIGINT COMMENT 'Reference to the property where the employee is assigned at the time of training completion. Enables property-level compliance tracking.',
     `retake_compliance_training_completion_id` BIGINT COMMENT 'Self-referencing FK on compliance_training_completion (retake_compliance_training_completion_id)',
     `tertiary_compliance_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the system user or process that last modified this training completion record. Used for audit trail and change management.',
-    `workforce_training_completion_id` BIGINT COMMENT '',
     `attempt_number` STRING COMMENT 'Sequential number indicating which attempt this represents for the employee to complete this training requirement. First attempt is 1. Used to track retakes and learning effectiveness.',
     `audit_trail_reference` STRING COMMENT 'Reference number or identifier linking this training completion to external audit documentation, regulatory filings, or compliance case files. Used for regulatory audit response.',
     `certificate_issue_date` DATE COMMENT 'Date on which the training certificate was officially issued. May differ from completion date for certifications requiring external validation. Null if no certificate issued.',
@@ -613,18 +617,18 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_tr
     `waiver_granted_flag` BOOLEAN COMMENT 'Indicates whether a waiver or exemption from this training requirement was granted to the employee. True if waived; false if standard requirement applies. Requires documented justification.',
     `waiver_reason` STRING COMMENT 'Business justification for granting a training waiver. Examples include prior certification from another employer, role exemption, or temporary assignment. Null if no waiver granted.',
     CONSTRAINT pk_compliance_training_completion PRIMARY KEY(`compliance_training_completion_id`)
-) COMMENT 'Transactional record of individual employee completion of mandatory compliance training requirements. Captures completion record number, employee reference, training requirement reference, training course name, completion date, expiration date, pass/fail result, score achieved, training delivery method, training provider, certificate number issued, and compliance status (current, expiring soon, expired, not started). Enables compliance officers to track training currency across the workforce and demonstrate regulatory compliance to auditors. Complements workforce.learning_course by focusing on compliance-mandated training completion status. [SSOT_OWNER] [SSOT MASTER for group compliance.compliance_training_completion] [SSOT:training_completion] Canonical single-source-of-truth for the training_completion concept; other domain variants are domain-specific specializations referencing this owner.';
+) COMMENT 'Transactional record of individual employee completion of mandatory compliance training requirements. Captures completion record number, employee reference, training requirement reference, training course name, completion date, expiration date, pass/fail result, score achieved, training delivery method, training provider, certificate number issued, and compliance status (current, expiring soon, expired, not started). Enables compliance officers to track training currency across the workforce and demonstrate regulatory compliance to auditors. Complements workforce.learning_course by focusing on compliance-mandated training completion status.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` (
     `risk_register_id` BIGINT COMMENT 'Unique identifier for the risk register entry. Primary key for the risk register product.',
     `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Audit findings (especially critical and major findings) represent identified compliance risks that must be tracked and mitigated. One finding can be tracked as one risk entry. This FK allows linking r',
+    `employee_id` BIGINT COMMENT 'Identifier of the user who created this risk register entry. Links to user or employee master data for audit trail purposes.',
     `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Compliance obligations represent operational and regulatory risks that must be tracked in the enterprise risk register. Failure to meet an obligation can result in fines, license suspension, or operat',
     `parent_risk_register_id` BIGINT COMMENT 'Self-referencing FK on risk_register (parent_risk_register_id)',
     `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Permit expiration, suspension, or non-renewal represents significant operational risk (e.g., liquor license expiration shuts down bar operations, health permit suspension closes F&B outlets). One perm',
-    `employee_id` BIGINT COMMENT 'FK to workforce.employee',
+    `primary_risk_owner_employee_id` BIGINT COMMENT 'FK to workforce.employee',
     `property_id` BIGINT COMMENT 'Identifier of the property to which this risk applies. Links to the property master data for property-specific risks.',
-    `risk_employee_id` BIGINT COMMENT 'Identifier of the user who created this risk register entry. Links to user or employee master data for audit trail purposes.',
-    `risk_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last updated this risk register entry. Links to user or employee master data for audit trail purposes.',
+    `updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last updated this risk register entry. Links to user or employee master data for audit trail purposes.',
     `actual_closure_date` DATE COMMENT 'Actual date when the risk was closed or mitigated to an acceptable level.',
     `control_effectiveness` STRING COMMENT 'Assessment of how well the current control measures are functioning to mitigate the risk. Effective means controls are working as designed; partially effective means controls reduce but do not eliminate risk; ineffective means controls are not adequately addressing the risk.. Valid values are `effective|partially_effective|ineffective|not_assessed`',
     `control_measures` STRING COMMENT 'Description of existing controls, policies, procedures, and mitigation actions currently in place to manage and reduce the risk.',
@@ -669,7 +673,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_fi
     `amended_regulatory_filing_id` BIGINT COMMENT 'Self-referencing FK on regulatory_filing (amended_regulatory_filing_id)',
     `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: Regulatory filings often incur fees or penalties that must be paid via AP invoices. This FK links the compliance filing to the payment document for audit trail and financial reconciliation. Critical f',
     `environmental_compliance_id` BIGINT COMMENT 'Foreign key linking to compliance.environmental_compliance. Business justification: Environmental compliance permits require periodic regulatory filings (energy usage reports, water consumption reports, waste diversion reports, carbon emissions disclosures). One environmental complia',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Compliance obligations often require regulatory filings to demonstrate compliance (e.g., ADA compliance reports, environmental disclosures, safety certifications). One obligation can require multiple ',
+    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Compliance obligations often require regulatory filings to demonstrate compliance (e.g., ADA compliance reports, environmental disclosures, safety certifications). One obligation can require multiple',
     `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Permits require periodic regulatory filings (renewal applications, annual reports, compliance certifications). One permit generates multiple filings over its lifecycle. This FK allows tracking which f',
     `employee_id` BIGINT COMMENT 'Identifier of the user or system account that created this regulatory filing record.',
     `property_id` BIGINT COMMENT 'Identifier of the property or entity to which this regulatory filing applies. Links to the property master data.',
@@ -710,9 +714,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_fi
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` (
     `policy_id` BIGINT COMMENT 'Unique identifier for the compliance policy record. Primary key.',
-    `employee_id` BIGINT COMMENT 'Identifier of the user who created this policy record in the system.',
+    `created_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who created this policy record in the system.',
+    `employee_id` BIGINT COMMENT 'Identifier of the executive or department head responsible for policy governance, maintenance, and enforcement.',
     `superseded_policy_id` BIGINT COMMENT 'Identifier of the previous policy version that this policy replaces. Null if this is the first version.',
-    `tertiary_policy_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last modified this policy record.',
+    `updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who last modified this policy record.',
     `acknowledgment_required_flag` BOOLEAN COMMENT 'Indicates whether employees must formally acknowledge receipt and understanding of this policy. True if acknowledgment is mandatory.',
     `applicable_scope` STRING COMMENT 'Organizational reach of the policy. applies to all entities; brand-specific applies to a hotel brand; property-specific applies to individual properties; regional applies to geographic regions; departmental applies to specific functions.. Valid values are `enterprise_wide|brand_specific|property_specific|regional|departmental`',
     `approval_authority` STRING COMMENT 'Name and title of the executive, board, or committee that formally approved this policy for implementation.',
@@ -737,25 +742,26 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` (
     `related_policy_ids` STRING COMMENT 'Comma-separated list of policy IDs that are related or cross-referenced by this policy for comprehensive compliance understanding.',
     `review_frequency_months` STRING COMMENT 'Standard interval in months between mandatory policy reviews as defined by governance requirements.',
     `risk_level` STRING COMMENT 'Assessment of the business and regulatory risk associated with non-compliance with this policy. Critical indicates severe legal or operational consequences.. Valid values are `critical|high|medium|low`',
-    `scope_entity_reference` BIGINT COMMENT 'Identifier of the specific brand, property, region, or department to which this policy applies when scope is not. Null for policies.',
+    `scope_entity_reference` BIGINT COMMENT 'Identifier of the specific brand, property, region, or department to which this policy applies when scope is not . Null for policies.',
     `subcategory` STRING COMMENT 'Secondary classification providing additional granularity within the policy category (e.g., guest data protection, employee safety, vendor conduct).',
     `title` STRING COMMENT 'Full official title of the compliance policy as approved by governance authority.',
     `training_required_flag` BOOLEAN COMMENT 'Indicates whether employees within the applicable scope must complete formal training on this policy. True if training is mandatory.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this policy record was last modified.',
     `version_number` STRING COMMENT 'Semantic version identifier for the policy document (e.g., 1.0, 2.3) to track revisions and updates over time.. Valid values are `^[0-9]+.[0-9]+$`',
     CONSTRAINT pk_policy PRIMARY KEY(`policy_id`)
-) COMMENT 'Internal compliance policy and procedure master record for Travel Hospitality. Captures policy number, policy title, policy category (data privacy, health and safety, anti-bribery, code of conduct, liquor service, food safety, ADA, environmental, information security), policy owner, effective date, review date, next review date, policy status (draft, active, under review, retired), applicable scope (enterprise-wide, brand-specific, property-specific), regulatory basis, version number, and approval authority. Single source of truth for all internal compliance policies and their lifecycle management.';
+) COMMENT 'Internal compliance policy and procedure master record for Travel Hospitality. Captures policy number, policy title, policy category (data privacy, health and safety, anti-bribery, code of conduct, liquor service, food safety, ADA, environmental, information security), policy owner, effective date, review date, next review date, policy status (draft, active, under review, retired), applicable scope (, brand-specific, property-specific), regulatory basis, version number, and approval authority. Single source of truth for all internal compliance policies and their lifecycle management.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` (
     `policy_acknowledgment_id` BIGINT COMMENT 'Unique identifier for the policy acknowledgment record. Primary key for the policy acknowledgment transaction.',
     `compliance_training_completion_id` BIGINT COMMENT 'Reference to the e-learning or training completion record if acknowledgment was captured through training system attestation. Null for non-training acknowledgments.',
-    `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Loyalty program terms & conditions acknowledgments by members (required for tier benefits eligibility, points redemption authorization, data sharing consent) are policy acknowledgments. Essential for ',
+    `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Loyalty program terms & conditions acknowledgments by members (required for tier benefits eligibility, points redemption authorization, data sharing consent) are policy acknowledgments. Essential for',
     `policy_id` BIGINT COMMENT 'Reference to the compliance policy that was acknowledged. Links to the compliance policy master record.',
     `employee_id` BIGINT COMMENT 'Reference to the employee who acknowledged the policy. Links to the workforce employee master record.',
     `prior_policy_acknowledgment_id` BIGINT COMMENT 'Self-referencing FK on policy_acknowledgment (prior_policy_acknowledgment_id)',
     `property_id` BIGINT COMMENT 'Reference to the property where the employee was assigned at the time of acknowledgment. Supports property-level compliance reporting and jurisdiction-specific policy tracking.',
+    `quaternary_policy_created_by_user_employee_id` BIGINT COMMENT 'Reference to the user or system process that created this acknowledgment record. Typically the HR system or compliance workflow engine.',
+    `quinary_policy_updated_by_user_employee_id` BIGINT COMMENT 'Reference to the user or system process that last modified this acknowledgment record. Supports audit trail and change tracking.',
     `tertiary_policy_escalated_to_user_employee_id` BIGINT COMMENT 'Reference to the manager or compliance officer to whom the overdue acknowledgment was escalated. Null if no escalation has occurred.',
-    `tertiary_quinary_policy_updated_by_user_employee_id` BIGINT COMMENT 'Reference to the user or system process that last modified this acknowledgment record. Supports audit trail and change tracking.',
     `acknowledgment_channel` STRING COMMENT 'The digital or physical channel through which the acknowledgment was captured. Distinguishes between self-service, facilitated, and system-driven acknowledgments.. Valid values are `web_portal|mobile_app|email_link|in_person|training_system|hr_system`',
     `acknowledgment_date` DATE COMMENT 'The date on which the employee acknowledged the policy. Represents the business event timestamp when the acknowledgment was completed.',
     `acknowledgment_due_date` DATE COMMENT 'The deadline by which the employee was required to acknowledge the policy. Used to identify overdue acknowledgments and trigger escalations.',
@@ -787,6 +793,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknow
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` (
     `third_party_due_diligence_id` BIGINT COMMENT 'Unique identifier for the third-party due diligence assessment record.',
+    `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate accounts with direct billing require AML/KYC due diligence, sanctions screening, and financial stability assessment. Links due diligence to corporate account for credit risk management, regu',
     `employee_id` BIGINT COMMENT 'Identifier of the user who created this due diligence assessment record.',
     `prior_third_party_due_diligence_id` BIGINT COMMENT 'Self-referencing FK on third_party_due_diligence (prior_third_party_due_diligence_id)',
     `property_id` BIGINT COMMENT 'Identifier of the property or corporate entity conducting the due diligence assessment.',
@@ -865,10 +872,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` (
     `whistleblower_report_id` BIGINT COMMENT 'Unique identifier for the whistleblower report record. Primary key for the whistleblower report entity.',
-    `parent_whistleblower_report_id` BIGINT COMMENT 'Self-referencing FK on whistleblower_report (related_whistleblower_report_id)',
     `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Whistleblower reports often allege violations of specific policies (e.g., Code of Conduct violations, Anti-Harassment Policy violations, Conflict of Interest Policy violations). One report can cite on',
     `employee_id` BIGINT COMMENT 'Identifier of the compliance officer or investigator assigned to review and investigate the report.',
     `property_id` BIGINT COMMENT 'Identifier of the property or business unit implicated in the report. Links to the property where the alleged incident occurred or is relevant.',
+    `related_whistleblower_report_id` BIGINT COMMENT 'Self-referencing FK on whistleblower_report (related_whistleblower_report_id)',
     `tertiary_whistleblower_last_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the system user or process that last modified the whistleblower report record.',
     `allegation_category` STRING COMMENT 'Primary category of the allegation reported. [ENUM-REF-CANDIDATE: fraud|bribery|harassment|safety_violation|data_misuse|discrimination|retaliation|code_of_conduct_breach|theft|conflict_of_interest|environmental_violation|accounting_irregularity — promote to reference product]. Valid values are `fraud|bribery|harassment|safety_violation|data_misuse|discrimination`',
     `allegation_description` STRING COMMENT 'Detailed narrative description of the allegation as reported by the whistleblower. Contains sensitive information about the reported incident.',
@@ -910,16 +917,16 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` (
     `sanction_screening_id` BIGINT COMMENT 'Unique identifier for the sanction screening record. Primary key.',
     `corporate_account_id` BIGINT COMMENT 'Identifier of the corporate account if the screened entity is a corporate account. Null for non-corporate entities.',
-    `employee_id` BIGINT COMMENT 'Identifier of the employee if the screened entity is an employee. Null for non-employee entities.',
+    `employee_id` BIGINT COMMENT 'User identifier of the system user or automated process that created this screening record.',
+    `primary_sanction_employee_id` BIGINT COMMENT 'Identifier of the employee if the screened entity is an employee. Null for non-employee entities.',
     `profile_id` BIGINT COMMENT 'Identifier of the guest if the screened entity is a guest. Null for non-guest entities.',
     `property_id` BIGINT COMMENT 'Identifier of the property where the screening was initiated or where the screened entity has a relationship.',
     `rescreened_sanction_screening_id` BIGINT COMMENT 'Self-referencing FK on sanction_screening (rescreened_sanction_screening_id)',
     `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: AML/sanctions screening must be performed on bookings from high-risk jurisdictions, sanctioned entities, or flagged guests. Hotels need to link screening results to specific bookings for compliance do',
     `reviewer_employee_id` BIGINT COMMENT 'Identifier of the compliance officer or employee who manually reviewed the screening result. Null if no manual review was performed.',
-    `sanction_employee_id` BIGINT COMMENT 'User identifier of the system user or automated process that created this screening record.',
-    `sanction_updated_by_user_employee_id` BIGINT COMMENT 'User identifier of the system user or automated process that last updated this screening record.',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: AML/sanctions screening of high-value loyalty members (large points transfers, suspicious redemption patterns, partner program transfers) requires member reference for risk assessment and regulatory r',
-    `third_party_due_diligence_id` BIGINT COMMENT 'Foreign key linking to compliance.third_party_due_diligence. Business justification: Sanctions screening is a component of third-party due diligence for vendors, contractors, and business partners. One due diligence assessment includes one or more sanctions screenings. This FK allows ',
+    `third_party_due_diligence_id` BIGINT COMMENT 'Foreign key linking to compliance.third_party_due_diligence. Business justification: Sanctions screening is a component of third-party due diligence for vendors, contractors, and business partners. One due diligence assessment includes one or more sanctions screenings. This FK allows',
+    `updated_by_user_employee_id` BIGINT COMMENT 'User identifier of the system user or automated process that last updated this screening record.',
     `vendor_id` BIGINT COMMENT 'Identifier of the vendor if the screened entity is a vendor or supplier. Null for non-vendor entities.',
     `business_relationship_status` STRING COMMENT 'Current status of the business relationship with the screened entity following the screening result: active (approved to continue), suspended (temporarily halted), terminated (permanently ended), or pending approval.. Valid values are `active|suspended|terminated|pending_approval`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this sanction screening record was first created in the system.',
@@ -958,7 +965,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_ca
     `compliance_calendar_id` BIGINT COMMENT 'Unique identifier for the compliance calendar entry. Primary key for the compliance calendar product.',
     `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_audit. Business justification: Scheduled compliance audits (internal audits, regulatory inspections, certification audits) appear on the compliance calendar as obligations with due dates. One audit has one calendar entry. This FK a',
     `employee_id` BIGINT COMMENT 'Reference to the user or system account that created this compliance calendar entry. Provides audit trail for data governance.',
-    `compliance_last_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the user or system account that last modified this compliance calendar entry. Provides audit trail for data governance.',
+    `last_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the user or system account that last modified this compliance calendar entry. Provides audit trail for data governance.',
     `obligation_id` BIGINT COMMENT 'Reference to the parent compliance obligation record in the compliance obligation product. Establishes traceability between calendar entries and master obligation records.',
     `permit_id` BIGINT COMMENT 'Reference to the associated permit record if this calendar entry relates to permit renewal or permit-related compliance activity.',
     `primary_compliance_responsible_owner_employee_id` BIGINT COMMENT 'Reference to the employee who is accountable for ensuring timely completion of this compliance obligation. Links to workforce master data.',
@@ -997,13 +1004,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_ca
     `waiver_granted_flag` BOOLEAN COMMENT 'Indicates whether a waiver or exemption was granted for this compliance obligation by the regulatory authority or internal governance.',
     `waiver_reason` STRING COMMENT 'Explanation or justification for why a waiver was granted for this compliance obligation. Required when waiver flag is true.',
     CONSTRAINT pk_compliance_calendar PRIMARY KEY(`compliance_calendar_id`)
-) COMMENT 'Master compliance calendar and obligation schedule for Travel Hospitality properties and corporate entities. Captures calendar entry reference, obligation type (permit renewal, regulatory filing, audit, training deadline, policy review, inspection, reporting deadline), property or entity scope, due date, lead time alert days, responsible owner, recurrence pattern (one-time, monthly, quarterly, annual), linked obligation or permit reference, completion status (upcoming, overdue, completed, waived), and completion date. Enables proactive compliance management by surfacing upcoming deadlines and preventing regulatory lapses across the portfolio. SSOT: defers to marketing.marketing_calendar (MVM). [SSOT_OWNER] [SSOT MASTER for group compliance.compliance_calendar] [SSOT:calendar] Canonical single-source-of-truth for the calendar concept; other domain variants are domain-specific specializations referencing this owner.';
+) COMMENT 'Master compliance calendar and obligation schedule for Travel Hospitality properties and corporate entities. Captures calendar entry reference, obligation type (permit renewal, regulatory filing, audit, training deadline, policy review, inspection, reporting deadline), property or entity scope, due date, lead time alert days, responsible owner, recurrence pattern (one-time, monthly, quarterly, annual), linked obligation or permit reference, completion status (upcoming, overdue, completed, waived), and completion date. Enables proactive compliance management by surfacing upcoming deadlines and preventing regulatory lapses across the portfolio.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` (
     `regulatory_requirement_id` BIGINT COMMENT 'Primary key for regulatory_requirement',
     `parent_regulatory_requirement_id` BIGINT COMMENT 'Self-referencing FK on regulatory_requirement (parent_regulatory_requirement_id)',
-    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - regulatory requirements vary by jurisdiction/property.',
-    `regulatory_superseded_by_requirement_id` BIGINT COMMENT 'Identifier of the regulatory requirement that supersedes or replaces this requirement. Null if not superseded.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - regulatory requirements apply to specific properties based on jurisdiction',
+    `superseded_by_requirement_id` BIGINT COMMENT 'Identifier of the regulatory requirement that supersedes or replaces this requirement. Null if not superseded.',
     `applicability_scope` STRING COMMENT 'Description of which properties, business units, or operations are subject to this requirement (e.g., all properties, luxury segment only, properties with food service).',
     `certification_required` BOOLEAN COMMENT 'Indicates whether a formal certification or license is required to demonstrate compliance (True/False).',
     `certification_type` STRING COMMENT 'Type of certification or license required (e.g., ServSafe, liquor license, fire marshal certificate, ADA compliance certificate).',
@@ -1027,7 +1034,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_re
     `record_retention_years` STRING COMMENT 'Number of years that compliance records must be retained as mandated by the requirement.',
     `reference_url` STRING COMMENT 'Web link to the official text or authoritative source of the regulatory requirement.',
     `regulation_section` STRING COMMENT 'Specific section, article, or clause within the source regulation that defines this requirement.',
-    `regulatory_requirement_status` STRING COMMENT 'Current lifecycle status of the regulatory requirement (active, inactive, pending, superseded, repealed, draft).',
     `renewal_period_months` STRING COMMENT 'Number of months between required renewals of certification or compliance verification. Null if no renewal is required.',
     `requirement_code` STRING COMMENT 'Externally-known unique code or reference number for the regulatory requirement (e.g., GDPR-ART-6, OSHA-1910.38, ADA-Title-III).',
     `requirement_name` STRING COMMENT 'Human-readable name or title of the regulatory requirement.',
@@ -1036,6 +1042,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_re
     `risk_category` STRING COMMENT 'Category of risk associated with non-compliance (operational, financial, reputational, legal, safety, environmental).',
     `severity_level` STRING COMMENT 'Risk severity level associated with non-compliance (critical, high, medium, low).',
     `source_regulation` STRING COMMENT 'Name or citation of the parent regulation, statute, or legal framework from which this requirement derives (e.g., GDPR, OSHA 1910, ADA Title III, CCPA).',
+    `regulatory_requirement_status` STRING COMMENT 'Current lifecycle status of the regulatory requirement (active, inactive, pending, superseded, repealed, draft).',
     `training_frequency` STRING COMMENT 'Required frequency of employee training to maintain compliance (annual, biennial, one-time, as-needed).',
     `training_required` BOOLEAN COMMENT 'Indicates whether employee training is mandated by the requirement (True/False).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when the regulatory requirement record was last modified.',
@@ -1053,22 +1060,22 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ADD CONST
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ADD CONSTRAINT `fk_compliance_audit_follow_up_audit_id` FOREIGN KEY (`follow_up_audit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit`(`audit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_audit_id` FOREIGN KEY (`audit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit`(`audit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_obligation_id` FOREIGN KEY (`obligation_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`obligation`(`obligation_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_parent_audit_finding_id` FOREIGN KEY (`parent_audit_finding_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit_finding`(`audit_finding_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_permit_id` FOREIGN KEY (`permit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`permit`(`permit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_policy_id` FOREIGN KEY (`policy_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`policy`(`policy_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ADD CONSTRAINT `fk_compliance_audit_finding_related_audit_finding_id` FOREIGN KEY (`related_audit_finding_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit_finding`(`audit_finding_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ADD CONSTRAINT `fk_compliance_corrective_action_audit_finding_id` FOREIGN KEY (`audit_finding_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit_finding`(`audit_finding_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ADD CONSTRAINT `fk_compliance_corrective_action_follow_up_corrective_action_id` FOREIGN KEY (`follow_up_corrective_action_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`corrective_action`(`corrective_action_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ADD CONSTRAINT `fk_compliance_corrective_action_health_safety_incident_id` FOREIGN KEY (`health_safety_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident`(`health_safety_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ADD CONSTRAINT `fk_compliance_corrective_action_privacy_incident_id` FOREIGN KEY (`privacy_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident`(`privacy_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ADD CONSTRAINT `fk_compliance_corrective_action_whistleblower_report_id` FOREIGN KEY (`whistleblower_report_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report`(`whistleblower_report_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ADD CONSTRAINT `fk_compliance_health_safety_incident_parent_health_safety_incident_id` FOREIGN KEY (`parent_health_safety_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident`(`health_safety_incident_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ADD CONSTRAINT `fk_compliance_health_safety_incident_related_health_safety_incident_id` FOREIGN KEY (`related_health_safety_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident`(`health_safety_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ADD CONSTRAINT `fk_compliance_incident_investigation_corrective_action_id` FOREIGN KEY (`corrective_action_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`corrective_action`(`corrective_action_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ADD CONSTRAINT `fk_compliance_incident_investigation_escalated_incident_investigation_id` FOREIGN KEY (`escalated_incident_investigation_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation`(`incident_investigation_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ADD CONSTRAINT `fk_compliance_incident_investigation_health_safety_incident_id` FOREIGN KEY (`health_safety_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident`(`health_safety_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ADD CONSTRAINT `fk_compliance_incident_investigation_privacy_incident_id` FOREIGN KEY (`privacy_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident`(`privacy_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ADD CONSTRAINT `fk_compliance_incident_investigation_whistleblower_report_id` FOREIGN KEY (`whistleblower_report_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report`(`whistleblower_report_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ADD CONSTRAINT `fk_compliance_privacy_incident_dpia_id` FOREIGN KEY (`dpia_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`dpia`(`dpia_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ADD CONSTRAINT `fk_compliance_privacy_incident_parent_privacy_incident_id` FOREIGN KEY (`parent_privacy_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident`(`privacy_incident_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ADD CONSTRAINT `fk_compliance_privacy_incident_related_privacy_incident_id` FOREIGN KEY (`related_privacy_incident_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident`(`privacy_incident_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ADD CONSTRAINT `fk_compliance_dpia_superseded_dpia_id` FOREIGN KEY (`superseded_dpia_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`dpia`(`dpia_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ADD CONSTRAINT `fk_compliance_food_safety_cert_permit_id` FOREIGN KEY (`permit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`permit`(`permit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ADD CONSTRAINT `fk_compliance_food_safety_cert_renewed_food_safety_cert_id` FOREIGN KEY (`renewed_food_safety_cert_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert`(`food_safety_cert_id`);
@@ -1092,8 +1099,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` AD
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ADD CONSTRAINT `fk_compliance_third_party_due_diligence_prior_third_party_due_diligence_id` FOREIGN KEY (`prior_third_party_due_diligence_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence`(`third_party_due_diligence_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ADD CONSTRAINT `fk_compliance_environmental_compliance_permit_id` FOREIGN KEY (`permit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`permit`(`permit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ADD CONSTRAINT `fk_compliance_environmental_compliance_superseded_environmental_compliance_id` FOREIGN KEY (`superseded_environmental_compliance_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance`(`environmental_compliance_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ADD CONSTRAINT `fk_compliance_whistleblower_report_parent_whistleblower_report_id` FOREIGN KEY (`parent_whistleblower_report_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report`(`whistleblower_report_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ADD CONSTRAINT `fk_compliance_whistleblower_report_policy_id` FOREIGN KEY (`policy_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`policy`(`policy_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ADD CONSTRAINT `fk_compliance_whistleblower_report_related_whistleblower_report_id` FOREIGN KEY (`related_whistleblower_report_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report`(`whistleblower_report_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ADD CONSTRAINT `fk_compliance_sanction_screening_rescreened_sanction_screening_id` FOREIGN KEY (`rescreened_sanction_screening_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening`(`sanction_screening_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ADD CONSTRAINT `fk_compliance_sanction_screening_third_party_due_diligence_id` FOREIGN KEY (`third_party_due_diligence_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence`(`third_party_due_diligence_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ADD CONSTRAINT `fk_compliance_compliance_calendar_audit_id` FOREIGN KEY (`audit_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`audit`(`audit_id`);
@@ -1102,27 +1109,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ADD 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ADD CONSTRAINT `fk_compliance_compliance_calendar_recurring_source_compliance_calendar_id` FOREIGN KEY (`recurring_source_compliance_calendar_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar`(`compliance_calendar_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ADD CONSTRAINT `fk_compliance_compliance_calendar_regulatory_filing_id` FOREIGN KEY (`regulatory_filing_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing`(`regulatory_filing_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ADD CONSTRAINT `fk_compliance_regulatory_requirement_parent_regulatory_requirement_id` FOREIGN KEY (`parent_regulatory_requirement_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ADD CONSTRAINT `fk_compliance_regulatory_requirement_regulatory_superseded_by_requirement_id` FOREIGN KEY (`regulatory_superseded_by_requirement_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ADD CONSTRAINT `fk_compliance_regulatory_requirement_superseded_by_requirement_id` FOREIGN KEY (`superseded_by_requirement_id`) REFERENCES `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`compliance` SET TAGS ('dbx_division' = 'corporate');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`compliance` SET TAGS ('dbx_domain' = 'compliance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `created_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Owner ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `superseded_obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Obligation Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `superseded_obligation_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `tertiary_obligation_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `tertiary_obligation_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `tertiary_obligation_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `applicable_department` SET TAGS ('dbx_business_glossary_term' = 'Applicable Department');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `audit_trail_reference` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `certification_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiry Date');
@@ -1160,28 +1161,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `waiver_granted_flag` SET TAGS ('dbx_business_glossary_term' = 'Waiver Granted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`obligation` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Waiver Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `renewed_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Permit Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `renewed_permit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `application_date` SET TAGS ('dbx_business_glossary_term' = 'Application Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_name` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer Phone');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `conditions` SET TAGS ('dbx_business_glossary_term' = 'Permit Conditions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1218,18 +1212,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `sus
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `updated_by_user` SET TAGS ('dbx_business_glossary_term' = 'Updated By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit` ALTER COLUMN `violation_count` SET TAGS ('dbx_business_glossary_term' = 'Violation Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `permit_renewal_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Renewal Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `prior_permit_renewal_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Permit Renewal Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `prior_permit_renewal_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Renewal Coordinator Employee Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `appeal_filed_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal Filed Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `appeal_filed_flag` SET TAGS ('dbx_business_glossary_term' = 'Appeal Filed Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `auto_renewal_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto-Renewal Eligible Flag');
@@ -1262,12 +1251,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `supporting_documents_checklist_status` SET TAGS ('dbx_business_glossary_term' = 'Supporting Documents Checklist Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`permit_renewal` ALTER COLUMN `supporting_documents_checklist_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|complete|incomplete|verified');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` SET TAGS ('dbx_subdomain' = 'audit_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `follow_up_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Audit Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `follow_up_audit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `program_config_id` SET TAGS ('dbx_business_glossary_term' = 'Program Config Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `actual_end_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Audit End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Audit Start Date');
@@ -1278,15 +1266,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `audi
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Auditor Certification Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Auditor Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Auditor Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_name` SET TAGS ('dbx_business_glossary_term' = 'Auditor Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `auditor_organization` SET TAGS ('dbx_business_glossary_term' = 'Auditor Organization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `certification_awarded` SET TAGS ('dbx_business_glossary_term' = 'Certification Awarded Flag');
@@ -1297,7 +1281,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `comp
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `corrective_action_deadline` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Deadline Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `cost` SET TAGS ('dbx_business_glossary_term' = 'Audit Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `critical_findings_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Findings Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Audit Cost Currency Code');
@@ -1315,13 +1298,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `over
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `overall_score` SET TAGS ('dbx_business_glossary_term' = 'Overall Audit Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Property Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Property Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_name` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `property_contact_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `reference_number` SET TAGS ('dbx_business_glossary_term' = 'Audit Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `reference_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,4}-[0-9]{6,10}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `regulatory_framework` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Framework');
@@ -1331,18 +1312,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `risk
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Audit Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit` ALTER COLUMN `scope` SET TAGS ('dbx_business_glossary_term' = 'Audit Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` SET TAGS ('dbx_subdomain' = 'audit_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `parent_audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Related Audit Finding Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `parent_audit_finding_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `related_audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Related Audit Finding Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `certification_impact` SET TAGS ('dbx_business_glossary_term' = 'Certification Impact');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `certification_impact` SET TAGS ('dbx_value_regex' = 'none|warning|suspension_risk|revocation_risk');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Closure Date');
@@ -1356,7 +1335,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `evidence_location` SET TAGS ('dbx_business_glossary_term' = 'Evidence Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `external_auditor_flag` SET TAGS ('dbx_business_glossary_term' = 'External Auditor Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `financial_impact_estimate` SET TAGS ('dbx_business_glossary_term' = 'Financial Impact Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `financial_impact_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `finding_category` SET TAGS ('dbx_business_glossary_term' = 'Finding Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `finding_category` SET TAGS ('dbx_value_regex' = 'critical|major|minor|observation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
@@ -1377,40 +1355,31 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `repeat_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Repeat Finding Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Risk Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `root_cause_classification` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`audit_finding` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` SET TAGS ('dbx_subdomain' = 'audit_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Finding ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `follow_up_corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Corrective Action Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `follow_up_corrective_action_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `fraud_alert_id` SET TAGS ('dbx_business_glossary_term' = 'Fraud Alert Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `note_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Note Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Owner Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Whistleblower Report Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `assigned_department` SET TAGS ('dbx_business_glossary_term' = 'Assigned Department');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `capa_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `capa_reference_number` SET TAGS ('dbx_value_regex' = '^CAPA-[0-9]{4}-[0-9]{6}$');
@@ -1429,7 +1398,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `escalation_date` SET TAGS ('dbx_business_glossary_term' = 'Escalation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `escalation_required` SET TAGS ('dbx_business_glossary_term' = 'Escalation Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `evidence_of_completion` SET TAGS ('dbx_business_glossary_term' = 'Evidence of Completion');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -1447,29 +1415,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'document-review|on-site-inspection|testing|audit|observation|interview');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`corrective_action` ALTER COLUMN `verification_notes` SET TAGS ('dbx_business_glossary_term' = 'Verification Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` SET TAGS ('dbx_subdomain' = 'incident_response');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health and Safety Incident ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Group Block Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `parent_health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Related Health Safety Incident Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `parent_health_safety_incident_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `parent_health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `parent_health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `related_health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Related Health Safety Incident Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `tertiary_health_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `tertiary_health_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `tertiary_health_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `corrective_actions_taken` SET TAGS ('dbx_business_glossary_term' = 'Corrective Actions Taken');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `days_away_from_work` SET TAGS ('dbx_business_glossary_term' = 'Days Away From Work');
@@ -1486,20 +1441,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `injury_severity` SET TAGS ('dbx_business_glossary_term' = 'Injury Severity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `injury_severity` SET TAGS ('dbx_value_regex' = 'none|minor|serious|critical|fatality');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `insurance_claim_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Claim Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `insurance_claim_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `investigation_assigned_to` SET TAGS ('dbx_business_glossary_term' = 'Investigation Assigned To');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `investigation_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Completed Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `involved_party_name` SET TAGS ('dbx_business_glossary_term' = 'Involved Party Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `involved_party_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `involved_party_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `liability_claim_filed_flag` SET TAGS ('dbx_business_glossary_term' = 'Liability Claim Filed Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `location_within_property` SET TAGS ('dbx_business_glossary_term' = 'Location Within Property');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_facility_name` SET TAGS ('dbx_business_glossary_term' = 'Medical Facility Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_facility_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_facility_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_treatment_provided_flag` SET TAGS ('dbx_business_glossary_term' = 'Medical Treatment Provided Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_treatment_provided_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_treatment_provided_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_treatment_provided_flag` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `medical_treatment_provided_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `osha_recordable_flag` SET TAGS ('dbx_business_glossary_term' = 'Occupational Safety and Health Administration (OSHA) Recordable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `person_type_involved` SET TAGS ('dbx_business_glossary_term' = 'Person Type Involved');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `person_type_involved` SET TAGS ('dbx_value_regex' = 'guest|employee|contractor|vendor|visitor|other');
@@ -1512,29 +1462,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `root_cause_analysis` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `witness_information` SET TAGS ('dbx_business_glossary_term' = 'Witness Information');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `witness_information` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `workers_compensation_claim_flag` SET TAGS ('dbx_business_glossary_term' = 'Workers Compensation Claim Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `workers_compensation_claim_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `workers_compensation_claim_flag` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`health_safety_incident` ALTER COLUMN `workers_compensation_claim_flag` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` SET TAGS ('dbx_subdomain' = 'incident_response');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `incident_investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Investigation Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `escalated_incident_investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Escalated Incident Investigation Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `escalated_incident_investigation_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Lead Investigator Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `tertiary_incident_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `tertiary_incident_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `tertiary_incident_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Whistleblower Report Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Investigation Confidentiality Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'public|internal|confidential|restricted');
@@ -1543,7 +1482,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `cost_impact_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `estimated_cost_impact` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost Impact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `estimated_cost_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `evidence_collected` SET TAGS ('dbx_business_glossary_term' = 'Evidence Collected');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `external_investigator_firm` SET TAGS ('dbx_business_glossary_term' = 'External Investigator Firm Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `insurance_carrier_name` SET TAGS ('dbx_business_glossary_term' = 'Insurance Carrier Name');
@@ -1578,30 +1516,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`incident_investigation` ALTER COLUMN `witness_count` SET TAGS ('dbx_business_glossary_term' = 'Witness Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` SET TAGS ('dbx_subdomain' = 'incident_response');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Affected Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `communication_consent_id` SET TAGS ('dbx_business_glossary_term' = 'Communication Consent Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `communication_consent_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `dpia_id` SET TAGS ('dbx_business_glossary_term' = 'Dpia Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `identity_document_id` SET TAGS ('dbx_business_glossary_term' = 'Identity Document Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `identity_document_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `parent_privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Related Privacy Incident Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `parent_privacy_incident_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Owner ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `privacy_request_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `related_privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Related Privacy Incident Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `tertiary_privacy_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `tertiary_privacy_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `tertiary_privacy_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `breach_notification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Breach Notification Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `confirmed_subjects_affected` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Data Subjects Affected');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `containment_actions_taken` SET TAGS ('dbx_business_glossary_term' = 'Containment Actions Taken');
@@ -1643,16 +1570,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `subject_notification_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Subject Notification Sent Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`privacy_incident` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` SET TAGS ('dbx_subdomain' = 'privacy_protection');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `dpia_id` SET TAGS ('dbx_business_glossary_term' = 'Data Protection Impact Assessment (DPIA) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `superseded_dpia_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Dpia Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `superseded_dpia_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'DPIA Approval Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|pending_review|approved|rejected|requires_revision');
@@ -1665,9 +1588,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `autom
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `cross_border_transfer_flag` SET TAGS ('dbx_business_glossary_term' = 'Cross-Border Transfer Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `data_subject_consultation_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Subject Consultation Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `data_subject_consultation_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `data_subject_consultation_summary` SET TAGS ('dbx_business_glossary_term' = 'Data Subject Consultation Summary');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `data_subject_consultation_summary` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `dpo_consultation_date` SET TAGS ('dbx_business_glossary_term' = 'DPO Consultation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `dpo_consultation_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Protection Officer (DPO) Consultation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `dpo_recommendation` SET TAGS ('dbx_business_glossary_term' = 'DPO Recommendation');
@@ -1700,21 +1621,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `super
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `transfer_safeguards` SET TAGS ('dbx_business_glossary_term' = 'Transfer Safeguards');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`dpia` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` SET TAGS ('dbx_subdomain' = 'safety_certification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `food_safety_cert_id` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Certification ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Owner ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `renewed_food_safety_cert_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Food Safety Cert Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `renewed_food_safety_cert_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `tertiary_food_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `tertiary_food_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `tertiary_food_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `audit_trail_reference` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `certification_scope` SET TAGS ('dbx_business_glossary_term' = 'Certification Scope');
@@ -1725,11 +1639,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `critical_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Violations Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_grade` SET TAGS ('dbx_business_glossary_term' = 'Health Inspection Grade');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_grade` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_grade` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_business_glossary_term' = 'Health Inspection Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `inspection_frequency_days` SET TAGS ('dbx_business_glossary_term' = 'Inspection Frequency (Days)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `jurisdiction_code` SET TAGS ('dbx_business_glossary_term' = 'Jurisdiction Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `jurisdiction_name` SET TAGS ('dbx_business_glossary_term' = 'Jurisdiction Name');
@@ -1744,17 +1654,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `training_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Training Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`food_safety_cert` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` SET TAGS ('dbx_subdomain' = 'safety_certification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Suppression System Asset Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `prior_fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Fire Safety Record Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `prior_fire_safety_record_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `alarm_system_last_test_date` SET TAGS ('dbx_business_glossary_term' = 'Alarm System Last Test Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `alarm_system_next_test_date` SET TAGS ('dbx_business_glossary_term' = 'Alarm System Next Test Date');
@@ -1784,9 +1689,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `outstanding_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Outstanding Fire Code Violations Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `remediation_due_date` SET TAGS ('dbx_business_glossary_term' = 'Violation Remediation Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_contact` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Responsible Person Contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_contact` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_contact` SET TAGS ('dbx_pii_phone' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Responsible Person Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `responsible_person_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `sprinkler_coverage_percentage` SET TAGS ('dbx_business_glossary_term' = 'Sprinkler Coverage Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `suppression_system_last_test_date` SET TAGS ('dbx_business_glossary_term' = 'Suppression System Last Test Date');
@@ -1796,15 +1701,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `violation_severity_level` SET TAGS ('dbx_business_glossary_term' = 'Violation Severity Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`fire_safety_record` ALTER COLUMN `violation_severity_level` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low|none');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` SET TAGS ('dbx_subdomain' = 'safety_privacy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` SET TAGS ('dbx_subdomain' = 'safety_certification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Assessment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `prior_ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Ada Assessment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `prior_ada_assessment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Assessment Frequency Months');
@@ -1812,7 +1712,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Assessment Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_reference_number` SET TAGS ('dbx_value_regex' = '^ADA-[A-Z0-9]{8,12}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_report_url` SET TAGS ('dbx_business_glossary_term' = 'Assessment Report Uniform Resource Locator (URL)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_report_url` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_scope_notes` SET TAGS ('dbx_business_glossary_term' = 'Assessment Scope Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_type` SET TAGS ('dbx_business_glossary_term' = 'Assessment Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `assessment_type` SET TAGS ('dbx_value_regex' = 'initial|periodic|complaint_triggered|renovation_triggered|acquisition_due_diligence|post_remediation');
@@ -1830,12 +1729,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `entrances_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Entrances Evaluated Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `estimated_remediation_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Remediation Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `estimated_remediation_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `fitness_facilities_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Fitness Facilities Evaluated Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `guest_rooms_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Guest Rooms Evaluated Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `high_priority_barriers_count` SET TAGS ('dbx_business_glossary_term' = 'High Priority Barriers Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `legal_case_reference` SET TAGS ('dbx_business_glossary_term' = 'Legal Case Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `legal_case_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `meeting_spaces_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Meeting Spaces Evaluated Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `next_assessment_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Assessment Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `parking_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Parking Evaluated Flag');
@@ -1846,10 +1743,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `remediation_plan_reference` SET TAGS ('dbx_business_glossary_term' = 'Remediation Plan Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `restaurants_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Restaurants Evaluated Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `restrooms_evaluated_flag` SET TAGS ('dbx_business_glossary_term' = 'Restrooms Evaluated Flag');
@@ -1857,31 +1752,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `total_barriers_identified` SET TAGS ('dbx_business_glossary_term' = 'Total Barriers Identified');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`ada_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_subdomain' = 'policy_training');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_concept' = 'training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_group' = 'training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_canonical' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_ssot_role' = 'canonical');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` SET TAGS ('dbx_subdomain' = 'training_records');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_ssot_owner' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `learning_course_id` SET TAGS ('dbx_business_glossary_term' = 'Training Requirement ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `retake_compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Retake Compliance Training Completion Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `retake_compliance_training_completion_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `tertiary_compliance_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `tertiary_compliance_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `tertiary_compliance_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `workforce_training_completion_id` SET TAGS ('dbx_ssot_owner' = 'workforce.workforce_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `workforce_training_completion_id` SET TAGS ('dbx_ssot_entity' = 'training_completion');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `attempt_number` SET TAGS ('dbx_business_glossary_term' = 'Attempt Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `audit_trail_reference` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `certificate_issue_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issue Date');
@@ -1913,7 +1792,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_compl
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `renewal_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Renewal Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `score_achieved` SET TAGS ('dbx_business_glossary_term' = 'Training Score Achieved');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `training_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Training Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `training_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `training_duration_hours` SET TAGS ('dbx_business_glossary_term' = 'Training Duration in Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `training_provider` SET TAGS ('dbx_business_glossary_term' = 'Training Provider Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
@@ -1922,24 +1800,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_compl
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `waiver_granted_flag` SET TAGS ('dbx_business_glossary_term' = 'Waiver Granted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_training_completion` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Waiver Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` SET TAGS ('dbx_subdomain' = 'training_records');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Register ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `parent_risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Risk Register Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `parent_risk_register_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Risk Owner Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `primary_risk_owner_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Risk Owner Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `risk_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `actual_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Closure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `control_effectiveness` SET TAGS ('dbx_business_glossary_term' = 'Control Effectiveness');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `control_effectiveness` SET TAGS ('dbx_value_regex' = 'effective|partially_effective|ineffective|not_assessed');
@@ -1985,19 +1855,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `target_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Target Closure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`risk_register` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `amended_regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Amended Regulatory Filing Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `amended_regulatory_filing_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `environmental_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `acceptance_date` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `acknowledgment_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Date');
@@ -2007,16 +1872,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Filing Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_business_glossary_term' = 'Filing Agent Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_name` SET TAGS ('dbx_business_glossary_term' = 'Filing Agent Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_business_glossary_term' = 'Filing Agent Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_agent_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_description` SET TAGS ('dbx_business_glossary_term' = 'Filing Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_method` SET TAGS ('dbx_business_glossary_term' = 'Filing Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `filing_method` SET TAGS ('dbx_value_regex' = 'online_portal|email|postal_mail|fax|in_person|api_integration');
@@ -2043,17 +1904,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `submission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submission Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_subdomain' = 'policy_training');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_subdomain' = 'privacy_protection');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` SET TAGS ('dbx_ssot_reviewed' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `created_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Identifier (ID)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Owner Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `superseded_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Policy Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `tertiary_policy_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `tertiary_policy_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `tertiary_policy_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `acknowledgment_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `applicable_scope` SET TAGS ('dbx_business_glossary_term' = 'Applicable Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `applicable_scope` SET TAGS ('dbx_value_regex' = 'enterprise_wide|brand_specific|property_specific|regional|departmental');
@@ -2064,13 +1921,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `pol
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `policy_category` SET TAGS ('dbx_value_regex' = 'data_privacy|health_and_safety|anti_bribery|code_of_conduct|liquor_service|food_safety');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `policy_description` SET TAGS ('dbx_business_glossary_term' = 'Policy Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `document_reference_url` SET TAGS ('dbx_business_glossary_term' = 'Document Reference Uniform Resource Locator (URL)');
@@ -2100,27 +1955,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `upd
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy` ALTER COLUMN `version_number` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` SET TAGS ('dbx_subdomain' = 'policy_training');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` SET TAGS ('dbx_subdomain' = 'privacy_protection');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `policy_acknowledgment_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Acknowledgment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `prior_policy_acknowledgment_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Policy Acknowledgment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `prior_policy_acknowledgment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `quaternary_policy_created_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `quinary_policy_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_policy_escalated_to_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Escalated To User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_policy_escalated_to_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_policy_escalated_to_user_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_quinary_policy_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_quinary_policy_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `tertiary_quinary_policy_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `acknowledgment_channel` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Channel');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `acknowledgment_channel` SET TAGS ('dbx_value_regex' = 'web_portal|mobile_app|email_link|in_person|training_system|hr_system');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `acknowledgment_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Date');
@@ -2143,10 +1988,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_business_glossary_term' = 'IP Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_value_regex' = '^(?:[0-9]{1,3}.){3}[0-9]{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_ip' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `job_role_code` SET TAGS ('dbx_business_glossary_term' = 'Job Role Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `job_role_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,8}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `last_reminder_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reminder Sent Date');
@@ -2156,26 +2000,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `re_acknowledgment_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Re-Acknowledgment Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `reminder_sent_count` SET TAGS ('dbx_business_glossary_term' = 'Reminder Sent Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `signature_image_reference` SET TAGS ('dbx_business_glossary_term' = 'Signature Image Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `signature_image_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `waiver_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Waiver Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `waiver_granted_flag` SET TAGS ('dbx_business_glossary_term' = 'Waiver Granted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`policy_acknowledgment` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Waiver Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` SET TAGS ('dbx_subdomain' = 'audit_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `third_party_due_diligence_id` SET TAGS ('dbx_business_glossary_term' = 'Third-Party Due Diligence ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `prior_third_party_due_diligence_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Third Party Due Diligence Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `prior_third_party_due_diligence_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `adverse_media_flag` SET TAGS ('dbx_business_glossary_term' = 'Adverse Media Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `adverse_media_summary` SET TAGS ('dbx_business_glossary_term' = 'Adverse Media Summary');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `adverse_media_summary` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `approval_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
@@ -2183,7 +2021,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_business_glossary_term' = 'Approved By Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessment_notes` SET TAGS ('dbx_business_glossary_term' = 'Assessment Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessment_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessment_type` SET TAGS ('dbx_business_glossary_term' = 'Assessment Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessor_department` SET TAGS ('dbx_business_glossary_term' = 'Assessor Department');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `assessor_name` SET TAGS ('dbx_business_glossary_term' = 'Assessor Name');
@@ -2214,29 +2051,22 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `screening_result` SET TAGS ('dbx_value_regex' = 'pass|fail|conditional|pending_review');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`third_party_due_diligence` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `environmental_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `superseded_environmental_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Environmental Compliance Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `superseded_environmental_compliance_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `carbon_emissions_framework` SET TAGS ('dbx_business_glossary_term' = 'Carbon Emissions Reporting Framework');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `carbon_emissions_framework` SET TAGS ('dbx_value_regex' = 'ghg_protocol|cdp|eu_taxonomy|tcfd|sbti|none');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Officer Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_name` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Officer Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Officer Phone');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `compliance_officer_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `corrective_action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `corrective_action_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `corrective_action_status` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Status');
@@ -2268,24 +2098,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance`
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `waste_diversion_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Waste Diversion Rate Reporting Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`environmental_compliance` ALTER COLUMN `water_reporting_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Water Usage Reporting Obligation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` SET TAGS ('dbx_subdomain' = 'policy_training');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` SET TAGS ('dbx_subdomain' = 'incident_response');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Whistleblower Report ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `parent_whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Related Whistleblower Report Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `parent_whistleblower_report_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Investigator ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `related_whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Related Whistleblower Report Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `tertiary_whistleblower_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `tertiary_whistleblower_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `tertiary_whistleblower_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `allegation_category` SET TAGS ('dbx_business_glossary_term' = 'Allegation Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `allegation_category` SET TAGS ('dbx_value_regex' = 'fraud|bribery|harassment|safety_violation|data_misuse|discrimination');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `allegation_description` SET TAGS ('dbx_business_glossary_term' = 'Allegation Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `allegation_description` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `allegation_subcategory` SET TAGS ('dbx_business_glossary_term' = 'Allegation Subcategory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `assigned_investigator_name` SET TAGS ('dbx_business_glossary_term' = 'Assigned Investigator Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `audit_committee_notification_date` SET TAGS ('dbx_business_glossary_term' = 'Audit Committee Notification Date');
@@ -2295,7 +2117,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'public|internal|confidential|restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `corrective_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Taken');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `corrective_action_taken` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `document_reference_location` SET TAGS ('dbx_business_glossary_term' = 'Document Reference Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `incident_date` SET TAGS ('dbx_business_glossary_term' = 'Incident Date');
@@ -2305,7 +2126,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `investigation_outcome` SET TAGS ('dbx_value_regex' = 'substantiated|unsubstantiated|partially_substantiated|inconclusive|withdrawn');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `investigation_start_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `investigation_summary` SET TAGS ('dbx_business_glossary_term' = 'Investigation Summary');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `investigation_summary` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `legal_hold_flag` SET TAGS ('dbx_business_glossary_term' = 'Legal Hold Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -2322,42 +2142,25 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `report_time` SET TAGS ('dbx_business_glossary_term' = 'Report Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_anonymity_flag` SET TAGS ('dbx_business_glossary_term' = 'Reporter Anonymity Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_contact_method` SET TAGS ('dbx_business_glossary_term' = 'Reporter Contact Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_contact_method` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_contact_method` SET TAGS ('dbx_pii_email' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_name` SET TAGS ('dbx_business_glossary_term' = 'Reporter Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_relationship` SET TAGS ('dbx_business_glossary_term' = 'Reporter Relationship');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `reporter_relationship` SET TAGS ('dbx_value_regex' = 'employee|contractor|vendor|guest|former_employee|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `retaliation_concern_flag` SET TAGS ('dbx_business_glossary_term' = 'Retaliation Concern Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`whistleblower_report` ALTER COLUMN `retention_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Retention Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` SET TAGS ('dbx_subdomain' = 'policy_training');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Sanction Screening ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `primary_sanction_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `rescreened_sanction_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Rescreened Sanction Screening Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `rescreened_sanction_screening_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_updated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `sanction_updated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Screened Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `third_party_due_diligence_id` SET TAGS ('dbx_business_glossary_term' = 'Third Party Due Diligence Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `business_relationship_status` SET TAGS ('dbx_business_glossary_term' = 'Business Relationship Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `business_relationship_status` SET TAGS ('dbx_value_regex' = 'active|suspended|terminated|pending_approval');
@@ -2376,18 +2179,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `regulatory_report_date` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Report Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `regulatory_report_reference` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Report Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `regulatory_report_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `regulatory_reporting_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Reporting Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `review_date` SET TAGS ('dbx_business_glossary_term' = 'Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `review_notes` SET TAGS ('dbx_business_glossary_term' = 'Review Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `review_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `reviewer_name` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Risk Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_by_system` SET TAGS ('dbx_business_glossary_term' = 'Screened By System');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_entity_name` SET TAGS ('dbx_business_glossary_term' = 'Screened Entity Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_entity_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_entity_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Screened Entity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screened_entity_type` SET TAGS ('dbx_value_regex' = 'guest|corporate_account|vendor|employee|business_partner|third_party');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screening_date` SET TAGS ('dbx_business_glossary_term' = 'Screening Date');
@@ -2402,37 +2201,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `screening_trigger` SET TAGS ('dbx_value_regex' = 'new_entity|periodic_review|transaction_threshold|regulatory_update|manual_request');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`sanction_screening` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_subdomain' = 'audit_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_reference' = 'marketing.marketing_calendar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_concept' = 'calendar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_group' = 'calendar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_canonical' = 'compliance.compliance_calendar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_ssot_role' = 'canonical');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `compliance_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Calendar ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `compliance_calendar_id` SET TAGS ('dbx_ssot_reference' = 'marketing.marketing_calendar');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `compliance_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `compliance_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `compliance_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Linked Obligation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Linked Permit ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `primary_compliance_responsible_owner_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Owner Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `primary_compliance_responsible_owner_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `primary_compliance_responsible_owner_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `recurring_source_compliance_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Recurring Source Compliance Calendar Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `recurring_source_compliance_calendar_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `marketing_calendar_id` SET TAGS ('dbx_ssot_owner' = 'marketing.marketing_calendar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `marketing_calendar_id` SET TAGS ('dbx_ssot_entity' = 'calendar');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `completion_status` SET TAGS ('dbx_business_glossary_term' = 'Completion Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `completion_status` SET TAGS ('dbx_value_regex' = 'upcoming|in_progress|overdue|completed|waived|cancelled');
@@ -2469,13 +2249,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTE
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `waiver_granted_flag` SET TAGS ('dbx_business_glossary_term' = 'Waiver Granted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`compliance_calendar` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Waiver Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` SET TAGS ('dbx_subdomain' = 'regulatory_governance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` SET TAGS ('dbx_subdomain' = 'regulatory_oversight');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `parent_regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Regulatory Requirement Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `parent_regulatory_requirement_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_superseded_by_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Requirement Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `superseded_by_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Requirement Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `applicability_scope` SET TAGS ('dbx_business_glossary_term' = 'Applicability Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `certification_required` SET TAGS ('dbx_business_glossary_term' = 'Certification Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
@@ -2491,7 +2269,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `jurisdiction_level` SET TAGS ('dbx_business_glossary_term' = 'Jurisdiction Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `maximum_penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Maximum Penalty Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `maximum_penalty_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `penalty_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Penalty Currency Code');
@@ -2500,7 +2277,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `record_retention_years` SET TAGS ('dbx_business_glossary_term' = 'Record Retention Years');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `reference_url` SET TAGS ('dbx_business_glossary_term' = 'Reference Url');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulation_section` SET TAGS ('dbx_business_glossary_term' = 'Regulation Section');
-ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `renewal_period_months` SET TAGS ('dbx_business_glossary_term' = 'Renewal Period Months');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_code` SET TAGS ('dbx_business_glossary_term' = 'Requirement Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_name` SET TAGS ('dbx_business_glossary_term' = 'Requirement Name');
@@ -2509,6 +2285,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `risk_category` SET TAGS ('dbx_business_glossary_term' = 'Risk Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `severity_level` SET TAGS ('dbx_business_glossary_term' = 'Severity Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `source_regulation` SET TAGS ('dbx_business_glossary_term' = 'Source Regulation');
+ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `training_frequency` SET TAGS ('dbx_business_glossary_term' = 'Training Frequency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `training_required` SET TAGS ('dbx_business_glossary_term' = 'Training Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

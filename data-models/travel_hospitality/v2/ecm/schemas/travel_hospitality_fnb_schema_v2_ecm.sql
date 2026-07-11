@@ -1,5 +1,5 @@
--- Schema for Domain: fnb | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:43
+-- Schema for Domain: fnb | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:52
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`fnb` COMMENT 'F&B operations including restaurant outlets, bars, room service, banquets, and catering. Manages menus, recipes, POS transactions, covers, check averages, and outlet performance. Tracks food cost, beverage cost, and F&B revenue contribution to TRevPAR. Integrates with Oracle Hospitality MICROS POS. Supports USALI F&B departmental reporting and ISO 22000 food safety compliance.';
@@ -7,8 +7,9 @@ CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`fnb` COMMENT 'F&B op
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` (
     `fnb_outlet_id` BIGINT COMMENT 'Primary key for outlet',
+    `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: F&B outlets are assigned procurement categories for departmental spend tracking, budget allocation, USALI reporting, and vendor management. Standard hotel accounting practice for cost center managemen',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: F&B outlets are cost centers for labor and expense allocation in USALI departmental accounting. Outlet currently has cost_center_code (denormalized); proper FK enables expense tracking, budget varianc',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Outlet manager accountability is required for P&L ownership, labor scheduling, food safety compliance, and performance reviews. Links operational responsibility to workforce records for reporting and ',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Outlet manager accountability is required for P&L ownership, labor scheduling, food safety compliance, and performance reviews. Links operational responsibility to workforce records for reporting and',
     `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: F&B outlets operate under specific brands (e.g., Ritz-Carlton vs. Courtyard outlets have different positioning). Brand-level F&B performance reporting, menu standards enforcement, and brand compliance',
     `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Outlets require liquor licenses and health permits tracked centrally in compliance.permit. Links outlet to its primary operating permit for regulatory tracking, renewal management, and compliance repo',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: F&B outlets are profit centers for revenue and margin analysis in hospitality financial reporting. Outlet has profit_center_code (denormalized); FK enables GOP analysis, performance dashboards, and co',
@@ -44,7 +45,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` (
     `service_style` STRING COMMENT 'The service delivery model and dining experience format. Impacts staffing requirements, Average Check (AC), and Guest Satisfaction Score (GSS). [ENUM-REF-CANDIDATE: a_la_carte|buffet|grab_and_go|quick_service|fine_dining|casual_dining|family_style|tasting_menu — 8 candidates stripped; promote to reference product]',
     `smoking_policy` STRING COMMENT 'Smoking policy for the outlet. Must comply with local health regulations and property standards. Communicated to guests during reservation and seating.. Valid values are `non_smoking|smoking_allowed|outdoor_smoking_area|designated_smoking_section`',
     CONSTRAINT pk_fnb_outlet PRIMARY KEY(`fnb_outlet_id`)
-) COMMENT 'Master record for each F&B outlet (restaurant, bar, lounge, room service, pool bar, banquet kitchen) operating within a property. Captures outlet type, cuisine category, seating capacity, operating hours, POS terminal assignments, revenue center code per USALI, outlet status, service style (à la carte, buffet, grab-and-go), and ISO 22000 food safety certification status. Single source of truth for F&B outlet identity across Oracle Hospitality MICROS POS and USALI departmental reporting. SSOT: defers to property.property_outlet (MVM). [SSOT_OWNER] [SSOT:outlet] Canonical single-source-of-truth for the outlet concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical property.property_outlet (MVM cross-domain dedup).';
+) COMMENT 'Master record for each F&B outlet (restaurant, bar, lounge, room service, pool bar, banquet kitchen) operating within a property. Captures outlet type, cuisine category, seating capacity, operating hours, POS terminal assignments, revenue center code per USALI, outlet status, service style (à la carte, buffet, grab-and-go), and ISO 22000 food safety certification status. Single source of truth for F&B outlet identity across Oracle Hospitality MICROS POS and USALI departmental reporting.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` (
     `menu_id` BIGINT COMMENT 'Unique identifier for the menu. Primary key.',
@@ -139,7 +140,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` (
     `recipe_id` BIGINT COMMENT 'Unique identifier for the recipe. Primary key.',
     `fnb_outlet_id` BIGINT COMMENT 'Reference to the primary F&B outlet where this recipe is prepared and served. Links to property_outlet master data.',
-    `food_safety_cert_id` BIGINT COMMENT 'Foreign key linking to compliance.food_safety_cert. Business justification: Recipes certified under ISO 22000 or HACCP standards must link to the certification record for audit trails, compliance verification, and regulatory reporting. Natural 1:N where recipe references its ',
+    `food_safety_cert_id` BIGINT COMMENT 'Foreign key linking to compliance.food_safety_cert. Business justification: Recipes certified under ISO 22000 or HACCP standards must link to the certification record for audit trails, compliance verification, and regulatory reporting. Natural 1:N where recipe references its',
     `allergen_information` STRING COMMENT 'Comprehensive list of allergens present in this recipe (e.g., Contains: milk, eggs, tree nuts, shellfish). Critical for guest safety, menu labeling compliance, and service staff training.',
     `ccp_details` STRING COMMENT 'Detailed description of ISO 22000 Critical Control Points in this recipe, including monitoring procedures, critical limits, corrective actions, and verification steps. Essential for food safety compliance and audit readiness.',
     `chef_notes` STRING COMMENT 'Additional notes, tips, or special instructions from the executive chef. May include substitution options, quality standards, or presentation variations.',
@@ -186,6 +187,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` (
     `recipe_ingredient_id` BIGINT COMMENT 'Unique identifier for each ingredient line within a recipe. Primary key for the recipe ingredient entity.',
     `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Recipe ingredients belong to procurement categories for spend analysis, vendor management, cost control, and sourcing strategy. Essential for F&B procurement operations and recipe costing.',
     `inventory_item_id` BIGINT COMMENT 'Reference to the ingredient master record. Links to the ingredient catalog for standardized ingredient definitions.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - recipe ingredients may have property-specific sourcing',
     `recipe_id` BIGINT COMMENT 'Reference to the parent standardized recipe that this ingredient belongs to. Links to the recipe master data.',
     `vendor_id` BIGINT COMMENT 'Reference to the preferred supplier for this ingredient. Supports procurement planning and supplier performance tracking.',
     `active_flag` BOOLEAN COMMENT 'Indicates whether this ingredient is currently active in the recipe. False if ingredient has been removed or temporarily suspended. Supports recipe version control.',
@@ -222,12 +224,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` (
     `pos_check_id` BIGINT COMMENT 'Unique identifier for the POS check transaction. Primary key.',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: POS checks that are posted to guest folios or billed to corporate accounts need to link to AR invoices for consolidated billing and receivables management. This FK enables integration between F&B POS ',
+    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: POS checks that are posted to guest folios or billed to corporate accounts need to link to AR invoices for consolidated billing and receivables management. This FK enables integration between F&B POS',
+    `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: OTA packages (Bed & Breakfast, F&B credits) require tracking which POS checks redeem included F&B value for revenue allocation, channel ROI analysis, package performance reporting, and guest benefit r',
     `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate accounts have direct billing arrangements for F&B charges at outlets and restaurants. Required for AR posting, credit limit enforcement, contracted discount application, and monthly corporat',
-    `discount_id` BIGINT COMMENT 'Foreign key linking to fnb.discount. Business justification: POS checks can have check-level discounts applied. Currently pos_check has discount_amount but no FK to the discount master. This FK enables tracking which discount program was applied, authorization ',
+    `discount_id` BIGINT COMMENT 'Foreign key linking to fnb.discount. Business justification: POS checks can have check-level discounts applied. Currently pos_check has discount_amount but no FK to the discount master. This FK enables tracking which discount program was applied, authorization',
     `fnb_outlet_id` BIGINT COMMENT 'Identifier of the F&B outlet where the check was opened (restaurant, bar, room service, poolside, etc.).',
     `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Group blocks often include F&B master billing where outlet charges are consolidated to group master folio. Required for group F&B spend tracking, contracted minimum tracking, attrition calculation, an',
     `profile_id` BIGINT COMMENT 'Identifier of the guest profile if the guest is a registered hotel guest or loyalty member. Null for walk-in non-registered guests.',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Guest illness or injury incidents during dining must link the transaction to the incident report for liability investigation, insurance claims, and root cause analysis. Natural 1:N where check referen',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: POS transactions must post to specific GL accounts for revenue recognition and financial reporting. While pos_check links to ar_invoice, direct ledger link enables real-time revenue classification (fo',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Core loyalty points earning process: F&B transactions post points to member accounts. pos_check.loyalty_points_earned exists, requiring direct member link for accrual posting, tier validation, and poi',
     `employee_id` BIGINT COMMENT 'Identifier of the server or service staff member assigned to this check. Used for tip allocation and performance tracking.',
@@ -321,7 +325,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` (
     `covers_per_day_target` STRING COMMENT 'Target number of covers (guests served) per day for this revenue center. Used for capacity planning and forecasting.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this revenue center record was first created in the system.',
     `cuisine_type` STRING COMMENT 'Type of cuisine offered (e.g., Italian, Asian Fusion, Steakhouse, International Buffet). Used for marketing and guest preference matching.',
-    `day_part_service_flag` STRING COMMENT 'Primary day part(s) served by this revenue center for menu planning and revenue analysis. [ENUM-REF-CANDIDATE: breakfast|lunch|dinner|all_day|brunch|afternoon_tea|late_night — 7 candidates stripped; promote to reference product]',
+    `day_part_service_flag` BOOLEAN COMMENT 'Primary day part(s) served by this revenue center for menu planning and revenue analysis. [ENUM-REF-CANDIDATE: breakfast|lunch|dinner|all_day|brunch|afternoon_tea|late_night — 7 candidates stripped; promote to reference product]',
     `dress_code` STRING COMMENT 'Dress code policy for the revenue center. Used for guest communication and service standards.. Valid values are `casual|smart_casual|business_casual|formal|resort_casual|no_code`',
     `food_cost_target_percentage` DECIMAL(18,2) COMMENT 'Target food cost percentage for this revenue center. Used for cost control and GOP analysis.',
     `gl_account_code` STRING COMMENT 'General ledger account code in SAP S/4HANA for revenue posting. Maps revenue center transactions to the financial chart of accounts.. Valid values are `^[0-9]{4,10}$`',
@@ -395,6 +399,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` (
     `room_service_order_id` BIGINT COMMENT 'Unique identifier for the room service order. Primary key.',
+    `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Room service promotions ("breakfast bundle discount", "late-night snack offer") are common marketing tactics. Operations must track which orders redeemed promotional offers for revenue reconciliation,',
     `fnb_outlet_id` BIGINT COMMENT 'Reference to the Food and Beverage (F&B) outlet fulfilling the room service order.',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile who placed the room service order.',
     `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Room service orders generate POS checks for billing and revenue recognition. Currently room_service_order has pos_check_number as STRING but no FK to pos_check. Normalizing enables accurate revenue re',
@@ -402,7 +407,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` 
     `property_id` BIGINT COMMENT 'Reference to the property where the room service order was placed.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the guest reservation associated with this room service order.',
     `revenue_center_id` BIGINT COMMENT 'Foreign key linking to fnb.revenue_center. Business justification: Room service orders have revenue_center_code as STRING but no FK to revenue_center master. Normalizing enables proper USALI reporting, GL account mapping, and revenue center performance analysis. Remo',
-    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Room service delivery requires physical room link for order routing, access control verification, delivery confirmation, and integration with property management system for guest billing. Room_number ',
+    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Room service delivery requires physical room link for order routing, access control verification, delivery confirmation, and integration with property management system for guest billing. Room_number',
     `appointment_id` BIGINT COMMENT 'Foreign key linking to spa.appointment. Business justification: In-room spa services (massage, beauty treatments) coordinate with room service for post-treatment refreshments (herbal tea, fruit platters, wellness meals). Luxury properties track paired services for',
     `actual_delivery_time` TIMESTAMP COMMENT 'Date and time when the order was actually delivered to the guest room. Used to calculate on-time delivery performance.',
     `business_date` DATE COMMENT 'Business date (hotel operating day) on which the order is recorded for financial reporting purposes. May differ from order timestamp for late-night orders.',
@@ -441,18 +446,20 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` (
     `banquet_event_order_id` BIGINT COMMENT 'Unique identifier for the banquet event order. Primary key for the BEO master record.',
     `banquet_menu_package_id` BIGINT COMMENT 'Reference to the catering menu package selected for this event. Links to the catering menu catalog.',
-    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Banquet events are frequently driven by marketing campaigns (wedding season promotions, holiday party packages, corporate event campaigns). Sales teams track campaign attribution for ROI analysis and ',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Banquet events are frequently driven by marketing campaigns (wedding season promotions, holiday party packages, corporate event campaigns). Sales teams track campaign attribution for ROI analysis and',
     `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Banquet bookings frequently use promotional offers ("Book by March 31, save 15%", "Complimentary champagne toast"). Event coordinators track offer codes for pricing validation, contract terms enforcem',
-    `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate accounts book banquet events for meetings and conferences. Required for direct billing setup, contract rate application, credit limit monitoring, and AR invoice generation against corporate ',
+    `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate accounts book banquet events for meetings and conferences. Required for direct billing setup, contract rate application, credit limit monitoring, and AR invoice generation against corporate',
     `event_booking_id` BIGINT COMMENT 'Reference to the parent event booking that originated this BEO. Links to the event domain booking record.',
     `function_space_id` BIGINT COMMENT 'Identifier of the function room or banquet space where the event will be held.',
-    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Banquet events are frequently tied to group blocks (weddings, conferences, conventions). Required for group F&B revenue tracking, contracted minimum guarantee tracking, attrition analysis, and master ',
+    `function_space_id_fk` BIGINT COMMENT 'add column function_space_id_fk (BIGINT) with FK to event.function_space.function_space_id - banquet event orders already reference function_space but this is in the fnb domain table which needs the link',
+    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Banquet events are frequently tied to group blocks (weddings, conferences, conventions). Required for group F&B revenue tracking, contracted minimum guarantee tracking, attrition analysis, and master',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Banquet events with health/safety incidents (food poisoning, allergic reactions, slip-and-fall) must link to incident reports for liability tracking, insurance claims, and regulatory reporting. Natura',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Banquet revenue posts to distinct GL accounts from restaurant operations for USALI reporting. BEO links to pos_check but needs direct ledger link for event-specific revenue classification (catering vs',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Group/banquet loyalty earning: corporate meeting planners and event organizers who are loyalty members earn points on banquet F&B spend. Business process: loyalty points accrual on group revenue, plan',
     `package_id` BIGINT COMMENT 'Foreign key linking to spa.spa_package. Business justification: Corporate events and weddings bundle banquet catering with spa packages (bridal party treatments, executive wellness sessions, conference attendee massages). Event planners book integrated F&B+spa exp',
     `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Banquet events often generate POS checks for actual consumption billing (especially for bar service, upgrades, or consumption-based beverage packages). This FK links the BEO to the actual POS transact',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property where the banquet event will take place.',
-    `revenue_center_id` BIGINT COMMENT 'Foreign key linking to fnb.revenue_center. Business justification: Banquet events must be assigned to F&B revenue centers for USALI departmental reporting and cost center allocation. Currently BEO links to function_space and outlet but not to revenue_center. This FK ',
+    `revenue_center_id` BIGINT COMMENT 'Foreign key linking to fnb.revenue_center. Business justification: Banquet events must be assigned to F&B revenue centers for USALI departmental reporting and cost center allocation. Currently BEO links to function_space and outlet but not to revenue_center. This FK',
     `actual_covers` STRING COMMENT 'Actual number of guests who attended the banquet event. Recorded post-event for reconciliation and future forecasting.',
     `beo_number` STRING COMMENT 'Externally-known business identifier for the BEO document. Used for communication with clients and operations teams.',
     `beverage_package_type` STRING COMMENT 'Type of beverage service selected for the event. Determines billing method and beverage offerings. [ENUM-REF-CANDIDATE: hosted_bar|cash_bar|consumption_bar|beer_wine_only|soft_drinks_only|full_premium|none — 7 candidates stripped; promote to reference product]',
@@ -578,7 +585,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` (
     `stock_transaction_id` BIGINT COMMENT 'Primary key for stock_transaction',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Inventory transactions (purchases, waste, transfers) must allocate to cost centers for departmental expense tracking and variance analysis. Stock_transaction has cost_center_code (denormalized); FK en',
-    `fnb_outlet_id` BIGINT COMMENT 'Identifier of the destination location (outlet or storeroom) to which the item was moved. Null for waste/spoilage transactions.',
+    `destination_location_fnb_outlet_id` BIGINT COMMENT 'Identifier of the destination location (outlet or storeroom) to which the item was moved. Null for waste/spoilage transactions.',
+    `fnb_outlet_id` BIGINT COMMENT 'Identifier of the F&B outlet or storeroom involved in the transaction.',
     `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.goods_receipt. Business justification: Stock transactions for receipts link to GR documents for inventory reconciliation, quality tracking, financial posting, and three-way match validation. Core ERP receiving and inventory control process',
     `inventory_item_id` BIGINT COMMENT 'Identifier of the inventory item involved in the transaction.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Inventory movements post to GL accounts: purchases to inventory asset, issues to COGS, waste to expense. Direct ledger link enables automated GL posting, inventory valuation, and financial statement a',
@@ -591,7 +599,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` (
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Stock receipts from vendors reference originating PO for three-way matching, variance analysis, audit trails, and invoice reconciliation. Standard procurement control and financial compliance requirem',
     `recipe_id` BIGINT COMMENT 'Foreign key linking to fnb.recipe. Business justification: Stock transactions for recipe production/consumption need to reference the recipe being prepared. When kitchen prepares a recipe, ingredients are consumed (stock transaction type = recipe_consumption',
     `storage_location_id` BIGINT COMMENT 'Identifier of the source location (outlet or storeroom) from which the item was moved. Null for receipts from vendors.',
-    `stock_fnb_outlet_id` BIGINT COMMENT 'Identifier of the F&B outlet or storeroom involved in the transaction.',
     `vendor_id` BIGINT COMMENT 'Identifier of the vendor for receipt or return-to-vendor transactions. Null for internal transactions.',
     `batch_number` STRING COMMENT 'Batch or lot number of the item for traceability and food safety compliance.',
     `corrective_action_notes` STRING COMMENT 'Notes describing corrective actions taken or planned in response to waste or spoilage events. Null for non-waste transactions.',
@@ -624,6 +631,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` (
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Discount authorization requires manager-level approval for revenue protection and fraud prevention. Essential for audit trails, authorization limit enforcement, and tracking who approved promotional p',
     `campaign_id` BIGINT COMMENT 'Identifier linking this discount to a specific marketing campaign in the CRM system. Supports promotional campaign tracking and ROI analysis. Null if not campaign-driven.',
     `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: F&B discounts are often implementations of marketing offers ("Loyalty Platinum 20% dining discount"). POS systems need to link discount codes to offer definitions for eligibility validation, redemptio',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Discounts post to specific GL accounts for revenue adjustment tracking and promotional expense analysis. Discount has gl_account_code (denormalized); FK enables automated posting, supports marketing R',
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Tier-based F&B discounts: platinum members receive 20% dining discount, gold 15%, etc. discount.loyalty_tier_required exists as text; FK enables POS validation, automated discount application, tier be',
     `amount` DECIMAL(18,2) COMMENT 'Fixed monetary amount deducted from the check or item (e.g., 5.00 for $5 off). Applicable when discount_type is fixed_amount. Null for non-fixed-amount discount types.',
     `applicable_menu_item_scope` STRING COMMENT 'Defines which menu items are eligible for this discount: all_items (any item), specific_items (named items only), menu_category (e.g., appetizers, beverages), revenue_class (e.g., food, beverage, alcohol).. Valid values are `all_items|specific_items|menu_category|revenue_class`',
@@ -665,6 +673,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` (
     `inventory_item_id` BIGINT COMMENT 'Foreign key linking to fnb.inventory_item. Business justification: Wine cellar is specialized inventory tracking for premium beverages requiring vintage/bin management. Linking to inventory_item master enables integration with standard inventory processes (receiving,',
     `fnb_outlet_id` BIGINT COMMENT 'Identifier of the specific F&B outlet (restaurant, bar, banquet) that manages this wine inventory.',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property where this wine cellar inventory is maintained.',
+    `storage_location_id` BIGINT COMMENT 'add column storage_location_id (BIGINT) with FK to fnb.storage_location.storage_location_id - wine cellars are physical storage locations and should link to the storage hierarchy',
     `alcohol_by_volume_pct` DECIMAL(18,2) COMMENT 'Percentage of alcohol content by volume. Required for regulatory compliance and guest information.',
     `appellation` STRING COMMENT 'Geographic region or appellation of origin (e.g., Napa Valley, Bordeaux, Tuscany). Indicates terroir and quality designation.',
     `bin_location` STRING COMMENT 'Physical storage location identifier within the wine cellar (e.g., rack number, bin code). Enables efficient retrieval and inventory management.',
@@ -707,7 +716,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspecti
     `corrective_action_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action. Business justification: Food safety inspections requiring corrective actions must link to compliance.corrective_action for CAPA tracking, verification of completion, and regulatory follow-up. Natural 1:N where inspection ref',
     `fnb_outlet_id` BIGINT COMMENT 'Identifier of the specific F&B outlet or kitchen facility inspected (restaurant, bar, banquet kitchen, room service kitchen, etc.).',
     `property_id` BIGINT COMMENT 'Identifier of the property where the inspection took place.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Health department inspections require documented manager accountability for corrective actions and regulatory compliance. Essential for OSHA/health authority reporting, performance reviews, and legal ',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Health department inspections require documented manager accountability for corrective actions and regulatory compliance. Essential for OSHA/health authority reporting, performance reviews, and legal',
     `areas_inspected` STRING COMMENT 'List or description of specific areas, zones, or stations within the outlet or kitchen that were inspected (e.g., prep area, cold storage, dishwashing station, dining room).',
     `compliance_status` STRING COMMENT 'Overall compliance status of the outlet or facility following the inspection (compliant, non-compliant, conditional compliance, pending review).. Valid values are `compliant|non_compliant|conditional_compliance|pending_review`',
     `corrective_action_completion_date` DATE COMMENT 'The actual date on which all required corrective actions were completed and verified.',
@@ -745,7 +754,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspecti
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` (
     `waste_log_id` BIGINT COMMENT 'Primary key for waste_log',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Waste must be allocated to responsible cost centers for variance analysis and cost control. Waste_log links to outlet/revenue_center but needs cost_center for expense allocation, enabling managers to ',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Waste must be allocated to responsible cost centers for variance analysis and cost control. Waste_log links to outlet/revenue_center but needs cost_center for expense allocation, enabling managers to',
     `environmental_compliance_id` BIGINT COMMENT 'Foreign key linking to compliance.environmental_compliance. Business justification: Waste disposal tracking must link to environmental compliance permits for regulatory reporting, waste diversion metrics, and sustainability audits. Natural 1:N where waste log references the environme',
     `inventory_item_id` BIGINT COMMENT 'Foreign key linking to fnb.inventory_item. Business justification: Waste log currently has waste_item_name and waste_item_code as strings but no FK to inventory_item master. Normalizing to inventory_item enables accurate waste cost tracking, inventory variance analys',
     `fnb_outlet_id` BIGINT COMMENT 'Identifier of the F&B outlet or kitchen where the waste occurred.',
@@ -785,8 +794,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` (
     `fnb_supply_agreement_id` BIGINT COMMENT 'Primary key for fnb_supply_agreement',
     `inventory_item_id` BIGINT COMMENT 'Foreign key linking to the F&B inventory item being supplied under this agreement',
-    `procurement_supply_agreement_id` BIGINT COMMENT 'Unique identifier for this supply agreement record. Primary key.',
+    `supply_agreement_id` BIGINT COMMENT 'Unique identifier for this supply agreement record. Primary key.',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to the vendor supplying the item under this agreement',
+    `ssot_supply_agreement_fk` BIGINT COMMENT '',
     `agreement_end_date` DATE COMMENT 'Date when this supply agreement expires or was terminated. Null for ongoing agreements. Used for contract renewal planning and vendor relationship lifecycle management.',
     `agreement_start_date` DATE COMMENT 'Date when this supply agreement became effective. Used for contract management and historical tracking of vendor-item relationships.',
     `agreement_status` STRING COMMENT 'Current lifecycle status of this supply agreement. Active agreements are available for procurement. Inactive or suspended agreements are not used for new orders but retained for historical reference.',
@@ -829,8 +839,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` (
     `primary_use_description` STRING COMMENT 'Detailed description of the primary intended use and contents of this storage location for operational reference.',
     `rfid_tag` STRING COMMENT 'RFID tag identifier for automated inventory tracking and access control at this storage location.',
     `room_number` STRING COMMENT 'Specific room or area number designation for the storage location within the building.',
-    `storage_category` STRING COMMENT 'Primary category of items stored in this location for inventory segregation and food safety compliance.',
     `storage_location_status` STRING COMMENT 'Current operational status of the storage location in the inventory management system.',
+    `storage_category` STRING COMMENT 'Primary category of items stored in this location for inventory segregation and food safety compliance.',
     `target_temperature_max_celsius` DECIMAL(18,2) COMMENT 'Maximum target temperature in Celsius for temperature-controlled storage locations to maintain food safety standards.',
     `target_temperature_min_celsius` DECIMAL(18,2) COMMENT 'Minimum target temperature in Celsius for temperature-controlled storage locations to maintain food safety standards.',
     `temperature_controlled_flag` BOOLEAN COMMENT 'Indicates whether this storage location requires temperature control for food safety compliance.',
@@ -840,13 +850,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` (
     `physical_count_id` BIGINT COMMENT 'Primary key for physical_count',
-    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Physical counts are performed at specific F&B outlets. The physical_count table has outlet_id (BIGINT) which is clearly intended to be a FK to fnb_outlet but uses non-standard naming. Standardizing to',
-    `parent_physical_count_id` BIGINT COMMENT 'Reference to the original physical count if this record represents a recount or follow-up count, establishing the audit trail.',
     `employee_id` BIGINT COMMENT 'Reference to the employee who provided final approval of the physical count, typically a department head or controller.',
-    `physical_counter_employee_id` BIGINT COMMENT 'Reference to the employee who performed the physical count, ensuring accountability and traceability.',
-    `physical_supervisor_employee_id` BIGINT COMMENT 'Reference to the supervisor or manager who reviewed and approved the physical count results.',
-    `primary_recount_physical_count_id` BIGINT COMMENT 'Self-referencing FK on physical_count (recount_physical_count_id)',
+    `counter_employee_id` BIGINT COMMENT 'Reference to the employee who performed the physical count, ensuring accountability and traceability.',
+    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Physical counts are performed at specific F&B outlets. The physical_count table has outlet_id (BIGINT) which is clearly intended to be a FK to fnb_outlet but uses non-standard naming. Standardizing to',
+    `parent_count_id` BIGINT COMMENT 'Reference to the original physical count if this record represents a recount or follow-up count, establishing the audit trail.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or vacation property where the physical count is conducted.',
+    `recount_physical_count_id` BIGINT COMMENT 'Self-referencing FK on physical_count (recount_physical_count_id)',
+    `supervisor_employee_id` BIGINT COMMENT 'Reference to the supervisor or manager who reviewed and approved the physical count results.',
     `adjustment_posted` BOOLEAN COMMENT 'Indicates whether the inventory adjustments resulting from this physical count have been posted to the general ledger and inventory system (True if posted).',
     `adjustment_posted_timestamp` TIMESTAMP COMMENT 'The date and time when the inventory adjustments were posted to the financial and inventory systems.',
     `adjustment_required` BOOLEAN COMMENT 'Indicates whether inventory adjustments are required to reconcile the physical count with the system book quantities (True if variances exist and adjustments are needed).',
@@ -904,6 +914,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ADD CONSTRA
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ADD CONSTRAINT `fk_fnb_banquet_event_order_pos_check_id` FOREIGN KEY (`pos_check_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`pos_check`(`pos_check_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ADD CONSTRAINT `fk_fnb_banquet_event_order_revenue_center_id` FOREIGN KEY (`revenue_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`revenue_center`(`revenue_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ADD CONSTRAINT `fk_fnb_banquet_menu_package_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_destination_location_fnb_outlet_id` FOREIGN KEY (`destination_location_fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_inventory_item_id` FOREIGN KEY (`inventory_item_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`inventory_item`(`inventory_item_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_original_transaction_stock_transaction_id` FOREIGN KEY (`original_transaction_stock_transaction_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction`(`stock_transaction_id`);
@@ -911,9 +922,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAIN
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_pos_check_id` FOREIGN KEY (`pos_check_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`pos_check`(`pos_check_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_storage_location_id` FOREIGN KEY (`storage_location_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`storage_location`(`storage_location_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ADD CONSTRAINT `fk_fnb_stock_transaction_stock_fnb_outlet_id` FOREIGN KEY (`stock_fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ADD CONSTRAINT `fk_fnb_wine_cellar_inventory_item_id` FOREIGN KEY (`inventory_item_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`inventory_item`(`inventory_item_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ADD CONSTRAINT `fk_fnb_wine_cellar_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ADD CONSTRAINT `fk_fnb_wine_cellar_storage_location_id` FOREIGN KEY (`storage_location_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`storage_location`(`storage_location_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ADD CONSTRAINT `fk_fnb_food_safety_inspection_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ADD CONSTRAINT `fk_fnb_waste_log_inventory_item_id` FOREIGN KEY (`inventory_item_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`inventory_item`(`inventory_item_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ADD CONSTRAINT `fk_fnb_waste_log_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
@@ -923,57 +934,36 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ADD CONSTR
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ADD CONSTRAINT `fk_fnb_storage_location_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ADD CONSTRAINT `fk_fnb_storage_location_parent_storage_location_id` FOREIGN KEY (`parent_storage_location_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`storage_location`(`storage_location_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ADD CONSTRAINT `fk_fnb_physical_count_fnb_outlet_id` FOREIGN KEY (`fnb_outlet_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet`(`fnb_outlet_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ADD CONSTRAINT `fk_fnb_physical_count_parent_physical_count_id` FOREIGN KEY (`parent_physical_count_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`physical_count`(`physical_count_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ADD CONSTRAINT `fk_fnb_physical_count_primary_recount_physical_count_id` FOREIGN KEY (`primary_recount_physical_count_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`physical_count`(`physical_count_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ADD CONSTRAINT `fk_fnb_physical_count_parent_count_id` FOREIGN KEY (`parent_count_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`physical_count`(`physical_count_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ADD CONSTRAINT `fk_fnb_physical_count_recount_physical_count_id` FOREIGN KEY (`recount_physical_count_id`) REFERENCES `vibe_travel_hospitality_v1`.`fnb`.`physical_count`(`physical_count_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`fnb` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`fnb` SET TAGS ('dbx_domain' = 'fnb');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_reference' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_concept' = 'outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_references' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_authority_defer_to' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_ref' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_group' = 'outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_canonical' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` SET TAGS ('dbx_ssot_role' = 'reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_ssot_reference' = 'property.property_outlet');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_ssot_owner' = 'property.property_outlet');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `property_outlet_id` SET TAGS ('dbx_ssot_entity' = 'outlet');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `accepts_reservations_flag` SET TAGS ('dbx_business_glossary_term' = 'Accepts Reservations Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `ada_compliant_flag` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Compliant Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `average_check_target` SET TAGS ('dbx_business_glossary_term' = 'Average Check Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `average_check_target` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `beverage_cost_percentage_target` SET TAGS ('dbx_business_glossary_term' = 'Beverage Cost Percentage Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `beverage_cost_percentage_target` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `cuisine_category` SET TAGS ('dbx_business_glossary_term' = 'Cuisine Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `dress_code` SET TAGS ('dbx_business_glossary_term' = 'Dress Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `dress_code` SET TAGS ('dbx_value_regex' = 'casual|smart_casual|business_casual|formal|resort_casual|no_dress_code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Outlet Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `food_cost_percentage_target` SET TAGS ('dbx_business_glossary_term' = 'Food Cost Percentage Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `food_cost_percentage_target` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `iso_22000_certification_date` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Certification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `iso_22000_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `iso_22000_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Expiry Date');
@@ -991,35 +981,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `outlet
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `outlet_status` SET TAGS ('dbx_value_regex' = 'active|inactive|seasonal|under_renovation|temporarily_closed|permanently_closed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `outlet_type` SET TAGS ('dbx_business_glossary_term' = 'Outlet Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Outlet Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `pos_terminal_code` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Terminal ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `revenue_center_code` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `revenue_center_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4,6}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Seating Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `service_style` SET TAGS ('dbx_business_glossary_term' = 'Service Style');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `smoking_policy` SET TAGS ('dbx_business_glossary_term' = 'Smoking Policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_outlet` ALTER COLUMN `smoking_policy` SET TAGS ('dbx_value_regex' = 'non_smoking|smoking_allowed|outdoor_smoking_area|designated_smoking_section');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` SET TAGS ('dbx_subdomain' = 'menu_catalog');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` SET TAGS ('dbx_subdomain' = 'outlet_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `menu_id` SET TAGS ('dbx_business_glossary_term' = 'Menu Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `allergen_information` SET TAGS ('dbx_business_glossary_term' = 'Allergen Information');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `beverage_description` SET TAGS ('dbx_business_glossary_term' = 'Beverage Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `beverage_description` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `beverage_inclusion_flag` SET TAGS ('dbx_business_glossary_term' = 'Beverage Inclusion Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `beverage_inclusion_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `menu_code` SET TAGS ('dbx_business_glossary_term' = 'Menu Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `menu_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `course_count` SET TAGS ('dbx_business_glossary_term' = 'Course Count');
@@ -1034,7 +1015,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `effective_en
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `maximum_capacity` SET TAGS ('dbx_business_glossary_term' = 'Maximum Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `maximum_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `meal_period` SET TAGS ('dbx_business_glossary_term' = 'Meal Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `meal_period` SET TAGS ('dbx_value_regex' = 'breakfast|brunch|lunch|dinner|all_day|afternoon_tea');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `menu_status` SET TAGS ('dbx_business_glossary_term' = 'Menu Status');
@@ -1059,9 +1039,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `target_guest
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `tax_inclusive_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Inclusive Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` SET TAGS ('dbx_subdomain' = 'menu_catalog');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` SET TAGS ('dbx_subdomain' = 'outlet_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `menu_item_id` SET TAGS ('dbx_business_glossary_term' = 'Menu Item ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
@@ -1072,7 +1050,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `alcohol
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `allergen_flags` SET TAGS ('dbx_business_glossary_term' = 'Allergen Flags');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `calorie_count` SET TAGS ('dbx_business_glossary_term' = 'Calorie Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `cost_price` SET TAGS ('dbx_business_glossary_term' = 'Cost Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `cost_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1081,7 +1058,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `effecti
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `food_safety_classification` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Food Safety Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `food_safety_classification` SET TAGS ('dbx_value_regex' = 'low_risk|medium_risk|high_risk');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `gross_margin_percent` SET TAGS ('dbx_business_glossary_term' = 'Gross Margin Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `gross_margin_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `is_alcoholic` SET TAGS ('dbx_business_glossary_term' = 'Alcoholic Beverage Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `is_available_banquet` SET TAGS ('dbx_business_glossary_term' = 'Banquet Availability Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `is_available_room_service` SET TAGS ('dbx_business_glossary_term' = 'Room Service Availability Flag');
@@ -1104,7 +1080,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `item_su
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `menu_section` SET TAGS ('dbx_business_glossary_term' = 'Menu Section');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `minimum_age_requirement` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Requirement');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `minimum_age_requirement` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `portion_size` SET TAGS ('dbx_business_glossary_term' = 'Portion Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `preparation_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Preparation Time (Minutes)');
@@ -1116,9 +1091,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `spice_l
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `standard_price` SET TAGS ('dbx_business_glossary_term' = 'Standard Selling Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`menu_item` ALTER COLUMN `tax_category` SET TAGS ('dbx_business_glossary_term' = 'Tax Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` SET TAGS ('dbx_subdomain' = 'menu_catalog');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` SET TAGS ('dbx_subdomain' = 'outlet_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `food_safety_cert_id` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Cert Id (Foreign Key)');
@@ -1158,26 +1131,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `shelf_life
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `skill_level_required` SET TAGS ('dbx_business_glossary_term' = 'Skill Level Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `skill_level_required` SET TAGS ('dbx_value_regex' = 'basic|intermediate|advanced|expert');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_beverage_cost_per_portion` SET TAGS ('dbx_business_glossary_term' = 'Standard Beverage Cost Per Portion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_beverage_cost_per_portion` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_beverage_cost_per_portion` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_food_cost_per_portion` SET TAGS ('dbx_business_glossary_term' = 'Standard Food Cost Per Portion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_food_cost_per_portion` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `standard_portion_size` SET TAGS ('dbx_business_glossary_term' = 'Standard Portion Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `storage_instructions` SET TAGS ('dbx_business_glossary_term' = 'Storage Instructions');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `storage_instructions` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `total_recipe_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Recipe Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `total_recipe_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `total_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Time (Minutes)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Recipe Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `yield_quantity` SET TAGS ('dbx_business_glossary_term' = 'Yield Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe` ALTER COLUMN `yield_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Yield Unit of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` SET TAGS ('dbx_subdomain' = 'menu_catalog');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` SET TAGS ('dbx_subdomain' = 'outlet_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `recipe_ingredient_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Ingredient ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `inventory_item_id` SET TAGS ('dbx_business_glossary_term' = 'Ingredient ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
@@ -1187,7 +1154,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `extended_cost` SET TAGS ('dbx_business_glossary_term' = 'Extended Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `extended_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `ingredient_category` SET TAGS ('dbx_business_glossary_term' = 'Ingredient Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `ingredient_name` SET TAGS ('dbx_business_glossary_term' = 'Ingredient Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `line_number` SET TAGS ('dbx_business_glossary_term' = 'Line Number');
@@ -1203,43 +1169,32 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `seasonality_flag` SET TAGS ('dbx_business_glossary_term' = 'Seasonality Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `shelf_life_days` SET TAGS ('dbx_business_glossary_term' = 'Shelf Life Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `standard_cost_per_unit` SET TAGS ('dbx_business_glossary_term' = 'Standard Cost Per Unit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `standard_cost_per_unit` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `storage_requirement` SET TAGS ('dbx_business_glossary_term' = 'Storage Requirement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `storage_requirement` SET TAGS ('dbx_value_regex' = 'ambient|refrigerated|frozen|dry_storage|temperature_controlled');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `storage_requirement` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `substitution_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Substitution Allowed Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `traceability_code` SET TAGS ('dbx_business_glossary_term' = 'Traceability Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `waste_percentage` SET TAGS ('dbx_business_glossary_term' = 'Waste Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `waste_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `yield_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `yield_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`recipe_ingredient` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` SET TAGS ('dbx_subdomain' = 'transaction_processing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Check ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `channel_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Transaction Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `discount_id` SET TAGS ('dbx_business_glossary_term' = 'Discount Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Server Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `tertiary_pos_manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `tertiary_pos_manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `tertiary_pos_manager_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `tertiary_pos_manager_employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `actual_delivery_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Delivery Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `business_date` SET TAGS ('dbx_business_glossary_term' = 'Business Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `check_number` SET TAGS ('dbx_business_glossary_term' = 'Check Number');
@@ -1257,7 +1212,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `discoun
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `folio_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Property Management System (PMS) Folio Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `manager_approval_required` SET TAGS ('dbx_business_glossary_term' = 'Manager Approval Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `manager_approval_required` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `meal_period` SET TAGS ('dbx_business_glossary_term' = 'Meal Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `opened_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Check Opened Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `order_source` SET TAGS ('dbx_business_glossary_term' = 'Order Source');
@@ -1278,9 +1232,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `total_a
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check` ALTER COLUMN `void_reason` SET TAGS ('dbx_business_glossary_term' = 'Void Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` SET TAGS ('dbx_subdomain' = 'transaction_processing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `pos_check_line_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Check Line ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `discount_id` SET TAGS ('dbx_business_glossary_term' = 'Discount Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Promotion Id (Foreign Key)');
@@ -1289,10 +1241,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `pa
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Check ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Voided By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `cost_of_sales` SET TAGS ('dbx_business_glossary_term' = 'Cost of Sales');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `cost_of_sales` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `course_number` SET TAGS ('dbx_business_glossary_term' = 'Course Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1320,17 +1269,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `un
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `void_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Void Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`pos_check_line` ALTER COLUMN `void_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Void Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` SET TAGS ('dbx_subdomain' = 'transaction_processing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `parent_revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Revenue Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `allergen_menu_available_flag` SET TAGS ('dbx_business_glossary_term' = 'Allergen Menu Available Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `average_check_target_amount` SET TAGS ('dbx_business_glossary_term' = 'Average Check Target Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `average_check_target_amount` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `beverage_cost_target_percentage` SET TAGS ('dbx_business_glossary_term' = 'Beverage Cost Target Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `beverage_cost_target_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Closure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `revenue_center_code` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `revenue_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
@@ -1343,14 +1288,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `da
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `dress_code` SET TAGS ('dbx_business_glossary_term' = 'Dress Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `dress_code` SET TAGS ('dbx_value_regex' = 'casual|smart_casual|business_casual|formal|resort_casual|no_code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `food_cost_target_percentage` SET TAGS ('dbx_business_glossary_term' = 'Food Cost Target Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `food_cost_target_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4,10}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `gratuity_policy` SET TAGS ('dbx_business_glossary_term' = 'Gratuity Policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `gratuity_policy` SET TAGS ('dbx_value_regex' = 'included|optional|not_applicable|automatic_for_groups');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `iso_22000_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `labor_cost_target_percentage` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Target Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `labor_cost_target_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `last_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Renovation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `micros_rvc_number` SET TAGS ('dbx_business_glossary_term' = 'Oracle Hospitality MICROS Revenue Center (RVC) Number');
@@ -1370,9 +1313,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `re
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `revenue_center_status` SET TAGS ('dbx_value_regex' = 'active|inactive|seasonal|under_renovation|temporarily_closed|permanently_closed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `room_charge_posting_enabled_flag` SET TAGS ('dbx_business_glossary_term' = 'Room Charge Posting Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Seating Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_business_glossary_term' = 'Service Charge Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `service_type` SET TAGS ('dbx_business_glossary_term' = 'Service Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `tax_rate_group_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate Group Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `tax_rate_group_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
@@ -1381,16 +1322,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `us
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `usali_revenue_center_code` SET TAGS ('dbx_business_glossary_term' = 'Uniform System of Accounts for the Lodging Industry (USALI) Revenue Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`revenue_center` ALTER COLUMN `usali_revenue_center_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4,6}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` SET TAGS ('dbx_subdomain' = 'transaction_processing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Void Transaction Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Check ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `pos_check_line_id` SET TAGS ('dbx_business_glossary_term' = 'Pos Check Line Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Void Initiated By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
@@ -1406,7 +1343,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `investigation_notes` SET TAGS ('dbx_business_glossary_term' = 'Investigation Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `is_employee_meal` SET TAGS ('dbx_business_glossary_term' = 'Is Employee Meal');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `is_manager_meal` SET TAGS ('dbx_business_glossary_term' = 'Is Manager Meal');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `is_manager_meal` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `original_check_number` SET TAGS ('dbx_business_glossary_term' = 'Original Check Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `original_transaction_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Original Transaction Timestamp');
@@ -1416,7 +1352,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `source_system_transaction_ref` SET TAGS ('dbx_business_glossary_term' = 'Source System Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `table_number` SET TAGS ('dbx_business_glossary_term' = 'Table Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_number` SET TAGS ('dbx_business_glossary_term' = 'Void Transaction Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Void Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_reason_description` SET TAGS ('dbx_business_glossary_term' = 'Void Reason Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `void_status` SET TAGS ('dbx_business_glossary_term' = 'Void Status');
@@ -1430,16 +1365,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `voided_tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Voided Tax Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`void_transaction` ALTER COLUMN `voided_total_amount` SET TAGS ('dbx_business_glossary_term' = 'Voided Total Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` SET TAGS ('dbx_subdomain' = 'transaction_processing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `room_service_order_id` SET TAGS ('dbx_business_glossary_term' = 'Room Service Order ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Server Staff ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Id (Foreign Key)');
@@ -1464,8 +1396,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `is_vip_guest` SET TAGS ('dbx_business_glossary_term' = 'Is VIP Guest Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `on_time_delivery_flag` SET TAGS ('dbx_business_glossary_term' = 'On-Time Delivery Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `order_number` SET TAGS ('dbx_business_glossary_term' = 'Order Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `order_source` SET TAGS ('dbx_business_glossary_term' = 'Order Source');
@@ -1484,49 +1414,39 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`room_service_order` ALTER COLUMN `total_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` SET TAGS ('dbx_subdomain' = 'banquet_catering');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `banquet_event_order_id` SET TAGS ('dbx_business_glossary_term' = 'Banquet Event Order (BEO) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `banquet_menu_package_id` SET TAGS ('dbx_business_glossary_term' = 'Menu Package ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `banquet_menu_package_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Organizer Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `package_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `actual_covers` SET TAGS ('dbx_business_glossary_term' = 'Actual Covers');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `beo_number` SET TAGS ('dbx_business_glossary_term' = 'Banquet Event Order (BEO) Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `beverage_package_type` SET TAGS ('dbx_business_glossary_term' = 'Beverage Package Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `beverage_package_type` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `beverage_revenue` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Beverage Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `beverage_revenue` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `billing_instructions` SET TAGS ('dbx_business_glossary_term' = 'Billing Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `completed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `confirmed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1542,26 +1462,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `guaranteed_covers` SET TAGS ('dbx_business_glossary_term' = 'Guaranteed Covers');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `per_person_beverage_price` SET TAGS ('dbx_business_glossary_term' = 'Per Person Beverage Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `per_person_beverage_price` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `per_person_food_price` SET TAGS ('dbx_business_glossary_term' = 'Per Person Food Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `service_charge_amount` SET TAGS ('dbx_business_glossary_term' = 'Service Charge Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_business_glossary_term' = 'Service Charge Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `setup_style` SET TAGS ('dbx_business_glossary_term' = 'Setup Style');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `tax_percentage` SET TAGS ('dbx_business_glossary_term' = 'Tax Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `tax_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_event_order` ALTER COLUMN `total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` SET TAGS ('dbx_subdomain' = 'banquet_catering');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `banquet_menu_package_id` SET TAGS ('dbx_business_glossary_term' = 'Banquet Menu Package ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `banquet_menu_package_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
@@ -1570,46 +1482,33 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `allergen_information` SET TAGS ('dbx_business_glossary_term' = 'Allergen Information');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_cost_percentage` SET TAGS ('dbx_business_glossary_term' = 'Beverage Cost Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_cost_percentage` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_cost_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_duration_hours` SET TAGS ('dbx_business_glossary_term' = 'Beverage Duration Hours');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_duration_hours` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_inclusion` SET TAGS ('dbx_business_glossary_term' = 'Beverage Inclusion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `beverage_inclusion` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `cancellation_policy` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `dietary_accommodations` SET TAGS ('dbx_business_glossary_term' = 'Dietary Accommodations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `food_cost_percentage` SET TAGS ('dbx_business_glossary_term' = 'Food Cost Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `food_cost_percentage` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `food_cost_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `included_courses` SET TAGS ('dbx_business_glossary_term' = 'Included Courses');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `labor_hours_per_guest` SET TAGS ('dbx_business_glossary_term' = 'Labor Hours Per Guest');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `maximum_capacity` SET TAGS ('dbx_business_glossary_term' = 'Maximum Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `maximum_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `menu_category` SET TAGS ('dbx_business_glossary_term' = 'Menu Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `menu_category` SET TAGS ('dbx_value_regex' = 'breakfast|lunch|dinner|break|reception|specialty');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `minimum_guarantee` SET TAGS ('dbx_business_glossary_term' = 'Minimum Guarantee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_code` SET TAGS ('dbx_business_glossary_term' = 'Package Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_name` SET TAGS ('dbx_business_glossary_term' = 'Package Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_name` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_notes` SET TAGS ('dbx_business_glossary_term' = 'Package Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_notes` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_status` SET TAGS ('dbx_business_glossary_term' = 'Package Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_status` SET TAGS ('dbx_value_regex' = 'active|inactive|seasonal|discontinued|pending approval');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_status` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_type` SET TAGS ('dbx_business_glossary_term' = 'Package Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_type` SET TAGS ('dbx_value_regex' = 'breakfast package|lunch buffet|dinner gala|coffee break|cocktail reception|wedding package');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `package_type` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `per_person_price` SET TAGS ('dbx_business_glossary_term' = 'Per Person Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `season_description` SET TAGS ('dbx_business_glossary_term' = 'Season Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `seasonal_indicator` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_business_glossary_term' = 'Service Charge Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `service_charge_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `service_style` SET TAGS ('dbx_business_glossary_term' = 'Service Style');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `service_style` SET TAGS ('dbx_value_regex' = 'buffet|plated|family style|stations|reception|cocktail');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `setup_requirements` SET TAGS ('dbx_business_glossary_term' = 'Setup Requirements');
@@ -1617,9 +1516,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `valid_from_date` SET TAGS ('dbx_business_glossary_term' = 'Valid From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`banquet_menu_package` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `inventory_item_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Item Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
@@ -1646,24 +1543,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `la
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `last_physical_count_date` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `last_physical_count_quantity` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `last_purchase_cost` SET TAGS ('dbx_business_glossary_term' = 'Last Purchase Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `last_purchase_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `last_purchase_date` SET TAGS ('dbx_business_glossary_term' = 'Last Purchase Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `local_sourced_flag` SET TAGS ('dbx_business_glossary_term' = 'Local Sourced Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `organic_flag` SET TAGS ('dbx_business_glossary_term' = 'Organic Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `package_size` SET TAGS ('dbx_business_glossary_term' = 'Package Size');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `package_size` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `par_level` SET TAGS ('dbx_business_glossary_term' = 'Par Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `reorder_point` SET TAGS ('dbx_business_glossary_term' = 'Reorder Point');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `required_storage_temperature_max` SET TAGS ('dbx_business_glossary_term' = 'Required Storage Temperature Maximum (Celsius)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `required_storage_temperature_max` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `required_storage_temperature_min` SET TAGS ('dbx_business_glossary_term' = 'Required Storage Temperature Minimum (Celsius)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `required_storage_temperature_min` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `shelf_life_days` SET TAGS ('dbx_business_glossary_term' = 'Shelf Life (Days)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `standard_cost` SET TAGS ('dbx_business_glossary_term' = 'Standard Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `standard_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `supplier_reference` SET TAGS ('dbx_business_glossary_term' = 'Supplier Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `tax_category` SET TAGS ('dbx_business_glossary_term' = 'Tax Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `taxable_flag` SET TAGS ('dbx_business_glossary_term' = 'Taxable Flag');
@@ -1673,12 +1564,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `ve
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `vendor_item_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Item Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`inventory_item` ALTER COLUMN `yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Yield Percent');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `stock_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Transaction Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `destination_location_fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `inventory_item_id` SET TAGS ('dbx_business_glossary_term' = 'Item ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
@@ -1687,14 +1577,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `physical_count_id` SET TAGS ('dbx_business_glossary_term' = 'Physical Count ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Authorizing Manager ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Source Location ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `stock_fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `corrective_action_notes` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Notes');
@@ -1724,15 +1610,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `waste_category` SET TAGS ('dbx_value_regex' = 'spoilage|over_production|plate_waste|breakage|expired|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`stock_transaction` ALTER COLUMN `waste_reason` SET TAGS ('dbx_business_glossary_term' = 'Waste Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` SET TAGS ('dbx_subdomain' = 'outlet_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `discount_id` SET TAGS ('dbx_business_glossary_term' = 'Discount Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Campaign ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Offer Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Discount Fixed Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `applicable_menu_item_scope` SET TAGS ('dbx_business_glossary_term' = 'Applicable Menu Item Scope');
@@ -1759,15 +1642,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `discount
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `internal_notes` SET TAGS ('dbx_business_glossary_term' = 'Internal Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `maximum_discount_amount_per_check` SET TAGS ('dbx_business_glossary_term' = 'Maximum Discount Amount Per Check');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `maximum_usage_per_check` SET TAGS ('dbx_business_glossary_term' = 'Maximum Usage Per Check');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `maximum_usage_per_check` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `maximum_usage_per_guest` SET TAGS ('dbx_business_glossary_term' = 'Maximum Usage Per Guest');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `maximum_usage_per_guest` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `minimum_check_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Check Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `discount_name` SET TAGS ('dbx_business_glossary_term' = 'Discount Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `percentage` SET TAGS ('dbx_business_glossary_term' = 'Discount Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `promo_code_required` SET TAGS ('dbx_business_glossary_term' = 'Promo Code Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `revenue_class` SET TAGS ('dbx_business_glossary_term' = 'Revenue Class');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `revenue_class` SET TAGS ('dbx_value_regex' = 'food|beverage|alcohol|tobacco|other');
@@ -1780,13 +1660,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `valid_ti
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`discount` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_cellar_id` SET TAGS ('dbx_business_glossary_term' = 'Wine Cellar ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `inventory_item_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Inventory Item Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `alcohol_by_volume_pct` SET TAGS ('dbx_business_glossary_term' = 'Alcohol By Volume (ABV) Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `appellation` SET TAGS ('dbx_business_glossary_term' = 'Appellation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `bin_location` SET TAGS ('dbx_business_glossary_term' = 'Bin Location');
@@ -1794,7 +1673,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `bottl
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `by_the_glass_program_flag` SET TAGS ('dbx_business_glossary_term' = 'By-The-Glass Program Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1809,7 +1687,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `optim
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `par_level` SET TAGS ('dbx_business_glossary_term' = 'Par Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `producer_name` SET TAGS ('dbx_business_glossary_term' = 'Producer Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `purchase_cost_per_bottle` SET TAGS ('dbx_business_glossary_term' = 'Purchase Cost Per Bottle');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `purchase_cost_per_bottle` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `quantity_on_hand` SET TAGS ('dbx_business_glossary_term' = 'Quantity On Hand');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `quantity_reserved` SET TAGS ('dbx_business_glossary_term' = 'Quantity Reserved');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `rating_source` SET TAGS ('dbx_business_glossary_term' = 'Rating Source');
@@ -1818,12 +1695,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `selli
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `selling_price_glass` SET TAGS ('dbx_business_glossary_term' = 'Selling Price (Glass)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `sommelier_notes` SET TAGS ('dbx_business_glossary_term' = 'Sommelier Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `storage_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Storage Temperature (Celsius)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `storage_temperature_celsius` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `supplier_name` SET TAGS ('dbx_business_glossary_term' = 'Supplier Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `tasting_notes` SET TAGS ('dbx_business_glossary_term' = 'Tasting Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `varietal` SET TAGS ('dbx_business_glossary_term' = 'Varietal');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `vintage_year` SET TAGS ('dbx_business_glossary_term' = 'Vintage Year');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `vintage_year` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_list_category` SET TAGS ('dbx_business_glossary_term' = 'Wine List Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_list_category` SET TAGS ('dbx_value_regex' = 'House Selection|Premium|Reserve|Rare & Collectible|Sommeliers Choice|Sustainable & Organic');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_name` SET TAGS ('dbx_business_glossary_term' = 'Wine Name');
@@ -1831,17 +1706,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_type` SET TAGS ('dbx_business_glossary_term' = 'Wine Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`wine_cellar` ALTER COLUMN `wine_type` SET TAGS ('dbx_value_regex' = 'Red|White|Rosé|Sparkling|Dessert|Fortified');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` SET TAGS ('dbx_subdomain' = 'safety_quality');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `food_safety_inspection_id` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Inspection ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Outlet ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `areas_inspected` SET TAGS ('dbx_business_glossary_term' = 'Areas Inspected');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|conditional_compliance|pending_review');
@@ -1867,7 +1737,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `inspection_type` SET TAGS ('dbx_business_glossary_term' = 'Inspection Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `inspector_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Inspector Certification Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `inspector_name` SET TAGS ('dbx_business_glossary_term' = 'Inspector Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `inspector_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `inspector_organization` SET TAGS ('dbx_business_glossary_term' = 'Inspector Organization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `iso_22000_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Compliance Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
@@ -1879,9 +1748,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `reinspection_scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Reinspection Scheduled Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`food_safety_inspection` ALTER COLUMN `violations_summary` SET TAGS ('dbx_business_glossary_term' = 'Violations Summary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` SET TAGS ('dbx_subdomain' = 'safety_quality');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `waste_log_id` SET TAGS ('dbx_business_glossary_term' = 'Waste Log Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `environmental_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Id (Foreign Key)');
@@ -1890,8 +1757,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `fnb_out
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `menu_item_id` SET TAGS ('dbx_business_glossary_term' = 'Menu Item Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Recording Staff ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
@@ -1904,8 +1769,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `disposa
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `food_category` SET TAGS ('dbx_business_glossary_term' = 'Food Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `health_safety_incident_flag` SET TAGS ('dbx_business_glossary_term' = 'Health and Safety Incident Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `health_safety_incident_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `health_safety_incident_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `iso_22000_compliant_flag` SET TAGS ('dbx_business_glossary_term' = 'ISO 22000 Compliant Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `meal_period` SET TAGS ('dbx_business_glossary_term' = 'Meal Period');
@@ -1914,7 +1777,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `notes` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `quantity_wasted` SET TAGS ('dbx_business_glossary_term' = 'Quantity Wasted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `recording_staff_name` SET TAGS ('dbx_business_glossary_term' = 'Recording Staff Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `sustainability_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Impact Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `total_waste_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Waste Cost');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
@@ -1929,15 +1791,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `waste_t
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `waste_type` SET TAGS ('dbx_business_glossary_term' = 'Waste Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`waste_log` ALTER COLUMN `waste_type` SET TAGS ('dbx_value_regex' = 'food|beverage|supplies|packaging');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_subdomain' = 'supply_inventory');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_association_edges' = 'fnb.inventory_item,procurement.vendor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `fnb_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'fnb_supply_agreement Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `fnb_supply_agreement_id` SET TAGS ('dbx_ssot_reference' = 'procurement.supply_agreement');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `inventory_item_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Fnb Inventory Item Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `procurement_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `procurement_supply_agreement_id` SET TAGS ('dbx_ssot_owner' = 'procurement.procurement_supply_agreement');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `procurement_supply_agreement_id` SET TAGS ('dbx_ssot_entity' = 'supply_agreement');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `agreement_end_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `agreement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement Start Date');
@@ -1950,20 +1809,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`fnb_supply_agreement` ALTER COLUMN `vendor_item_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Item Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `parent_storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Storage Location Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `parent_storage_location_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `parent_storage_location_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Manager Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `access_restriction_level` SET TAGS ('dbx_business_glossary_term' = 'Access Restriction Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `active_from_date` SET TAGS ('dbx_business_glossary_term' = 'Active From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `active_until_date` SET TAGS ('dbx_business_glossary_term' = 'Active Until Date');
@@ -1971,7 +1822,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `barcode` SET TAGS ('dbx_business_glossary_term' = 'Barcode');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `building_name` SET TAGS ('dbx_business_glossary_term' = 'Building Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `capacity_cubic_meters` SET TAGS ('dbx_business_glossary_term' = 'Capacity Cubic Meters');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `capacity_cubic_meters` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
@@ -1988,33 +1838,22 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `primary_use_description` SET TAGS ('dbx_business_glossary_term' = 'Primary Use Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `rfid_tag` SET TAGS ('dbx_business_glossary_term' = 'Rfid Tag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `room_number` SET TAGS ('dbx_business_glossary_term' = 'Room Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_category` SET TAGS ('dbx_business_glossary_term' = 'Storage Category');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_category` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_location_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_location_status` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `storage_category` SET TAGS ('dbx_business_glossary_term' = 'Storage Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `target_temperature_max_celsius` SET TAGS ('dbx_business_glossary_term' = 'Target Temperature Max Celsius');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `target_temperature_min_celsius` SET TAGS ('dbx_business_glossary_term' = 'Target Temperature Min Celsius');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `temperature_controlled_flag` SET TAGS ('dbx_business_glossary_term' = 'Temperature Controlled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`storage_location` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` SET TAGS ('dbx_subdomain' = 'inventory_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_count_id` SET TAGS ('dbx_business_glossary_term' = 'Physical Count Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `parent_physical_count_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Count Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_counter_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Counter Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_counter_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_counter_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_supervisor_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_supervisor_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `physical_supervisor_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `primary_recount_physical_count_id` SET TAGS ('dbx_business_glossary_term' = 'Recount Physical Count Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `primary_recount_physical_count_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `counter_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Counter Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `parent_count_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Count Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `recount_physical_count_id` SET TAGS ('dbx_business_glossary_term' = 'Recount Physical Count Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `supervisor_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `adjustment_posted` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Posted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `adjustment_posted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Posted Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `adjustment_required` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Required');
@@ -2038,10 +1877,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `re
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `recount_required` SET TAGS ('dbx_business_glossary_term' = 'Recount Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `total_items_counted` SET TAGS ('dbx_business_glossary_term' = 'Total Items Counted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `total_variance_items` SET TAGS ('dbx_business_glossary_term' = 'Total Variance Items');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `total_variance_value` SET TAGS ('dbx_business_glossary_term' = 'Total Variance Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `total_variance_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `variance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Variance Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`fnb`.`physical_count` ALTER COLUMN `variance_percentage` SET TAGS ('dbx_pii_tracked' = 'true');

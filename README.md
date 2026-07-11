@@ -211,14 +211,14 @@ Click an industry name to jump to its folder.
 |---|---:|---:|---:|---:|
 | [Banking](./data-models/banking/) | 19 | [501](./data-models/banking/v1/ecm/) | 17 | [227](./data-models/banking/v1/mvm/) |
 | [Payments & Fintech](./data-models/payments_fintech/) | 18 | [546](./data-models/payments_fintech/v1/ecm/) | 15 | [223](./data-models/payments_fintech/v1/mvm/) |
-| [Health Insurance](./data-models/health_insurance/) | 19 | [409](./data-models/health_insurance/v1/ecm/) | 15 | [189](./data-models/health_insurance/v1/mvm/) |
+| [Health Insurance](./data-models/health_insurance/) | 19 | [411](./data-models/health_insurance/v2/ecm/) | 14 | [130](./data-models/health_insurance/v2/mvm/) |
 | [Life Insurance](./data-models/life_insurance/) | 19 | [468](./data-models/life_insurance/v1/ecm/) | 15 | [217](./data-models/life_insurance/v1/mvm/) |
 
 ### Healthcare & Life Sciences
 
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
-| [Healthcare](./data-models/healthcare/) | 22 | [541](./data-models/healthcare/v1/ecm/) | 16 | [189](./data-models/healthcare/v1/mvm/) |
+| [Healthcare](./data-models/healthcare/) | 22 | [542](./data-models/healthcare/v2/ecm/) | 12 | [121](./data-models/healthcare/v2/mvm/) |
 | [Pharmaceuticals](./data-models/pharmaceuticals/) | 19 | [441](./data-models/pharmaceuticals/v1/ecm/) | 15 | [213](./data-models/pharmaceuticals/v1/mvm/) |
 | [Genomics & Biotech](./data-models/genomics_biotech/) | 19 | [403](./data-models/genomics_biotech/v1/ecm/) | 15 | [182](./data-models/genomics_biotech/v1/mvm/) |
 | [Clinical Trials](./data-models/clinical_trials/) | 19 | [379](./data-models/clinical_trials/v1/ecm/) | 13 | [193](./data-models/clinical_trials/v1/mvm/) |
@@ -228,7 +228,7 @@ Click an industry name to jump to its folder.
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
 | [Airlines](./data-models/airlines/) | 19 | [424](./data-models/airlines/v1/ecm/) | 15 | [205](./data-models/airlines/v1/mvm/) |
-| [Travel & Hospitality](./data-models/travel_hospitality/) | 17 | [356](./data-models/travel_hospitality/v1/ecm/) | 14 | [188](./data-models/travel_hospitality/v1/mvm/) |
+| [Travel & Hospitality](./data-models/travel_hospitality/) | 17 | [353](./data-models/travel_hospitality/v2/ecm/) | 9 | [87](./data-models/travel_hospitality/v2/mvm/) |
 | [Transport & Shipping](./data-models/transport_shipping/) | 19 | [514](./data-models/transport_shipping/v1/ecm/) | 14 | [210](./data-models/transport_shipping/v1/mvm/) |
 | [Shipping Ports](./data-models/shipping_ports/) | 19 | [395](./data-models/shipping_ports/v1/ecm/) | 14 | [186](./data-models/shipping_ports/v1/mvm/) |
 
@@ -239,14 +239,14 @@ Click an industry name to jump to its folder.
 | [Oil & Gas](./data-models/oil_gas/) | 19 | [568](./data-models/oil_gas/v1/ecm/) | 17 | [246](./data-models/oil_gas/v1/mvm/) |
 | [Energy & Utilities](./data-models/energy_utilities/) | 18 | [451](./data-models/energy_utilities/v1/ecm/) | 15 | [236](./data-models/energy_utilities/v1/mvm/) |
 | [Mining](./data-models/mining/) | 18 | [416](./data-models/mining/v1/ecm/) | 15 | [219](./data-models/mining/v1/mvm/) |
-| [Water Utilities](./data-models/water_utilities/) | 15 | [377](./data-models/water_utilities/v1/ecm/) | 13 | [189](./data-models/water_utilities/v1/mvm/) |
+| [Water Utilities](./data-models/water_utilities/) | 15 | [377](./data-models/water_utilities/v2/ecm/) | 10 | [103](./data-models/water_utilities/v2/mvm/) |
 
 ### Public Sector & Services
 
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
 | [Education](./data-models/education/) | 17 | [446](./data-models/education/v1/ecm/) | 14 | [203](./data-models/education/v1/mvm/) |
-| [NGO](./data-models/ngo/) | 15 | [302](./data-models/ngo/v1/ecm/) | 12 | [141](./data-models/ngo/v1/mvm/) |
+| [NGO](./data-models/ngo/) | 15 | [304](./data-models/ngo/v2/ecm/) | 9 | [87](./data-models/ngo/v2/mvm/) |
 | [Legal](./data-models/legal/) | 15 | [314](./data-models/legal/v1/ecm/) | 12 | [153](./data-models/legal/v1/mvm/) |
 | [Waste Management](./data-models/waste_management/) | 17 | [471](./data-models/waste_management/v1/ecm/) | 12 | [194](./data-models/waste_management/v1/mvm/) |
 | [Staffing & HR](./data-models/staffing_hr/) | 16 | [302](./data-models/staffing_hr/v1/ecm/) | 12 | [153](./data-models/staffing_hr/v1/mvm/) |
@@ -257,7 +257,7 @@ Click an industry name to jump to its folder.
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
 | [Telecommunication](./data-models/telecommunication/) | 20 | [451](./data-models/telecommunication/v1/ecm/) | 15 | [167](./data-models/telecommunication/v1/mvm/) |
-| [Media & Broadcasting](./data-models/media_broadcasting/) | 17 | [421](./data-models/media_broadcasting/v1/ecm/) | 14 | [186](./data-models/media_broadcasting/v1/mvm/) |
+| [Media & Broadcasting](./data-models/media_broadcasting/) | 17 | [425](./data-models/media_broadcasting/v2/ecm/) | 12 | [132](./data-models/media_broadcasting/v2/mvm/) |
 | [Sports & Entertainment](./data-models/sports_entertainment/) | 19 | [473](./data-models/sports_entertainment/v1/ecm/) | 14 | [200](./data-models/sports_entertainment/v1/mvm/) |
 | [Gaming](./data-models/gaming/) | 17 | [396](./data-models/gaming/v1/ecm/) | 14 | [176](./data-models/gaming/v1/mvm/) |
 | [Advertising](./data-models/advertising/) | 13 | [262](./data-models/advertising/v1/ecm/) | 10 | [95](./data-models/advertising/v1/mvm/) |
@@ -269,20 +269,20 @@ Click an industry name to jump to its folder.
 | [Retail](./data-models/retail/) | 19 | [401](./data-models/retail/v1/ecm/) | 15 | [154](./data-models/retail/v1/mvm/) |
 | [Grocery](./data-models/grocery/) | 19 | [374](./data-models/grocery/v1/ecm/) | 14 | [175](./data-models/grocery/v1/mvm/) |
 | [Ecommerce](./data-models/ecommerce/) | 18 | [369](./data-models/ecommerce/v1/ecm/) | 14 | [148](./data-models/ecommerce/v1/mvm/) |
-| [Consumer Goods](./data-models/consumer_goods/) | 19 | [403](./data-models/consumer_goods/v1/ecm/) | 14 | [184](./data-models/consumer_goods/v1/mvm/) |
+| [Consumer Goods](./data-models/consumer_goods/) | 18 | [405](./data-models/consumer_goods/v2/ecm/) | 10 | [116](./data-models/consumer_goods/v2/mvm/) |
 | [Apparel & Fashion](./data-models/apparel_fashion/) | 19 | [400](./data-models/apparel_fashion/v1/ecm/) | 12 | [163](./data-models/apparel_fashion/v1/mvm/) |
 | [Food & Beverage](./data-models/food_beverage/) | 19 | [376](./data-models/food_beverage/v1/ecm/) | 14 | [157](./data-models/food_beverage/v1/mvm/) |
-| [Restaurants](./data-models/restaurants/) | 14 | [292](./data-models/restaurants/v1/ecm/) | 13 | [153](./data-models/restaurants/v1/mvm/) |
+| [Restaurants](./data-models/restaurants/) | 14 | [293](./data-models/restaurants/v2/ecm/) | 9 | [87](./data-models/restaurants/v2/mvm/) |
 
 ### Manufacturing & Industrial
 
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
-| [Manufacturing](./data-models/manufacturing/) | 20 | [413](./data-models/manufacturing/v1/ecm/) | 12 | [129](./data-models/manufacturing/v1/mvm/) |
+| [Manufacturing](./data-models/manufacturing/) | 20 | [414](./data-models/manufacturing/v2/ecm/) | 13 | [114](./data-models/manufacturing/v2/mvm/) |
 | [Chemical Manufacturing](./data-models/chemical_mfg/) | 19 | [405](./data-models/chemical_mfg/v1/ecm/) | 14 | [202](./data-models/chemical_mfg/v1/mvm/) |
-| [Semiconductors](./data-models/semiconductors/) | 19 | [385](./data-models/semiconductors/v1/ecm/) | 14 | [211](./data-models/semiconductors/v1/mvm/) |
+| [Semiconductors](./data-models/semiconductors/) | 19 | [386](./data-models/semiconductors/v2/ecm/) | 12 | [113](./data-models/semiconductors/v2/mvm/) |
 | [Automotive](./data-models/automotive/) | 19 | [548](./data-models/automotive/v1/ecm/) | 14 | [209](./data-models/automotive/v1/mvm/) |
-| [Construction](./data-models/construction/) | 18 | [365](./data-models/construction/v1/ecm/) | 15 | [189](./data-models/construction/v1/mvm/) |
+| [Construction](./data-models/construction/) | 18 | [365](./data-models/construction/v2/ecm/) | 13 | [143](./data-models/construction/v2/mvm/) |
 | [Agriculture](./data-models/agriculture/) | 18 | [408](./data-models/agriculture/v1/ecm/) | 14 | [177](./data-models/agriculture/v1/mvm/) |
 
 ---

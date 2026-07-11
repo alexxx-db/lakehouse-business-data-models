@@ -1,5 +1,5 @@
--- Schema for Domain: inventory | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:44
+-- Schema for Domain: inventory | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:53
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`inventory` COMMENT 'Real-time room inventory management including room types, physical room attributes, availability, room status, housekeeping status, out-of-order designations, and inventory controls. Manages room blocks, allotments, overbooking limits, and LRA (Last Room Availability). Integrates with PMS (Oracle OPERA) and RMS (IDeaS G3) for dynamic inventory allocation across distribution channels. Tracks OCC and supports LOS-based controls.';
@@ -9,7 +9,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` (
     `room_type_id` BIGINT COMMENT 'Primary key for room_type',
     `ada_assessment_id` BIGINT COMMENT 'Foreign key linking to compliance.ada_assessment. Business justification: ADA assessments evaluate room type categories for accessibility standards (suite vs. standard room requirements). Links room type to assessment for compliance certification and accessible room invento',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Marketing campaigns routinely target specific room types for promotions (suite sales, standard room flash deals). Campaign planning, offer eligibility rules, and performance attribution by room catego',
-    `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Offers frequently restrict eligibility to specific room types (suites only, exclude standard rooms). While campaign_offer has eligible_room_types text field, proper FK enables booking validation, inve',
     `property_id` BIGINT COMMENT 'Reference to the property where this room type is defined. Room types are property-specific configurations.',
     `accessibility_features` STRING COMMENT 'Comma-separated list of accessibility features available in this room type. Examples: roll-in shower, grab bars, visual alarm, hearing kit, lowered fixtures. Used for guest matching and compliance tracking.',
     `active_status` STRING COMMENT 'Current operational status of the room type. Inactive types are not available for new reservations. Seasonal types are active only during specific periods. Renovation types are temporarily unavailable.. Valid values are `active|inactive|seasonal|renovation`',
@@ -48,7 +47,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` (
     `room_id` BIGINT COMMENT 'Unique identifier for the physical room. Primary key. Authoritative SSOT for physical room identity in Oracle OPERA PMS.',
     `ada_assessment_id` BIGINT COMMENT 'Foreign key linking to compliance.ada_assessment. Business justification: ADA assessments evaluate individual rooms for accessibility compliance (barrier identification, remediation tracking). Links room to its most recent assessment for compliance status reporting and reme',
     `connecting_room_id` BIGINT COMMENT 'Identifier of the adjacent room that connects to this room via connecting door. Null if no connecting room.',
-    `fire_safety_record_id` BIGINT COMMENT 'Foreign key linking to compliance.fire_safety_record. Business justification: Fire safety inspections evaluate individual rooms for suppression systems, alarms, extinguishers, evacuation routes. Links room to fire safety record for compliance certification, insurance requiremen',
     `property_id` BIGINT COMMENT 'Identifier of the property (hotel, resort, or vacation property) where this room is located.',
     `room_type_id` BIGINT COMMENT 'Identifier of the room type classification (e.g., Standard King, Deluxe Suite, Executive Double) assigned to this room. Determines rate category and inventory grouping.',
     `ada_accessible` BOOLEAN COMMENT 'Indicates whether the room meets ADA accessibility standards including wheelchair access, grab bars, visual alarms, and accessible bathroom fixtures.',
@@ -85,11 +83,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` (
     `room_status_id` BIGINT COMMENT 'Primary key for room_status',
     `attendant_id` BIGINT COMMENT 'Identifier of the housekeeping staff member currently assigned to clean or service this room.',
     `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Group room block management requires tracking which rooms are assigned to which blocks for rooming list fulfillment, pickup tracking, and block-specific housekeeping instructions. Front desk and house',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Health/safety incidents trigger room status changes (blocked, out of order, requires inspection). Links status to incident for incident response workflow, housekeeping coordination, and guest relocati',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping supervisor or inspector who performed the quality inspection of the room.',
     `profile_id` BIGINT COMMENT 'Identifier of the guest currently occupying the room. Null if room is vacant.',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property where the room is located. Links to the property master data.',
     `reservation_booking_id` BIGINT COMMENT 'Identifier of the active reservation currently occupying the room. Null if room is vacant.',
     `room_id` BIGINT COMMENT 'Identifier of the physical room. Links to the room inventory master data.',
+    `room_updated_by_user_employee_id` BIGINT COMMENT 'Identifier of the system user (staff member) who last updated the room status.',
     `blocked_reason` STRING COMMENT 'Explanation of why the room is administratively blocked from sale (e.g., VIP hold, renovation, inventory control, group block).',
     `cleaning_type` STRING COMMENT 'Type of cleaning service required or last performed. Checkout: full cleaning after guest departure; Stayover: daily service for occupied room; Deep Clean: comprehensive periodic cleaning; Turndown: evening service; Refresh: light touch-up.. Valid values are `checkout|stayover|deep_clean|turndown|refresh`',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this room status record was first created in the system.',
@@ -124,6 +124,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` (
     `availability_snapshot_id` BIGINT COMMENT 'Unique identifier for the availability snapshot record. Primary key for this entity.',
     `demand_forecast_id` BIGINT COMMENT 'Foreign key linking to revenue.demand_forecast. Business justification: Availability snapshots capture actual rooms sold/available; demand forecasts predict future demand. Linking actuals to forecasts enables forecast accuracy measurement (MAPE calculation), model perform',
+    `experiment_id` BIGINT COMMENT 'Foreign key linking to marketing.experiment. Business justification: A/B testing in hospitality involves inventory availability experiments (scarcity messaging tests, overbooking threshold optimization, dynamic availability display). Experiments must track which availa',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property for which this availability snapshot is recorded.',
     `room_type_id` BIGINT COMMENT 'Identifier of the room type (e.g., Standard King, Deluxe Suite) for which availability is tracked.',
     `closed_to_arrival_flag` BOOLEAN COMMENT 'Indicates whether new reservations are allowed to check in on this date. When true, no new arrivals are accepted, but existing multi-night stays can continue.',
@@ -154,61 +155,17 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_s
     CONSTRAINT pk_availability_snapshot PRIMARY KEY(`availability_snapshot_id`)
 ) COMMENT 'Date-level inventory availability record per room type per property capturing total physical rooms, rooms sold, rooms blocked (group and allotment), out-of-order rooms, out-of-service rooms, complimentary rooms, house-use rooms, day-use rooms, and net available rooms. The authoritative SSOT for real-time occupancy (OCC) calculation and available-to-sell inventory. Feeds IDeaS G3 RMS for yield optimization and supports LRA (Last Room Availability) flag tracking. Reconciled nightly during night audit against PMS folios and room status. Serves as the foundation for RevPAR, occupancy trending, and inventory reconciliation reporting.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` (
-    `control_id` BIGINT COMMENT 'Primary key for control',
-    `inventory_control_id` BIGINT COMMENT 'Unique identifier for the inventory control record. Primary key for the control entity.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_audit. Business justification: Inventory control decisions (stop-sell, CTA/CTD, overbooking limits, LRA) are audited for brand standards compliance, revenue management policy adherence, and regulatory requirements. Links control to',
-    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Inventory controls (stop-sell, CTA/CTD, LOS restrictions) are often campaign-driven (flash sale requires 2-night minimum, member-exclusive rates with specific restrictions). Required for promotional r',
-    `channel_id` BIGINT COMMENT 'Identifier of the distribution channel (OTA, GDS, Direct) to which this control applies. Null indicates control applies to all channels.',
-    `employee_id` BIGINT COMMENT 'Identifier of the user who manually overrode RMS-generated controls. Null if control was not manually overridden.',
-    `property_id` BIGINT COMMENT 'Identifier of the property to which this inventory control applies.',
-    `revenue_rate_plan_id` BIGINT COMMENT 'Identifier of the rate plan to which this control applies. Null indicates control applies to all rate plans for the room type and date.',
-    `room_block_id` BIGINT COMMENT 'Identifier of the group block that this control is associated with. Null if control is not tied to a specific group reservation.',
-    `room_type_id` BIGINT COMMENT 'Identifier of the room type (e.g., Deluxe King, Standard Queen) to which this control applies.',
-    `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Inventory controls (sell limits, hurdles, stop-sell flags) are tier-differentiated in luxury hospitality. Properties set different availability rules for base vs platinum members. Revenue strategy req',
-    `advance_booking_limit_days` STRING COMMENT 'Maximum number of days in advance that bookings can be made for this stay date. Null indicates no advance booking restriction.',
-    `channel_allocation_pct` DECIMAL(18,2) COMMENT 'Percentage of total sell limit allocated to this specific channel. Used for channel-level inventory gating. Sum across all channels for a date should not exceed 100%.',
-    `competitive_set_adr` DECIMAL(18,2) COMMENT 'Average Daily Rate of the competitive set (STR comp set) for comparable room types on this stay date. Used for competitive benchmarking.',
-    `control_status` STRING COMMENT 'Current lifecycle status of this inventory control record. Active controls are enforced by PMS and CRS; inactive controls are ignored.. Valid values are `active|inactive|override|suspended`',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this inventory control record was first created in the system.',
-    `cta_flag` BOOLEAN COMMENT 'Indicates whether new arrivals are prohibited on this date. True means guests cannot check in on this date, but existing reservations spanning this date are allowed.',
-    `ctd_flag` BOOLEAN COMMENT 'Indicates whether departures are prohibited on this date. True means guests cannot check out on this date; used to enforce minimum stay through high-demand periods.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary values in this record (hurdle_rate, forecast_adr, competitive_set_adr). Typically matches property base currency.. Valid values are `^[A-Z]{3}$`',
-    `effective_timestamp` TIMESTAMP COMMENT 'Date and time when this control becomes effective. Controls are typically pushed to distribution channels in advance of the stay date.',
-    `expiration_timestamp` TIMESTAMP COMMENT 'Date and time when this control expires and is no longer enforced. Null indicates control remains effective until explicitly superseded.',
-    `forecast_adr` DECIMAL(18,2) COMMENT 'RMS-forecasted Average Daily Rate for this room type on this stay date. Expressed in property currency.',
-    `forecast_demand` STRING COMMENT 'RMS-forecasted demand (number of rooms) for this room type on this stay date. Used to inform control decisions and diagnostic analysis.',
-    `forecast_occ_pct` DECIMAL(18,2) COMMENT 'RMS-forecasted occupancy percentage for this room type on this stay date. Expressed as a percentage (e.g., 85.50 means 85.5% occupancy).',
-    `hurdle_rate` DECIMAL(18,2) COMMENT 'Minimum acceptable rate (ADR) below which the room type should not be sold for this date. Used by revenue management to protect yield. Expressed in property currency.',
-    `lra_flag` BOOLEAN COMMENT 'Indicates whether this room type participates in Last Room Availability programs with OTAs. True means OTAs can sell even when inventory is constrained, ensuring rate parity.',
-    `max_los` STRING COMMENT 'Maximum number of consecutive nights a guest can book when this date is the arrival date. Null indicates no maximum stay restriction.',
-    `min_advance_booking_days` STRING COMMENT 'Minimum number of days in advance that bookings must be made for this stay date. Used to prevent last-minute bookings during high-demand periods.',
-    `min_los` STRING COMMENT 'Minimum number of consecutive nights a guest must book when this date is the arrival date. Null or 1 indicates no minimum stay restriction.',
-    `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this inventory control record was last modified. Updated whenever any control parameter changes.',
-    `overbooking_limit_absolute` STRING COMMENT 'Absolute number of rooms above physical inventory that can be sold. Alternative to percentage-based overbooking. Null if percentage method is used.',
-    `overbooking_limit_pct` DECIMAL(18,2) COMMENT 'Percentage above physical inventory that can be sold to account for expected cancellations and no-shows. For example, 10.00 means allow 110% of physical rooms to be sold.',
-    `override_reason` STRING COMMENT 'Free-text explanation provided by the user when manually overriding RMS-generated controls. Required when override_user_id is populated.',
-    `published_timestamp` TIMESTAMP COMMENT 'Date and time when this control was last published to distribution channels (OTA, GDS, CRS). Null if control has not yet been distributed.',
-    `reason_code` STRING COMMENT 'Business reason code explaining why this control was applied (e.g., HIGH_DEMAND, RENOVATION, GROUP_BLOCK, SEASONAL_CLOSURE). Used for diagnostic and reporting purposes.',
-    `rgi_target` DECIMAL(18,2) COMMENT 'Target Revenue Generation Index for this stay date. RGI measures property performance relative to competitive set. Value of 100 means at-market performance.',
-    `sell_limit` STRING COMMENT 'Maximum number of rooms of this type that can be sold for the stay date. Null indicates no limit. This is the primary inventory cap enforced by the PMS and CRS.',
-    `source` STRING COMMENT 'Origin of this control record. RMS indicates generated by IDeaS G3 RMS; manual indicates user override; API indicates external system integration.. Valid values are `rms|manual|api|bulk_upload`',
-    `stay_date` DATE COMMENT 'The specific date for which this inventory control is effective. Controls are date-specific and define sell constraints for a single night of stay.',
-    `stop_sell_flag` BOOLEAN COMMENT 'Indicates whether all sales are stopped for this room type on this date. True means no new bookings are accepted regardless of availability. Overrides all other controls.',
-    `walk_risk_tolerance` STRING COMMENT 'Revenue management tolerance for walking guests (relocating to another property due to overbooking). Higher tolerance allows more aggressive overbooking.. Valid values are `none|low|medium|high`',
-    CONSTRAINT pk_control PRIMARY KEY(`control_id`)
-) COMMENT 'Unified inventory control and restriction record defining all sell constraints per room type per stay date: sell limits, hurdle rates, minimum length-of-stay (MinLOS), maximum length-of-stay (MaxLOS), closed-to-arrival (CTA), closed-to-departure (CTD), stop-sell flags, overbooking limits (percentage and absolute), walk risk tolerance, and channel-level inventory gating rules. Generated by IDeaS G3 RMS and enforced in Oracle OPERA PMS and Sabre SynXis CRS. The single diagnostic target for answering why cant this room type be sold on this date? — consolidates all restriction types into one queryable entity. Supports HTNG inventory control message standards and dynamic allocation across OTA, GDS, and direct channels.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` (
     `room_block_id` BIGINT COMMENT 'Unique identifier for the room block record. Primary key.',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Group blocks are often created for marketing campaigns (wedding packages, corporate incentive programs, event promotions). Required for attributing group revenue to campaigns, measuring campaign ROI i',
     `event_booking_id` BIGINT COMMENT 'Reference to the associated event or group booking that this room block supports.',
     `group_evaluation_id` BIGINT COMMENT 'Foreign key linking to revenue.group_evaluation. Business justification: Group evaluations assess displacement and revenue impact before accepting blocks. Linking blocks to originating evaluations enables post-booking performance review, wash factor validation, and revenue',
-    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Room blocks represent inventory allocation for group bookings. Linking to guest_group_block enables pickup reconciliation, attrition calculation, billing reconciliation, and group contract compliance ',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Group blocks generate revenue recognition entries, attrition penalty postings, and deposit liability tracking that must post to specific GL accounts per USALI chart of accounts. Revenue managers need ',
+    `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Room blocks represent inventory allocation for group bookings. Linking to guest_group_block enables pickup reconciliation, attrition calculation, billing reconciliation, and group contract compliance',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Group blocks for loyalty events, tier-specific promotions, and member appreciation weekends require tracking the owning member. Revenue management needs this for commission tracking, tier credit alloc',
     `employee_id` BIGINT COMMENT 'Reference to the hotel sales manager responsible for managing and servicing this room block.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where the room block is allocated.',
     `tertiary_room_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the system user who last modified the room block record.',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Group room blocks often involve third-party intermediaries (DMCs, travel agencies, corporate travel management companies, wholesalers) who are tracked as vendors in procurement systems. Hotels need to',
     `attrition_penalty_amount` DECIMAL(18,2) COMMENT 'Monetary penalty amount charged to the group if pickup falls below the attrition threshold. Expressed in property base currency.',
     `attrition_percentage` DECIMAL(18,2) COMMENT 'Contractual percentage threshold below which the group incurs attrition penalties for unmet room night commitments. Expressed as percentage (e.g., 20.00 for 20%).',
     `available_room_nights` STRING COMMENT 'Remaining number of room nights still available for pickup within the block.',
@@ -287,6 +244,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` (
     `out_of_order_id` BIGINT COMMENT 'Primary key for out_of_order',
     `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Rooms go out of order due to safety incidents (guest injury, hazardous condition, equipment failure). Links OOO record to triggering incident for root cause tracking, remediation workflow, and lost re',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: OOO rooms generate lost revenue accruals and repair cost capitalization decisions requiring specific GL account posting. Finance teams need this link for CapEx vs OpEx classification, FFE reserve trac',
     `employee_id` BIGINT COMMENT 'Identifier of the staff member who reported or logged the out-of-order condition (typically housekeeping, front desk, or maintenance staff).',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property where the room is located.',
     `room_id` BIGINT COMMENT 'Identifier of the specific physical room that is out-of-order or out-of-service.',
@@ -329,7 +287,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` (
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Channel allotments are frequently tied to co-marketing campaigns with OTAs or wholesalers (Expedia exclusive inventory for joint promotions). Essential for tracking channel partnership performance, re',
     `channel_id` BIGINT COMMENT 'Reference to the distribution channel, Online Travel Agency (OTA), Global Distribution System (GDS), tour operator, wholesale partner, or corporate account to which this allotment is allocated.',
     `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Travel agency and corporate allotments are contracted with specific accounts. Revenue management needs this link for contract compliance monitoring, allotment utilization reporting, commission calcula',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Channel allotments are managed by sales/distribution departments with dedicated cost center budgets for channel management labor, technology costs, and commission expenses. Essential for departmental ',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Channel allotments are managed by sales/distribution departments with dedicated cost center budgets for channel management labor, technology costs, and commission expenses. Essential for departmental',
     `property_id` BIGINT COMMENT 'Reference to the hotel property where this allotment applies.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Reference to the rate plan associated with this allotment, defining the pricing structure and rate rules for bookings made through this channel or partner. Nullable if rate is managed separately.',
     `room_type_id` BIGINT COMMENT 'Reference to the room type (e.g., Standard King, Deluxe Suite) for which this allotment is defined.',
@@ -479,6 +437,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` 
     `employee_id` BIGINT COMMENT 'System identifier of the user who authorized or executed the change.',
     `property_id` BIGINT COMMENT 'Identifier of the property where the inventory change occurred.',
     `reversed_audit_log_change_audit_id` BIGINT COMMENT 'Reference to the original audit log entry that this entry reverses, if this is a reversal transaction.',
+    `room_id` BIGINT COMMENT 'add column room_id (BIGINT) with FK to inventory.room.room_id - inventory change audits should track which room was affected',
     `approval_authority_level` STRING COMMENT 'Level of authority that approved the change: system (automated), property manager, revenue manager, regional director, or corporate level.. Valid values are `system|property_manager|revenue_manager|regional_director|corporate`',
     `approval_required_flag` BOOLEAN COMMENT 'Indicates whether this type of change required explicit management approval per SOX internal control policies.',
     `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the change was formally approved by the authorizing authority, if approval was required.',
@@ -513,8 +472,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` 
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` (
     `room_amenity_id` BIGINT COMMENT 'Unique identifier for the room amenity record. Primary key for the room amenity catalog.',
-    `fire_safety_record_id` BIGINT COMMENT 'Foreign key linking to compliance.fire_safety_record. Business justification: Fire safety inspections evaluate amenities (smoke detectors, sprinklers, fire extinguishers) installed in rooms. Links amenity to fire safety record for inspection tracking, compliance certification, ',
+    `fire_safety_record_id` BIGINT COMMENT 'Foreign key linking to compliance.fire_safety_record. Business justification: Fire safety inspections evaluate amenities (smoke detectors, sprinklers, fire extinguishers) installed in rooms. Links amenity to fire safety record for inspection tracking, compliance certification,',
     `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Premium room amenities (TVs, furniture, artwork) meeting capitalization thresholds are tracked as fixed assets requiring depreciation schedules, useful life tracking, and CapEx budget management. Esse',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Amenity failures (broken furniture, malfunctioning appliances, electrical hazards) trigger safety incidents requiring investigation and remediation. Links amenity to incident for root cause analysis,',
     `parent_room_amenity_id` BIGINT COMMENT 'Self-referencing FK on room_amenity (parent_room_amenity_id)',
     `employee_id` BIGINT COMMENT 'Identifier of the system user who created this amenity record. Supports accountability and audit compliance.',
     `property_id` BIGINT COMMENT 'Identifier of the property where this amenity is available. Links to the property master data.',
@@ -595,6 +555,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vend
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` (
     `room_material_installation_id` BIGINT COMMENT 'Unique identifier for this specific installation record. Primary key.',
     `material_master_id` BIGINT COMMENT 'Foreign key linking to the material master record for the installed item',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - material installations occur at specific properties',
     `room_id` BIGINT COMMENT 'Foreign key linking to the physical room where the material is installed',
     `condition_status` STRING COMMENT 'Current condition assessment of the installed material. Updated by housekeeping inspections and engineering assessments. Drives maintenance and replacement prioritization.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this installation record was created in the system. Audit trail field.',
@@ -613,6 +574,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` (
     `block_wash_factor_application_id` BIGINT COMMENT 'Primary key for the block_wash_factor_application association',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - wash factor applications are property-specific',
     `room_block_id` BIGINT COMMENT 'Foreign key linking to the group room block to which the wash factor was applied',
     `wash_factor_id` BIGINT COMMENT 'Foreign key linking to the wash factor configuration that was applied to the block',
     `actual_wash_pct` DECIMAL(18,2) COMMENT 'The actual attrition percentage observed after the block concluded, calculated as (contracted_room_nights - picked_up_room_nights) / contracted_room_nights. Used for post-event analysis.',
@@ -674,8 +636,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ADD CONSTRAINT `fk_i
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ADD CONSTRAINT `fk_inventory_room_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ADD CONSTRAINT `fk_inventory_room_status_room_id` FOREIGN KEY (`room_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room`(`room_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ADD CONSTRAINT `fk_inventory_availability_snapshot_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ADD CONSTRAINT `fk_inventory_control_room_block_id` FOREIGN KEY (`room_block_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_block`(`room_block_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ADD CONSTRAINT `fk_inventory_control_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ADD CONSTRAINT `fk_inventory_block_pickup_room_block_id` FOREIGN KEY (`room_block_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_block`(`room_block_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ADD CONSTRAINT `fk_inventory_block_pickup_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ADD CONSTRAINT `fk_inventory_out_of_order_room_id` FOREIGN KEY (`room_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room`(`room_id`);
@@ -684,6 +644,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_poli
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ADD CONSTRAINT `fk_inventory_los_restriction_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ADD CONSTRAINT `fk_inventory_channel_inventory_map_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ADD CONSTRAINT `fk_inventory_change_audit_reversed_audit_log_change_audit_id` FOREIGN KEY (`reversed_audit_log_change_audit_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`change_audit`(`change_audit_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ADD CONSTRAINT `fk_inventory_change_audit_room_id` FOREIGN KEY (`room_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room`(`room_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ADD CONSTRAINT `fk_inventory_room_amenity_parent_room_amenity_id` FOREIGN KEY (`parent_room_amenity_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_amenity`(`room_amenity_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ADD CONSTRAINT `fk_inventory_room_amenity_room_id` FOREIGN KEY (`room_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room`(`room_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ADD CONSTRAINT `fk_inventory_room_amenity_room_type_id` FOREIGN KEY (`room_type_id`) REFERENCES `vibe_travel_hospitality_v1`.`inventory`.`room_type`(`room_type_id`);
@@ -698,13 +659,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benc
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`inventory` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`inventory` SET TAGS ('dbx_domain' = 'inventory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` SET TAGS ('dbx_subdomain' = 'room_configuration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` SET TAGS ('dbx_subdomain' = 'physical_assets');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `accessibility_features` SET TAGS ('dbx_business_glossary_term' = 'Accessibility Features');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Active Status');
@@ -739,17 +697,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `s
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `smoking_policy` SET TAGS ('dbx_value_regex' = 'non_smoking|smoking|both');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `sort_order` SET TAGS ('dbx_business_glossary_term' = 'Sort Order');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `square_footage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `standard_occupancy` SET TAGS ('dbx_business_glossary_term' = 'Standard Occupancy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type` ALTER COLUMN `view_category` SET TAGS ('dbx_business_glossary_term' = 'View Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` SET TAGS ('dbx_subdomain' = 'room_configuration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` SET TAGS ('dbx_subdomain' = 'physical_assets');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `connecting_room_id` SET TAGS ('dbx_business_glossary_term' = 'Connecting Room ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Record Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `ada_accessible` SET TAGS ('dbx_business_glossary_term' = 'ADA (Americans with Disabilities Act) Accessible');
@@ -780,23 +734,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `overbo
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `room_number` SET TAGS ('dbx_business_glossary_term' = 'Room Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `smoking_allowed` SET TAGS ('dbx_business_glossary_term' = 'Smoking Allowed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `square_footage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `view_type` SET TAGS ('dbx_business_glossary_term' = 'View Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room` ALTER COLUMN `wing_code` SET TAGS ('dbx_business_glossary_term' = 'Wing Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` SET TAGS ('dbx_subdomain' = 'room_configuration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` SET TAGS ('dbx_subdomain' = 'physical_assets');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `room_status_id` SET TAGS ('dbx_business_glossary_term' = 'Room Status Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Housekeeper ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Current Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Current Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `room_updated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Status Updated By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `blocked_reason` SET TAGS ('dbx_business_glossary_term' = 'Blocked Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `cleaning_type` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `cleaning_type` SET TAGS ('dbx_value_regex' = 'checkout|stayover|deep_clean|turndown|refresh');
@@ -834,10 +785,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_status` ALTER COLUMN `turndown_service_status` SET TAGS ('dbx_value_regex' = 'not_requested|requested|completed|declined');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `availability_snapshot_id` SET TAGS ('dbx_business_glossary_term' = 'Availability Snapshot ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `demand_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `experiment_id` SET TAGS ('dbx_business_glossary_term' = 'Experiment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `closed_to_arrival_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
@@ -866,79 +816,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `stop_sell_flag` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `total_physical_rooms` SET TAGS ('dbx_business_glossary_term' = 'Total Physical Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`availability_snapshot` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `control_id` SET TAGS ('dbx_business_glossary_term' = 'Control Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `inventory_control_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Control ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Override User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `room_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Tier Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `advance_booking_limit_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Limit Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `channel_allocation_pct` SET TAGS ('dbx_business_glossary_term' = 'Channel Allocation Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `competitive_set_adr` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `control_status` SET TAGS ('dbx_business_glossary_term' = 'Control Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `control_status` SET TAGS ('dbx_value_regex' = 'active|inactive|override|suspended');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `cta_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `ctd_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed to Departure (CTD) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `effective_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Effective Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `expiration_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Expiration Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `forecast_adr` SET TAGS ('dbx_business_glossary_term' = 'Forecast Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `forecast_demand` SET TAGS ('dbx_business_glossary_term' = 'Forecast Demand');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `forecast_occ_pct` SET TAGS ('dbx_business_glossary_term' = 'Forecast Occupancy Percentage (OCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `hurdle_rate` SET TAGS ('dbx_business_glossary_term' = 'Hurdle Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `lra_flag` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `max_los` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (MaxLOS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `min_advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Minimum Advance Booking Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `min_los` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (MinLOS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `overbooking_limit_absolute` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Limit Absolute');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `overbooking_limit_pct` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Limit Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `override_reason` SET TAGS ('dbx_business_glossary_term' = 'Override Reason');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `published_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Published Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Control Reason Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `rgi_target` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI) Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `sell_limit` SET TAGS ('dbx_business_glossary_term' = 'Sell Limit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `source` SET TAGS ('dbx_business_glossary_term' = 'Control Source');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `source` SET TAGS ('dbx_value_regex' = 'rms|manual|api|bulk_upload');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `stop_sell_flag` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `walk_risk_tolerance` SET TAGS ('dbx_business_glossary_term' = 'Walk Risk Tolerance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`control` ALTER COLUMN `walk_risk_tolerance` SET TAGS ('dbx_value_regex' = 'none|low|medium|high');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` SET TAGS ('dbx_subdomain' = 'block_allotment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` SET TAGS ('dbx_subdomain' = 'availability_control');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `room_block_id` SET TAGS ('dbx_business_glossary_term' = 'Room Block ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `group_evaluation_id` SET TAGS ('dbx_business_glossary_term' = 'Group Evaluation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Group Block Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Manager ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `tertiary_room_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `tertiary_room_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `tertiary_room_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `attrition_penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Attrition Penalty Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `attrition_percentage` SET TAGS ('dbx_business_glossary_term' = 'Attrition Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `attrition_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `available_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Available Room Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `block_code` SET TAGS ('dbx_business_glossary_term' = 'Block Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `block_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,20}$');
@@ -953,7 +844,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancelled Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `commission_percentage` SET TAGS ('dbx_business_glossary_term' = 'Commission Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `commission_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `confirmed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `contracted_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Contracted Room Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -965,36 +855,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `deposit_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Deposit Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Block End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `internal_notes` SET TAGS ('dbx_business_glossary_term' = 'Internal Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `internal_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `lra_flag` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `negotiated_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `overbooking_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Allowed Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_business_glossary_term' = 'Block Owner Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_name` SET TAGS ('dbx_business_glossary_term' = 'Block Owner Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_business_glossary_term' = 'Block Owner Phone');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `owner_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `picked_up_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Picked Up Room Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `pickup_percentage` SET TAGS ('dbx_business_glossary_term' = 'Pickup Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `pickup_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `rate_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `rate_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_block` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Block Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` SET TAGS ('dbx_subdomain' = 'block_allotment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` SET TAGS ('dbx_subdomain' = 'availability_control');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `block_pickup_id` SET TAGS ('dbx_business_glossary_term' = 'Block Pickup ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `group_evaluation_id` SET TAGS ('dbx_business_glossary_term' = 'Group Evaluation Id (Foreign Key)');
@@ -1019,7 +899,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_notes` SET TAGS ('dbx_business_glossary_term' = 'Pickup Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_pace_variance` SET TAGS ('dbx_business_glossary_term' = 'Pickup Pace Variance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_percentage` SET TAGS ('dbx_business_glossary_term' = 'Pickup Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_rate` SET TAGS ('dbx_business_glossary_term' = 'Pickup Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_revenue` SET TAGS ('dbx_business_glossary_term' = 'Pickup Revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `pickup_variance` SET TAGS ('dbx_business_glossary_term' = 'Pickup Variance');
@@ -1032,24 +911,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_pickup` ALTER COLUMN `wash_factor` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` SET TAGS ('dbx_subdomain' = 'room_configuration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` SET TAGS ('dbx_subdomain' = 'availability_control');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `out_of_order_id` SET TAGS ('dbx_business_glossary_term' = 'Out Of Order Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `tertiary_out_closed_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Closed By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `tertiary_out_closed_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `tertiary_out_closed_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Repair Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `actual_return_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Return-to-Service Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `actual_return_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Return-to-Service Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `ada_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Compliance Flag');
@@ -1060,13 +931,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `duration_days` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Order (OOO) Duration in Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Repair Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `expected_return_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Return-to-Service Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `guest_impacted_flag` SET TAGS ('dbx_business_glossary_term' = 'Guest Impacted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `impact_on_occ` SET TAGS ('dbx_business_glossary_term' = 'Impact on Occupancy (OCC) Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `impact_on_revpar` SET TAGS ('dbx_business_glossary_term' = 'Impact on Revenue Per Available Room (RevPAR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `lost_revenue_estimate` SET TAGS ('dbx_business_glossary_term' = 'Lost Revenue Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `lost_revenue_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Order (OOO) Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `ooo_code` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Order (OOO) Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `ooo_reason` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Order (OOO) Reason Description');
@@ -1085,9 +954,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`out_of_order` ALTER COLUMN `work_order_number` SET TAGS ('dbx_business_glossary_term' = 'Work Order Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` SET TAGS ('dbx_subdomain' = 'block_allotment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` SET TAGS ('dbx_subdomain' = 'availability_control');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `allotment_id` SET TAGS ('dbx_business_glossary_term' = 'Allotment Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Identifier (ID)');
@@ -1109,9 +976,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `b
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `allotment_code` SET TAGS ('dbx_business_glossary_term' = 'Allotment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `allotment_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate (Percent)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `contract_reference` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `contract_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Allotment End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `expired_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Expired Timestamp');
@@ -1132,19 +997,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `s
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`allotment` ALTER COLUMN `suspended_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Suspended Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` SET TAGS ('dbx_data_type' = 'reference_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `inventory_overbooking_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Overbooking Policy ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `inventory_overbooking_policy_id` SET TAGS ('dbx_ssot_reference' = 'revenue.revenue_overbooking_policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `tertiary_inventory_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `tertiary_inventory_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `tertiary_inventory_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `revenue_overbooking_policy_id` SET TAGS ('dbx_ssot_owner' = 'revenue.revenue_overbooking_policy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `revenue_overbooking_policy_id` SET TAGS ('dbx_ssot_entity' = 'overbooking_policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `approval_authority` SET TAGS ('dbx_business_glossary_term' = 'Approval Authority');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `approval_authority` SET TAGS ('dbx_value_regex' = 'revenue_manager|director_of_revenue|general_manager|regional_director|automated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
@@ -1165,7 +1023,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_poli
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `overbooking_limit_type` SET TAGS ('dbx_value_regex' = 'percentage|absolute_count|dynamic');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `overbooking_limit_value` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Limit Value');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `physical_room_capacity` SET TAGS ('dbx_business_glossary_term' = 'Physical Room Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `physical_room_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `policy_code` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `policy_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `policy_name` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Policy Name');
@@ -1177,17 +1034,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_poli
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Walk Cost Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_cost_estimate` SET TAGS ('dbx_business_glossary_term' = 'Walk Cost Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_cost_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_risk_tolerance` SET TAGS ('dbx_business_glossary_term' = 'Walk Risk Tolerance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`inventory_overbooking_policy` ALTER COLUMN `walk_risk_tolerance` SET TAGS ('dbx_value_regex' = 'low|medium|high|very_high');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` SET TAGS ('dbx_data_type' = 'reference_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `los_restriction_id` SET TAGS ('dbx_business_glossary_term' = 'Length-of-Stay (LOS) Restriction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
@@ -1231,13 +1083,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`los_restriction` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` SET TAGS ('dbx_data_type' = 'reference_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `channel_inventory_map_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Inventory Map ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `channel_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `advance_booking_days_max` SET TAGS ('dbx_business_glossary_term' = 'Maximum Advance Booking Days');
@@ -1275,20 +1123,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`channel_inventory_map` ALTER COLUMN `sync_frequency_minutes` SET TAGS ('dbx_business_glossary_term' = 'Synchronization Frequency Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` SET TAGS ('dbx_subdomain' = 'availability_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `change_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Change Audit Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Authorizing User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `reversed_audit_log_change_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Audit Log ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `approval_authority_level` SET TAGS ('dbx_business_glossary_term' = 'Approval Authority Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `approval_authority_level` SET TAGS ('dbx_value_regex' = 'system|property_manager|revenue_manager|regional_director|corporate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `authorizing_user_name` SET TAGS ('dbx_business_glossary_term' = 'Authorizing User Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `authorizing_user_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `authorizing_user_name` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `authorizing_user_name` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `authorizing_user_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `business_date` SET TAGS ('dbx_business_glossary_term' = 'Business Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `change_impact_type` SET TAGS ('dbx_business_glossary_term' = 'Change Impact Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `change_impact_type` SET TAGS ('dbx_value_regex' = 'availability|control|status|allocation|pricing');
@@ -1317,17 +1163,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `source_system_transaction_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`change_audit` ALTER COLUMN `stop_sell_change_flag` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Change Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` SET TAGS ('dbx_subdomain' = 'room_configuration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` SET TAGS ('dbx_subdomain' = 'physical_assets');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `room_amenity_id` SET TAGS ('dbx_business_glossary_term' = 'Room Amenity ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Record Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `parent_room_amenity_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Room Amenity Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `parent_room_amenity_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
@@ -1366,15 +1208,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `quantity` SET TAGS ('dbx_business_glossary_term' = 'Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `unit_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'each|set|pair|bottle|package');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_amenity` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_subdomain' = 'rate_assignment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_association_edges' = 'inventory.room_type,channel.channel_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` ALTER COLUMN `rate_plan_room_type_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Room Type Assignment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` ALTER COLUMN `channel_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Room Type Assignment - Channel Rate Plan Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Room Type Assignment - Inventory Room Type Id');
@@ -1390,10 +1229,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assign
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` ALTER COLUMN `restriction_status` SET TAGS ('dbx_business_glossary_term' = 'Restriction Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`rate_plan_room_type_assignment` ALTER COLUMN `sell_limit` SET TAGS ('dbx_business_glossary_term' = 'Sell Limit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_subdomain' = 'room_configuration');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_association_edges' = 'inventory.room_type,procurement.vendor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` ALTER COLUMN `room_type_vendor_supply_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Vendor Supply ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Vendor Supply - Inventory Room Type Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Vendor Supply - Vendor Id');
@@ -1410,12 +1247,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` ALTER COLUMN `supply_category` SET TAGS ('dbx_business_glossary_term' = 'Supply Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_vendor_supply` ALTER COLUMN `total_spend_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Spend Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_subdomain' = 'room_configuration');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_association_edges' = 'inventory.room,procurement.material_master');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `room_material_installation_id` SET TAGS ('dbx_business_glossary_term' = 'Room Material Installation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Room Material Installation - Material Master Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Material Installation - Room Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `condition_status` SET TAGS ('dbx_business_glossary_term' = 'Condition Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1430,11 +1266,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_material_installation` ALTER COLUMN `warranty_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_subdomain' = 'block_allotment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_association_edges' = 'inventory.room_block,revenue.wash_factor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `block_wash_factor_application_id` SET TAGS ('dbx_business_glossary_term' = 'Block Wash Factor Application - Block Wash Factor Application Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `room_block_id` SET TAGS ('dbx_business_glossary_term' = 'Block Wash Factor Application - Room Block Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `wash_factor_id` SET TAGS ('dbx_business_glossary_term' = 'Block Wash Factor Application - Wash Factor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `actual_wash_pct` SET TAGS ('dbx_business_glossary_term' = 'Actual Wash Percentage');
@@ -1450,12 +1285,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_applicat
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `variance_pct` SET TAGS ('dbx_business_glossary_term' = 'Variance Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `wash_factor_percentage` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`block_wash_factor_application` ALTER COLUMN `wash_factor_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_subdomain' = 'rate_assignment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_association_edges' = 'inventory.room_type,loyalty.promotion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER COLUMN `room_type_promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Promotion Configuration ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Promotion - Inventory Room Type Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER COLUMN `promotion_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Promotion - Promotion Id');
@@ -1471,10 +1303,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER COLUMN `rooms_booked_count` SET TAGS ('dbx_business_glossary_term' = 'Rooms Booked Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_promotion` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Configuration Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_subdomain' = 'rate_assignment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_subdomain' = 'configuration_mapping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_association_edges' = 'inventory.room_type,revenue.competitive_set');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` ALTER COLUMN `room_type_competitive_benchmark_id` SET TAGS ('dbx_business_glossary_term' = 'room_type_competitive_benchmark Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Competitive Benchmark - Inventory Room Type Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`inventory`.`room_type_competitive_benchmark` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Competitive Benchmark - Revenue Competitive Set Id');

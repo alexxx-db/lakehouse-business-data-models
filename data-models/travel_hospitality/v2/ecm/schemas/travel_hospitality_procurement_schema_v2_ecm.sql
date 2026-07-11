@@ -1,13 +1,132 @@
--- Schema for Domain: procurement | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:46
+-- Schema for Domain: procurement | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:55
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`procurement` COMMENT 'Purchasing and vendor management for property operations including supplier contracts, purchase orders, receiving, spend analytics, and goods receipt. Manages vendor relationships, contract compliance, procurement categories (F&B supplies, housekeeping, FF&E), and cost optimization. Integrates with SAP S/4HANA MM module. Supports both CapEx procurement (PIP projects) and OpEx purchasing.';
 
 -- ========= TABLES =========
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` (
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee record. Primary key for the employee entity. System of record identifier used across all workforce management systems.',
+    `cost_center_id` BIGINT COMMENT 'Financial cost center to which the employees labor costs are allocated. Used for financial reporting, budgeting, and USALI compliance. Links to the finance cost center master.',
+    `manager_employee_id` BIGINT COMMENT 'Employee identifier of the direct manager or supervisor to whom this employee reports. Enables organizational hierarchy analysis and reporting structure visualization. Self-referential foreign key to employee table.',
+    `org_unit_id` BIGINT COMMENT 'Identifier of the operational department to which the employee is assigned (e.g., Front Desk, Housekeeping, Food and Beverage, Sales, Engineering). Critical for USALI labor cost allocation and departmental GOP analysis.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Employee occupies an authorized position. Position is the authoritative source for job definitions, titles, codes, and levels. This normalizes job attributes and links workforce planning (position = h',
+    `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property where the employee is primarily assigned. Links to the property master data for location-based workforce analytics and USALI labor cost reporting by property.',
+    `ada_accommodation_description` STRING COMMENT 'Description of the specific workplace accommodations provided to the employee under ADA or equivalent legislation. Highly sensitive health-related information. Used for accommodation implementation and compliance documentation.',
+    `ada_accommodation_required_flag` BOOLEAN COMMENT 'Boolean indicator of whether the employee requires workplace accommodations under ADA or equivalent disability legislation. Used for compliance tracking and accommodation management. Confidential but not direct health information.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this employee record was first created in the system. Used for data lineage, audit trail, and record lifecycle tracking.',
+    `date_of_birth` DATE COMMENT 'Date of birth of the employee. Used for age verification, benefits eligibility, retirement planning, and compliance with labor laws regarding minimum working age.',
+    `email_address` STRING COMMENT 'Primary corporate email address assigned to the employee for business communications, system access, and official correspondence. Critical for Oracle HCM Cloud and internal communication systems.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
+    `emergency_contact_name` STRING COMMENT 'Full name of the person to contact in case of employee emergency. Used for employee safety and crisis management. Confidential employee information.',
+    `emergency_contact_phone` STRING COMMENT 'Phone number of the emergency contact person. Used for employee safety and crisis management. Confidential employee information.',
+    `emergency_contact_relationship` STRING COMMENT 'Relationship of the emergency contact to the employee (e.g., spouse, parent, sibling, friend). Used for emergency response prioritization and communication.',
+    `employee_number` STRING COMMENT 'Human-readable employee number or badge number assigned by the organization. Used for timekeeping, access control, payroll identification, and operational reference. May differ from system employee_id.',
+    `employment_status` STRING COMMENT 'Current lifecycle status of the employee record indicating whether the employee is actively working, on leave, suspended, terminated, retired, or deceased. Used for workforce planning and payroll processing.. Valid values are `active|on-leave|suspended|terminated|retired|deceased`',
+    `employment_type` STRING COMMENT 'Classification of employment arrangement indicating whether the employee is full-time, part-time, seasonal, contract, temporary, or intern. Critical for labor cost analysis, benefits eligibility, and USALI reporting.. Valid values are `full-time|part-time|seasonal|contract|temporary|intern`',
+    `first_name` STRING COMMENT 'Legal first name of the employee as recorded in official employment records and payroll systems. Used for identification, communication, and compliance with employment regulations.',
+    `food_safety_certification_expiry_date` DATE COMMENT 'Date when the employees food safety certification expires. Null if not applicable to role. Used for proactive recertification scheduling and F&B compliance management.',
+    `food_safety_certification_flag` BOOLEAN COMMENT 'Boolean indicator of whether the employee holds a current food safety certification (e.g., ServSafe, ISO 22000). Required for Food and Beverage department employees. Used for compliance with health department regulations.',
+    `fte_percentage` DECIMAL(18,2) COMMENT 'Full-Time Equivalent percentage representing the employees work commitment relative to a full-time position. 1.0 = 100% full-time, 0.5 = 50% part-time. Critical for workforce capacity planning and labor cost analysis.',
+    `hire_date` DATE COMMENT 'Date the employee was originally hired by the organization. Used for calculating tenure, seniority, benefits eligibility, and anniversary recognition. Critical for workforce analytics and retention analysis.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this employee record was last updated. Used for change tracking, data quality monitoring, and audit compliance.',
+    `last_name` STRING COMMENT 'Legal last name (surname/family name) of the employee as recorded in official employment records and payroll systems. Used for identification, communication, and compliance with employment regulations.',
+    `middle_name` STRING COMMENT 'Middle name or initial of the employee if applicable. Optional field used for complete legal identification in employment records.',
+    `national_id_number` STRING COMMENT 'Government-issued national identification number (e.g., Social Security Number in USA, National Insurance Number in UK). Used for tax reporting, payroll processing, and employment verification. Highly sensitive PII.',
+    `oracle_hcm_employee_code` STRING COMMENT 'External employee identifier from Oracle HCM Cloud system. Used for integration and reconciliation between lakehouse and source HCM system. Critical for maintaining data lineage from system of record.',
+    `osha_training_current_flag` BOOLEAN COMMENT 'Boolean indicator of whether the employees required OSHA safety training is current and up-to-date. Used for workplace safety compliance, audit readiness, and training program management.',
+    `osha_training_expiry_date` DATE COMMENT 'Date when the employees current OSHA safety training certification expires. Used for proactive training renewal scheduling and compliance management.',
+    `pay_grade` STRING COMMENT 'Compensation grade or band assigned to the employees position. Used for salary administration, compensation benchmarking, and pay equity analysis. Business-confidential but not direct PII.',
+    `pay_type` STRING COMMENT 'Classification of how the employee is compensated (hourly wages, salaried, commission-based, or contract). Critical for payroll processing, labor cost calculation, and USALI reporting.. Valid values are `hourly|salaried|commission|contract`',
+    `phone_number` STRING COMMENT 'Primary contact phone number for the employee. Used for emergency contact, scheduling notifications, and operational communications. May be mobile or landline.',
+    `preferred_name` STRING COMMENT 'Name the employee prefers to be called in day-to-day operations, which may differ from legal name. Used for name badges, internal communications, and guest-facing interactions.',
+    `standard_hours_per_week` DECIMAL(18,2) COMMENT 'Standard number of hours the employee is scheduled to work per week based on their employment type. Used for FTE calculation, scheduling, and labor cost forecasting. Typically 40 for full-time, variable for part-time.',
+    `termination_date` DATE COMMENT 'Date the employees employment ended. Null for active employees. Used for turnover analysis, exit processing, and historical workforce reporting. Critical for calculating turnover rates and retention metrics.',
+    `termination_reason` STRING COMMENT 'Classification of the reason for employment termination. Used for turnover analysis, exit trend identification, and workforce planning. Null for active employees. [ENUM-REF-CANDIDATE: voluntary-resignation|involuntary-termination|retirement|end-of-contract|layoff|death|other — 7 candidates stripped; promote to reference product]',
+    `union_code` STRING COMMENT 'Code identifying the specific labor union to which the employee belongs, if applicable. Null for non-union employees. Used for contract administration and labor relations tracking.',
+    `union_membership_flag` BOOLEAN COMMENT 'Boolean indicator of whether the employee is a member of a labor union. Used for labor relations management, collective bargaining compliance, and union dues processing.',
+    `work_authorization_expiry_date` DATE COMMENT 'Date when the employees work authorization expires (if applicable). Null for citizens and permanent residents. Used for proactive renewal tracking and compliance management.',
+    `work_authorization_status` STRING COMMENT 'Current status of the employees legal authorization to work in the jurisdiction. Critical for compliance with immigration and employment laws. Used for I-9 compliance tracking in USA and equivalent requirements in other jurisdictions.. Valid values are `citizen|permanent-resident|work-visa|pending-verification|expired|not-authorized`',
+    `work_location_type` STRING COMMENT 'Classification of where the employee primarily performs their work. Indicates whether the employee works on-property at a hotel/resort, remotely, in a hybrid arrangement, at corporate office, or across multiple properties.. Valid values are `on-property|remote|hybrid|corporate-office|multi-property`',
+    CONSTRAINT pk_employee PRIMARY KEY(`employee_id`)
+) COMMENT 'Master record for all hotel and resort employees across properties. Captures full employment profile including personal details, employment type (full-time, part-time, seasonal, contract), job classification, department assignment, property assignment, hire date, termination date, employment status, OSHA compliance flags, ADA accommodation requirements, work authorization status, and Oracle HCM Cloud employee identifier. SSOT for employee identity across the workforce domain. Supports USALI labor cost reporting by department.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` (
+    `position_id` BIGINT COMMENT 'Unique identifier for the authorized position within the hotel organizational structure. Primary key.',
+    `org_unit_id` BIGINT COMMENT 'Reference to the organizational unit or department to which this position belongs within the property structure.',
+    `property_id` BIGINT COMMENT 'Reference to the hotel property where this position is authorized.',
+    `reports_to_position_id` BIGINT COMMENT 'Reference to the supervisory position to which this position reports in the organizational hierarchy. Enables organizational chart construction.',
+    `ada_accommodation_required` BOOLEAN COMMENT 'Indicates whether this position has been identified as requiring reasonable accommodation under ADA compliance guidelines.',
+    `budgeted_annual_salary` DECIMAL(18,2) COMMENT 'Planned annual base salary for this position as defined in the labor budget. Used for CPOR (Cost Per Occupied Room) labor cost calculations.',
+    `position_code` STRING COMMENT 'Unique alphanumeric code identifying the position within the enterprise position catalog. Used for workforce planning and budgeting.. Valid values are `^[A-Z0-9]{4,12}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this position record was first created in the system.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the budgeted salary amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
+    `position_description` STRING COMMENT 'Detailed narrative description of the positions responsibilities, duties, and scope. Used for job postings and talent acquisition.',
+    `effective_end_date` DATE COMMENT 'Date when this position was eliminated or frozen. Null for currently active positions. Used for historical workforce planning analysis.',
+    `effective_start_date` DATE COMMENT 'Date when this position became active and available for assignment in the organizational structure.',
+    `fte_allocation` DECIMAL(18,2) COMMENT 'Full-time equivalent allocation for this position expressed as a decimal (1.00 = full-time, 0.50 = half-time). Used for headcount planning and labor cost budgeting.',
+    `is_budgeted` BOOLEAN COMMENT 'Indicates whether this position is included in the approved annual labor budget and headcount plan.',
+    `is_exempt` BOOLEAN COMMENT 'Indicates whether this position is exempt from overtime pay requirements under the Fair Labor Standards Act (FLSA). Used for payroll and labor cost compliance.',
+    `is_supervisory` BOOLEAN COMMENT 'Indicates whether this position has direct supervisory or management responsibilities over other employees.',
+    `is_union` BOOLEAN COMMENT 'Indicates whether this position is covered by a collective bargaining agreement or union contract.',
+    `job_code` STRING COMMENT 'Standardized job classification code linking this position to a job profile with defined competencies, responsibilities, and compensation bands.. Valid values are `^[A-Z0-9]{3,10}$`',
+    `last_updated_by` STRING COMMENT 'Username or identifier of the system user who most recently modified this position record.',
+    `last_updated_timestamp` TIMESTAMP COMMENT 'Date and time when this position record was most recently modified.',
+    `minimum_education_level` STRING COMMENT 'Minimum educational qualification required for this position as defined in the job profile.. Valid values are `high_school|associate|bachelor|master|doctorate|none`',
+    `minimum_years_experience` STRING COMMENT 'Minimum number of years of relevant work experience required for this position.',
+    `pay_grade` STRING COMMENT 'Compensation grade or band assigned to this position, defining the salary range and benefits eligibility.. Valid values are `^[A-Z0-9]{2,6}$`',
+    `physical_requirements` STRING COMMENT 'Description of physical demands and working conditions for this position (e.g., standing for extended periods, lifting up to 50 lbs, exposure to kitchen heat). Used for ADA compliance and OSHA safety planning.',
+    `position_status` STRING COMMENT 'Current lifecycle status of the position. Active = authorized and available for assignment; Frozen = temporarily unavailable; Eliminated = removed from headcount plan; Proposed = pending approval.. Valid values are `active|frozen|eliminated|proposed`',
+    `position_type` STRING COMMENT 'Classification of the position based on employment duration and nature. Regular = permanent; Seasonal = recurring high-demand periods; Temporary = fixed-term; Contract = third-party; On-Call = as-needed.. Valid values are `regular|seasonal|temporary|contract|on_call`',
+    `required_certifications` STRING COMMENT 'Comma-separated list of mandatory certifications, licenses, or credentials required for this position (e.g., ServSafe Food Handler, CPR/First Aid, Certified Revenue Management Executive). Used for compliance tracking per OSHA and ADA requirements.',
+    `shift_eligibility` STRING COMMENT 'Shift pattern or time-of-day eligibility for this position. Used for scheduling and labor management in 24/7 hotel operations.. Valid values are `day|evening|night|rotating|any`',
+    `title` STRING COMMENT 'Official job title for the position as defined in the organizational structure (e.g., Front Desk Agent, Executive Chef, Revenue Manager).',
+    `union_code` STRING COMMENT 'Code identifying the labor union or collective bargaining unit covering this position, if applicable.. Valid values are `^[A-Z0-9]{2,10}$`',
+    `usali_department_code` STRING COMMENT 'Four-digit USALI department classification code for labor cost reporting and financial statement preparation per USALI standards (e.g., 3110 Rooms - Front Office, 4110 Food - Restaurants).. Valid values are `^[0-9]{4}$`',
+    `work_location_type` STRING COMMENT 'Primary work location arrangement for this position. On-Property = hotel premises; Remote = off-site; Hybrid = combination; Field = traveling/multi-site.. Valid values are `on_property|remote|hybrid|field`',
+    `created_by` STRING COMMENT 'Username or identifier of the system user who created this position record.',
+    CONSTRAINT pk_position PRIMARY KEY(`position_id`)
+) COMMENT 'Authorized positions (headcount plan) within the hotel organizational structure. Defines job titles, job codes, USALI department classifications, pay grade, FTE allocation, required certifications, shift eligibility, and whether the position is budgeted. Links to the organizational unit and property. Supports workforce planning and labor cost budgeting per USALI standards. Sourced from Oracle HCM Cloud Position Management.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` (
+    `org_unit_id` BIGINT COMMENT 'Unique identifier for the organizational unit. Primary key.',
+    `cost_center_id` BIGINT COMMENT 'Reference to the finance cost center for labor and expense allocation. Enables CPOR (Cost Per Occupied Room) labor component reporting.',
+    `parent_org_unit_id` BIGINT COMMENT 'Reference to the parent organizational unit in the hierarchy. Enables multi-level organizational structure modeling (e.g., department within division).',
+    `property_id` BIGINT COMMENT 'Reference to the property to which this organizational unit belongs. Links department to specific hotel or resort location.',
+    `actual_headcount` STRING COMMENT 'Current number of active employees assigned to this organizational unit. Used to track variance against budgeted headcount.',
+    `budgeted_headcount` STRING COMMENT 'Planned number of full-time equivalent (FTE) employees allocated to this organizational unit. Used for workforce planning and labor cost budgeting.',
+    `certification_type` STRING COMMENT 'Type of certification or license required for employees in this organizational unit (e.g., ServSafe, HVAC License, Lifeguard, ADA Compliance Training). Supports compliance with OSHA and industry regulations.',
+    `org_unit_code` STRING COMMENT 'Short alphanumeric code identifying the organizational unit. Used in payroll, scheduling, and financial reporting systems. Typically 2-10 characters.. Valid values are `^[A-Z0-9]{2,10}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this organizational unit record was first created in the system. Used for audit trail and data lineage.',
+    `org_unit_description` STRING COMMENT 'Detailed description of the organizational units purpose, responsibilities, and scope of operations.',
+    `effective_end_date` DATE COMMENT 'Date when this organizational unit was closed or became inactive. Null for currently active units. Used for historical tracking and organizational change management.',
+    `effective_start_date` DATE COMMENT 'Date when this organizational unit became active and operational. Used for historical tracking and organizational change management.',
+    `email_address` STRING COMMENT 'Primary email address for this organizational unit. Used for internal communication and departmental correspondence. Organizational contact data classified as confidential.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
+    `hierarchy_level` STRING COMMENT 'Numeric level in the organizational hierarchy. Level 1 is top-level (e.g., corporate), increasing numbers represent deeper nesting (e.g., 2=division, 3=department, 4=team).',
+    `hierarchy_path` STRING COMMENT 'Full hierarchical path from root to this unit, typically represented as slash-separated IDs or codes (e.g., /CORP/ROOMS/FRONTDESK). Enables efficient hierarchy queries.',
+    `is_guest_facing` BOOLEAN COMMENT 'Indicates whether this organizational unit has direct guest interaction (e.g., Front Desk, Concierge, F&B service) or is back-of-house (e.g., Housekeeping, Engineering). Used for service quality and NPS tracking.',
+    `is_revenue_generating` BOOLEAN COMMENT 'Indicates whether this organizational unit directly generates revenue (e.g., Rooms, F&B, Spa) or is a support/overhead department (e.g., Engineering, Admin). Used for GOP and GOPPAR calculations.',
+    `is_unionized` BOOLEAN COMMENT 'Indicates whether employees in this organizational unit are represented by a labor union. Affects scheduling rules, overtime policies, and labor cost management.',
+    `labor_cost_percentage_target` DECIMAL(18,2) COMMENT 'Target labor cost as percentage of revenue for this organizational unit. Key metric for GOP (Gross Operating Profit) management and USALI labor cost reporting.',
+    `labor_productivity_standard` DECIMAL(18,2) COMMENT 'Standard productivity measure for this organizational unit, expressed as units per labor hour (e.g., rooms cleaned per hour, covers served per hour, check-ins per hour). Used for optimal staffing calculations.',
+    `location_code` STRING COMMENT 'Physical location code or building identifier where this organizational unit operates (e.g., Main Building, Tower A, Spa Building). Used for facility management and space allocation.',
+    `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this organizational unit record was last modified. Used for audit trail and change tracking.',
+    `org_unit_name` STRING COMMENT 'Full business name of the organizational unit (e.g., Front Desk Operations, Housekeeping, Food and Beverage, Engineering, Sales and Marketing).',
+    `org_unit_status` STRING COMMENT 'Current operational status of the organizational unit. Indicates whether the unit is actively staffed and operational.. Valid values are `active|inactive|suspended|planned|closed`',
+    `org_unit_type` STRING COMMENT 'Classification of the organizational unit level in the hierarchy. Defines whether this is a division, department, team, cost center, or work group.. Valid values are `division|department|team|cost_center|work_group`',
+    `phone_number` STRING COMMENT 'Primary contact phone number for this organizational unit. Used for internal communication and guest inquiries. Organizational contact data classified as confidential.. Valid values are `^+?[1-9]d{1,14}$`',
+    `productivity_target_percentage` DECIMAL(18,2) COMMENT 'Target productivity achievement percentage for this organizational unit. Typically 85-100%, representing expected efficiency relative to standard time.',
+    `productivity_unit_of_measure` STRING COMMENT 'Unit of measure for labor productivity standard. Defines how productivity is measured for this organizational unit (e.g., rooms per hour for housekeeping, covers per hour for F&B).. Valid values are `rooms_per_hour|covers_per_hour|check_ins_per_hour|setups_per_hour|minutes_per_unit|units_per_shift`',
+    `requires_certification` BOOLEAN COMMENT 'Indicates whether employees in this organizational unit require specific certifications or licenses (e.g., food safety for F&B, engineering licenses, lifeguard certification). Used for compliance tracking.',
+    `shift_pattern` STRING COMMENT 'Standard shift pattern for this organizational unit. Defines typical scheduling model (e.g., 24x7 for front desk, AM/PM for housekeeping, business hours for sales).. Valid values are `24x7|am_pm_night|am_pm|business_hours|on_call|variable`',
+    `standard_time_per_unit` DECIMAL(18,2) COMMENT 'Standard time in minutes required to complete one unit of work (e.g., 30 minutes to clean one room, 15 minutes per banquet setup). Used for scheduling and labor planning.',
+    `union_affiliation` STRING COMMENT 'Name of labor union representing employees in this organizational unit, if applicable. Used for labor relations, collective bargaining, and compliance with union agreements.',
+    `usali_classification` STRING COMMENT 'USALI department classification for financial reporting. Aligns organizational unit to standard hospitality accounting categories (Rooms, F&B, Spa, Engineering, Sales, Admin). [ENUM-REF-CANDIDATE: rooms|food_and_beverage|spa|golf|recreation|engineering|sales_marketing|admin_general|property_operations|other — 10 candidates stripped; promote to reference product]',
+    CONSTRAINT pk_org_unit PRIMARY KEY(`org_unit_id`)
+) COMMENT 'Organizational hierarchy and department structure for hotel and resort operations. Defines divisions, departments, and cost centers aligned to USALI classifications (Rooms, F&B, Spa, Engineering, Sales, Admin) with department codes, cost center references, property assignments, parent-child hierarchy, and department managers. Includes labor productivity standards by department and task type (room cleaning, turndown, check-in, F&B cover, banquet setup) with standard time per unit, units per labor hour, and productivity targets. Enables labor cost allocation, CPOR labor component reporting, optimal staffing calculations relative to occupancy, and workforce planning against budgeted headcount.';
+
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` (
     `vendor_id` BIGINT COMMENT 'Unique identifier for the vendor. Primary key for the vendor master record.',
-    `property_id` BIGINT COMMENT 'FK connection added per structural fix',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - vendors serve specific properties and this master table has zero outbound FKs',
     `address_line1` STRING COMMENT 'First line of the vendors primary business address including street number and name. Used for correspondence and legal documentation.',
     `address_line2` STRING COMMENT 'Second line of the vendors address for suite, floor, building, or other secondary address information.',
     `annual_spend_amount` DECIMAL(18,2) COMMENT 'Total procurement spend with this vendor over the most recent 12-month period. Used for vendor segmentation, negotiation leverage analysis, and spend analytics. Expressed in the companys reporting currency.',
@@ -46,9 +165,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` (
     `state_province` STRING COMMENT 'State, province, or region of the vendors primary business location. Use standard postal abbreviations (e.g., CA for California, ON for Ontario).',
     `swift_code` STRING COMMENT 'SWIFT/BIC code for international wire transfers to vendors outside the domestic banking system. Eight or eleven character code identifying the bank and branch.. Valid values are `^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$`',
     `tax_number` STRING COMMENT 'Government-issued tax identification number for the vendor. In the US this is the Employer Identification Number (EIN) or Social Security Number (SSN) for sole proprietors. Required for 1099 reporting and tax compliance.',
-    `tier` STRING COMMENT 'Vendor relationship tier indicating strategic importance and procurement preference. Strategic vendors receive priority treatment and volume commitments; restricted vendors require special approval for purchases.. Valid values are `strategic|preferred|approved|conditional|restricted`',
     `vat_registration_number` STRING COMMENT 'VAT registration number for vendors operating in jurisdictions with value-added tax systems. Required for international procurement and tax reclaim processing.',
     `vendor_status` STRING COMMENT 'Current lifecycle status of the vendor in the procurement system. Active vendors can receive purchase orders; blocked vendors cannot transact pending resolution of compliance or performance issues.. Valid values are `active|inactive|suspended|pending_approval|blocked|terminated`',
+    `vendor_tier` STRING COMMENT 'Vendor relationship tier indicating strategic importance and procurement preference. Strategic vendors receive priority treatment and volume commitments; restricted vendors require special approval for purchases.. Valid values are `strategic|preferred|approved|conditional|restricted`',
     CONSTRAINT pk_vendor PRIMARY KEY(`vendor_id`)
 ) COMMENT 'Master record for all suppliers and vendors providing goods and services to hotel and resort properties. Captures vendor identity, classification (F&B supplier, FF&E vendor, housekeeping supplier, maintenance contractor), tax registration, payment terms, preferred currency, remittance details, diversity certification, contact persons (account managers, sales reps, escalation contacts), and SAP S/4HANA vendor master integration. Serves as the SSOT for vendor identity and vendor contacts across procurement. Includes vendor tier, risk rating, compliance status, bank/payment details, and communication preferences.';
 
@@ -87,44 +206,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_perfo
     CONSTRAINT pk_vendor_performance PRIMARY KEY(`vendor_performance_id`)
 ) COMMENT 'Periodic vendor performance evaluation records capturing on-time delivery rate, quality acceptance rate, invoice accuracy, contract compliance score, responsiveness rating, and overall vendor scorecard. Supports vendor qualification, preferred vendor designation, and contract renewal decisions. Aligned with USALI cost management standards and SAP MM vendor evaluation (ME61).';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` (
-    `procurement_contract_id` BIGINT COMMENT 'Unique identifier for the procurement contract record. Primary key.',
-    `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Procurement contracts are organized by category for contract compliance and category management. FK enables category-specific contract terms, approval workflows, and compliance tracking.',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Procurement contracts create compliance obligations that hotels must track: insurance certificate requirements, vendor certifications (food safety, sustainability), regulatory standards (ADA complianc',
-    `employee_id` BIGINT COMMENT 'Reference to the procurement or property staff member responsible for managing this contract, monitoring compliance, and coordinating renewals.',
-    `primary_procurement_approved_by_employee_id` BIGINT COMMENT 'Reference to the employee who provided final approval for this contract. Null if contract is not yet approved.',
-    `property_id` BIGINT COMMENT 'Reference to the property or hotel location to which this contract applies. Null if contract is.',
-    `tertiary_procurement_last_modified_by_employee_id` BIGINT COMMENT 'Reference to the employee who last modified this contract record.',
-    `vendor_id` BIGINT COMMENT 'Reference to the supplier or vendor party with whom this contract is established.',
-    `approval_date` DATE COMMENT 'Date when the contract was formally approved by authorized procurement or finance management. Null if contract is still in draft or pending approval.',
-    `auto_renewal_flag` BOOLEAN COMMENT 'Indicates whether the contract automatically renews at expiry unless explicitly terminated. True if contract has auto-renewal clause, False if manual renewal required.',
-    `capex_designation_flag` BOOLEAN COMMENT 'Indicates whether this contract is designated for capital expenditure purchases (CapEx) such as Property Improvement Plan (PIP) projects, FF&E replacements, or major renovations. True for CapEx contracts, False for operating expenditure (OpEx) contracts.',
-    `contract_name` STRING COMMENT 'Descriptive name or title of the procurement contract for easy identification by procurement staff.',
-    `contract_number` STRING COMMENT 'Externally visible unique business identifier for the procurement contract, used in vendor communications and purchase orders.',
-    `contract_status` STRING COMMENT 'Current lifecycle state of the procurement contract. Draft indicates contract is being negotiated, pending approval awaiting internal authorization, active for contracts in force, suspended for temporarily paused agreements, expired for contracts past end date, terminated for contracts ended before expiry, renewed for contracts that have been extended. [ENUM-REF-CANDIDATE: draft|pending_approval|active|suspended|expired|terminated|renewed — 7 candidates stripped; promote to reference product]',
-    `contract_type` STRING COMMENT 'Classification of the procurement contract structure. Master supply agreement for long-term supplier relationships, blanket PO for recurring purchases, frame contract for pre-negotiated terms, spot contract for one-time purchases, service agreement for ongoing services, CapEx contract for capital expenditure projects including Property Improvement Plan (PIP) initiatives.. Valid values are `master_supply_agreement|blanket_purchase_order|frame_contract|spot_contract|service_agreement|capex_contract`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this contract record was first created in the procurement system.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code in which contract values, pricing, and payments are denominated.. Valid values are `^[A-Z]{3}$`',
-    `delivery_lead_time_days` STRING COMMENT 'Standard number of days from purchase order placement to goods receipt at property, as agreed in the contract Service Level Agreement (SLA).',
-    `document_url` STRING COMMENT 'URL or file path to the signed contract document stored in the enterprise document management system for legal reference and audit purposes.',
-    `effective_date` DATE COMMENT 'Date when the contract terms become binding and purchasing can commence under the agreed terms.',
-    `expiry_date` DATE COMMENT 'Date when the contract terms cease to be valid. Null for open-ended contracts without a defined end date.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this contract record was last updated in the procurement system.',
-    `maximum_order_quantity` DECIMAL(18,2) COMMENT 'Maximum order quantity allowed per purchase order or over contract term, if applicable. Used for contract compliance monitoring. Null if no maximum applies.',
-    `minimum_order_quantity` DECIMAL(18,2) COMMENT 'Minimum order quantity required per purchase order under this contract to qualify for negotiated pricing. Null if no minimum applies.',
-    `negotiated_discount_percent` DECIMAL(18,2) COMMENT 'Overall discount percentage negotiated off standard vendor pricing, applied at contract level. Used for price variance analysis and savings tracking. Null if no blanket discount applies.',
-    `notes` STRING COMMENT 'Free-text field for additional contract details, special terms, negotiation history, or operational notes relevant to procurement staff.',
-    `payment_terms` STRING COMMENT 'Agreed payment terms and conditions, including net payment days, early payment discounts, and payment method requirements (e.g., Net 30, 2/10 Net 30, Net 60).',
-    `pip_project_flag` BOOLEAN COMMENT 'Indicates whether this contract is specifically tied to a Property Improvement Plan (PIP) project for property renovation or upgrade. True if PIP-related, False otherwise.',
-    `renewal_notice_days` STRING COMMENT 'Number of days prior to expiry that either party must provide notice to prevent auto-renewal or to initiate renewal discussions. Null if not applicable.',
-    `sla_on_time_delivery_percent` DECIMAL(18,2) COMMENT 'Contractually agreed percentage of orders that must be delivered on time to meet SLA performance targets. Used for vendor performance monitoring.',
-    `sla_quality_acceptance_percent` DECIMAL(18,2) COMMENT 'Contractually agreed percentage of delivered goods that must pass quality inspection on first receipt to meet SLA performance targets.',
-    `termination_date` DATE COMMENT 'Date when the contract was formally terminated before its natural expiry. Null if contract has not been terminated.',
-    `termination_reason` STRING COMMENT 'Business reason or justification for early contract termination, such as vendor performance issues, business requirement changes, or cost optimization. Null if contract has not been terminated.',
-    `total_contract_value` DECIMAL(18,2) COMMENT 'Total estimated or committed monetary value of the contract over its full term, in the contract currency. Used for contract compliance monitoring and spend analytics. Null for open-ended contracts without value caps.',
-    CONSTRAINT pk_procurement_contract PRIMARY KEY(`procurement_contract_id`)
-) COMMENT 'Master procurement contracts and supply agreements with vendors, modeled as header+line. Header captures contract type (master supply agreement, blanket PO, frame contract), vendor, effective/expiry dates, auto-renewal flags, total contract value, negotiated discounts, and SLAs. Lines specify agreed materials/services, unit prices, minimum/maximum order quantities, and validity periods. Supports contract compliance monitoring, price variance analysis, and CapEx/PIP contract designations. Integrates with SAP S/4HANA MM outline agreements (ME31K). [SSOT_OWNER] [SSOT MASTER for group procurement.procurement_contract]channel_contract. [SSOT:contract] Domain-specific specialization of the contract concept; canonical SSOT owner is channel.channel_contract.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` (
     `purchase_requisition_id` BIGINT COMMENT 'Unique identifier for the purchase requisition. Primary key.',
     `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Purchase requisitions are classified by procurement category for routing, approval workflows, and spend tracking. The string column procurement_category should be normalized to FK reference. This enab',
@@ -133,6 +214,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_req
     `employee_id` BIGINT COMMENT 'Identifier of the employee who created the purchase requisition.',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property where the requisition originated.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Purchase requisitions are converted to purchase orders during the procurement workflow. The string column purchase_order_number should be normalized to FK for traceability and requisition-to-PO lifecy',
+    `quaternary_purchase_buyer_employee_id` BIGINT COMMENT 'Identifier of the procurement specialist or buyer assigned to source and convert this requisition to a purchase order.',
     `tertiary_purchase_final_approver_employee_id` BIGINT COMMENT 'Identifier of the employee who provided the final approval before conversion to purchase order.',
     `approval_chain_level` STRING COMMENT 'Current level in the approval hierarchy. Increments as requisition moves through approval workflow based on amount thresholds and organizational rules.',
     `approval_date` DATE COMMENT 'Date when the requisition received final approval and became eligible for conversion to purchase order.',
@@ -214,11 +296,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_ord
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` (
     `po_line_id` BIGINT COMMENT 'Unique identifier for the purchase order line item. Primary key.',
     `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: PO line items are classified by procurement category for detailed spend analytics and line-level category tracking. FK enables accurate category spend reporting at the most granular level.',
-    `po_material_master_id` BIGINT COMMENT 'Reference to the material master record for the item being procured. Links to the material catalog for goods such as Food and Beverage (F&B) supplies, housekeeping items, or Furniture Fixtures and Equipment (FF&E).',
-    `po_service_material_master_id` BIGINT COMMENT 'Reference to the service master record for service-based procurement. Used when the line item represents a service rather than a physical material.',
-    `procurement_contract_id` BIGINT COMMENT 'Reference to the master vendor contract or blanket purchase agreement from which this line item is released. Links to negotiated terms and pricing agreements.',
+    `material_master_id` BIGINT COMMENT 'Reference to the material master record for the item being procured. Links to the material catalog for goods such as Food and Beverage (F&B) supplies, housekeeping items, or Furniture Fixtures and Equipment (FF&E).',
+    `vendor_contract_id` BIGINT COMMENT 'Reference to the master vendor contract or blanket purchase agreement from which this line item is released. Links to negotiated terms and pricing agreements.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the parent purchase order header. Links this line item to its containing purchase order document.',
     `requisition_line_id` BIGINT COMMENT 'Reference to the originating purchase requisition line item that triggered this purchase order line. Provides traceability from demand to procurement.',
+    `service_material_master_id` BIGINT COMMENT 'Reference to the service master record for service-based procurement. Used when the line item represents a service rather than a physical material.',
     `cost_center` STRING COMMENT 'The cost center to which this line item expenditure will be charged for Operating Expenditure (OpEx) purchases. Used for departmental cost allocation and Gross Operating Profit (GOP) analysis per Uniform System of Accounts for the Lodging Industry (USALI).',
     `created_by_user` STRING COMMENT 'The user ID of the procurement professional or system user who created this purchase order line item. Used for accountability and audit purposes.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this purchase order line item record was originally created in the system. Used for audit trail and procurement cycle time analysis.',
@@ -251,8 +333,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` (
     `unit_price` DECIMAL(18,2) COMMENT 'The agreed price per unit of measure for this line item. Represents the negotiated rate with the vendor before any discounts or surcharges.',
     `vendor_material_number` STRING COMMENT 'The vendors own catalog or SKU number for the material or service. Used for cross-referencing with vendor invoices and facilitating three-way match processing.',
     `wbs_element` STRING COMMENT 'The project Work Breakdown Structure element for Capital Expenditure (CapEx) procurement tied to Property Improvement Plan (PIP) projects or renovation initiatives. Used for project-based cost tracking.',
-    `material_master_id` BIGINT COMMENT '',
-    `service_material_master_id` BIGINT COMMENT '',
     CONSTRAINT pk_po_line PRIMARY KEY(`po_line_id`)
 ) COMMENT 'Individual line items within a purchase order specifying the material or service ordered, quantity, unit of measure, agreed unit price, delivery date, storage location, and account assignment (cost center, WBS element for CapEx/PIP projects). Tracks goods receipt quantity, invoice quantity, and open quantity for three-way match processing. Sourced from SAP S/4HANA MM PO line item (EKPO).';
 
@@ -394,9 +474,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_mas
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` (
     `category_id` BIGINT COMMENT 'Unique identifier for the procurement category. Primary key.',
+    `employee_id` BIGINT COMMENT 'Identifier of the user or system process that created this procurement category record. Supports audit trail and accountability.',
+    `modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system process that last modified this procurement category record. Supports change tracking and audit compliance.',
     `parent_category_id` BIGINT COMMENT 'Reference to the parent category in the hierarchical taxonomy. Null for top-level (L1) categories. Enables multi-level category drill-down for spend analytics.',
     `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Procurement categories enforce category-specific policies: ethical sourcing policies for food/beverage, sustainability policies for supplies, diversity vendor policies for services, data privacy polic',
-    `employee_id` BIGINT COMMENT 'Identifier of the user or system process that created this procurement category record. Supports audit trail and accountability.',
     `active_flag` BOOLEAN COMMENT 'Indicates whether this procurement category is currently active and available for purchase order creation. False for deprecated or discontinued categories.',
     `annual_spend_budget_amount` DECIMAL(18,2) COMMENT 'Planned annual procurement spend budget (in USD) for this category across all properties or at corporate level. Used for budget variance analysis and spend forecasting.',
     `approval_authority_level` STRING COMMENT 'Organizational level required to approve purchase orders in this category: property (hotel GM), regional (area VP), corporate (CPO), or executive (CFO/CEO for high-value CapEx).. Valid values are `property|regional|corporate|executive`',
@@ -446,7 +527,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_
     `award_decision_date` DATE COMMENT 'Date when the final vendor selection and award decision was made.',
     `awarded_contract_value` DECIMAL(18,2) COMMENT 'Total monetary value of the contract awarded as a result of this RFQ.',
     `awarded_timestamp` TIMESTAMP COMMENT 'Timestamp when the award decision was finalized and the winning vendor was officially notified.',
-    `capex_opex_flag` STRING COMMENT 'Indicates whether this procurement is classified as Capital Expenditure (CapEx) for long-term assets and Property Improvement Plan (PIP) projects, or Operating Expenditure (OpEx) for day-to-day operational supplies and services.. Valid values are `capex|opex`',
+    `capex_opex_flag` BOOLEAN COMMENT 'Indicates whether this procurement is classified as Capital Expenditure (CapEx) for long-term assets and Property Improvement Plan (PIP) projects, or Operating Expenditure (OpEx) for day-to-day operational supplies and services.. Valid values are `capex|opex`',
     `closed_timestamp` TIMESTAMP COMMENT 'Timestamp when the RFQ response period officially closed and no further vendor submissions are accepted.',
     `contract_term_months` STRING COMMENT 'Duration of the resulting contract in months, if the RFQ leads to a long-term supply agreement.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this RFQ record was first created in the system.',
@@ -522,7 +603,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quota
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` (
     `purchase_return_id` BIGINT COMMENT 'Unique identifier for the purchase return record. Primary key for the purchase return entity.',
     `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Purchase returns are tracked by procurement category for quality analytics and vendor performance. FK enables category-specific return rate KPIs and root cause analysis.',
-    `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.goods_receipt. Business justification: Purchase returns reference the original goods receipt being returned. The string column goods_receipt_document_number should be normalized to FK for return-to-receipt traceability and three-way match ',
+    `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.goods_receipt. Business justification: Purchase returns reference the original goods receipt being returned. The string column goods_receipt_document_number should be normalized to FK for return-to-receipt traceability and three-way match',
     `employee_id` BIGINT COMMENT 'Identifier of the quality inspector who performed the inspection that resulted in the return decision.',
     `primary_purchase_employee_id` BIGINT COMMENT 'Identifier of the property staff member who initiated the return (e.g., receiving clerk, F&B manager, housekeeping supervisor).',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property initiating the return.',
@@ -600,25 +681,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certi
     CONSTRAINT pk_vendor_certification PRIMARY KEY(`vendor_certification_id`)
 ) COMMENT 'Compliance certifications and qualification records for vendors supplying hotel and resort properties. Includes food safety certifications (ISO 22000, HACCP, local health department permits), insurance certificates (general liability, workers comp), business licenses, diversity certifications (MBE, WBE, LGBTBE), sustainability certifications (Green Key, EarthCheck supplier), and PCI DSS compliance for payment-related vendors. Tracks certification type, issuing body, issue date, expiry date, renewal status, and verification method. Supports vendor qualification gates, compliance monitoring, risk management, brand standards enforcement, and ESG reporting requirements.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` (
-    `procurement_supply_agreement_id` BIGINT COMMENT 'Primary key for procurement_supply_agreement',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to the material being supplied under this agreement',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to the vendor who supplies this material under this agreement',
-    `agreement_end_date` DATE COMMENT 'Expiration or renewal date of this supply agreement. Null for evergreen agreements. Used to trigger contract renegotiation workflows.',
-    `agreement_start_date` DATE COMMENT 'Effective start date of this supply agreement. Supports time-based pricing and contract lifecycle management.',
-    `agreement_status` STRING COMMENT 'Current lifecycle status of this supply agreement. Active agreements are available for procurement; Inactive/Expired agreements are historical.',
-    `contract_reference_number` STRING COMMENT 'External reference to the master supply contract or purchase agreement governing this vendor-material relationship. Links to legal contract repository.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the negotiated unit price. May differ from vendors preferred currency or materials standard price currency.',
-    `last_purchase_date` DATE COMMENT 'Date of the most recent purchase order placed with this vendor for this material. Used to identify inactive supply relationships and trigger vendor performance reviews.',
-    `minimum_order_quantity` DECIMAL(18,2) COMMENT 'Smallest quantity that can be ordered from this vendor for this material. Vendor-specific term that affects procurement batch sizing.',
-    `negotiated_unit_price` DECIMAL(18,2) COMMENT 'The per-unit price negotiated with this specific vendor for this material. Varies by vendor-material combination and is central to sourcing decisions.',
-    `preferred_vendor_flag` BOOLEAN COMMENT 'Indicates whether this vendor is the preferred source for this material based on price, quality, reliability, or strategic relationship. Used in automated sourcing logic.',
-    `supply_agreement_code` BIGINT COMMENT 'Unique identifier for this vendor-material supply agreement record. Primary key.',
-    `vendor_lead_time_days` STRING COMMENT 'Number of days from purchase order placement to goods receipt for this vendor-material combination. Vendor-specific and critical for inventory planning.',
-    `vendor_material_number` STRING COMMENT 'The vendors own part number or SKU for this material. Used in purchase orders and receiving to ensure correct material identification in vendor systems.',
-    CONSTRAINT pk_procurement_supply_agreement PRIMARY KEY(`procurement_supply_agreement_id`)
-) COMMENT 'This association product represents the contractual supply relationship between a vendor and a material in the procurement catalog. It captures vendor-specific pricing, lead times, minimum order quantities, and sourcing preferences that exist only in the context of this vendor-material pairing. Each record links one vendor to one material with negotiated commercial terms.. Existence Justification: In hotel and resort procurement operations, materials are routinely multi-sourced from multiple vendors to mitigate supply risk, leverage competitive pricing, and ensure continuity of operations. Each vendor-material pairing has distinct commercial terms including negotiated unit prices, lead times, minimum order quantities, and contract references. The current models single vendor_id FK in material_master cannot represent this multi-sourcing reality.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` (
     `vendor_category_qualification_id` BIGINT COMMENT 'Unique identifier for this vendor-category qualification record. Primary key for the association.',
     `category_id` BIGINT COMMENT 'Foreign key linking to the procurement category. Identifies which category this vendor is qualified to supply.',
@@ -646,9 +708,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_categ
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` (
     `vendor_program_participation_id` BIGINT COMMENT 'Unique identifier for this vendor-program participation record. Primary key.',
-    `vendor_experience_program_id` BIGINT COMMENT 'Foreign key to experience.experience_program.experience_program_id',
+    `experience_program_id` BIGINT COMMENT 'Foreign key to experience.experience_program.experience_program_id',
+    `program_id` BIGINT COMMENT 'Foreign key linking to the experience program in which the vendor participates',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to the vendor providing services for this experience program',
-    `vendor_program_id` BIGINT COMMENT 'Foreign key linking to the experience program in which the vendor participates',
     `capacity_limit` STRING COMMENT 'Maximum number of concurrent guests or service instances this vendor can support for this program. Null indicates no defined limit. Used for program enrollment capacity planning.',
     `contract_reference_number` STRING COMMENT 'Reference number of the legal contract or service agreement governing this vendors participation in this program. Links operational participation to legal agreements.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this vendor-program participation record was created in the system.',
@@ -666,8 +728,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_progr
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this vendor-program participation record was last updated.',
     `vendor_program_status` STRING COMMENT 'Current operational status of the vendors participation in this specific program. Tracks whether the vendor is actively delivering services, temporarily suspended, or no longer participating. Status is program-specific; a vendor may be active in some programs and suspended in others.',
     `vendor_role_in_program` STRING COMMENT 'The specific role or service type the vendor provides within this experience program. A vendor may have different roles across different programs (e.g., spa operator for wellness programs, transportation for adventure programs).',
-    `program_id` BIGINT COMMENT '',
-    `experience_program_id` BIGINT COMMENT '',
     `created_by` STRING COMMENT 'User ID or system identifier of who created this participation record.',
     CONSTRAINT pk_vendor_program_participation PRIMARY KEY(`vendor_program_participation_id`)
 ) COMMENT 'This association product represents the Contract between vendor and experience_program. It captures the operational relationship where vendors deliver specific services as part of curated guest experience programs across hotel and resort properties. Each record links one vendor to one experience_program with attributes that define the vendors role, service delivery commitments, program-specific pricing, and fulfillment responsibilities that exist only in the context of this relationship.. Existence Justification: In travel hospitality operations, experience programs (spa packages, culinary experiences, adventure programs, wellness journeys) require coordination of multiple specialized vendors to deliver the complete guest experience. A single experience program involves multiple vendors (spa operator, restaurant partner, transportation provider, activity vendors), and each vendor participates in multiple programs across different properties and guest segments. The business actively manages these vendor-program relationships with program-specific pricing, SLAs, fulfillment responsibilities, and performance tracking.';
@@ -706,97 +766,33 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buy
     CONSTRAINT pk_category_buyer_assignment PRIMARY KEY(`category_buyer_assignment_id`)
 ) COMMENT 'This association product represents the assignment of procurement professionals (buyers/category managers) to procurement categories. It captures the buyer-category responsibility matrix that drives requisition routing, vendor relationship ownership, and spend authority. Each record links one employee to one procurement category with assignment-specific attributes including role type (primary/backup), effective dates, and spend authority limits.. Existence Justification: In hospitality procurement operations, category management follows a buyer assignment matrix where procurement professionals (buyers/category managers) are assigned responsibility for specific procurement categories. Each buyer manages multiple categories (e.g., one buyer handles Linens, Uniforms, and Housekeeping Supplies), and each category has both primary and backup buyers to ensure coverage. The business actively manages these assignments with effective dates, authority limits, and role types (primary/backup/specialist).';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` (
-    `procurement_therapist_certification_id` BIGINT COMMENT 'Primary key for procurement_therapist_certification',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to the therapist employee record',
-    `spa_therapist_certification_id` BIGINT COMMENT 'Unique identifier for this therapist-treatment certification record. Primary key for the association.',
-    `treatment_id` BIGINT COMMENT 'Foreign key linking to the spa treatment record',
-    `certification_date` DATE COMMENT 'Date when the therapist was certified to perform this specific treatment. Used for compliance tracking and recertification scheduling.',
-    `certification_status` STRING COMMENT 'Current lifecycle status of this certification. Controls whether the therapist can be scheduled for this treatment. Values: ACTIVE, EXPIRED, SUSPENDED, PENDING_RENEWAL.',
-    `expiration_date` DATE COMMENT 'Date when this certification expires and requires renewal. Null for certifications without expiration. Used for proactive recertification scheduling.',
-    `last_performed_date` DATE COMMENT 'Most recent date the therapist performed this treatment on a guest. Used to identify skill currency and trigger refresher training requirements.',
-    `notes` STRING COMMENT 'Free-text notes about this therapists certification for this treatment, including special techniques, limitations, or guest feedback themes.',
-    `performance_rating` DECIMAL(18,2) COMMENT 'Average guest satisfaction or quality rating for this therapist performing this specific treatment. Used for scheduling premium treatments to top-rated therapists and identifying coaching opportunities.',
-    `preferred_for_treatment_flag` BOOLEAN COMMENT 'Indicates whether this therapist is designated as a preferred or specialist provider for this treatment. Used for VIP guest scheduling and premium service delivery.',
-    `proficiency_level` STRING COMMENT 'Current skill proficiency level of the therapist for this specific treatment. Used for scheduling optimization, quality assurance, and identifying training needs. Values: TRAINEE, COMPETENT, PROFICIENT, EXPERT.',
-    `training_hours` DECIMAL(18,2) COMMENT 'Total hours of training completed by the therapist for this specific treatment. Used for compliance documentation and professional development tracking.',
-    `treatments_performed_count` STRING COMMENT 'Total number of times this therapist has performed this specific treatment. Used for experience tracking and proficiency assessment.',
-    CONSTRAINT pk_procurement_therapist_certification PRIMARY KEY(`procurement_therapist_certification_id`)
-) COMMENT 'This association product represents the certification and competency relationship between spa therapists (employees) and treatments they are qualified to perform. It captures the operational reality that therapists must be certified for specific treatments, and the business actively manages certification status, proficiency levels, training requirements, and performance quality for scheduling, compliance, and quality assurance. Each record links one therapist to one treatment with attributes that exist only in the context of this certification relationship.. Existence Justification: In spa operations, therapists must be certified to perform specific treatments, and each treatment can be performed by multiple certified therapists. The business actively manages this many-to-many relationship through certification programs, proficiency assessments, and performance tracking. Spa managers use this data for scheduling optimization (matching guest requests to qualified therapists), compliance verification (ensuring minimum certification requirements are met), and quality assurance (tracking performance ratings per therapist-treatment combination).';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` (
     `program_assignment_id` BIGINT COMMENT 'Unique identifier for this employee-program assignment record. Primary key.',
-    `employee_id` BIGINT COMMENT '',
-    `currency_id` BIGINT COMMENT '',
-    `program_assigned_by_employee_id` BIGINT COMMENT 'Employee who created the assignment.',
-    `program_employee_id` BIGINT COMMENT 'Foreign key linking to the employee assigned to deliver this experience program',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to the employee assigned to deliver this experience program',
     `program_id` BIGINT COMMENT 'Foreign key linking to the experience program being delivered',
-    `project_id` BIGINT COMMENT 'add column project_id (BIGINT) with FK to procurement.project.project_id - program assignments often roll up to projects for billing and tracking.',
-    `property_id` BIGINT COMMENT '',
-    `vendor_id` BIGINT COMMENT '',
-    `allocation_pct` DECIMAL(18,2) COMMENT 'Percentage of time allocated to the program.',
-    `allocation_percent` DECIMAL(18,2) COMMENT '',
-    `allocation_percentage` DECIMAL(18,2) COMMENT 'Added to expand thin product per business context.',
-    `approval_status` STRING COMMENT 'Approval state of the assignment.',
-    `approved_by` STRING COMMENT '',
-    `approved_date` DATE COMMENT '',
-    `assigned_by` STRING COMMENT '',
-    `assigned_date` DATE COMMENT '',
-    `assignment_date` DATE COMMENT '',
+    `loyalty_enrollment_id` BIGINT COMMENT '',
     `assignment_end_date` DATE COMMENT 'Date when the employees assignment to this experience program ended. Null indicates an active ongoing assignment. This attribute was explicitly identified in the detection phase as relationship data.',
-    `assignment_notes` STRING COMMENT 'Free-text notes on the assignment.',
-    `assignment_role` STRING COMMENT '',
     `assignment_start_date` DATE COMMENT 'Date when the employee began their assignment to this experience program. This attribute was explicitly identified in the detection phase as relationship data.',
     `assignment_status` STRING COMMENT 'Current status of this assignment indicating whether the employee is actively delivering this program or temporarily unavailable.',
-    `assignment_type` STRING COMMENT '',
-    `billing_rate` DECIMAL(18,2) COMMENT '',
-    `budget_amount` DECIMAL(18,2) COMMENT 'Budget allocated to the program assignment',
-    `certification_expiry_date` DATE COMMENT 'Expiry date of required certification.',
     `certification_required` STRING COMMENT 'Specific certification or qualification required for the employee to fulfill this role in this program (e.g., Certified Sommelier for culinary programs, Certified Yoga Instructor for wellness programs). This attribute was explicitly identified in the detection phase as relationship data.',
-    `certification_verified_flag` BOOLEAN COMMENT 'Whether required certification is verified.',
-    `completion_date` DATE COMMENT '',
-    `completion_status` STRING COMMENT 'Completion status of program requirements.',
-    `compliance_status` STRING COMMENT 'Compliance status of the vendor under the program',
-    `contract_value` DECIMAL(18,2) COMMENT '',
-    `created_at` TIMESTAMP COMMENT 'Added to expand thin product per business context.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this assignment record was created in the system.',
-    `deliverables` STRING COMMENT '',
-    `effective_date` DATE COMMENT 'Expanded thin product',
-    `effective_from` DATE COMMENT '',
-    `effective_to` DATE COMMENT '',
-    `end_date` DATE COMMENT 'Expanded thin product',
-    `expiration_date` DATE COMMENT '',
-    `is_active` BOOLEAN COMMENT '',
-    `is_primary_assignment` BOOLEAN COMMENT 'Whether this is the employees primary program.',
-    `notes` STRING COMMENT '',
-    `performance_rating` STRING COMMENT 'Performance rating recorded for the assignment.',
-    `performance_score` DECIMAL(18,2) COMMENT 'Performance score for the vendor in this program',
-    `priority_rank` STRING COMMENT 'Expanded thin product',
     `responsibility_level` STRING COMMENT 'Level of responsibility the employee has for this program (e.g., primary, secondary, backup, trainee). This attribute was explicitly identified in the detection phase as relationship data.',
-    `role` STRING COMMENT '',
-    `role_code` STRING COMMENT 'Expanded thin product',
     `role_in_program` STRING COMMENT 'The specific role the employee performs within this experience program (e.g., coordinator, instructor, concierge, specialist). This attribute was explicitly identified in the detection phase as relationship data.',
-    `scope_of_work` STRING COMMENT '',
-    `spend_commitment` DECIMAL(18,2) COMMENT 'Committed spend amount for the assignment',
-    `spend_to_date` DECIMAL(18,2) COMMENT 'Actual spend recorded to date against the program',
-    `start_date` DATE COMMENT '',
-    `termination_reason` STRING COMMENT '',
-    `updated_at` TIMESTAMP COMMENT 'Added to expand thin product per business context.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this assignment record was last updated.',
     CONSTRAINT pk_program_assignment PRIMARY KEY(`program_assignment_id`)
 ) COMMENT 'This association product represents the Assignment between employee and experience_program. It captures the operational assignment of hotel staff to curated guest experience programs in specific roles. Each record links one employee to one experience_program with attributes that exist only in the context of this assignment relationship, including role, assignment dates, responsibility level, and required certifications.. Existence Justification: In hotel and resort operations, experience programs (wellness retreats, culinary experiences, spa packages) require multiple staff members in different roles to deliver the guest experience - a wellness program needs coordinators, instructors, and concierges working together. Simultaneously, employees participate in multiple programs across their tenure based on their skills and certifications. The business actively manages these assignments with specific roles, dates, responsibility levels, and certification requirements for scheduling, compliance, and quality delivery.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` (
     `requisition_line_id` BIGINT COMMENT 'Primary key for requisition_line',
+    `approved_by_employee_id` BIGINT COMMENT 'Reference to the employee or manager who approved this requisition line. Used for audit trail and accountability.',
+    `vendor_contract_id` BIGINT COMMENT 'Reference to the supplier contract or purchasing agreement governing this requisition line. Used for contract compliance tracking and pricing validation.',
     `delivery_address_id` BIGINT COMMENT 'Reference to the specific delivery address or receiving location within the property. May differ from the property main address for large resorts with multiple receiving points.',
+    `employee_id` BIGINT COMMENT 'Reference to the employee or user who created this requisition line item. Used for accountability and communication.',
     `material_master_id` BIGINT COMMENT 'Reference to the material or product being requisitioned. Links to master material catalog for F&B supplies, housekeeping items, FF&E (Furniture, Fixtures, and Equipment), or other procurement categories.',
-    `procurement_contract_id` BIGINT COMMENT 'Reference to the supplier contract or purchasing agreement governing this requisition line. Used for contract compliance tracking and pricing validation.',
     `project_id` BIGINT COMMENT 'Reference to the capital project or Property Improvement Plan (PIP) project if this requisition line is part of a specific project initiative. Applicable primarily for CapEx procurement.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or vacation property location where the requisitioned items will be delivered and used.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the purchase order that was created from this requisition line. Populated after the requisition is converted to a purchase order.',
     `purchase_requisition_id` BIGINT COMMENT 'Reference to the parent purchase requisition header that contains this line item.',
-    `employee_id` BIGINT COMMENT 'Reference to the employee or manager who approved this requisition line. Used for audit trail and accountability.',
-    `requisition_employee_id` BIGINT COMMENT 'Reference to the employee or user who created this requisition line item. Used for accountability and communication.',
     `split_from_requisition_line_id` BIGINT COMMENT 'Self-referencing FK on requisition_line (split_from_requisition_line_id)',
     `vendor_id` BIGINT COMMENT 'Reference to the preferred or suggested vendor/supplier for this requisition line. May be pre-populated from contract or sourcing agreements.',
     `approval_status` STRING COMMENT 'Current approval workflow status for this requisition line. Tracks whether the line has been reviewed and approved by authorized approvers.',
@@ -831,10 +827,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_
     CONSTRAINT pk_requisition_line PRIMARY KEY(`requisition_line_id`)
 ) COMMENT 'Master reference table for requisition_line. Referenced by requisition_line_id.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` (
-    `procurement_work_order_id` BIGINT COMMENT 'Primary key for work_order',
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` (
+    `work_order_id` BIGINT COMMENT 'Primary key for work_order',
     `fixed_asset_id` BIGINT COMMENT 'Reference to the specific asset or equipment that is the subject of the work order.',
-    `procurement_contract_id` BIGINT COMMENT 'Reference to the vendor contract governing pricing, terms, and service levels for this work order.',
+    `vendor_contract_id` BIGINT COMMENT 'Reference to the vendor contract governing pricing, terms, and service levels for this work order.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or property where the work order is executed.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the associated purchase order that authorizes procurement for this work order.',
     `vendor_id` BIGINT COMMENT 'Reference to the supplier or vendor assigned to fulfill this work order.',
@@ -852,6 +848,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the work order record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts on this work order.',
     `department` STRING COMMENT 'Property department or cost center responsible for the work order (e.g., Engineering, Housekeeping, Food & Beverage).',
+    `work_order_description` STRING COMMENT 'Detailed narrative describing the scope, purpose, and requirements of the work order.',
     `estimated_cost` DECIMAL(18,2) COMMENT 'Projected total cost for completing the work order, including labor, materials, and services.',
     `expenditure_type` STRING COMMENT 'Classification of spend as Capital Expenditure (CapEx) for PIP projects or Operating Expenditure (OpEx) for routine operations.',
     `general_ledger_account` STRING COMMENT 'General ledger account code for financial posting and accounting integration.',
@@ -870,21 +867,19 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_
     `scheduled_start_date` DATE COMMENT 'Planned date when work is scheduled to begin.',
     `service_cost` DECIMAL(18,2) COMMENT 'Total cost of external services or contractor fees associated with the work order.',
     `warranty_applicable` BOOLEAN COMMENT 'Indicates whether the work performed is covered under an existing warranty or service agreement.',
-    `work_order_description` STRING COMMENT 'Detailed narrative describing the scope, purpose, and requirements of the work order.',
-    `work_order_number` STRING COMMENT 'Externally-known business identifier for the work order, typically displayed on documents and used for tracking.',
     `work_order_status` STRING COMMENT 'Current lifecycle status of the work order: draft, submitted, approved, in progress, on hold, completed, or cancelled.',
     `work_order_type` STRING COMMENT 'Classification of the work order by nature of work: maintenance, repair, installation, inspection, project, or emergency.',
-    CONSTRAINT pk_procurement_work_order PRIMARY KEY(`procurement_work_order_id`)
+    CONSTRAINT pk_work_order PRIMARY KEY(`work_order_id`)
 ) COMMENT 'Master reference table for work_order. Referenced by work_order_id.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` (
     `project_id` BIGINT COMMENT 'Primary key for project',
+    `approved_by_id` BIGINT COMMENT 'Reference to the employee or executive who granted final approval for the project.',
+    `vendor_contract_id` BIGINT COMMENT 'Reference to the master vendor contract or agreement governing procurement for this project, if applicable.',
+    `employee_id` BIGINT COMMENT 'Reference to the employee responsible for managing and overseeing the project execution.',
     `parent_project_id` BIGINT COMMENT 'Self-referencing FK on project (parent_project_id)',
-    `procurement_contract_id` BIGINT COMMENT 'Reference to the master vendor contract or agreement governing procurement for this project, if applicable.',
-    `employee_id` BIGINT COMMENT 'Reference to the employee or executive who granted final approval for the project.',
-    `project_manager_employee_id` BIGINT COMMENT 'Reference to the employee responsible for managing and overseeing the project execution.',
-    `project_sponsor_employee_id` BIGINT COMMENT 'Reference to the executive or business unit sponsoring and funding the project.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or vacation property where this project is being executed.',
+    `sponsor_id` BIGINT COMMENT 'Reference to the executive or business unit sponsoring and funding the project.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Total actual expenditure incurred on the project to date, including all purchase orders, invoices, and expenses.',
     `actual_end_date` DATE COMMENT 'Actual date when project execution was completed or closed.',
     `actual_start_date` DATE COMMENT 'Actual date when project execution commenced.',
@@ -932,7 +927,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_add
     `country_code` STRING COMMENT 'Three-letter ISO country code identifying the country where the delivery address is located.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the delivery address record was first created in the system.',
     `default_shipping_method` STRING COMMENT 'Preferred or default shipping method for deliveries to this address.',
-    `delivery_address_status` STRING COMMENT 'Current lifecycle status of the delivery address indicating whether it is available for use in procurement operations.',
     `effective_from_date` DATE COMMENT 'Date from which this delivery address becomes active and available for use in procurement operations.',
     `effective_to_date` DATE COMMENT 'Date until which this delivery address remains active. Null indicates no planned end date.',
     `forklift_required` BOOLEAN COMMENT 'Indicates whether forklift equipment is required for unloading deliveries at this address.',
@@ -952,121 +946,370 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_add
     `sap_storage_location` STRING COMMENT 'SAP S/4HANA storage location code within the plant for goods receipt and inventory management.',
     `special_delivery_instructions` STRING COMMENT 'Additional instructions or notes for delivery personnel regarding access, parking, unloading procedures, or security requirements.',
     `state_province` STRING COMMENT 'State, province, or region where the delivery address is located.',
+    `delivery_address_status` STRING COMMENT 'Current lifecycle status of the delivery address indicating whether it is available for use in procurement operations.',
     `time_zone` STRING COMMENT 'IANA time zone identifier for the delivery address location, used for scheduling deliveries and coordinating logistics.',
     `verification_date` DATE COMMENT 'Date when the delivery address was last verified or validated.',
     `created_by` STRING COMMENT 'User identifier or name of the person who created the delivery address record.',
     CONSTRAINT pk_delivery_address PRIMARY KEY(`delivery_address_id`)
 ) COMMENT 'Master reference table for delivery_address. Referenced by delivery_address_id.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` (
-    `procurement_benefit_plan_id` BIGINT COMMENT 'Surrogate primary key for benefit_plan',
-    `workforce_benefit_plan_id` BIGINT COMMENT '',
-    `plan_name` STRING COMMENT '',
-    `plan_type` STRING COMMENT '',
-    `plan_code` STRING COMMENT '',
-    `procurement_benefit_plan_description` STRING COMMENT '',
-    `effective_date` DATE COMMENT '',
-    `expiration_date` DATE COMMENT '',
-    `procurement_benefit_plan_status` STRING COMMENT '',
-    `created_at` TIMESTAMP COMMENT '',
-    `updated_at` TIMESTAMP COMMENT '',
-    CONSTRAINT pk_procurement_benefit_plan PRIMARY KEY(`procurement_benefit_plan_id`)
-) COMMENT 'Records for procurement benefit plan in the procurement domain.';
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` (
+    `vendor_contract_id` BIGINT COMMENT 'Primary key for vendor_contract',
+    `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Procurement contracts are organized by category for contract compliance and category management. FK enables category-specific contract terms, approval workflows, and compliance tracking.',
+    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Procurement contracts create compliance obligations that hotels must track: insurance certificate requirements, vendor certifications (food safety, sustainability), regulatory standards (ADA complianc',
+    `employee_id` BIGINT COMMENT 'Reference to the procurement or property staff member responsible for managing this contract, monitoring compliance, and coordinating renewals.',
+    `primary_procurement_approved_by_employee_id` BIGINT COMMENT 'Reference to the employee who provided final approval for this contract. Null if contract is not yet approved.',
+    `procurement_contract_id` BIGINT COMMENT 'Unique identifier for the procurement contract record. Primary key.',
+    `property_id` BIGINT COMMENT 'Reference to the property or hotel location to which this contract applies. Null if contract is .',
+    `tertiary_procurement_last_modified_by_employee_id` BIGINT COMMENT 'Reference to the employee who last modified this contract record.',
+    `vendor_id` BIGINT COMMENT 'Reference to the supplier or vendor party with whom this contract is established.',
+    `approval_date` DATE COMMENT 'Date when the contract was formally approved by authorized procurement or finance management. Null if contract is still in draft or pending approval.',
+    `auto_renewal_flag` BOOLEAN COMMENT 'Indicates whether the contract automatically renews at expiry unless explicitly terminated. True if contract has auto-renewal clause, False if manual renewal required.',
+    `capex_designation_flag` BOOLEAN COMMENT 'Indicates whether this contract is designated for capital expenditure purchases (CapEx) such as Property Improvement Plan (PIP) projects, FF&E replacements, or major renovations. True for CapEx contracts, False for operating expenditure (OpEx) contracts.',
+    `contract_name` STRING COMMENT 'Descriptive name or title of the procurement contract for easy identification by procurement staff.',
+    `contract_number` STRING COMMENT 'Externally visible unique business identifier for the procurement contract, used in vendor communications and purchase orders.',
+    `contract_status` STRING COMMENT 'Current lifecycle state of the procurement contract. Draft indicates contract is being negotiated, pending approval awaiting internal authorization, active for contracts in force, suspended for temporarily paused agreements, expired for contracts past end date, terminated for contracts ended before expiry, renewed for contracts that have been extended. [ENUM-REF-CANDIDATE: draft|pending_approval|active|suspended|expired|terminated|renewed — 7 candidates stripped; promote to reference product]',
+    `contract_type` STRING COMMENT 'Classification of the procurement contract structure. Master supply agreement for long-term supplier relationships, blanket PO for recurring purchases, frame contract for pre-negotiated terms, spot contract for one-time purchases, service agreement for ongoing services, CapEx contract for capital expenditure projects including Property Improvement Plan (PIP) initiatives.. Valid values are `master_supply_agreement|blanket_purchase_order|frame_contract|spot_contract|service_agreement|capex_contract`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this contract record was first created in the procurement system.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code in which contract values, pricing, and payments are denominated.. Valid values are `^[A-Z]{3}$`',
+    `delivery_lead_time_days` STRING COMMENT 'Standard number of days from purchase order placement to goods receipt at property, as agreed in the contract Service Level Agreement (SLA).',
+    `document_url` STRING COMMENT 'URL or file path to the signed contract document stored in the enterprise document management system for legal reference and audit purposes.',
+    `effective_date` DATE COMMENT 'Date when the contract terms become binding and purchasing can commence under the agreed terms.',
+    `expiry_date` DATE COMMENT 'Date when the contract terms cease to be valid. Null for open-ended contracts without a defined end date.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this contract record was last updated in the procurement system.',
+    `maximum_order_quantity` DECIMAL(18,2) COMMENT 'Maximum order quantity allowed per purchase order or over contract term, if applicable. Used for contract compliance monitoring. Null if no maximum applies.',
+    `minimum_order_quantity` DECIMAL(18,2) COMMENT 'Minimum order quantity required per purchase order under this contract to qualify for negotiated pricing. Null if no minimum applies.',
+    `negotiated_discount_percent` DECIMAL(18,2) COMMENT 'Overall discount percentage negotiated off standard vendor pricing, applied at contract level. Used for price variance analysis and savings tracking. Null if no blanket discount applies.',
+    `notes` STRING COMMENT 'Free-text field for additional contract details, special terms, negotiation history, or operational notes relevant to procurement staff.',
+    `payment_terms` STRING COMMENT 'Agreed payment terms and conditions, including net payment days, early payment discounts, and payment method requirements (e.g., Net 30, 2/10 Net 30, Net 60).',
+    `pip_project_flag` BOOLEAN COMMENT 'Indicates whether this contract is specifically tied to a Property Improvement Plan (PIP) project for property renovation or upgrade. True if PIP-related, False otherwise.',
+    `renewal_notice_days` STRING COMMENT 'Number of days prior to expiry that either party must provide notice to prevent auto-renewal or to initiate renewal discussions. Null if not applicable.',
+    `sla_on_time_delivery_percent` DECIMAL(18,2) COMMENT 'Contractually agreed percentage of orders that must be delivered on time to meet SLA performance targets. Used for vendor performance monitoring.',
+    `sla_quality_acceptance_percent` DECIMAL(18,2) COMMENT 'Contractually agreed percentage of delivered goods that must pass quality inspection on first receipt to meet SLA performance targets.',
+    `termination_date` DATE COMMENT 'Date when the contract was formally terminated before its natural expiry. Null if contract has not been terminated.',
+    `termination_reason` STRING COMMENT 'Business reason or justification for early contract termination, such as vendor performance issues, business requirement changes, or cost optimization. Null if contract has not been terminated.',
+    `total_contract_value` DECIMAL(18,2) COMMENT 'Total estimated or committed monetary value of the contract over its full term, in the contract currency. Used for contract compliance monitoring and spend analytics. Null for open-ended contracts without value caps.',
+    CONSTRAINT pk_procurement_contract PRIMARY KEY(`vendor_contract_id`)
+) COMMENT 'Master procurement contracts and supply agreements with vendors, modeled as header+line. Header captures contract type (master supply agreement, blanket PO, frame contract), vendor, effective/expiry dates, auto-renewal flags, total contract value, negotiated discounts, and SLAs. Lines specify agreed materials/services, unit prices, minimum/maximum order quantities, and validity periods. Supports contract compliance monitoring, price variance analysis, and CapEx/PIP contract designations. Integrates with SAP S/4HANA MM outline agreements (ME31K).';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` (
+    `supply_agreement_id` BIGINT COMMENT 'Primary key for supply_agreement',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to the material being supplied under this agreement',
+    `procurement_supply_agreement_id` BIGINT COMMENT 'Primary key for procurement_supply_agreement',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to the vendor who supplies this material under this agreement',
+    `agreement_end_date` DATE COMMENT 'Expiration or renewal date of this supply agreement. Null for evergreen agreements. Used to trigger contract renegotiation workflows.',
+    `agreement_start_date` DATE COMMENT 'Effective start date of this supply agreement. Supports time-based pricing and contract lifecycle management.',
+    `agreement_status` STRING COMMENT 'Current lifecycle status of this supply agreement. Active agreements are available for procurement; Inactive/Expired agreements are historical.',
+    `supply_agreement_code` BIGINT COMMENT 'Unique identifier for this vendor-material supply agreement record. Primary key.',
+    `contract_reference_number` STRING COMMENT 'External reference to the master supply contract or purchase agreement governing this vendor-material relationship. Links to legal contract repository.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the negotiated unit price. May differ from vendors preferred currency or materials standard price currency.',
+    `last_purchase_date` DATE COMMENT 'Date of the most recent purchase order placed with this vendor for this material. Used to identify inactive supply relationships and trigger vendor performance reviews.',
+    `minimum_order_quantity` DECIMAL(18,2) COMMENT 'Smallest quantity that can be ordered from this vendor for this material. Vendor-specific term that affects procurement batch sizing.',
+    `negotiated_unit_price` DECIMAL(18,2) COMMENT 'The per-unit price negotiated with this specific vendor for this material. Varies by vendor-material combination and is central to sourcing decisions.',
+    `preferred_vendor_flag` BOOLEAN COMMENT 'Indicates whether this vendor is the preferred source for this material based on price, quality, reliability, or strategic relationship. Used in automated sourcing logic.',
+    `vendor_lead_time_days` STRING COMMENT 'Number of days from purchase order placement to goods receipt for this vendor-material combination. Vendor-specific and critical for inventory planning.',
+    `vendor_material_number` STRING COMMENT 'The vendors own part number or SKU for this material. Used in purchase orders and receiving to ensure correct material identification in vendor systems.',
+    CONSTRAINT pk_procurement_supply_agreement PRIMARY KEY(`supply_agreement_id`)
+) COMMENT 'This association product represents the contractual supply relationship between a vendor and a material in the procurement catalog. It captures vendor-specific pricing, lead times, minimum order quantities, and sourcing preferences that exist only in the context of this vendor-material pairing. Each record links one vendor to one material with negotiated commercial terms.. Existence Justification: In hotel and resort procurement operations, materials are routinely multi-sourced from multiple vendors to mitigate supply risk, leverage competitive pricing, and ensure continuity of operations. Each vendor-material pairing has distinct commercial terms including negotiated unit prices, lead times, minimum order quantities, and contract references. The current models single vendor_id FK in material_master cannot represent this multi-sourcing reality.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` (
+    `therapist_certification_id` BIGINT COMMENT 'Unique identifier for this therapist-treatment certification record. Primary key for the association.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to the therapist employee record',
+    `spa_therapist_certification_id` BIGINT COMMENT 'SSOT reference to owning entity.',
+    `treatment_id` BIGINT COMMENT 'Foreign key linking to the spa treatment record',
+    `certification_date` DATE COMMENT 'Date when the therapist was certified to perform this specific treatment. Used for compliance tracking and recertification scheduling.',
+    `certification_status` STRING COMMENT 'Current lifecycle status of this certification. Controls whether the therapist can be scheduled for this treatment. Values: ACTIVE, EXPIRED, SUSPENDED, PENDING_RENEWAL.',
+    `expiration_date` DATE COMMENT 'Date when this certification expires and requires renewal. Null for certifications without expiration. Used for proactive recertification scheduling.',
+    `last_performed_date` DATE COMMENT 'Most recent date the therapist performed this treatment on a guest. Used to identify skill currency and trigger refresher training requirements.',
+    `notes` STRING COMMENT 'Free-text notes about this therapists certification for this treatment, including special techniques, limitations, or guest feedback themes.',
+    `performance_rating` DECIMAL(18,2) COMMENT 'Average guest satisfaction or quality rating for this therapist performing this specific treatment. Used for scheduling premium treatments to top-rated therapists and identifying coaching opportunities.',
+    `preferred_for_treatment_flag` BOOLEAN COMMENT 'Indicates whether this therapist is designated as a preferred or specialist provider for this treatment. Used for VIP guest scheduling and premium service delivery.',
+    `proficiency_level` STRING COMMENT 'Current skill proficiency level of the therapist for this specific treatment. Used for scheduling optimization, quality assurance, and identifying training needs. Values: TRAINEE, COMPETENT, PROFICIENT, EXPERT.',
+    `training_hours` DECIMAL(18,2) COMMENT 'Total hours of training completed by the therapist for this specific treatment. Used for compliance documentation and professional development tracking.',
+    `treatments_performed_count` STRING COMMENT 'Total number of times this therapist has performed this specific treatment. Used for experience tracking and proficiency assessment.',
+    CONSTRAINT pk_procurement_therapist_certification PRIMARY KEY(`therapist_certification_id`)
+) COMMENT 'This association product represents the certification and competency relationship between spa therapists (employees) and treatments they are qualified to perform. It captures the operational reality that therapists must be certified for specific treatments, and the business actively manages certification status, proficiency levels, training requirements, and performance quality for scheduling, compliance, and quality assurance. Each record links one therapist to one treatment with attributes that exist only in the context of this certification relationship.. Existence Justification: In spa operations, therapists must be certified to perform specific treatments, and each treatment can be performed by multiple certified therapists. The business actively manages this many-to-many relationship through certification programs, proficiency assessments, and performance tracking. Spa managers use this data for scheduling optimization (matching guest requests to qualified therapists), compliance verification (ensuring minimum certification requirements are met), and quality assurance (tracking performance ratings per therapist-treatment combination).';
 
 -- ========= FOREIGN KEYS =========
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ADD CONSTRAINT `fk_procurement_employee_manager_employee_id` FOREIGN KEY (`manager_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ADD CONSTRAINT `fk_procurement_employee_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`org_unit`(`org_unit_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ADD CONSTRAINT `fk_procurement_employee_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`position`(`position_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ADD CONSTRAINT `fk_procurement_position_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`org_unit`(`org_unit_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ADD CONSTRAINT `fk_procurement_position_reports_to_position_id` FOREIGN KEY (`reports_to_position_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`position`(`position_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ADD CONSTRAINT `fk_procurement_org_unit_parent_org_unit_id` FOREIGN KEY (`parent_org_unit_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ADD CONSTRAINT `fk_procurement_vendor_performance_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ADD CONSTRAINT `fk_procurement_vendor_performance_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ADD CONSTRAINT `fk_procurement_vendor_performance_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_procurement_contract_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_procurement_contract_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_quaternary_purchase_buyer_employee_id` FOREIGN KEY (`quaternary_purchase_buyer_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ADD CONSTRAINT `fk_procurement_purchase_requisition_tertiary_purchase_final_approver_employee_id` FOREIGN KEY (`tertiary_purchase_final_approver_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ADD CONSTRAINT `fk_procurement_purchase_order_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ADD CONSTRAINT `fk_procurement_purchase_order_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_po_material_master_id` FOREIGN KEY (`po_material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_po_service_material_master_id` FOREIGN KEY (`po_service_material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_procurement_contract_id` FOREIGN KEY (`procurement_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`procurement_contract_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_material_master_id` FOREIGN KEY (`material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_vendor_contract_id` FOREIGN KEY (`vendor_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`vendor_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_requisition_line_id` FOREIGN KEY (`requisition_line_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`requisition_line`(`requisition_line_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ADD CONSTRAINT `fk_procurement_po_line_service_material_master_id` FOREIGN KEY (`service_material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ADD CONSTRAINT `fk_procurement_goods_receipt_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ADD CONSTRAINT `fk_procurement_goods_receipt_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ADD CONSTRAINT `fk_procurement_goods_receipt_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ADD CONSTRAINT `fk_procurement_goods_receipt_receiving_employee_id` FOREIGN KEY (`receiving_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ADD CONSTRAINT `fk_procurement_goods_receipt_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ADD CONSTRAINT `fk_procurement_vendor_invoice_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ADD CONSTRAINT `fk_procurement_vendor_invoice_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ADD CONSTRAINT `fk_procurement_vendor_invoice_goods_receipt_id` FOREIGN KEY (`goods_receipt_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt`(`goods_receipt_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ADD CONSTRAINT `fk_procurement_vendor_invoice_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ADD CONSTRAINT `fk_procurement_vendor_invoice_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ADD CONSTRAINT `fk_procurement_material_master_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ADD CONSTRAINT `fk_procurement_material_master_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ADD CONSTRAINT `fk_procurement_category_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ADD CONSTRAINT `fk_procurement_category_modified_by_user_employee_id` FOREIGN KEY (`modified_by_user_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ADD CONSTRAINT `fk_procurement_category_parent_category_id` FOREIGN KEY (`parent_category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ADD CONSTRAINT `fk_procurement_request_for_quotation_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ADD CONSTRAINT `fk_procurement_request_for_quotation_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ADD CONSTRAINT `fk_procurement_request_for_quotation_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ADD CONSTRAINT `fk_procurement_request_for_quotation_primary_request_employee_id` FOREIGN KEY (`primary_request_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ADD CONSTRAINT `fk_procurement_vendor_quotation_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ADD CONSTRAINT `fk_procurement_vendor_quotation_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ADD CONSTRAINT `fk_procurement_vendor_quotation_request_for_quotation_id` FOREIGN KEY (`request_for_quotation_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation`(`request_for_quotation_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ADD CONSTRAINT `fk_procurement_vendor_quotation_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_goods_receipt_id` FOREIGN KEY (`goods_receipt_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt`(`goods_receipt_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_primary_purchase_employee_id` FOREIGN KEY (`primary_purchase_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ADD CONSTRAINT `fk_procurement_purchase_return_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ADD CONSTRAINT `fk_procurement_vendor_certification_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ADD CONSTRAINT `fk_procurement_vendor_certification_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ADD CONSTRAINT `fk_procurement_vendor_certification_tertiary_vendor_last_modified_by_employee_id` FOREIGN KEY (`tertiary_vendor_last_modified_by_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ADD CONSTRAINT `fk_procurement_vendor_certification_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ADD CONSTRAINT `fk_procurement_procurement_supply_agreement_material_master_id` FOREIGN KEY (`material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ADD CONSTRAINT `fk_procurement_procurement_supply_agreement_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ADD CONSTRAINT `fk_procurement_vendor_category_qualification_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ADD CONSTRAINT `fk_procurement_vendor_category_qualification_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ADD CONSTRAINT `fk_procurement_vendor_category_qualification_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ADD CONSTRAINT `fk_procurement_vendor_program_participation_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ADD CONSTRAINT `fk_procurement_vendor_touchpoint_service_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ADD CONSTRAINT `fk_procurement_category_buyer_assignment_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ADD CONSTRAINT `fk_procurement_program_assignment_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`project`(`project_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ADD CONSTRAINT `fk_procurement_program_assignment_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ADD CONSTRAINT `fk_procurement_category_buyer_assignment_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ADD CONSTRAINT `fk_procurement_program_assignment_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_approved_by_employee_id` FOREIGN KEY (`approved_by_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_vendor_contract_id` FOREIGN KEY (`vendor_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`vendor_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_delivery_address_id` FOREIGN KEY (`delivery_address_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`delivery_address`(`delivery_address_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_material_master_id` FOREIGN KEY (`material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_procurement_contract_id` FOREIGN KEY (`procurement_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`procurement_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`project`(`project_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_purchase_requisition_id` FOREIGN KEY (`purchase_requisition_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition`(`purchase_requisition_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_split_from_requisition_line_id` FOREIGN KEY (`split_from_requisition_line_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`requisition_line`(`requisition_line_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ADD CONSTRAINT `fk_procurement_requisition_line_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ADD CONSTRAINT `fk_procurement_procurement_work_order_procurement_contract_id` FOREIGN KEY (`procurement_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`procurement_contract_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ADD CONSTRAINT `fk_procurement_procurement_work_order_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ADD CONSTRAINT `fk_procurement_procurement_work_order_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ADD CONSTRAINT `fk_procurement_work_order_vendor_contract_id` FOREIGN KEY (`vendor_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`vendor_contract_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ADD CONSTRAINT `fk_procurement_work_order_purchase_order_id` FOREIGN KEY (`purchase_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`purchase_order`(`purchase_order_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ADD CONSTRAINT `fk_procurement_work_order_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_approved_by_id` FOREIGN KEY (`approved_by_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_vendor_contract_id` FOREIGN KEY (`vendor_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`vendor_contract_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_parent_project_id` FOREIGN KEY (`parent_project_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`project`(`project_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_procurement_contract_id` FOREIGN KEY (`procurement_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`procurement_contract_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ADD CONSTRAINT `fk_procurement_project_sponsor_id` FOREIGN KEY (`sponsor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ADD CONSTRAINT `fk_procurement_delivery_address_parent_delivery_address_id` FOREIGN KEY (`parent_delivery_address_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`delivery_address`(`delivery_address_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_category_id` FOREIGN KEY (`category_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`category`(`category_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_primary_procurement_approved_by_employee_id` FOREIGN KEY (`primary_procurement_approved_by_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_procurement_contract_id` FOREIGN KEY (`procurement_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract`(`vendor_contract_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_tertiary_procurement_last_modified_by_employee_id` FOREIGN KEY (`tertiary_procurement_last_modified_by_employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ADD CONSTRAINT `fk_procurement_vendor_contract_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ADD CONSTRAINT `fk_procurement_supply_agreement_material_master_id` FOREIGN KEY (`material_master_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`material_master`(`material_master_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ADD CONSTRAINT `fk_procurement_supply_agreement_procurement_supply_agreement_id` FOREIGN KEY (`procurement_supply_agreement_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement`(`supply_agreement_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ADD CONSTRAINT `fk_procurement_supply_agreement_vendor_id` FOREIGN KEY (`vendor_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`vendor`(`vendor_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ADD CONSTRAINT `fk_procurement_therapist_certification_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_travel_hospitality_v1`.`procurement`.`employee`(`employee_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`procurement` SET TAGS ('dbx_division' = 'corporate');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`procurement` SET TAGS ('dbx_domain' = 'procurement');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` SET TAGS ('dbx_subdomain' = 'workforce_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `ada_accommodation_description` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Accommodation Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `ada_accommodation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Accommodation Required Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Employee Date of Birth');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Employee Email Address');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `emergency_contact_relationship` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Relationship');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employee_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employment_status` SET TAGS ('dbx_business_glossary_term' = 'Employment Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employment_status` SET TAGS ('dbx_value_regex' = 'active|on-leave|suspended|terminated|retired|deceased');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employment Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `employment_type` SET TAGS ('dbx_value_regex' = 'full-time|part-time|seasonal|contract|temporary|intern');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Employee First Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `food_safety_certification_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Certification Expiry Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `food_safety_certification_flag` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Certification Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `fte_percentage` SET TAGS ('dbx_business_glossary_term' = 'Full-Time Equivalent (FTE) Percentage');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Hire Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Last Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Middle Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_business_glossary_term' = 'National Identification Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `oracle_hcm_employee_code` SET TAGS ('dbx_business_glossary_term' = 'Oracle Human Capital Management (HCM) Employee Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `osha_training_current_flag` SET TAGS ('dbx_business_glossary_term' = 'Occupational Safety and Health Administration (OSHA) Training Current Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `osha_training_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Occupational Safety and Health Administration (OSHA) Training Expiry Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `pay_grade` SET TAGS ('dbx_business_glossary_term' = 'Pay Grade');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `pay_type` SET TAGS ('dbx_business_glossary_term' = 'Pay Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `pay_type` SET TAGS ('dbx_value_regex' = 'hourly|salaried|commission|contract');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `preferred_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Preferred Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `standard_hours_per_week` SET TAGS ('dbx_business_glossary_term' = 'Standard Hours Per Week');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `union_code` SET TAGS ('dbx_business_glossary_term' = 'Union Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `union_membership_flag` SET TAGS ('dbx_business_glossary_term' = 'Union Membership Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `work_authorization_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Work Authorization Expiry Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `work_authorization_status` SET TAGS ('dbx_business_glossary_term' = 'Work Authorization Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `work_authorization_status` SET TAGS ('dbx_value_regex' = 'citizen|permanent-resident|work-visa|pending-verification|expired|not-authorized');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `work_location_type` SET TAGS ('dbx_business_glossary_term' = 'Work Location Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`employee` ALTER COLUMN `work_location_type` SET TAGS ('dbx_value_regex' = 'on-property|remote|hybrid|corporate-office|multi-property');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` SET TAGS ('dbx_subdomain' = 'workforce_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `reports_to_position_id` SET TAGS ('dbx_business_glossary_term' = 'Reports To Position ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `ada_accommodation_required` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Accommodation Required Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `budgeted_annual_salary` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Annual Salary');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `budgeted_annual_salary` SET TAGS ('dbx_pii_person' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_code` SET TAGS ('dbx_business_glossary_term' = 'Position Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_description` SET TAGS ('dbx_business_glossary_term' = 'Position Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `fte_allocation` SET TAGS ('dbx_business_glossary_term' = 'Full-Time Equivalent (FTE) Allocation');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `is_budgeted` SET TAGS ('dbx_business_glossary_term' = 'Is Budgeted Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `is_exempt` SET TAGS ('dbx_business_glossary_term' = 'Is Exempt Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `is_supervisory` SET TAGS ('dbx_business_glossary_term' = 'Is Supervisory Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `is_union` SET TAGS ('dbx_business_glossary_term' = 'Is Union Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `job_code` SET TAGS ('dbx_business_glossary_term' = 'Job Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `job_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `last_updated_by` SET TAGS ('dbx_business_glossary_term' = 'Last Updated By User');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `minimum_education_level` SET TAGS ('dbx_business_glossary_term' = 'Minimum Education Level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `minimum_education_level` SET TAGS ('dbx_value_regex' = 'high_school|associate|bachelor|master|doctorate|none');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `minimum_years_experience` SET TAGS ('dbx_business_glossary_term' = 'Minimum Years of Experience');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `pay_grade` SET TAGS ('dbx_business_glossary_term' = 'Pay Grade');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `pay_grade` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `physical_requirements` SET TAGS ('dbx_business_glossary_term' = 'Physical Requirements');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_status` SET TAGS ('dbx_business_glossary_term' = 'Position Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_status` SET TAGS ('dbx_value_regex' = 'active|frozen|eliminated|proposed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_type` SET TAGS ('dbx_business_glossary_term' = 'Position Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `position_type` SET TAGS ('dbx_value_regex' = 'regular|seasonal|temporary|contract|on_call');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `required_certifications` SET TAGS ('dbx_business_glossary_term' = 'Required Certifications');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `shift_eligibility` SET TAGS ('dbx_business_glossary_term' = 'Shift Eligibility');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `shift_eligibility` SET TAGS ('dbx_value_regex' = 'day|evening|night|rotating|any');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Position Title');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `union_code` SET TAGS ('dbx_business_glossary_term' = 'Union Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `union_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_business_glossary_term' = 'Uniform System of Accounts for the Lodging Industry (USALI) Department Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `work_location_type` SET TAGS ('dbx_business_glossary_term' = 'Work Location Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `work_location_type` SET TAGS ('dbx_value_regex' = 'on_property|remote|hybrid|field');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`position` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` SET TAGS ('dbx_subdomain' = 'workforce_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `parent_org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Organizational Unit ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `actual_headcount` SET TAGS ('dbx_business_glossary_term' = 'Actual Headcount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `budgeted_headcount` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Headcount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_code` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_description` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Email Address');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `hierarchy_path` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Path');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `is_guest_facing` SET TAGS ('dbx_business_glossary_term' = 'Is Guest Facing');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `is_revenue_generating` SET TAGS ('dbx_business_glossary_term' = 'Is Revenue Generating');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `is_unionized` SET TAGS ('dbx_business_glossary_term' = 'Is Unionized');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `labor_cost_percentage_target` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Percentage Target');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `labor_productivity_standard` SET TAGS ('dbx_business_glossary_term' = 'Labor Productivity Standard');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `location_code` SET TAGS ('dbx_business_glossary_term' = 'Location Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_name` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_status` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|planned|closed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_type` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `org_unit_type` SET TAGS ('dbx_value_regex' = 'division|department|team|cost_center|work_group');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_value_regex' = '^+?[1-9]d{1,14}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `productivity_target_percentage` SET TAGS ('dbx_business_glossary_term' = 'Productivity Target Percentage');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `productivity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Productivity Unit of Measure');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `productivity_unit_of_measure` SET TAGS ('dbx_value_regex' = 'rooms_per_hour|covers_per_hour|check_ins_per_hour|setups_per_hour|minutes_per_unit|units_per_shift');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `requires_certification` SET TAGS ('dbx_business_glossary_term' = 'Requires Certification');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_business_glossary_term' = 'Shift Pattern');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_value_regex' = '24x7|am_pm_night|am_pm|business_hours|on_call|variable');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `standard_time_per_unit` SET TAGS ('dbx_business_glossary_term' = 'Standard Time Per Unit');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `union_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Union Affiliation');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`org_unit` ALTER COLUMN `usali_classification` SET TAGS ('dbx_business_glossary_term' = 'USALI (Uniform System of Accounts for the Lodging Industry) Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` SET TAGS ('dbx_subdomain' = 'vendor_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Vendor Address Line 1');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Vendor Address Line 2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `annual_spend_amount` SET TAGS ('dbx_business_glossary_term' = 'Annual Spend Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `annual_spend_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Routing Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_value_regex' = '^[0-9]{9}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `bank_routing_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Vendor City');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Vendor Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `classification` SET TAGS ('dbx_value_regex' = 'food_beverage_supplier|housekeeping_supplier|ffe_vendor|maintenance_contractor|technology_provider|professional_services');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Code');
@@ -1077,16 +1320,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `co
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `country_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `dba_name` SET TAGS ('dbx_business_glossary_term' = 'Vendor Doing Business As (DBA) Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `diversity_certification` SET TAGS ('dbx_business_glossary_term' = 'Diversity Certification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `duns_number` SET TAGS ('dbx_business_glossary_term' = 'Data Universal Numbering System (DUNS) Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `duns_number` SET TAGS ('dbx_value_regex' = '^[0-9]{9}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `iban` SET TAGS ('dbx_business_glossary_term' = 'International Bank Account Number (IBAN)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `iban` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `iban` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `iban` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `insurance_certificate_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Insurance Certificate Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
@@ -1099,68 +1340,52 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `pa
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'ach|wire_transfer|check|credit_card|procurement_card');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Postal Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `preferred_currency` SET TAGS ('dbx_business_glossary_term' = 'Preferred Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `preferred_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_business_glossary_term' = 'Remittance Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `remittance_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Vendor Risk Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `risk_rating` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'Vendor State or Province');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `swift_code` SET TAGS ('dbx_business_glossary_term' = 'Society for Worldwide Interbank Financial Telecommunication (SWIFT) Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `swift_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `swift_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `tax_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `tax_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `tier` SET TAGS ('dbx_business_glossary_term' = 'Vendor Tier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `tier` SET TAGS ('dbx_value_regex' = 'strategic|preferred|approved|conditional|restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_business_glossary_term' = 'Value Added Tax (VAT) Registration Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_status` SET TAGS ('dbx_business_glossary_term' = 'Vendor Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|pending_approval|blocked|terminated');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_tier` SET TAGS ('dbx_business_glossary_term' = 'Vendor Tier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor` ALTER COLUMN `vendor_tier` SET TAGS ('dbx_value_regex' = 'strategic|preferred|approved|conditional|restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` SET TAGS ('dbx_subdomain' = 'vendor_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `vendor_performance_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Performance ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Evaluator ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `average_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Average Lead Time Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `average_lead_time_days` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `contract_compliance_score` SET TAGS ('dbx_business_glossary_term' = 'Contract Compliance Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `contract_renewal_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Contract Renewal Recommendation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `contract_renewal_recommendation` SET TAGS ('dbx_value_regex' = 'renew|renegotiate|terminate|extend_trial');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `cost_competitiveness_rating` SET TAGS ('dbx_business_glossary_term' = 'Cost Competitiveness Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `emergency_order_support_rating` SET TAGS ('dbx_business_glossary_term' = 'Emergency Order Support Rating');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `emergency_order_support_rating` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `evaluation_notes` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `evaluation_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `evaluation_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period Start Date');
@@ -1181,77 +1406,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTE
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `sustainability_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Compliance Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `total_purchase_orders` SET TAGS ('dbx_business_glossary_term' = 'Total Purchase Orders');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_performance` ALTER COLUMN `total_spend_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Spend Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_subdomain' = 'contract_sourcing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_concept' = 'contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_group' = 'contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_canonical' = 'procurement.procurement_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_ssot_role' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Contract ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Owner Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `primary_procurement_approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `primary_procurement_approved_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `primary_procurement_approved_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `tertiary_procurement_last_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `tertiary_procurement_last_modified_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `tertiary_procurement_last_modified_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto Renewal Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `capex_designation_flag` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) Designation Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_name` SET TAGS ('dbx_business_glossary_term' = 'Contract Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_status` SET TAGS ('dbx_business_glossary_term' = 'Contract Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_type` SET TAGS ('dbx_business_glossary_term' = 'Contract Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_type` SET TAGS ('dbx_value_regex' = 'master_supply_agreement|blanket_purchase_order|frame_contract|spot_contract|service_agreement|capex_contract');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Contract Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `delivery_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Delivery Lead Time Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `document_url` SET TAGS ('dbx_business_glossary_term' = 'Contract Document URL');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `document_url` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `maximum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Maximum Order Quantity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `negotiated_discount_percent` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Discount Percent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Contract Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `pip_project_flag` SET TAGS ('dbx_business_glossary_term' = 'Property Improvement Plan (PIP) Project Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `renewal_notice_days` SET TAGS ('dbx_business_glossary_term' = 'Renewal Notice Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `sla_on_time_delivery_percent` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) On-Time Delivery Percent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `sla_quality_acceptance_percent` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Quality Acceptance Percent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `total_contract_value` SET TAGS ('dbx_business_glossary_term' = 'Total Contract Value');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `purchase_requisition_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Requisition ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Requesting Department ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Preferred Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requestor Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `quaternary_purchase_buyer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Buyer ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `tertiary_purchase_final_approver_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Final Approver ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `tertiary_purchase_final_approver_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `tertiary_purchase_final_approver_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `approval_chain_level` SET TAGS ('dbx_business_glossary_term' = 'Approval Chain Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `budget_available_flag` SET TAGS ('dbx_business_glossary_term' = 'Budget Available Flag');
@@ -1288,9 +1453,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_requisition` ALTER COLUMN `submitted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submitted Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
@@ -1304,10 +1467,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `blanket_release_number` SET TAGS ('dbx_business_glossary_term' = 'Blanket Release Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_business_glossary_term' = 'Buyer Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `buyer_name` SET TAGS ('dbx_business_glossary_term' = 'Buyer Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `closed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Closed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `commitment_released_amount` SET TAGS ('dbx_business_glossary_term' = 'Commitment Released Amount');
@@ -1331,28 +1492,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Delivery Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `requisition_number` SET TAGS ('dbx_business_glossary_term' = 'Purchase Requisition Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Address Line 1');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line1` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Address Line 2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_address_line2` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_city` SET TAGS ('dbx_business_glossary_term' = 'Ship-To City');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_country_code` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Postal Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_state_province` SET TAGS ('dbx_business_glossary_term' = 'Ship-To State or Province');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_state_province` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `ship_to_state_province` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `shipping_method` SET TAGS ('dbx_business_glossary_term' = 'Shipping Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `shipping_method` SET TAGS ('dbx_value_regex' = 'ground|air|ocean|courier|vendor_delivery|pickup');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
@@ -1363,16 +1515,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `wbs_element` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_order` ALTER COLUMN `wbs_element` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-.]{0,24}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `po_line_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Line ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `po_material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `po_service_material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Service ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Header ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `requisition_line_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Requisition Line ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `service_material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Service ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `cost_center` SET TAGS ('dbx_business_glossary_term' = 'Cost Center');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1400,7 +1550,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `p
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `price_unit` SET TAGS ('dbx_business_glossary_term' = 'Price Unit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `short_text` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Line Short Text');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `under_delivery_tolerance_percent` SET TAGS ('dbx_business_glossary_term' = 'Under-Delivery Tolerance Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
@@ -1408,23 +1557,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `u
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `vendor_material_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Material Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`po_line` ALTER COLUMN `wbs_element` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `pip_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Property Improvement Plan (PIP) Project ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `receiving_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Receiving Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `receiving_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `receiving_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `batch_managed_flag` SET TAGS ('dbx_business_glossary_term' = 'Batch Managed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `batch_managed_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `bill_of_lading_number` SET TAGS ('dbx_business_glossary_term' = 'Bill of Lading (BOL) Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancelled Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `capex_opex_indicator` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) or Operating Expenditure (OpEx) Indicator');
@@ -1454,10 +1596,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `receiving_notes` SET TAGS ('dbx_business_glossary_term' = 'Receiving Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `return_delivery_flag` SET TAGS ('dbx_business_glossary_term' = 'Return Delivery Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `serial_number_managed_flag` SET TAGS ('dbx_business_glossary_term' = 'Serial Number Managed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `serial_number_managed_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `special_handling_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Handling Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `temperature_controlled_flag` SET TAGS ('dbx_business_glossary_term' = 'Temperature Controlled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_business_glossary_term' = 'Three-Way Match Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_value_regex' = 'not_started|matched|variance_detected|blocked|approved');
@@ -1468,14 +1608,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `variance_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Variance Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`goods_receipt` ALTER COLUMN `variance_reason_code` SET TAGS ('dbx_value_regex' = 'price_change|quantity_short|quantity_over|damaged_goods|substitution|freight_variance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `vendor_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Invoice ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approver ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -1496,7 +1632,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `early_payment_discount_date` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `early_payment_discount_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `early_payment_discount_percentage` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `early_payment_discount_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `expense_type` SET TAGS ('dbx_business_glossary_term' = 'Expense Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `expense_type` SET TAGS ('dbx_value_regex' = 'opex|capex');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
@@ -1524,14 +1659,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_business_glossary_term' = 'Three-Way Match Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_value_regex' = 'matched|variance|no_po|no_gr|blocked');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `abc_classification` SET TAGS ('dbx_business_glossary_term' = 'ABC Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `abc_classification` SET TAGS ('dbx_value_regex' = 'A|B|C');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `allergen_information` SET TAGS ('dbx_business_glossary_term' = 'Allergen Information');
@@ -1542,7 +1673,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `capex_opex_indicator` SET TAGS ('dbx_value_regex' = 'capex|opex');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1574,24 +1704,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `shelf_life_days` SET TAGS ('dbx_business_glossary_term' = 'Shelf Life (Days)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `short_description` SET TAGS ('dbx_business_glossary_term' = 'Material Short Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `standard_price` SET TAGS ('dbx_business_glossary_term' = 'Standard Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `standard_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `storage_condition` SET TAGS ('dbx_business_glossary_term' = 'Storage Condition');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `storage_condition` SET TAGS ('dbx_value_regex' = 'ambient|refrigerated|frozen|climate_controlled|dry|secure');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `storage_condition` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `sustainability_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `tax_classification` SET TAGS ('dbx_business_glossary_term' = 'Tax Classification Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `temperature_range_max` SET TAGS ('dbx_business_glossary_term' = 'Maximum Storage Temperature (Celsius)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`material_master` ALTER COLUMN `temperature_range_min` SET TAGS ('dbx_business_glossary_term' = 'Minimum Storage Temperature (Celsius)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` SET TAGS ('dbx_subdomain' = 'vendor_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `parent_category_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Category ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Category Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `annual_spend_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Annual Spend Budget Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `approval_authority_level` SET TAGS ('dbx_business_glossary_term' = 'Approval Authority Level');
@@ -1615,9 +1740,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `emergency_procurement_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Emergency Procurement Allowed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `emergency_procurement_allowed_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `inventory_managed_flag` SET TAGS ('dbx_business_glossary_term' = 'Inventory Managed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `inventory_managed_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Standard Lead Time Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `category_level` SET TAGS ('dbx_business_glossary_term' = 'Category Hierarchy Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `minimum_vendor_count` SET TAGS ('dbx_business_glossary_term' = 'Minimum Qualified Vendor Count');
@@ -1635,24 +1758,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `sustainability_criteria_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Criteria Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Treatment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_value_regex' = 'taxable|exempt|zero_rated|reverse_charge');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_business_glossary_term' = 'Uniform System of Accounts for the Lodging Industry (USALI) Department Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category` ALTER COLUMN `vendor_diversification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Vendor Diversification Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` SET TAGS ('dbx_subdomain' = 'contract_sourcing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `request_for_quotation_id` SET TAGS ('dbx_business_glossary_term' = 'Request For Quotation Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approver ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Awarded Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `primary_request_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Buyer ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `primary_request_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `primary_request_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `award_criteria` SET TAGS ('dbx_business_glossary_term' = 'Award Criteria');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `award_criteria` SET TAGS ('dbx_value_regex' = 'lowest_price|best_value|technical_merit|multi_vendor_award');
@@ -1692,14 +1807,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` A
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `terms_and_conditions` SET TAGS ('dbx_business_glossary_term' = 'Terms and Conditions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`request_for_quotation` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` SET TAGS ('dbx_subdomain' = 'contract_sourcing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_quotation_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Quotation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Evaluator ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `request_for_quotation_id` SET TAGS ('dbx_business_glossary_term' = 'Request for Quotation (RFQ) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
@@ -1735,31 +1846,23 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Vendor Contact Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Vendor Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_name` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_name` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Vendor Contact Phone');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_phone` SET TAGS ('dbx_pii' = 'contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `vendor_score` SET TAGS ('dbx_business_glossary_term' = 'Vendor Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_quotation` ALTER COLUMN `warranty_terms` SET TAGS ('dbx_business_glossary_term' = 'Warranty Terms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `purchase_return_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Return ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `primary_purchase_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiated By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `primary_purchase_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `primary_purchase_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
@@ -1800,24 +1903,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `shipped_date` SET TAGS ('dbx_business_glossary_term' = 'Shipped Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `vendor_acknowledgement_date` SET TAGS ('dbx_business_glossary_term' = 'Vendor Acknowledgement Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`purchase_return` ALTER COLUMN `vendor_credit_memo_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Credit Memo Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` SET TAGS ('dbx_subdomain' = 'vendor_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `vendor_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Certification ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Verified By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `tertiary_vendor_last_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `tertiary_vendor_last_modified_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `tertiary_vendor_last_modified_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto Renewal Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `brand_standard_flag` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard Flag');
@@ -1829,20 +1925,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `compliance_gate_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Gate Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `coverage_amount` SET TAGS ('dbx_business_glossary_term' = 'Coverage Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `coverage_amount` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `coverage_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Coverage Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `coverage_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `coverage_currency_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `document_url` SET TAGS ('dbx_business_glossary_term' = 'Document Uniform Resource Locator (URL)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `document_url` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `esg_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Environmental Social Governance (ESG) Reporting Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `issuing_body` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Issuing Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -1854,36 +1946,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'document_upload|third_party_verification|issuer_portal_check|manual_inspection|self_attestation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_subdomain' = 'contract_sourcing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_association_edges' = 'procurement.vendor,procurement.material_master');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `procurement_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'procurement_supply_agreement Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Material Master Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Vendor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_end_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Agreement Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `last_purchase_date` SET TAGS ('dbx_business_glossary_term' = 'Last Purchase Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `negotiated_unit_price` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Unit Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `preferred_vendor_flag` SET TAGS ('dbx_business_glossary_term' = 'Preferred Vendor Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `supply_agreement_code` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Vendor Lead Time');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_material_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Material Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_subdomain' = 'vendor_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_association_edges' = 'procurement.vendor,procurement.procurement_category');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `vendor_category_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Category Qualification ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Category Qualification - Procurement Category Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Category Qualification - Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `annual_spend_actual` SET TAGS ('dbx_business_glossary_term' = 'Annual Spend Actual');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `category_performance_score` SET TAGS ('dbx_business_glossary_term' = 'Category Performance Score');
@@ -1902,18 +1970,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualific
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `qualification_notes` SET TAGS ('dbx_business_glossary_term' = 'Qualification Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `spend_allocation_percentage` SET TAGS ('dbx_business_glossary_term' = 'Spend Allocation Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_category_qualification` ALTER COLUMN `spend_allocation_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_subdomain' = 'vendor_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_association_edges' = 'procurement.vendor,experience.experience_program');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `vendor_program_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Program Participation ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `vendor_experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Program Participation - Experience Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Program Participation - Vendor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `vendor_program_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Program Participation - Experience Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `capacity_limit` SET TAGS ('dbx_business_glossary_term' = 'Capacity Limit');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `capacity_limit` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `fulfillment_responsibility_flag` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Responsibility Flag');
@@ -1932,16 +1996,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participa
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `vendor_role_in_program` SET TAGS ('dbx_business_glossary_term' = 'Vendor Role in Program');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_program_participation` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_subdomain' = 'vendor_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_subdomain' = 'supplier_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_association_edges' = 'procurement.vendor,experience.touchpoint');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `vendor_touchpoint_service_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Touchpoint Service ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Touchpoint Service - Touchpoint Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Touchpoint Service - Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `cost_per_touchpoint_interaction` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Touchpoint Interaction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `cost_per_touchpoint_interaction` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `last_performance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Performance Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `quality_threshold_score` SET TAGS ('dbx_business_glossary_term' = 'Quality Threshold Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `response_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Response Time Minutes');
@@ -1952,15 +2013,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_servic
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `vendor_staff_certification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Vendor Staff Certification Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`vendor_touchpoint_service` ALTER COLUMN `vendor_touchpoint_role` SET TAGS ('dbx_business_glossary_term' = 'Vendor Touchpoint Role');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_subdomain' = 'vendor_management');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_association_edges' = 'workforce.employee,procurement.procurement_category');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `category_buyer_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Category Buyer Assignment Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Category Buyer Assignment - Procurement Category Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Category Buyer Assignment - Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Buyer Assignment Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Assignment Created Timestamp');
@@ -1970,119 +2027,37 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignmen
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `spend_authority_limit` SET TAGS ('dbx_business_glossary_term' = 'Spend Authority Limit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Assignment Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `workload_percentage` SET TAGS ('dbx_business_glossary_term' = 'Category Workload Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`category_buyer_assignment` ALTER COLUMN `workload_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_subdomain' = 'contract_sourcing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_association_edges' = 'workforce.employee,spa.treatment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `procurement_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'procurement_therapist_certification Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification - Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_ssot_owner' = 'spa.spa_therapist_certification');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_ssot_entity' = 'therapist_certification');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification - Treatment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `certification_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiration Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `last_performed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Performed Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Certification Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Performance Rating');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `preferred_for_treatment_flag` SET TAGS ('dbx_business_glossary_term' = 'Preferred Therapist Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `preferred_for_treatment_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `preferred_for_treatment_flag` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `proficiency_level` SET TAGS ('dbx_business_glossary_term' = 'Proficiency Level');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `training_hours` SET TAGS ('dbx_business_glossary_term' = 'Training Hours Completed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatments_performed_count` SET TAGS ('dbx_business_glossary_term' = 'Treatments Performed Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_subdomain' = 'project_delivery');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_subdomain' = 'project_execution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_association_edges' = 'workforce.employee,experience.experience_program');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Program Assignment Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approver Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_assigned_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_assigned_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_assigned_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Program Assignment - Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_assignment_id` SET TAGS ('dbx_ssot_reference' = 'loyalty.loyalty_enrollment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Program Assignment - Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Assignment - Experience Program Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `allocation_pct` SET TAGS ('dbx_business_glossary_term' = 'Allocation Pct');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `allocation_percent` SET TAGS ('dbx_business_glossary_term' = 'Allocation Percent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_business_glossary_term' = 'Allocation Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assigned_by` SET TAGS ('dbx_business_glossary_term' = 'Assigned By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assigned_date` SET TAGS ('dbx_business_glossary_term' = 'Assigned Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_end_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_notes` SET TAGS ('dbx_business_glossary_term' = 'Assignment Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_role` SET TAGS ('dbx_business_glossary_term' = 'Assignment Role');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_start_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Assignment Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `certification_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `certification_required` SET TAGS ('dbx_business_glossary_term' = 'Required Certification');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `certification_verified_flag` SET TAGS ('dbx_business_glossary_term' = 'Certification Verified Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `completion_status` SET TAGS ('dbx_business_glossary_term' = 'Completion Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Created At');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `effective_to` SET TAGS ('dbx_business_glossary_term' = 'Effective To');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `is_primary_assignment` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Assignment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Performance Rating');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `performance_score` SET TAGS ('dbx_business_glossary_term' = 'Performance Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `responsibility_level` SET TAGS ('dbx_business_glossary_term' = 'Responsibility Level');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `role` SET TAGS ('dbx_business_glossary_term' = 'Role');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `role_code` SET TAGS ('dbx_business_glossary_term' = 'Role Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `role_in_program` SET TAGS ('dbx_business_glossary_term' = 'Program Role');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `spend_commitment` SET TAGS ('dbx_business_glossary_term' = 'Spend Commitment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `spend_to_date` SET TAGS ('dbx_business_glossary_term' = 'Spend To Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Updated At');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`program_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` SET TAGS ('dbx_subdomain' = 'order_fulfillment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `requisition_line_id` SET TAGS ('dbx_business_glossary_term' = 'Requisition Line Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Address Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_confidentiality' = 'confidential');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Project Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `purchase_requisition_id` SET TAGS ('dbx_business_glossary_term' = 'Requisition Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `requisition_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `requisition_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `requisition_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `split_from_requisition_line_id` SET TAGS ('dbx_business_glossary_term' = 'Split From Requisition Line Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `split_from_requisition_line_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
@@ -2113,72 +2088,59 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit Of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`requisition_line` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` SET TAGS ('dbx_subdomain' = 'project_delivery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `procurement_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `assigned_to` SET TAGS ('dbx_business_glossary_term' = 'Assigned To');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `budget_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `closed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Closed Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `completion_notes` SET TAGS ('dbx_business_glossary_term' = 'Completion Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `contract_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Contract Compliance Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Department');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `expenditure_type` SET TAGS ('dbx_business_glossary_term' = 'Expenditure Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `general_ledger_account` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `is_recurring` SET TAGS ('dbx_business_glossary_term' = 'Is Recurring');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `labor_cost` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `material_cost` SET TAGS ('dbx_business_glossary_term' = 'Material Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `procurement_category` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `recurrence_frequency` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Frequency');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `requested_by` SET TAGS ('dbx_business_glossary_term' = 'Requested By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `requested_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `sap_document_number` SET TAGS ('dbx_business_glossary_term' = 'Sap Document Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `scheduled_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Completion Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `scheduled_start_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `service_cost` SET TAGS ('dbx_business_glossary_term' = 'Service Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `warranty_applicable` SET TAGS ('dbx_business_glossary_term' = 'Warranty Applicable');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `work_order_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `work_order_number` SET TAGS ('dbx_business_glossary_term' = 'Work Order Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `work_order_number` SET TAGS ('dbx_normalization' = 'denormalized-natural-key');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `work_order_status` SET TAGS ('dbx_business_glossary_term' = 'Work Order Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_work_order` ALTER COLUMN `work_order_type` SET TAGS ('dbx_business_glossary_term' = 'Work Order Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` SET TAGS ('dbx_subdomain' = 'project_execution');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `work_order_id` SET TAGS ('dbx_ssot_owner' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `assigned_to` SET TAGS ('dbx_business_glossary_term' = 'Assigned To');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `budget_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `closed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Closed Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `completion_notes` SET TAGS ('dbx_business_glossary_term' = 'Completion Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `contract_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Contract Compliance Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Department');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `work_order_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `expenditure_type` SET TAGS ('dbx_business_glossary_term' = 'Expenditure Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `general_ledger_account` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `is_recurring` SET TAGS ('dbx_business_glossary_term' = 'Is Recurring');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `labor_cost` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Location');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `material_cost` SET TAGS ('dbx_business_glossary_term' = 'Material Cost');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `procurement_category` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `recurrence_frequency` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Frequency');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `requested_by` SET TAGS ('dbx_business_glossary_term' = 'Requested By');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `requested_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `sap_document_number` SET TAGS ('dbx_business_glossary_term' = 'Sap Document Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `scheduled_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Completion Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `scheduled_start_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `service_cost` SET TAGS ('dbx_business_glossary_term' = 'Service Cost');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `warranty_applicable` SET TAGS ('dbx_business_glossary_term' = 'Warranty Applicable');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `work_order_status` SET TAGS ('dbx_business_glossary_term' = 'Work Order Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`work_order` ALTER COLUMN `work_order_type` SET TAGS ('dbx_business_glossary_term' = 'Work Order Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` SET TAGS ('dbx_subdomain' = 'project_delivery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` SET TAGS ('dbx_subdomain' = 'project_execution');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Project Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `approved_by_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Project Manager Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `parent_project_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Project Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `parent_project_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Project Manager Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_manager_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_manager_employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_sponsor_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Sponsor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_sponsor_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_sponsor_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `sponsor_id` SET TAGS ('dbx_business_glossary_term' = 'Sponsor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `actual_end_date` SET TAGS ('dbx_business_glossary_term' = 'Actual End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
@@ -2190,7 +2152,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `p
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `committed_cost` SET TAGS ('dbx_business_glossary_term' = 'Committed Cost');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_business_glossary_term' = 'Completion Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -2208,102 +2169,152 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `s
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`project` ALTER COLUMN `wbs_element` SET TAGS ('dbx_business_glossary_term' = 'Wbs Element');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` SET TAGS ('dbx_subdomain' = 'project_delivery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` SET TAGS ('dbx_subdomain' = 'purchase_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Address Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Delivery Address Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `parent_delivery_address_id` SET TAGS ('dbx_PII' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_code` SET TAGS ('dbx_business_glossary_term' = 'Address Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_code` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_code` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_code` SET TAGS ('dbx_confidentiality' = 'confidential');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_code` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_business_glossary_term' = 'Address Line 3');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_line_3` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_name` SET TAGS ('dbx_business_glossary_term' = 'Address Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_name` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_name` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_name` SET TAGS ('dbx_confidentiality' = 'confidential');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_type` SET TAGS ('dbx_business_glossary_term' = 'Address Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_type` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `address_type` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `default_shipping_method` SET TAGS ('dbx_business_glossary_term' = 'Default Shipping Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_classification' = 'restricted');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_confidentiality' = 'confidential');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `effective_to_date` SET TAGS ('dbx_business_glossary_term' = 'Effective To Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `forklift_required` SET TAGS ('dbx_business_glossary_term' = 'Forklift Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `is_primary` SET TAGS ('dbx_business_glossary_term' = 'Is Primary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `is_verified` SET TAGS ('dbx_business_glossary_term' = 'Is Verified');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `latitude` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `latitude` SET TAGS ('dbx_confidentiality' = 'confidential');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `latitude` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `loading_dock_available` SET TAGS ('dbx_business_glossary_term' = 'Loading Dock Available');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `longitude` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `longitude` SET TAGS ('dbx_confidentiality' = 'confidential');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `longitude` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `procurement_category` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `receiving_days` SET TAGS ('dbx_business_glossary_term' = 'Receiving Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `receiving_hours_end` SET TAGS ('dbx_business_glossary_term' = 'Receiving Hours End');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `receiving_hours_start` SET TAGS ('dbx_business_glossary_term' = 'Receiving Hours Start');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `sap_plant_code` SET TAGS ('dbx_business_glossary_term' = 'Sap Plant Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `sap_storage_location` SET TAGS ('dbx_business_glossary_term' = 'Sap Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `sap_storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `special_delivery_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Delivery Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `delivery_address_status` SET TAGS ('dbx_PII' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `time_zone` SET TAGS ('dbx_business_glossary_term' = 'Time Zone');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`delivery_address` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` SET TAGS ('dbx_subdomain' = 'benefits_administration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` ALTER COLUMN `procurement_benefit_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` ALTER COLUMN `workforce_benefit_plan_id` SET TAGS ('dbx_ssot_owner' = 'workforce.workforce_benefit_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_benefit_plan` ALTER COLUMN `workforce_benefit_plan_id` SET TAGS ('dbx_ssot_entity' = 'benefit_plan');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` SET TAGS ('dbx_subdomain' = 'supplier_relations');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'vendor_contract Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Owner Employee ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `primary_procurement_approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Contract ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `tertiary_procurement_last_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By Employee ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto Renewal Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `capex_designation_flag` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) Designation Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_name` SET TAGS ('dbx_business_glossary_term' = 'Contract Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_status` SET TAGS ('dbx_business_glossary_term' = 'Contract Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_type` SET TAGS ('dbx_business_glossary_term' = 'Contract Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `contract_type` SET TAGS ('dbx_value_regex' = 'master_supply_agreement|blanket_purchase_order|frame_contract|spot_contract|service_agreement|capex_contract');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Contract Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `delivery_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Delivery Lead Time Days');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `document_url` SET TAGS ('dbx_business_glossary_term' = 'Contract Document URL');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `maximum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Maximum Order Quantity');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `negotiated_discount_percent` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Discount Percent');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Contract Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `pip_project_flag` SET TAGS ('dbx_business_glossary_term' = 'Property Improvement Plan (PIP) Project Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `renewal_notice_days` SET TAGS ('dbx_business_glossary_term' = 'Renewal Notice Days');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `sla_on_time_delivery_percent` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) On-Time Delivery Percent');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `sla_quality_acceptance_percent` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Quality Acceptance Percent');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_contract` ALTER COLUMN `total_contract_value` SET TAGS ('dbx_business_glossary_term' = 'Total Contract Value');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_subdomain' = 'catalog_sourcing');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_association_edges' = 'procurement.vendor,procurement.material_master');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` SET TAGS ('dbx_ssot_reviewed' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'supply_agreement Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `supply_agreement_id` SET TAGS ('dbx_ssot_owner' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Material Master Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `procurement_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'procurement_supply_agreement Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Vendor Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_end_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement End Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Agreement Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `supply_agreement_code` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `last_purchase_date` SET TAGS ('dbx_business_glossary_term' = 'Last Purchase Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `negotiated_unit_price` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Unit Price');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `preferred_vendor_flag` SET TAGS ('dbx_business_glossary_term' = 'Preferred Vendor Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Vendor Lead Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_supply_agreement` ALTER COLUMN `vendor_material_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Material Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_subdomain' = 'project_execution');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` SET TAGS ('dbx_association_edges' = 'workforce.employee,spa.treatment');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification - Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Therapist Certification Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification - Treatment Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `certification_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiration Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `last_performed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Performed Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Certification Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Performance Rating');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `preferred_for_treatment_flag` SET TAGS ('dbx_business_glossary_term' = 'Preferred Therapist Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `proficiency_level` SET TAGS ('dbx_business_glossary_term' = 'Proficiency Level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `training_hours` SET TAGS ('dbx_business_glossary_term' = 'Training Hours Completed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`procurement`.`procurement_therapist_certification` ALTER COLUMN `treatments_performed_count` SET TAGS ('dbx_business_glossary_term' = 'Treatments Performed Count');
