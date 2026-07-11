@@ -1,5 +1,5 @@
--- Schema for Domain: spa | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:47
+-- Schema for Domain: spa | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:57
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`spa` COMMENT 'Spa, wellness, and recreation operations management including treatment catalogs, therapist scheduling, guest appointments, retail product sales, facility management, and revenue tracking for spa, fitness, golf, and pool amenities across luxury and resort properties.';
@@ -50,8 +50,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` (
     `treatment_menu_id` BIGINT COMMENT 'Unique identifier for the property-level spa treatment menu. Primary key.',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Treatment menus are often launched or promoted through specific marketing campaigns (new menu launches, seasonal menu promotions). Tracks which campaigns drive menu awareness and bookings, essential f',
+    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Treatment menus are designed for specific market segments (luxury leisure, corporate wellness, local membership). Business process: spa menu strategy aligns with property market segmentation for targe',
     `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Treatment menus are brand-specific (Ritz-Carlton Spa vs. Westin Heavenly Spa vs. Six Senses Spa). Essential for brand-specific menu management, brand standards enforcement, and supporting brand differ',
-    `employee_id` BIGINT COMMENT 'Reference to the user (spa manager, revenue manager, or property director) who approved this treatment menu for publication.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or property where this treatment menu is offered.',
     `superseded_treatment_menu_id` BIGINT COMMENT 'Self-referencing FK on treatment_menu (superseded_treatment_menu_id)',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when this treatment menu was approved for publication and operational use.',
@@ -131,107 +131,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` (
     CONSTRAINT pk_therapist PRIMARY KEY(`therapist_id`)
 ) COMMENT 'Spa and wellness therapist master record representing individual practitioners employed or contracted at a property. Captures therapist name, employee reference, therapist code, specializations (Swedish, deep tissue, hot stone, Ayurvedic, esthetics), certification levels, license numbers, license expiry dates, years of experience, languages spoken, gender preference availability, employment type (full-time, part-time, contractor), home property, and active status. Distinct from workforce.employee as it captures spa-specific professional credentials and treatment competencies.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` (
-    `spa_therapist_certification_id` BIGINT COMMENT 'Unique identifier for the therapist certification record. Primary key.',
-    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - therapist certifications are tracked at property level for licensing audits.',
-    `renewed_spa_therapist_certification_id` BIGINT COMMENT 'Self-referencing FK on spa_therapist_certification (renewed_spa_therapist_certification_id)',
-    `therapist_id` BIGINT COMMENT 'Reference to the spa therapist who holds this certification. Links to the therapist master record.',
-    `certification_document_url` STRING COMMENT 'The storage location or URL of the scanned certification document or digital credential. Enables audit trail and verification support.',
-    `certification_level` STRING COMMENT 'The proficiency level or tier of the certification. Used to match therapist expertise to guest service expectations and premium treatment offerings.. Valid values are `entry|intermediate|advanced|master|instructor`',
-    `certification_name` STRING COMMENT 'The full name or title of the certification as issued by the certifying body (e.g., Licensed Massage Therapist, Certified Esthetician, Brand Signature Massage Specialist).',
-    `certification_number` STRING COMMENT 'The unique certificate or license number issued by the certifying body. This is the externally-known identifier for the certification.',
-    `certification_type` STRING COMMENT 'The category of certification held by the therapist. Distinguishes between state-mandated licenses, brand-specific training certifications, and safety certifications required for spa operations. [ENUM-REF-CANDIDATE: state_massage_license|esthetics_license|cosmetology_license|brand_certification|specialty_certification|cpr_certification|first_aid_certification — 7 candidates stripped; promote to reference product]',
-    `continuing_education_hours_completed` DECIMAL(18,2) COMMENT 'The number of continuing education hours the therapist has completed toward the current renewal cycle. Enables proactive management of renewal readiness.',
-    `continuing_education_hours_required` DECIMAL(18,2) COMMENT 'The number of continuing education hours required for renewal of this certification. Used to track therapist compliance with professional development requirements.',
-    `cost_amount` DECIMAL(18,2) COMMENT 'The cost incurred to obtain or renew this certification, including exam fees, training fees, and application fees. Used for workforce development budgeting and ROI analysis.',
-    `cost_currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code for the certification cost. Supports multi-currency operations for global property portfolios.. Valid values are `^[A-Z]{3}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this certification record was first created in the system. Audit trail field.',
-    `effective_date` DATE COMMENT 'The date from which the certification becomes valid and the therapist is authorized to perform services under this credential. May differ from issue date for pre-dated certifications.',
-    `expiry_date` DATE COMMENT 'The date on which the certification expires and is no longer valid. Null for certifications with no expiration. Critical for compliance tracking and renewal scheduling.',
-    `instructor_name` STRING COMMENT 'The name of the instructor or trainer who conducted the certification training. Relevant for brand certifications and internal training programs.',
-    `is_brand_required` BOOLEAN COMMENT 'Indicates whether this certification is mandated by brand service standards for therapists to perform certain treatments. Used to enforce brand compliance.',
-    `is_primary_certification` BOOLEAN COMMENT 'Indicates whether this is the therapists primary professional certification. Used to identify the main credential under which the therapist practices.',
-    `is_state_required` BOOLEAN COMMENT 'Indicates whether this certification is required by state or local regulatory authorities for the therapist to legally practice. Critical for compliance and risk management.',
-    `issue_date` DATE COMMENT 'The date the certification was originally issued to the therapist. Used to calculate tenure and experience levels.',
-    `issuing_body` STRING COMMENT 'The name of the organization, state board, or institution that issued the certification (e.g., California Board of Barbering and Cosmetology, American Red Cross, Brand Training Academy).',
-    `issuing_jurisdiction` STRING COMMENT 'The state, province, or country where the certification was issued. Critical for multi-property operations to ensure therapists hold valid licenses for the jurisdictions where they practice.',
-    `notes` STRING COMMENT 'Free-form text field for additional information about the certification, such as special conditions, restrictions, or verification details. Supports operational context and audit trails.',
-    `reimbursement_status` STRING COMMENT 'Indicates whether the certification cost was reimbursed by the employer. Used to track workforce development investments and employee benefit utilization.. Valid values are `not_applicable|pending|approved|reimbursed|denied`',
-    `renewal_date` DATE COMMENT 'The date the certification was last renewed. Tracks compliance with continuing education and renewal requirements.',
-    `renewal_status` STRING COMMENT 'The current renewal state of the certification. Indicates whether the credential is active, approaching renewal, or has lapsed. Used to trigger renewal workflows and prevent scheduling of non-compliant therapists.. Valid values are `current|pending_renewal|expired|suspended|revoked|not_applicable`',
-    `specialty_area` STRING COMMENT 'The specific treatment specialty or modality covered by this certification (e.g., Deep Tissue Massage, Hot Stone Therapy, Aromatherapy, Facial Treatments, Body Wraps). Enables matching therapist qualifications to guest service requests.',
-    `training_completion_date` DATE COMMENT 'The date the therapist completed the training program associated with this certification. Relevant for brand certifications and specialty training.',
-    `training_hours` DECIMAL(18,2) COMMENT 'The total number of training hours completed to earn this certification. Used to assess depth of qualification and compare against brand standards.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this certification record was last modified. Audit trail field for tracking changes to certification status, renewal, or verification.',
-    `verification_date` DATE COMMENT 'The date the certification was last verified with the issuing authority. Used to track verification currency and schedule re-verification.',
-    `verification_method` STRING COMMENT 'The method used to verify the authenticity of the certification with the issuing body.. Valid values are `online_registry|phone_verification|document_review|third_party_service|not_verified`',
-    `verification_status` STRING COMMENT 'Indicates whether the certification has been independently verified with the issuing body. Critical for regulatory compliance and risk management.. Valid values are `verified|pending_verification|failed_verification|not_verified`',
-    CONSTRAINT pk_spa_therapist_certification PRIMARY KEY(`spa_therapist_certification_id`)
-) COMMENT 'Certification and qualification records for spa therapists tracking professional licenses, brand-mandated training completions, and specialty certifications. Captures therapist reference, certification type (state massage license, esthetics license, brand certification, CPR, first aid), issuing body, certification number, issue date, expiry date, renewal status, and verification status. Supports compliance with state licensing requirements and brand service standards.';
-
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` (
-    `spa_facility_id` BIGINT COMMENT 'Unique identifier for the spa, wellness, or recreation facility. Primary key. Role: MASTER_RESOURCE.',
-    `ada_assessment_id` BIGINT COMMENT 'Foreign key linking to compliance.ada_assessment. Business justification: Spa facilities must comply with ADA accessibility requirements (treatment rooms, pools, locker rooms, entrances). Operations track current assessment for legal compliance, remediation planning, and gu',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Each spa facility operates as a cost center for expense allocation, budget management, and departmental P&L reporting. Essential for multi-facility spa operations, cost allocation, and USALI-compliant',
-    `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Major spa facility renovations and FF&E investments are capitalized as fixed assets for depreciation. Required for PIP (Property Improvement Plan) tracking, capital expenditure reporting, FF&E reserve',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Spa facilities require operational manager assignment for P&L accountability, labor scheduling oversight, vendor management, and guest escalation handling. Current facility_manager_name is denormalize',
-    `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Spa facilities are associated with specific brands (brand-specific spa concepts, branded wellness experiences). Critical for brand-level spa operations, brand standards compliance, and supporting bran',
-    `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Spa facilities are organizational units with cost centers, budgeted headcount, labor productivity standards, and USALI department classification. Required for financial consolidation, labor cost alloc',
-    `parent_spa_facility_id` BIGINT COMMENT 'Self-referencing FK on spa_facility (parent_spa_facility_id)',
-    `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Spas require operating permits (health department, pool operation, massage establishment license). Operations track current permit for regulatory compliance, renewal management, and inspection schedul',
-    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Each spa facility may operate as a distinct profit center for owner reporting and segment performance analysis. Essential for multi-facility spa portfolio management, facility-level GOP reporting, and',
-    `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where this facility is located.',
-    `property_facility_id` BIGINT COMMENT '',
-    `accessibility_features` STRING COMMENT 'Comma-separated list of accessibility accommodations available at the facility (e.g., wheelchair_accessible, hearing_loop, braille_signage, accessible_treatment_tables). Supports ADA compliance tracking.',
-    `average_daily_visitors` STRING COMMENT 'Average number of unique guests visiting the facility per day, calculated over a rolling 90-day period. Used for capacity planning and staffing optimization.',
-    `certification_accreditation` STRING COMMENT 'Comma-separated list of industry certifications, accreditations, or awards held by the facility (e.g., Forbes Five Star Spa, LEED Gold Certified, International Spa Association Member). Supports marketing and quality assurance.',
-    `contact_email` STRING COMMENT 'Primary email address for facility reservations, guest inquiries, and operational communication. Organizational contact data classified as confidential.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `contact_phone` STRING COMMENT 'Primary phone number for guest inquiries, reservations, and facility operations. Organizational contact data classified as confidential.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this facility record was first created in the system. Supports audit trail and data lineage tracking.',
-    `facility_code` STRING COMMENT 'Unique alphanumeric code identifying the facility within the property management system. Used for operational reference and system integration.. Valid values are `^[A-Z0-9]{3,10}$`',
-    `facility_name` STRING COMMENT 'Full business name of the spa, wellness, or recreation facility as presented to guests (e.g., Serenity Spa & Wellness Center, Championship Golf Course).',
-    `facility_status` STRING COMMENT 'Current operational lifecycle status of the facility: active (open and operational), inactive (permanently closed), under_renovation (closed for Property Improvement Plan execution), temporarily_closed (short-term closure), seasonal (operates only during specific seasons).. Valid values are `active|inactive|under_renovation|temporarily_closed|seasonal`',
-    `facility_type` STRING COMMENT 'Classification of the facility by primary service offering: spa (full-service spa with treatments), fitness_center (gym and exercise equipment), golf_course (golf amenity), pool (swimming pool and aquatic facilities), tennis_court (tennis and racquet sports), salon (hair and beauty salon).. Valid values are `spa|fitness_center|golf_course|pool|tennis_court|salon`',
-    `fire_safety_compliance_date` DATE COMMENT 'Date of the most recent fire safety inspection and compliance certification. Required for local fire code adherence and insurance purposes.',
-    `gender_designation` STRING COMMENT 'Gender access policy for the facility: co_ed (open to all genders), female_only (restricted to female guests), male_only (restricted to male guests), gender_neutral (inclusive non-binary policy).. Valid values are `co_ed|female_only|male_only|gender_neutral`',
-    `guest_access_policy` STRING COMMENT 'Policy governing who may access the facility: hotel_guests_only (restricted to registered guests), members_only (membership or loyalty program required), public_access (open to general public), day_pass_available (non-guests may purchase day access).. Valid values are `hotel_guests_only|members_only|public_access|day_pass_available`',
-    `health_safety_compliance_date` DATE COMMENT 'Date of the most recent health and safety inspection or compliance audit. Supports regulatory reporting and operational risk management.',
-    `last_renovation_date` DATE COMMENT 'Date of the most recent major renovation or Property Improvement Plan (PIP) completion for the facility. Used for Furniture Fixtures and Equipment (FF&E) lifecycle tracking and capital expenditure (CapEx) planning.',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this facility record. Supports change tracking and data quality monitoring.',
-    `locker_room_capacity` STRING COMMENT 'Total number of lockers available in changing and locker room facilities. Indicates maximum concurrent guest capacity for facility usage.',
-    `loyalty_points_eligible_flag` BOOLEAN COMMENT 'Indicates whether purchases and services at this facility are eligible for loyalty program points accrual. True if loyalty integration is active.',
-    `minimum_age_requirement` STRING COMMENT 'Minimum age in years required for guest access to the facility. Common values: 16 for spa facilities, 18 for adult-only wellness centers, 0 for family-friendly pools.',
-    `next_scheduled_renovation_date` DATE COMMENT 'Planned date for the next major renovation or facility upgrade. Supports long-term capital planning and guest communication regarding temporary closures.',
-    `operating_hours_friday` STRING COMMENT 'Facility operating hours on Friday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_monday` STRING COMMENT 'Facility operating hours on Monday in 24-hour format (HH:MM-HH:MM) or closed if not operational. Example: 06:00-22:00.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_saturday` STRING COMMENT 'Facility operating hours on Saturday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_sunday` STRING COMMENT 'Facility operating hours on Sunday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_thursday` STRING COMMENT 'Facility operating hours on Thursday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_tuesday` STRING COMMENT 'Facility operating hours on Tuesday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `operating_hours_wednesday` STRING COMMENT 'Facility operating hours on Wednesday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
-    `outdoor_space_flag` BOOLEAN COMMENT 'Indicates whether the facility includes outdoor amenities or treatment areas (e.g., outdoor pools, rooftop yoga decks, garden relaxation areas). True if outdoor space exists.',
-    `peak_season_months` STRING COMMENT 'Comma-separated list of month names or numbers representing peak demand periods for the facility (e.g., June,July,August or 6,7,8). Supports revenue management and staffing planning.',
-    `relaxation_lounge_capacity` STRING COMMENT 'Maximum seating capacity in relaxation lounges and quiet areas where guests rest before or after treatments. Measured in number of seats.',
-    `reservation_required_flag` BOOLEAN COMMENT 'Indicates whether advance reservations are required for facility access or services. True if reservations are mandatory, false if walk-ins are accepted.',
-    `retail_area_flag` BOOLEAN COMMENT 'Indicates whether the facility includes a retail area for selling spa products, wellness merchandise, or branded goods. True if retail space exists.',
-    `seasonal_close_date` DATE COMMENT 'Annual date when seasonal facility closes for the off-season. Null if facility operates year-round.',
-    `seasonal_open_date` DATE COMMENT 'Annual date when seasonal facility opens for the operating season. Null if facility operates year-round.',
-    `seasonal_operation_flag` BOOLEAN COMMENT 'Indicates whether the facility operates on a seasonal schedule (e.g., outdoor pools open only in summer, golf courses closed in winter). True if seasonal.',
-    `square_footage` STRING COMMENT 'Total interior square footage of the facility. Used for space utilization analysis, renovation planning, and benchmarking against industry standards.',
-    `total_treatment_rooms` STRING COMMENT 'Total number of individual treatment rooms available for spa services, massages, facials, and body treatments. Used for capacity planning and scheduling.',
-    `wet_area_capacity` STRING COMMENT 'Maximum guest capacity for wet amenities including steam rooms, saunas, whirlpools, and hydrotherapy pools. Measured in number of guests.',
-    CONSTRAINT pk_spa_facility PRIMARY KEY(`spa_facility_id`)
-) COMMENT 'Master record for spa, fitness, golf, and pool facility assets at each property. Captures facility name, facility code, facility type (spa, fitness center, golf course, pool, tennis court, salon), property reference, total treatment rooms, wet area capacity, locker room capacity, relaxation lounge capacity, operating hours by day of week, gender designation (co-ed, female-only, male-only), accessibility features, renovation status, and active status. Complements property.facility with spa-specific operational attributes.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` (
     `treatment_room_id` BIGINT COMMENT 'Unique identifier for the treatment room. Primary key for the treatment room entity.',
     `adjoining_treatment_room_id` BIGINT COMMENT 'Self-referencing FK on treatment_room (adjoining_treatment_room_id)',
     `cleaning_standard_id` BIGINT COMMENT 'Foreign key linking to housekeeping.cleaning_standard. Business justification: Spa treatment rooms follow specific cleaning protocols defined in hotel cleaning standards (sanitation requirements, turnaround time, chemical specifications, quality thresholds) for health code compl',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Treatment rooms may function as sub-cost centers for detailed expense tracking and room-level profitability analysis. Required for spa space utilization analysis, room-level revenue per available hour',
     `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Treatment room build-outs and specialized equipment installations are capitalized as fixed assets. Essential for leasehold improvement tracking, room-level asset depreciation, capital investment ROI a',
-    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Incidents occur in specific treatment rooms (equipment malfunction, sanitation issue, structural hazard). Operations track room-incident relationship for maintenance prioritization, safety audits, and',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where this treatment room operates. Enables property-level spa performance analysis and cross-property benchmarking.',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the parent spa facility where this treatment room is located. Links room to its operating facility for capacity planning and revenue attribution.',
+    `facility_id` BIGINT COMMENT 'Reference to the parent spa facility where this treatment room is located. Links room to its operating facility for capacity planning and revenue attribution.',
     `accessibility_compliant` BOOLEAN COMMENT 'Indicates whether the treatment room meets accessibility standards for guests with disabilities (wheelchair access, grab bars, adjustable equipment). Required for ADA compliance reporting.',
     `ambiance_features` STRING COMMENT 'Descriptive text listing special ambiance and sensory features of the treatment room (e.g., ocean view, fireplace, aromatherapy diffuser, Himalayan salt wall). Used for marketing and guest preference matching.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the treatment room record was first created in the system. Used for data lineage and audit trail purposes.',
@@ -266,28 +173,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` (
     `appointment_id` BIGINT COMMENT 'Unique identifier for the spa appointment booking. Primary key for the appointment entity.',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Spa appointments for corporate direct-bill accounts or group bookings generate AR invoices separate from individual guest folios. Essential for corporate billing, credit management, and revenue recogn',
-    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Spa appointments are frequently driven by marketing campaigns (seasonal promotions, email offers, package campaigns). Essential for campaign ROI tracking, attribution analysis, and measuring marketing',
-    `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Appointments are frequently booked using specific offer codes from marketing campaigns (discount codes, promotional offers, package deals). Essential for offer redemption tracking, validation, discoun',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Treatment appointments generate revenue allocated to spa treatment cost centers for departmental reporting. Essential for USALI spa department schedules, treatment revenue analysis, and cost center bu',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Spa appointments booked through OTA, GDS, or direct channels require channel attribution for commission accrual, revenue reconciliation, and channel ROI analysis. Essential for finance to calculate ch',
     `employee_id` BIGINT COMMENT 'Identifier of the system user or staff member who created the appointment booking. Used for accountability and performance tracking. May be guest self-service identifier for online bookings.',
-    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Post-spa-service satisfaction surveys are standard hospitality practice. Guest feedback systems track which specific appointment was rated to analyze service quality by treatment type, therapist, and ',
-    `guest_interaction_id` BIGINT COMMENT 'Foreign key linking to experience.guest_interaction. Business justification: Pre-appointment consultations (treatment selection, health screening) and post-service follow-ups are logged guest interactions. Guest journey tracking systems link interactions to appointments for to',
-    `guest_segment_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_segment. Business justification: Spa appointments should be analyzed by guest segment for personalization and targeting (wellness seekers, luxury travelers, local residents). Critical for segment performance analysis, treatment recom',
-    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Spa treatments can result in guest injuries (burns, allergic reactions, slips) requiring formal incident reporting for liability, insurance claims, and regulatory compliance. Operations track which ap',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Treatment revenue posts to service revenue GL accounts for financial reporting and revenue recognition. Required for spa service revenue accounting, GL reconciliation, and ASC 606 revenue recognition ',
-    `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Spa appointments for loyalty members should link to loyalty.member for proper points accrual tracking and member benefit validation. This FK enables real-time points calculation and member tier benefi',
-    `package_id` BIGINT COMMENT 'Reference to a spa package or bundle if this appointment is part of a multi-treatment package booking. Nullable for standalone appointments.',
-    `profile_id` BIGINT COMMENT 'FK to guest.profile.profile_id — MUST-HAVE: Spa appointments must link to guest profile for intake form pre-population, allergy alerts, preference recall, and folio posting. Core guest experience continuity requirement.',
-    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Treatment revenue flows to spa profit center for GOP, EBITDA, and segment profitability reporting. Required for spa profit center performance measurement, management fee basis calculation, and owner f',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where the spa appointment is scheduled. Links to property master data.',
-    `rescheduled_appointment_id` BIGINT COMMENT 'Self-referencing FK on appointment (rescheduled_appointment_id)',
-    `reservation_booking_id` BIGINT COMMENT 'Reference to the hotel reservation associated with this spa appointment. Nullable for local guests or day spa visitors without hotel stays.',
-    `reservation_group_block_id` BIGINT COMMENT 'Reference to a group booking record if this appointment is part of a group spa event (e.g., bridal party, corporate wellness). Nullable for individual bookings.',
+    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Spa appointments are charged to guest room folios for consolidated billing. Revenue management and guest accounting require linking appointments to rooms for folio posting, a core operational process',
     `therapist_id` BIGINT COMMENT 'Reference to the spa therapist assigned to perform the treatment. Links to workforce/therapist master data. Nullable if therapist not yet assigned.',
     `treatment_id` BIGINT COMMENT 'Reference to the spa treatment or service being booked (e.g., Swedish massage, facial, body wrap). Links to treatment catalog.',
-    `treatment_room_id` BIGINT COMMENT 'Reference to the specific treatment room or facility space where the appointment will take place. Links to room inventory.',
     `actual_end_time` TIMESTAMP COMMENT 'The actual date and time when the spa treatment was completed. Captured at treatment conclusion. Nullable if appointment not yet completed.',
     `actual_start_time` TIMESTAMP COMMENT 'The actual date and time when the spa treatment began. Captured at check-in or treatment commencement. Nullable if appointment not yet started.',
     `appointment_date` DATE COMMENT 'The calendar date on which the spa appointment is scheduled to occur. Used for day-level scheduling and reporting.',
@@ -317,17 +207,18 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` (
     `special_requests` STRING COMMENT 'Free-text field capturing any special requests or preferences the guest communicated at booking time (e.g., room temperature, music preference, aromatherapy oils). Used to personalize guest experience.',
     `therapist_gender_preference` STRING COMMENT 'The guests stated preference for the gender of the therapist performing the treatment. Supports personalized service delivery.. Valid values are `male|female|no-preference`',
     CONSTRAINT pk_appointment PRIMARY KEY(`appointment_id`)
-) COMMENT 'Core transactional record for a guest spa appointment booking. Captures appointment confirmation number, guest reference, reservation reference, property reference, treatment reference, therapist reference, treatment room reference, appointment date, scheduled start time, scheduled end time, actual start time, actual end time, appointment status (booked, confirmed, checked-in, in-progress, completed, cancelled, no-show), booking channel (front desk, online, concierge, mobile app), guest gender preference, therapist gender preference, pressure preference, special health notes, intake form completion status, pre-payment amount, and cancellation reason. This is the SSOT for spa appointment lifecycle management.';
+) COMMENT 'Core transactional record for a guest spa appointment booking. Captures appointment confirmation number, guest reference, reservation reference, property reference, treatment reference, therapist reference, treatment room reference, appointment date, scheduled start time, scheduled end time, actual start time, actual end time, appointment status (booked, confirmed, checked-in, in-progress, completed, cancelled, no-show), booking channel (front desk, online, concierge, mobile app), guest gender preference, therapist gender preference, pressure preference, special health notes, intake form completion status, pre-payment amount, and cancellation reason. This is the SSOT for spa appointment lifecycle management. This product has a high number of outbound foreign keys and should be split or refactored as a junction table to reduce FK count below the recommended maximum.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` (
     `appointment_package_id` BIGINT COMMENT 'Unique identifier for the spa appointment package booking record. Primary key.',
     `appointment_id` BIGINT COMMENT 'Reference to the parent spa appointment under which this package is booked.',
+    `attribution_event_id` BIGINT COMMENT 'Foreign key linking to marketing.attribution_event. Business justification: Package bookings are high-value conversion events requiring attribution to marketing touchpoints. Critical for understanding marketing journey to package purchase, calculating high-value conversion at',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Package bookings often result from targeted marketing campaigns. Critical for measuring campaign effectiveness on high-value spa packages, calculating campaign ROI, and understanding which promotional',
     `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Package bookings often use promotional offer codes (package discounts, bundle offers, early booking discounts). Critical for tracking offer performance on high-value packages, measuring promotional ef',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Spa packages sold via distribution channels need channel tracking for commission calculation, rate parity monitoring, and package performance analysis. Critical for revenue management to assess channe',
     `employee_id` BIGINT COMMENT 'Reference to the staff member who created this spa package booking on behalf of the guest. Null if guest self-booked.',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Spa package bookings earn loyalty points and qualify for elite member package discounts. Essential for points accrual on package revenue, tier-based package pricing, and points redemption for spa pack',
-    `package_id` BIGINT COMMENT 'Foreign key linking to spa.spa_package. Business justification: appointment_package represents a transactional booking of a spa package. Currently it stores denormalized package_code, package_name, and package_type strings. Adding spa_package_id FK to spa_package ',
+    `package_id` BIGINT COMMENT 'Foreign key linking to spa.spa_package. Business justification: appointment_package represents a transactional booking of a spa package. Currently it stores denormalized package_code, package_name, and package_type strings. Adding spa_package_id FK to spa_package',
     `parent_appointment_package_id` BIGINT COMMENT 'Self-referencing FK on appointment_package (parent_appointment_package_id)',
     `profile_id` BIGINT COMMENT 'Reference to the guest who booked this spa package.',
     `property_id` BIGINT COMMENT 'Reference to the property where the spa package is offered and redeemed.',
@@ -369,7 +260,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package`
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`package` (
     `package_id` BIGINT COMMENT 'Unique identifier for the spa package. Primary key.',
-    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Spa packages are frequently created as part of marketing campaigns (Valentines Day packages, summer wellness promotions, holiday specials). Links package inventory to promotional strategy, enabling c',
+    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Spa packages target specific market segments (leisure, group, corporate wellness) for revenue reporting and forecasting. Business process: spa revenue is analyzed by market segment for performance tra',
     `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Spa packages are often brand-specific offerings (signature brand packages, brand-exclusive experiences). Links package inventory to brand positioning, supports brand differentiation, and enables brand',
     `parent_package_id` BIGINT COMMENT 'Self-referencing FK on package (parent_package_id)',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property where this spa package is available. Links to property master data.',
@@ -419,7 +310,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` 
     `therapist_schedule_id` BIGINT COMMENT 'Unique identifier for the therapist schedule record. Primary key for the therapist schedule entity.',
     `original_therapist_schedule_id` BIGINT COMMENT 'Self-referencing FK on therapist_schedule (original_therapist_schedule_id)',
     `property_id` BIGINT COMMENT 'Reference to the property where the spa facility is located. Links to the property master record.',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the spa facility where the therapist is scheduled to work. Links to the spa facility master record.',
+    `facility_id` BIGINT COMMENT 'Reference to the spa facility where the therapist is scheduled to work. Links to the spa facility master record.',
     `therapist_id` BIGINT COMMENT 'Reference to the therapist assigned to this schedule. Links to the therapist master record.',
     `actual_clock_in_time` TIMESTAMP COMMENT 'The actual timestamp when the therapist clocked in or checked in for their shift. Used for payroll processing, attendance tracking, and variance analysis against scheduled start time.',
     `actual_clock_out_time` TIMESTAMP COMMENT 'The actual timestamp when the therapist clocked out or checked out from their shift. Used for payroll processing, attendance tracking, and variance analysis against scheduled end time.',
@@ -503,24 +394,26 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` (
     `charge_id` BIGINT COMMENT 'Unique identifier for the spa charge transaction. Primary key for the spa charge record.',
     `appointment_id` BIGINT COMMENT 'Reference to the spa appointment associated with this charge. Links the charge to the scheduled service.',
     `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Spa charges posted to guest folios or billed to external accounts need to link to AR invoices for consolidated billing and receivables management. This FK enables integration between spa POS and finan',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Spa charges must be allocated to departmental cost centers for USALI-compliant financial reporting and departmental P&L analysis. Essential for spa department performance measurement, budget variance ',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Spa charges must be allocated to departmental cost centers for USALI-compliant financial reporting and departmental P&L analysis. Essential for spa department performance measurement, budget variance',
+    `employee_id` BIGINT COMMENT 'System user ID of the staff member who posted the charge transaction. Used for audit trail and accountability.',
     `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Spa charges bundle with F&B purchases in integrated resort POS. Guest charges spa treatment and restaurant meal to room on same transaction. Enables cross-department revenue analysis and unified guest',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Spa charges post to specific GL accounts in the ledger for financial statement preparation and audit trail. Required for revenue recognition, GL reconciliation, and SOX-compliant financial reporting i',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Spa charges require direct loyalty member link for points accrual on spa spend, tier-based spa pricing discounts, and member-only spa promotions. Critical for revenue attribution and loyalty program l',
+    `original_charge_id` BIGINT COMMENT 'Reference to the original spa charge record if this is an adjustment or reversal. Links corrected charges to their source transactions.',
     `package_id` BIGINT COMMENT 'Reference to the spa package or bundle if this charge is part of a multi-service offering. Links to spa package catalog.',
-    `employee_id` BIGINT COMMENT 'System user ID of the staff member who posted the charge transaction. Used for audit trail and accountability.',
-    `primary_original_charge_id` BIGINT COMMENT 'Reference to the original spa charge record if this is an adjustment or reversal. Links corrected charges to their source transactions.',
     `product_id` BIGINT COMMENT 'Reference to the retail product sold, if charge_type is retail. Links to the spa retail product catalog.',
     `profile_id` BIGINT COMMENT 'Reference to the guest who received the spa service or purchased the product. Links to the guest master record.',
-    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Spa charges contribute to profit center P&L for segment reporting, management fee calculations, and owner distributions. Required for spa profit center GOP, EBITDA reporting, and incentive management ',
+    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Spa charges contribute to profit center P&L for segment reporting, management fee calculations, and owner distributions. Required for spa profit center GOP, EBITDA reporting, and incentive management',
     `property_facility_id` BIGINT COMMENT 'Reference to the specific spa facility, treatment room, or amenity area where the service was provided. Supports facility utilization analytics.',
     `property_id` BIGINT COMMENT 'Reference to the property where the spa charge was incurred. Enables multi-property revenue tracking and reporting.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the hotel reservation associated with this spa charge, if applicable. Used for folio posting and guest stay tracking.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Foreign key linking to revenue.revenue_rate_plan. Business justification: Spa charges reference rate plans when posted with negotiated rates, package inclusions, or loyalty discounts. Business process: spa charge posting with rate plan discounts ensures accurate revenue rec',
+    `reversal_charge_id` BIGINT COMMENT 'Self-referencing FK on charge (reversal_charge_id)',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Spa charges are posted directly to guest room folios. Revenue accounting, folio management, and PMS integration require room linkage for charge routing, a fundamental billing process in hotel spa oper',
     `service_recovery_action_id` BIGINT COMMENT 'Foreign key linking to experience.service_recovery_action. Business justification: Service recovery often involves spa charge adjustments, waivers, or complimentary treatments. Finance systems must link recovery actions to specific charge records for GL reconciliation, cost center a',
     `therapist_id` BIGINT COMMENT 'Reference to the spa therapist or service provider who delivered the treatment. Used for commission tracking and performance reporting.',
     `treatment_id` BIGINT COMMENT 'Reference to the spa treatment or service provided, if charge_type is treatment. Links to the spa treatment catalog.',
+    `voided_by_user_employee_id` BIGINT COMMENT 'System user ID of the staff member who voided the charge, if applicable. Used for audit trail and fraud prevention.',
     `adjustment_reason` STRING COMMENT 'Reason for charge adjustment if posting_status is adjusted. Captures service recovery, pricing corrections, or billing disputes.',
     `cancellation_reason` STRING COMMENT 'Reason for cancellation if charge_type is cancellation_fee. Captures guest no-show, late cancellation, or policy violation details.',
     `charge_date` DATE COMMENT 'Business date when the spa charge was incurred. Used for revenue recognition and daily operations reporting.',
@@ -557,17 +450,17 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` 
     `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate spa retail purchases (bulk wellness products, gift sets for employee programs, MICE amenity packages) require direct billing to corporate accounts. Essential for corporate wellness program i',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Retail sales revenue must be tracked by cost center for departmental performance reporting and USALI schedule preparation. Required for spa retail department P&L, inventory cost allocation, and retail',
     `employee_id` BIGINT COMMENT 'Reference to the employee who processed the retail transaction.',
-    `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Spa retail purchases (skincare products, wellness items) frequently combine with F&B transactions in unified guest billing sessions. Resort POS systems track cross-department purchases for total guest',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Retail sales post to inventory and revenue GL accounts for financial statement preparation. Essential for retail COGS calculation, inventory valuation, revenue recognition, and GL account reconciliati',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Retail purchases at spa boutiques earn loyalty points and qualify for member pricing. Essential for points accrual calculation, member purchase history analysis, and personalized spa retail offers bas',
-    `primary_original_transaction_retail_transaction_id` BIGINT COMMENT 'Reference to the original retail transaction ID if this transaction is a refund or exchange.',
+    `original_transaction_retail_transaction_id` BIGINT COMMENT 'Reference to the original retail transaction ID if this transaction is a refund or exchange.',
     `profile_id` BIGINT COMMENT 'Reference to the guest or member who made the purchase.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Retail revenue contributes to spa profit center performance metrics for segment reporting and management evaluation. Essential for spa retail profitability analysis, profit center GOP contribution, an',
     `property_id` BIGINT COMMENT 'Reference to the property where the retail transaction occurred.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the guest reservation if the retail purchase was charged to a room or associated with a stay.',
+    `return_retail_transaction_id` BIGINT COMMENT 'Self-referencing FK on retail_transaction (return_retail_transaction_id)',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Retail purchases at spa by hotel guests are posted to room folios. Point-of-sale systems and guest accounting require room linkage for charge-to-room transactions, standard practice in resort retail o',
     `service_recovery_action_id` BIGINT COMMENT 'Foreign key linking to experience.service_recovery_action. Business justification: Complimentary spa retail products (skincare, aromatherapy) are common service recovery gestures. Retail systems must link recovery transactions to originating service case for inventory cost allocatio',
-    `spa_facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: retail_transaction.outlet_id represents the spa retail outlet where the transaction occurred. In the spa domain context, retail outlets are part of spa facilities (spa_facility has retail_area_flag at',
+    `facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: retail_transaction.outlet_id represents the spa retail outlet where the transaction occurred. In the spa domain context, retail outlets are part of spa facilities (spa_facility has retail_area_flag at',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this retail transaction record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the transaction amount.. Valid values are `^[A-Z]{3}$`',
     `discount_amount` DECIMAL(18,2) COMMENT 'Total discount amount applied to the transaction, including promotional discounts, employee discounts, and member discounts.',
@@ -600,10 +493,12 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` (
     `retail_inventory_id` BIGINT COMMENT 'Unique identifier for the retail inventory record. Primary key for the retail inventory product.',
     `adjustment_retail_inventory_id` BIGINT COMMENT 'Self-referencing FK on retail_inventory (adjustment_retail_inventory_id)',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to procurement.material_master. Business justification: Retail spa products (skincare, aromatherapy oils) should reference material master for standardized product data, vendor sourcing, pricing, and procurement specifications. Eliminates data duplication ',
+    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: Spa retail product purchases generate AP invoices for inventory procurement and vendor payment. Required for inventory cost tracking, three-way match (PO-receipt-invoice), accounts payable processing,',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Product-related incidents (allergic reactions, contaminated inventory, expired products) require tracking for recalls, vendor liability, and safety reporting. Operations link inventory item to inciden',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to procurement.material_master. Business justification: Retail spa products (skincare, aromatherapy oils) should reference material master for standardized product data, vendor sourcing, pricing, and procurement specifications. Eliminates data duplication',
     `property_id` BIGINT COMMENT 'Reference to the property where the spa facility is located. Enables property-level inventory aggregation and reporting.',
     `retail_product_id` BIGINT COMMENT 'Reference to the retail product master record. Identifies the specific spa retail product (skincare, wellness items, accessories) being tracked in inventory.',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the spa facility or outlet where this retail inventory is maintained. Links to the spa facility master data.',
+    `facility_id` BIGINT COMMENT 'Reference to the spa facility or outlet where this retail inventory is maintained. Links to the spa facility master data.',
     `vendor_id` BIGINT COMMENT 'Reference to the primary supplier or vendor for this retail product. Used for procurement planning and supplier performance tracking.',
     `available_quantity` DECIMAL(18,2) COMMENT 'The quantity of product available for immediate sale. Calculated as current stock quantity minus reserved quantity.',
     `batch_number` STRING COMMENT 'The manufacturer batch or lot number for product traceability. Used for quality control, recalls, and regulatory compliance.',
@@ -635,11 +530,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` (
     `membership_id` BIGINT COMMENT 'Unique identifier for the spa and wellness membership record. Primary key.',
-    `attribution_event_id` BIGINT COMMENT 'Foreign key linking to marketing.attribution_event. Business justification: Membership enrollments are key conversion events requiring attribution to marketing touchpoints. Essential for understanding membership acquisition journey, calculating acquisition costs by channel, a',
+    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Monthly and annual spa membership billing generates recurring AR invoices for revenue recognition and collection tracking. Required for subscription revenue accounting, deferred revenue management, an',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Membership enrollments are frequently the result of acquisition campaigns (membership drives, enrollment promotions, referral campaigns). Critical for measuring membership marketing ROI, tracking acqu',
-    `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Membership enrollments often use promotional offers (waived enrollment fees, discounted rates, first-month-free promotions). Essential for offer performance tracking, measuring membership acquisition ',
+    `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Membership enrollments often use promotional offers (waived enrollment fees, discounted rates, first-month-free promotions). Essential for offer performance tracking, measuring membership acquisition',
     `corporate_account_id` BIGINT COMMENT 'Reference to the corporate account sponsoring this membership. Populated only for corporate membership types where an employer or organization pays for employee memberships. Null for individual memberships.',
-    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Spa memberships sold through distribution partners (OTA wellness packages, corporate channels, travel agent networks) require channel attribution for commission calculation and membership acquisition ',
+    `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Spa memberships sold through distribution partners (OTA wellness packages, corporate channels, travel agent networks) require channel attribution for commission calculation and membership acquisition',
     `guest_segment_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_segment. Business justification: Memberships are often targeted to specific guest segments (local residents, frequent travelers, wellness enthusiasts). Essential for segment-based membership strategies, acquisition targeting, and mea',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Membership fees post to deferred/recurring revenue GL accounts for subscription revenue recognition. Essential for deferred revenue liability tracking, recurring revenue amortization, and ASC 606 comp',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Spa memberships are often bundled with hotel loyalty elite status, offering integrated benefits and cross-program recognition. Supports combined membership management, loyalty elite spa privileges, an',
@@ -669,6 +564,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` (
     `marketing_opt_in_flag` BOOLEAN COMMENT 'Indicates whether the member has consented to receive marketing communications about spa promotions, new services, and special events. True if opted in, False if opted out. Must be respected per GDPR and CCPA requirements.',
     `membership_number` STRING COMMENT 'Externally visible unique membership number issued to the guest. Used for identification at spa facilities and on membership cards.. Valid values are `^[A-Z0-9]{8,20}$`',
     `membership_status` STRING COMMENT 'Current lifecycle status of the spa membership. Active memberships have full benefits and access. Suspended memberships are temporarily on hold (e.g., medical leave, payment issue). Cancelled memberships have been terminated by member or property. Expired memberships have reached their end date without renewal. Pending memberships are awaiting activation or payment confirmation.. Valid values are `active|suspended|cancelled|expired|pending`',
+    `membership_tier` STRING COMMENT 'Tier level of the spa membership indicating the level of benefits and access. Basic provides limited access, Premium includes enhanced benefits, Elite offers priority booking and exclusive treatments, Unlimited provides unrestricted access to all spa facilities and services.. Valid values are `basic|premium|elite|unlimited`',
     `membership_type` STRING COMMENT 'Type of membership based on billing frequency and enrollment channel. Monthly memberships renew each month, Annual memberships are paid yearly, Corporate memberships are sponsored by employer organizations, Complimentary memberships are granted as loyalty rewards or promotional offers.. Valid values are `monthly|annual|corporate|complimentary`',
     `monthly_fee` DECIMAL(18,2) COMMENT 'Recurring monthly membership fee charged to the guest. Applicable for monthly and annual memberships (annual divided by 12). Zero for complimentary memberships.',
     `next_billing_date` DATE COMMENT 'Date when the next membership fee payment is scheduled to be processed. Null for cancelled or expired memberships. Used for billing cycle management and revenue forecasting.',
@@ -679,7 +575,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` (
     `referral_source` STRING COMMENT 'Channel or source through which the guest learned about and enrolled in the spa membership program. Direct indicates walk-in enrollment. Member referral indicates existing member recommendation. Hotel guest indicates enrollment during property stay. Marketing campaign indicates response to promotional offer. Corporate program indicates employer wellness initiative. Online indicates website or app enrollment. Concierge indicates recommendation by hotel staff. [ENUM-REF-CANDIDATE: direct|member_referral|hotel_guest|marketing_campaign|corporate_program|online|concierge — 7 candidates stripped; promote to reference product]',
     `suspension_end_date` DATE COMMENT 'Date when the membership suspension is scheduled to end and membership will return to active status. Null if not currently suspended or if suspension is indefinite pending member action.',
     `suspension_start_date` DATE COMMENT 'Date when the membership was suspended. Null if membership has never been suspended or is not currently suspended. Used to track suspension periods for billing adjustments and benefit calculations.',
-    `tier` STRING COMMENT 'Tier level of the spa membership indicating the level of benefits and access. Basic provides limited access, Premium includes enhanced benefits, Elite offers priority booking and exclusive treatments, Unlimited provides unrestricted access to all spa facilities and services.. Valid values are `basic|premium|elite|unlimited`',
     CONSTRAINT pk_membership PRIMARY KEY(`membership_id`)
 ) COMMENT 'Spa and wellness membership master record for guests enrolled in property-level spa membership programs. Captures membership number, guest reference, property reference, membership tier (basic, premium, elite, unlimited), membership type (monthly, annual, corporate), enrollment date, expiry date, monthly fee, annual fee, included treatment credits, included fitness access, included guest passes, auto-renewal flag, payment method on file, membership status (active, suspended, cancelled, expired), and cancellation reason. Distinct from loyalty.member which manages the hotel-wide loyalty program.';
 
@@ -726,12 +621,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` (
     `day_pass_id` BIGINT COMMENT 'Unique identifier for the day pass transaction. Primary key for the day pass record.',
     `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Day pass purchases by local residents or corporate groups generate AR invoices for non-guest billing. Essential for local market revenue tracking, corporate account management, and facility access rev',
-    `attribution_event_id` BIGINT COMMENT 'Foreign key linking to marketing.attribution_event. Business justification: Day pass purchases are conversion events needing attribution to marketing touchpoints. Tracks marketing touchpoints leading to day pass sales, enables attribution modeling for local market campaigns, ',
+    `attribution_event_id` BIGINT COMMENT 'Foreign key linking to marketing.attribution_event. Business justification: Day pass purchases are conversion events needing attribution to marketing touchpoints. Tracks marketing touchpoints leading to day pass sales, enables attribution modeling for local market campaigns,',
     `channel_id` BIGINT COMMENT 'Reference to the channel through which the day pass was booked (web, mobile app, front desk, phone, OTA).',
-    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Day pass sales are commonly driven by marketing campaigns (local resident promotions, seasonal offers, staycation packages). Essential for campaign attribution, measuring promotional effectiveness on ',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Day pass sales are commonly driven by marketing campaigns (local resident promotions, seasonal offers, staycation packages). Essential for campaign attribution, measuring promotional effectiveness on',
     `campaign_offer_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign_offer. Business justification: Day passes are commonly sold with promotional offer codes (local resident discounts, seasonal promotions, group discounts). Tracks offer redemption, discount attribution, and measures promotional effe',
     `corporate_account_id` BIGINT COMMENT 'Foreign key linking to guest.corporate_account. Business justification: Corporate day pass programs for employee wellness benefits require direct corporate account linkage. Enables bulk day pass billing, corporate wellness program administration, usage tracking against co',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Day pass revenue posts to facility access revenue GL accounts for financial reporting. Required for spa facility revenue recognition, GL reconciliation, and non-treatment revenue tracking in wellness ',
+    `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Day pass guests commonly purchase F&B (pool bar, spa café, healthy dining) during facility visits. Resorts track total guest spend per day pass session for upsell analysis and package design optimizat',
+    `guest_communication_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_communication. Business justification: Day pass purchases trigger communications (confirmations, arrival instructions, facility information, post-visit surveys). Essential for day pass guest experience, communication tracking, and supporti',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Day pass revenue posts to facility access revenue GL accounts for financial reporting. Required for spa facility revenue recognition, GL reconciliation, and non-treatment revenue tracking in wellness',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Day pass purchases earn loyalty points and qualify for member-exclusive rates. Required for points accrual on day pass revenue, tier-based pricing application, and targeted marketing to loyalty member',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Day passes target specific segments (hotel guests, local visitors, group events). Business process: day pass revenue attribution to market segments enables segment profitability analysis, pricing stra',
     `profile_id` BIGINT COMMENT 'Reference to the guest who purchased the day pass. Links to guest profile in the guest domain.',
@@ -781,7 +678,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` (
     `fitness_class_id` BIGINT COMMENT 'Unique identifier for the fitness class. Primary key.',
     `employee_id` BIGINT COMMENT 'Reference to the primary instructor or therapist who leads this fitness class.',
-    `fitness_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the system user who last modified this fitness class record.',
+    `modified_by_user_employee_id` BIGINT COMMENT 'Reference to the system user who last modified this fitness class record.',
     `parent_fitness_class_id` BIGINT COMMENT 'Self-referencing FK on fitness_class (parent_fitness_class_id)',
     `property_facility_id` BIGINT COMMENT 'Reference to the specific fitness facility, gym, or wellness center where the class is conducted.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where this fitness class is offered.',
@@ -871,58 +768,12 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_sessio
     CONSTRAINT pk_fitness_class_session PRIMARY KEY(`fitness_class_session_id`)
 ) COMMENT 'Scheduled instance of a fitness or wellness class at a specific date, time, and facility. Captures class reference, facility reference, instructor reference, session date, start time, end time, maximum capacity, enrolled count, waitlist count, session status (scheduled, open, full, cancelled, completed), cancellation reason, and actual attendance count. Enables class scheduling, capacity management, and instructor utilization tracking.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` (
-    `spa_class_enrollment_id` BIGINT COMMENT 'Unique identifier for the class enrollment record. Primary key.',
-    `fitness_class_session_id` BIGINT COMMENT 'Reference to the scheduled fitness or wellness class session. Links to the class session schedule.',
-    `guest_communication_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_communication. Business justification: Fitness class enrollments trigger communications (confirmations, reminders, cancellation notices, class updates). Critical for class communication tracking, guest experience management, and supporting',
-    `membership_id` BIGINT COMMENT 'Reference to the guests spa or fitness membership if applicable. Null for non-member enrollments.',
-    `employee_id` BIGINT COMMENT 'Reference to the system user who processed the cancellation. Null for guest self-service cancellations or non-cancelled enrollments.',
-    `profile_id` BIGINT COMMENT 'Reference to the guest or member who enrolled in the class session. Links to the guest master record.',
-    `property_id` BIGINT COMMENT 'Reference to the property where the class enrollment occurred. Links to the property master record.',
-    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Fitness class enrollments by hotel guests are charged to room folios. Billing systems and guest accounting require room linkage for charge-to-room transactions when participants are in-house guests.',
-    `survey_response_id` BIGINT COMMENT 'Foreign key linking to marketing.survey_response. Business justification: Fitness class attendance may trigger feedback surveys (class satisfaction, instructor ratings, facility feedback). Tracks class satisfaction, instructor performance, and supports fitness program quali',
-    `transferred_spa_class_enrollment_id` BIGINT COMMENT 'Self-referencing FK on spa_class_enrollment (transferred_spa_class_enrollment_id)',
-    `attendance_confirmed_flag` BOOLEAN COMMENT 'Indicates whether the guests attendance was confirmed by the instructor or system. True if attended, False if no-show or not yet determined.',
-    `cancellation_notes` STRING COMMENT 'Free-text notes providing additional context about the cancellation. Null for non-cancelled enrollments.',
-    `cancellation_reason_code` STRING COMMENT 'Standardized code indicating the reason for cancellation. Null for non-cancelled enrollments. Used for cancellation root cause analysis. [ENUM-REF-CANDIDATE: guest_request|schedule_conflict|illness|weather|facility_closure|class_cancelled|no_show_conversion — 7 candidates stripped; promote to reference product]',
-    `cancellation_timestamp` TIMESTAMP COMMENT 'Date and time when the enrollment was cancelled. Null for active enrollments. Used for cancellation pattern analysis.',
-    `charge_amount` DECIMAL(18,2) COMMENT 'Total amount charged to the guest for the class enrollment. May be zero for complimentary or member-included classes. Expressed in the propertys local currency.',
-    `check_in_method` STRING COMMENT 'Method used by the guest to check in for the class. Null if not checked in. Used for check-in process optimization.. Valid values are `mobile_app|kiosk|staff_desk|instructor|automatic`',
-    `check_in_timestamp` TIMESTAMP COMMENT 'Date and time when the guest checked in for the class session. Null if not yet checked in. Used to determine attended vs no-show status.',
-    `confirmation_timestamp` TIMESTAMP COMMENT 'Date and time when the enrollment was confirmed by the guest or system. Null if not yet confirmed. Used for no-show prediction.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this enrollment record was first created in the system. Used for audit trail and data lineage.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts in this enrollment record. Typically matches the propertys local currency.. Valid values are `^[A-Z]{3}$`',
-    `discount_amount` DECIMAL(18,2) COMMENT 'Total discount applied to the enrollment charge. Includes member discounts, promotional offers, and loyalty redemptions. Null if no discount applied.',
-    `enrollment_channel` STRING COMMENT 'Channel through which the guest enrolled in the class. Used for channel performance analysis and guest preference tracking. [ENUM-REF-CANDIDATE: mobile_app|web_portal|front_desk|phone|concierge|spa_desk|in_room — 7 candidates stripped; promote to reference product]',
-    `enrollment_number` STRING COMMENT 'Unique business identifier for the enrollment transaction. Used for guest communication and service desk reference.. Valid values are `^ENR-[0-9]{8,12}$`',
-    `enrollment_status` STRING COMMENT 'Current lifecycle status of the class enrollment. Tracks progression from initial enrollment through attendance or cancellation.. Valid values are `enrolled|waitlisted|cancelled|attended|no-show|confirmed`',
-    `enrollment_timestamp` TIMESTAMP COMMENT 'Date and time when the guest enrolled in the class session. Primary business event timestamp for this transaction.',
-    `folio_reference_number` STRING COMMENT 'Reference number of the guest folio where charges were posted. Null for non-room-charge payment methods. Links to OPERA PMS folio.',
-    `guest_feedback_comments` STRING COMMENT 'Free-text comments provided by the guest about their class experience. Null if no feedback provided. Used for service improvement.',
-    `guest_rating` STRING COMMENT 'Rating provided by the guest for the class experience on a scale of 1-5. Null if guest has not provided feedback. Used for class quality tracking.',
-    `instructor_notes` STRING COMMENT 'Notes added by the class instructor regarding the guests participation, performance, or any incidents. Null if no notes recorded.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this enrollment record was last updated. Used for audit trail and change tracking.',
-    `loyalty_points_earned` STRING COMMENT 'Number of loyalty program points earned by the guest for this enrollment. Null or zero if not eligible for points.',
-    `loyalty_points_redeemed` STRING COMMENT 'Number of loyalty program points redeemed by the guest to pay for or discount this enrollment. Null or zero if no points used.',
-    `net_amount` DECIMAL(18,2) COMMENT 'Net amount charged after discounts and including taxes. Represents the final amount posted to the guest folio or payment method.',
-    `no_show_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged to the guest for failing to attend or cancel within the policy window. Null if no fee applies. Expressed in the propertys local currency.',
-    `no_show_fee_waived_flag` BOOLEAN COMMENT 'Indicates whether the no-show fee was waived by management. True if waived, False if charged. Used for service recovery tracking.',
-    `no_show_flag` BOOLEAN COMMENT 'Indicates whether the guest failed to attend without cancelling. True if no-show, False otherwise. Used for no-show fee enforcement and guest behavior tracking.',
-    `notes` STRING COMMENT 'General free-text notes field for any additional information about the enrollment that does not fit other structured fields. Null if no notes.',
-    `payment_method` STRING COMMENT 'Method used to pay for the class enrollment. Room charge posts to guest folio, membership indicates included in membership benefits. [ENUM-REF-CANDIDATE: room_charge|credit_card|cash|membership|complimentary|loyalty_points|gift_certificate — 7 candidates stripped; promote to reference product]',
-    `source_record_reference` STRING COMMENT 'Unique identifier of this enrollment record in the source operational system. Used for data reconciliation and audit trails.',
-    `special_requests` STRING COMMENT 'Free-text field capturing any special requests or accommodations needed by the guest for the class. Null if no special requests.',
-    `tax_amount` DECIMAL(18,2) COMMENT 'Total tax amount applied to the enrollment charge. Null if tax-exempt or zero-rated. Expressed in the propertys local currency.',
-    `waitlist_position` STRING COMMENT 'Position in the waitlist queue if enrollment status is waitlisted. Null for non-waitlisted enrollments. Used for automated promotion when spots become available.',
-    `waitlist_timestamp` TIMESTAMP COMMENT 'Date and time when the guest was placed on the waitlist. Null if never waitlisted. Used for waitlist duration analysis.',
-    CONSTRAINT pk_spa_class_enrollment PRIMARY KEY(`spa_class_enrollment_id`)
-) COMMENT 'Transactional record of a guest or member enrolling in a scheduled fitness or wellness class session. Captures enrollment date, guest reference, session reference, membership reference if applicable, enrollment channel, enrollment status (enrolled, waitlisted, cancelled, attended, no-show), cancellation date, cancellation reason, charge amount, and check-in timestamp. Supports class attendance management, waitlist processing, and no-show fee enforcement. [SSOT_OWNER] [SSOT MASTER for group spa.spa_class_enrollment]event_class_enrollment. [SSOT:class_enrollment] Domain-specific specialization of the class_enrollment concept; canonical SSOT owner is event.event_class_enrollment.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` (
     `golf_tee_time_id` BIGINT COMMENT 'Unique identifier for the golf tee time booking record. Primary key for the golf tee time transaction.',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Golf bookings for corporate outings, tournaments, or non-resident play generate AR invoices for direct billing. Required for golf revenue recognition, corporate account receivables, and event billing ',
+    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ar_invoice. Business justification: Golf bookings for corporate outings, tournaments, or non-resident play generate AR invoices for direct billing. Required for golf revenue recognition, corporate account receivables, and event billing',
     `booking_source_id` BIGINT COMMENT 'Reference to the specific booking source or partner through which the tee time was reserved. Links to booking source master data.',
     `employee_id` BIGINT COMMENT 'Reference to the system user or staff member who created the tee time booking. Links to user master data.',
+    `guest_communication_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_communication. Business justification: Golf tee times trigger communications (confirmations, weather updates, reminders, course information). Essential for golf guest communications, tee time management, and supporting golf operations in h',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Golf revenue posts to recreation revenue GL accounts for financial statement preparation. Essential for golf operations revenue recognition, GL account reconciliation, and recreation department financ',
     `profile_id` BIGINT COMMENT 'Reference to the guest who booked the tee time. Links to the guest master record.',
     `property_facility_id` BIGINT COMMENT 'Reference to the specific golf course where the tee time is scheduled. A property may have multiple courses.',
@@ -971,7 +822,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` (
     `employee_id` BIGINT COMMENT 'Reference to the user who approved this pricing rule for operational use.',
     `product_id` BIGINT COMMENT 'Reference to the retail product being priced. Null if pricing applies to treatments or services.',
     `property_id` BIGINT COMMENT 'Reference to the property where this pricing rule applies.',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the specific spa, fitness, golf, or recreation facility where this pricing applies.',
+    `facility_id` BIGINT COMMENT 'Reference to the specific spa, fitness, golf, or recreation facility where this pricing applies.',
     `superseded_amenity_pricing_id` BIGINT COMMENT 'Self-referencing FK on amenity_pricing (superseded_amenity_pricing_id)',
     `tertiary_amenity_last_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the user who last modified this pricing rule record.',
     `treatment_id` BIGINT COMMENT 'Reference to the spa treatment, fitness class, or service being priced. Null if pricing applies to retail products or day passes.',
@@ -1019,7 +870,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` (
     `employee_id` BIGINT COMMENT 'Reference to the staff user who processed the cancellation if cancelled by staff. Null for guest-initiated or system cancellations.',
     `profile_id` BIGINT COMMENT 'Reference to the guest who had the cancelled appointment. Enables guest-level cancellation pattern analysis.',
     `property_id` BIGINT COMMENT 'Reference to the property where the cancelled appointment was scheduled. Enables property-level cancellation analytics.',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the specific spa facility where the cancelled appointment was scheduled.',
+    `facility_id` BIGINT COMMENT 'Reference to the specific spa facility where the cancelled appointment was scheduled.',
     `advance_notice_hours` DECIMAL(18,2) COMMENT 'Number of hours between cancellation timestamp and scheduled appointment start time. Used to determine policy compliance.',
     `appointment_scheduled_date` DATE COMMENT 'Original scheduled date of the cancelled appointment. Used to calculate advance notice period.',
     `cancellation_channel` STRING COMMENT 'Channel or interface through which the cancellation was submitted. Enables channel-specific cancellation analysis. [ENUM-REF-CANDIDATE: PHONE|EMAIL|MOBILE_APP|WEBSITE|IN_PERSON|PMS|SYSTEM_AUTO — 7 candidates stripped; promote to reference product]',
@@ -1054,13 +905,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` (
     `equipment_id` BIGINT COMMENT 'Unique identifier for the spa and fitness equipment asset. Primary key.',
-    `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Spa equipment (massage tables, saunas, hydrotherapy systems) are capitalized fixed assets requiring depreciation tracking. Essential for FF&E reserve calculations, capital expenditure tracking, asset ',
+    `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Spa equipment (massage tables, saunas, hydrotherapy systems) are capitalized fixed assets requiring depreciation tracking. Essential for FF&E reserve calculations, capital expenditure tracking, asset',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Spa equipment requires ongoing maintenance from specialized service vendors (separate from original supplier). Critical for service contract management, preventive maintenance scheduling, and vendor p',
-    `pip_item_id` BIGINT COMMENT 'Foreign key linking to property.pip_item. Business justification: Spa equipment purchases, installations, and major renovations are tracked as capital expenditure line items in Property Improvement Plans for budget approval, brand compliance verification, and asset ',
+    `pip_item_id` BIGINT COMMENT 'Foreign key linking to property.pip_item. Business justification: Spa equipment purchases, installations, and major renovations are tracked as capital expenditure line items in Property Improvement Plans for budget approval, brand compliance verification, and asset',
     `property_id` BIGINT COMMENT 'Reference to the property where this equipment is located.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Spa equipment (massage tables, saunas, hydrotherapy tubs) is capital expenditure procured via purchase orders. Links equipment asset records to original procurement transaction for warranty tracking a',
     `replaced_equipment_id` BIGINT COMMENT 'Self-referencing FK on equipment (replaced_equipment_id)',
-    `spa_facility_id` BIGINT COMMENT 'Reference to the spa or fitness facility housing this equipment.',
+    `facility_id` BIGINT COMMENT 'Reference to the spa or fitness facility housing this equipment.',
     `treatment_room_id` BIGINT COMMENT 'Reference to the specific treatment room where this equipment is assigned, if applicable.',
     `accumulated_depreciation` DECIMAL(18,2) COMMENT 'Total depreciation expense recorded against this equipment asset to date.',
     `capacity_rating` STRING COMMENT 'Maximum capacity or load rating of the equipment (e.g., weight limit, occupancy, volume).',
@@ -1109,10 +960,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` (
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Multi-day wellness programs booked via channels need channel tracking for commission accrual, package rate management, and channel performance analysis. Revenue management uses this to optimize wellne',
     `guest_segment_id` BIGINT COMMENT 'Foreign key linking to marketing.guest_segment. Business justification: Wellness programs are designed for specific guest segments (detox seekers, fitness enthusiasts, stress management seekers). Links program design to target audience, enables segment-specific program ma',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Wellness programs target specific segments (wellness travelers, corporate retreats, luxury leisure). Business process: program revenue planning by market segment supports strategic positioning, pricin',
-    `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Wellness programs are brand-specific (Six Senses wellness programs, Canyon Ranch programs, Miraval experiences). Essential for brand differentiation, brand-specific program management, and supporting ',
+    `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Wellness programs are brand-specific (Six Senses wellness programs, Canyon Ranch programs, Miraval experiences). Essential for brand differentiation, brand-specific program management, and supporting',
     `prerequisite_wellness_program_id` BIGINT COMMENT 'Self-referencing FK on wellness_program (prerequisite_wellness_program_id)',
     `employee_id` BIGINT COMMENT 'Identifier of the user (spa director, revenue manager, or general manager) who approved this wellness program for operational deployment and guest booking.',
     `property_id` BIGINT COMMENT 'Identifier of the resort or destination spa property where this wellness program is offered.',
+    `facility_id` BIGINT COMMENT 'Spa Facility Id for wellness program',
     `tertiary_wellness_last_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who most recently modified this wellness program record. Enables change tracking and accountability for program updates.',
     `active_status` STRING COMMENT 'Current operational status of the wellness program. Controls visibility in booking channels and availability for new reservations.. Valid values are `active|inactive|suspended|pending_approval|discontinued`',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the wellness program was approved for operational use. Critical for audit trails and compliance with internal controls.',
@@ -1153,6 +1005,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` (
     `program_treatment_id` BIGINT COMMENT 'Unique identifier for this program-treatment inclusion record. Primary key.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - program treatments are offered at specific properties',
     `treatment_id` BIGINT COMMENT 'Foreign key linking to the specific spa treatment included in the program',
     `wellness_program_id` BIGINT COMMENT 'Foreign key linking to the wellness program that includes this treatment',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this program-treatment inclusion was created in the system',
@@ -1171,7 +1024,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` (
     `package_treatment_id` BIGINT COMMENT 'Unique identifier for this package-treatment association record. Primary key.',
-    `primary_package_id` BIGINT COMMENT 'Foreign key linking to the spa package that contains this treatment component',
+    `package_id` BIGINT COMMENT 'Foreign key linking to the spa package that contains this treatment component',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - package treatment compositions may vary by property',
+    `spa_package_id` BIGINT COMMENT 'Foreign key to spa_package. Part of the many-to-many relationship.',
     `treatment_id` BIGINT COMMENT 'Foreign key to treatment. Part of the many-to-many relationship.',
     `day_number` STRING COMMENT 'For multi-day packages, indicates which day this treatment is scheduled. Null for single-day packages. Explicitly identified in detection phase.',
     `effective_end_date` DATE COMMENT 'Date when this treatment was removed from the package composition. Null if currently active. Supports historical tracking of package evolution.',
@@ -1184,15 +1039,12 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` (
     `time_of_day_preference` STRING COMMENT 'Recommended or required time of day for this treatment within the package (morning, afternoon, evening, flexible). Used for scheduling optimization and guest experience design. Explicitly identified in detection phase.',
     `treatment_duration_minutes` STRING COMMENT 'Duration override for this treatment when delivered as part of this package. May differ from the standard treatment duration due to package-specific modifications or time constraints. Explicitly identified in detection phase.',
     `upgrade_available_flag` BOOLEAN COMMENT 'Indicates whether the guest can upgrade this treatment to a premium version for an additional fee. Supports upsell opportunities. Explicitly identified in detection phase.',
-    `package_id` BIGINT COMMENT '',
-    `spa_package_id` BIGINT COMMENT '',
     CONSTRAINT pk_package_treatment PRIMARY KEY(`package_treatment_id`)
 ) COMMENT 'This association product represents the composition relationship between spa packages and their constituent treatments. It captures the operational design of spa packages by defining which treatments are included, their sequence, duration overrides, quantity, and optionality. Each record links one spa_package to one treatment with attributes that exist only in the context of this package composition. This is actively managed by spa operations teams during package design, pricing, and menu management.. Existence Justification: Spa packages are composed of multiple treatments (e.g., a Day Spa Retreat includes massage, facial, body wrap), and each treatment can be included in multiple different packages (e.g., Swedish Massage appears in couples packages, wellness programs, and day spa offerings). Spa operations teams actively design and manage these package compositions, defining treatment sequences, duration overrides, quantities, and optionality as part of package design and pricing workflows.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`product` (
     `product_id` BIGINT COMMENT 'Primary key for product',
     `brand_id` BIGINT COMMENT 'FK to marketing.brand',
-    `material_master_id` BIGINT COMMENT 'add column material_master_id (BIGINT) with FK to procurement.material_master.material_master_id - spa products need linkage to material master for inventory and procurement reconciliation.',
     `parent_product_id` BIGINT COMMENT 'Self-referencing FK on product (parent_product_id)',
     `product_line_id` BIGINT COMMENT 'Identifier linking the product to a broader product line or collection (e.g., signature wellness collection, luxury skincare line).',
     `property_id` BIGINT COMMENT 'Identifier of the hotel, resort, or property where this spa product is offered.',
@@ -1221,11 +1073,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`product` (
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the product record was last modified.',
     `product_name` STRING COMMENT 'Full name of the spa product, treatment, or retail item as displayed to guests and staff.',
     `online_booking_enabled_flag` BOOLEAN COMMENT 'Indicates whether the product can be booked through online channels (website, mobile app).',
-    `product_status` STRING COMMENT 'Current lifecycle status of the product indicating availability for booking or sale.',
     `product_type` STRING COMMENT 'Detailed classification of the product within its category (e.g., massage, facial, body treatment, skincare, wellness supplement).',
     `room_type_required` STRING COMMENT 'Type of treatment room or facility required to deliver the service (e.g., massage room, facial suite, hydrotherapy room, couples suite).',
     `seasonal_availability` STRING COMMENT 'Specific seasons or months when the product is available (e.g., summer only, winter wellness package).',
     `short_description` STRING COMMENT 'Brief summary of the product for use in menus, mobile applications, and point-of-sale displays.',
+    `product_status` STRING COMMENT 'Current lifecycle status of the product indicating availability for booking or sale.',
     `stock_keeping_unit` STRING COMMENT 'Unique inventory identifier for retail products used in warehouse and inventory management systems.',
     `taxable_flag` BOOLEAN COMMENT 'Indicates whether the product is subject to sales tax or value-added tax (VAT).',
     `therapist_certification_required` STRING COMMENT 'Specific professional certification or training required for therapists to perform this treatment (e.g., licensed massage therapist, esthetician, aromatherapist).',
@@ -1239,6 +1091,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` (
     `program_config_id` BIGINT COMMENT 'Reference to the loyalty program associated with the lead guest or organization for points accrual and benefits.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or property where the group booking is scheduled.',
     `rebooked_group_booking_id` BIGINT COMMENT 'Self-referencing FK on group_booking (rebooked_group_booking_id)',
+    `reservation_group_block_id` BIGINT COMMENT 'add column reservation_group_block_id (BIGINT) with FK to reservation.reservation_group_block.reservation_group_block_id - spa group bookings should link to the reservation group block for coordinated group management',
     `arrival_date` DATE COMMENT 'Scheduled date when the group is expected to arrive at the property.',
     `billing_address` STRING COMMENT 'Full billing address for invoicing and payment processing for the group booking.',
     `booking_date` DATE COMMENT 'Date when the group booking was initially created or placed in the system.',
@@ -1282,7 +1135,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` (
     `retail_product_id` BIGINT COMMENT 'Primary key for retail_product',
     `parent_retail_product_id` BIGINT COMMENT 'Self-referencing FK on retail_product (parent_retail_product_id)',
-    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - retail products are stocked at property level.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - retail products are stocked at specific property spas',
     `vendor_id` BIGINT COMMENT 'Reference to the primary supplier or vendor providing this retail product.',
     `allergen_information` STRING COMMENT 'Known allergens or sensitivity warnings associated with the product ingredients.',
     `barcode` STRING COMMENT 'Universal Product Code (UPC), European Article Number (EAN), or other barcode identifier for point-of-sale scanning.',
@@ -1312,10 +1165,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` (
     `product_name` STRING COMMENT 'Full commercial name of the retail product as displayed to guests and in sales systems.',
     `product_type` STRING COMMENT 'Classification indicating the merchandising purpose or sales channel designation of the product.',
     `reorder_quantity` STRING COMMENT 'Standard quantity to order when restocking the product.',
-    `retail_product_status` STRING COMMENT 'Current lifecycle status of the retail product in the spa retail catalog.',
     `seasonal_product` BOOLEAN COMMENT 'Indicates whether the product is available only during specific seasons or holiday periods.',
     `shelf_life_days` STRING COMMENT 'Number of days the product remains usable and saleable from the manufacturing or receipt date.',
     `short_description` STRING COMMENT 'Abbreviated description of the product for use in point-of-sale displays, receipts, and mobile applications.',
+    `retail_product_status` STRING COMMENT 'Current lifecycle status of the retail product in the spa retail catalog.',
     `storage_requirements` STRING COMMENT 'Special storage conditions required for the product (e.g., refrigeration, temperature range, humidity control).',
     `subcategory` STRING COMMENT 'Secondary classification providing more granular segmentation within the primary category (e.g., facial moisturizer, body lotion, essential oils).',
     `tax_category` STRING COMMENT 'Tax classification determining applicable sales tax or VAT (Value Added Tax) rate for the product.',
@@ -1329,14 +1182,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` (
     `product_line_id` BIGINT COMMENT 'Primary key for product_line',
-    `brand_id` BIGINT COMMENT 'add column brand_id (BIGINT) with FK to marketing.brand.brand_id - product lines are tied to brands for retail merchandising.',
+    `brand_id` BIGINT COMMENT 'add column brand_id (BIGINT) with FK to marketing.brand.brand_id - product lines are associated with brands and this table only has a self-reference',
     `employee_id` BIGINT COMMENT 'Identifier of the user or system process that last modified this product line record. Used for audit and accountability purposes.',
     `parent_product_line_id` BIGINT COMMENT 'Self-referencing FK on product_line (parent_product_line_id)',
-    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - product lines need property scope for property-level merchandising.',
     `vendor_id` BIGINT COMMENT 'Reference to the primary vendor or supplier providing products or services within this product line.',
     `advance_booking_days_maximum` STRING COMMENT 'Maximum number of days in advance that bookings can be made for this product line. Controls booking window for capacity management.',
     `advance_booking_days_minimum` STRING COMMENT 'Minimum number of days in advance that bookings can be made for this product line. Used for operational planning and staffing.',
     `base_price_amount` DECIMAL(18,2) COMMENT 'Standard base price for products or services in this line before property-specific adjustments, discounts, or member pricing. Used as reference for revenue management and pricing strategy.',
+    `brand_name` STRING COMMENT 'Brand or manufacturer name associated with the product line. Critical for retail products and branded treatment protocols.',
     `cancellation_policy_hours` STRING COMMENT 'Number of hours advance notice required for cancellation without penalty. Used for booking management and revenue protection policies.',
     `product_line_category` STRING COMMENT 'Primary category classification for the product line within spa and wellness operations. Determines operational workflows, staffing requirements, and revenue reporting segments.',
     `commission_eligible_flag` BOOLEAN COMMENT 'Indicates whether sales of this product line are eligible for therapist, spa attendant, or sales associate commission calculations.',
@@ -1361,11 +1214,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` (
     `notes` STRING COMMENT 'Free-form notes field for additional operational information, special instructions, or internal comments about the product line.',
     `online_booking_enabled_flag` BOOLEAN COMMENT 'Indicates whether guests can book services in this product line through online channels. Controls digital booking system availability.',
     `package_component_eligible_flag` BOOLEAN COMMENT 'Indicates whether this product line can be included as a component in bundled spa packages or wellness programs.',
-    `product_line_status` STRING COMMENT 'Current lifecycle status of the product line. Controls availability for booking, purchasing, and operational planning.',
     `requires_medical_clearance_flag` BOOLEAN COMMENT 'Indicates whether guests must provide medical clearance or complete health questionnaires before booking services in this product line. Critical for liability management.',
     `revenue_category` STRING COMMENT 'Financial reporting category for revenue generated by this product line. Aligns with property-level and corporate financial reporting structures.',
     `seasonal_availability` STRING COMMENT 'Seasonal availability pattern for this product line. Examples: year-round, summer only, winter only, holiday season. Used for menu planning and marketing campaigns.',
     `service_duration_minutes` STRING COMMENT 'Standard duration in minutes for services within this product line. Used for therapist scheduling, appointment booking, and capacity planning. Null for retail product lines.',
+    `product_line_status` STRING COMMENT 'Current lifecycle status of the product line. Controls availability for booking, purchasing, and operational planning.',
     `subcategory` STRING COMMENT 'Secondary classification providing granular segmentation within the primary category. Examples: massage therapy, facial treatments, body treatments, aromatherapy products, fitness equipment.',
     `sustainability_certified_flag` BOOLEAN COMMENT 'Indicates whether products in this line carry recognized sustainability or eco-friendly certifications. Used for ESG reporting and green marketing initiatives.',
     `target_guest_segment` STRING COMMENT 'Primary guest demographic or psychographic segment targeted by this product line. Examples: luxury travelers, wellness enthusiasts, families, corporate groups, spa members.',
@@ -1374,41 +1227,178 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` (
     CONSTRAINT pk_product_line PRIMARY KEY(`product_line_id`)
 ) COMMENT 'Master reference table for product_line. Referenced by product_line_id.';
 
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` (
+    `facility_id` BIGINT COMMENT 'Primary key for facility',
+    `ada_assessment_id` BIGINT COMMENT 'Foreign key linking to compliance.ada_assessment. Business justification: Spa facilities must comply with ADA accessibility requirements (treatment rooms, pools, locker rooms, entrances). Operations track current assessment for legal compliance, remediation planning, and gu',
+    `content_asset_id` BIGINT COMMENT 'Foreign key linking to marketing.content_asset. Business justification: Spa facilities are showcased through content assets (facility photos, virtual tours, amenity videos, 360-degree views). Essential for facility marketing, property-level content management, and support',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Each spa facility operates as a cost center for expense allocation, budget management, and departmental P&L reporting. Essential for multi-facility spa operations, cost allocation, and USALI-compliant',
+    `fire_safety_record_id` BIGINT COMMENT 'Foreign key linking to compliance.fire_safety_record. Business justification: Spa facilities require fire safety certifications, suppression system inspections, and evacuation plans. Operations link facility to current fire safety compliance record for audits, insurance, and re',
+    `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Major spa facility renovations and FF&E investments are capitalized as fixed assets for depreciation. Required for PIP (Property Improvement Plan) tracking, capital expenditure reporting, FF&E reserve',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Spa facilities require operational manager assignment for P&L accountability, labor scheduling oversight, vendor management, and guest escalation handling. Current facility_manager_name is denormalize',
+    `brand_id` BIGINT COMMENT 'Foreign key linking to marketing.brand. Business justification: Spa facilities are associated with specific brands (brand-specific spa concepts, branded wellness experiences). Critical for brand-level spa operations, brand standards compliance, and supporting bran',
+    `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Spa facilities are organizational units with cost centers, budgeted headcount, labor productivity standards, and USALI department classification. Required for financial consolidation, labor cost alloc',
+    `parent_spa_facility_id` BIGINT COMMENT 'Self-referencing FK on spa_facility (parent_spa_facility_id)',
+    `permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Spas require operating permits (health department, pool operation, massage establishment license). Operations track current permit for regulatory compliance, renewal management, and inspection schedul',
+    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Each spa facility may operate as a distinct profit center for owner reporting and segment performance analysis. Essential for multi-facility spa portfolio management, facility-level GOP reporting, and',
+    `property_id` BIGINT COMMENT 'Reference to the hotel or resort property where this facility is located.',
+    `spa_facility_id` BIGINT COMMENT 'Unique identifier for the spa, wellness, or recreation facility. Primary key. Role: MASTER_RESOURCE.',
+    `accessibility_features` STRING COMMENT 'Comma-separated list of accessibility accommodations available at the facility (e.g., wheelchair_accessible, hearing_loop, braille_signage, accessible_treatment_tables). Supports ADA compliance tracking.',
+    `average_daily_visitors` STRING COMMENT 'Average number of unique guests visiting the facility per day, calculated over a rolling 90-day period. Used for capacity planning and staffing optimization.',
+    `certification_accreditation` STRING COMMENT 'Comma-separated list of industry certifications, accreditations, or awards held by the facility (e.g., Forbes Five Star Spa, LEED Gold Certified, International Spa Association Member). Supports marketing and quality assurance.',
+    `facility_code` STRING COMMENT 'Unique alphanumeric code identifying the facility within the property management system. Used for operational reference and system integration.. Valid values are `^[A-Z0-9]{3,10}$`',
+    `contact_email` STRING COMMENT 'Primary email address for facility reservations, guest inquiries, and operational communication. Organizational contact data classified as confidential.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
+    `contact_phone` STRING COMMENT 'Primary phone number for guest inquiries, reservations, and facility operations. Organizational contact data classified as confidential.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this facility record was first created in the system. Supports audit trail and data lineage tracking.',
+    `facility_status` STRING COMMENT 'Current operational lifecycle status of the facility: active (open and operational), inactive (permanently closed), under_renovation (closed for Property Improvement Plan execution), temporarily_closed (short-term closure), seasonal (operates only during specific seasons).. Valid values are `active|inactive|under_renovation|temporarily_closed|seasonal`',
+    `facility_type` STRING COMMENT 'Classification of the facility by primary service offering: spa (full-service spa with treatments), fitness_center (gym and exercise equipment), golf_course (golf amenity), pool (swimming pool and aquatic facilities), tennis_court (tennis and racquet sports), salon (hair and beauty salon).. Valid values are `spa|fitness_center|golf_course|pool|tennis_court|salon`',
+    `fire_safety_compliance_date` DATE COMMENT 'Date of the most recent fire safety inspection and compliance certification. Required for local fire code adherence and insurance purposes.',
+    `gender_designation` STRING COMMENT 'Gender access policy for the facility: co_ed (open to all genders), female_only (restricted to female guests), male_only (restricted to male guests), gender_neutral (inclusive non-binary policy).. Valid values are `co_ed|female_only|male_only|gender_neutral`',
+    `guest_access_policy` STRING COMMENT 'Policy governing who may access the facility: hotel_guests_only (restricted to registered guests), members_only (membership or loyalty program required), public_access (open to general public), day_pass_available (non-guests may purchase day access).. Valid values are `hotel_guests_only|members_only|public_access|day_pass_available`',
+    `health_safety_compliance_date` DATE COMMENT 'Date of the most recent health and safety inspection or compliance audit. Supports regulatory reporting and operational risk management.',
+    `last_renovation_date` DATE COMMENT 'Date of the most recent major renovation or Property Improvement Plan (PIP) completion for the facility. Used for Furniture Fixtures and Equipment (FF&E) lifecycle tracking and capital expenditure (CapEx) planning.',
+    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this facility record. Supports change tracking and data quality monitoring.',
+    `locker_room_capacity` STRING COMMENT 'Total number of lockers available in changing and locker room facilities. Indicates maximum concurrent guest capacity for facility usage.',
+    `loyalty_points_eligible_flag` BOOLEAN COMMENT 'Indicates whether purchases and services at this facility are eligible for loyalty program points accrual. True if loyalty integration is active.',
+    `minimum_age_requirement` STRING COMMENT 'Minimum age in years required for guest access to the facility. Common values: 16 for spa facilities, 18 for adult-only wellness centers, 0 for family-friendly pools.',
+    `facility_name` STRING COMMENT 'Full business name of the spa, wellness, or recreation facility as presented to guests (e.g., Serenity Spa & Wellness Center, Championship Golf Course).',
+    `next_scheduled_renovation_date` DATE COMMENT 'Planned date for the next major renovation or facility upgrade. Supports long-term capital planning and guest communication regarding temporary closures.',
+    `operating_hours_friday` STRING COMMENT 'Facility operating hours on Friday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_monday` STRING COMMENT 'Facility operating hours on Monday in 24-hour format (HH:MM-HH:MM) or closed if not operational. Example: 06:00-22:00.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_saturday` STRING COMMENT 'Facility operating hours on Saturday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_sunday` STRING COMMENT 'Facility operating hours on Sunday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_thursday` STRING COMMENT 'Facility operating hours on Thursday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_tuesday` STRING COMMENT 'Facility operating hours on Tuesday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `operating_hours_wednesday` STRING COMMENT 'Facility operating hours on Wednesday in 24-hour format (HH:MM-HH:MM) or closed if not operational.. Valid values are `^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$`',
+    `outdoor_space_flag` BOOLEAN COMMENT 'Indicates whether the facility includes outdoor amenities or treatment areas (e.g., outdoor pools, rooftop yoga decks, garden relaxation areas). True if outdoor space exists.',
+    `peak_season_months` STRING COMMENT 'Comma-separated list of month names or numbers representing peak demand periods for the facility (e.g., June,July,August or 6,7,8). Supports revenue management and staffing planning.',
+    `relaxation_lounge_capacity` STRING COMMENT 'Maximum seating capacity in relaxation lounges and quiet areas where guests rest before or after treatments. Measured in number of seats.',
+    `reservation_required_flag` BOOLEAN COMMENT 'Indicates whether advance reservations are required for facility access or services. True if reservations are mandatory, false if walk-ins are accepted.',
+    `retail_area_flag` BOOLEAN COMMENT 'Indicates whether the facility includes a retail area for selling spa products, wellness merchandise, or branded goods. True if retail space exists.',
+    `seasonal_close_date` DATE COMMENT 'Annual date when seasonal facility closes for the off-season. Null if facility operates year-round.',
+    `seasonal_open_date` DATE COMMENT 'Annual date when seasonal facility opens for the operating season. Null if facility operates year-round.',
+    `seasonal_operation_flag` BOOLEAN COMMENT 'Indicates whether the facility operates on a seasonal schedule (e.g., outdoor pools open only in summer, golf courses closed in winter). True if seasonal.',
+    `square_footage` STRING COMMENT 'Total interior square footage of the facility. Used for space utilization analysis, renovation planning, and benchmarking against industry standards.',
+    `total_treatment_rooms` STRING COMMENT 'Total number of individual treatment rooms available for spa services, massages, facials, and body treatments. Used for capacity planning and scheduling.',
+    `wet_area_capacity` STRING COMMENT 'Maximum guest capacity for wet amenities including steam rooms, saunas, whirlpools, and hydrotherapy pools. Measured in number of guests.',
+    CONSTRAINT pk_spa_facility PRIMARY KEY(`facility_id`)
+) COMMENT 'Master record for spa, fitness, golf, and pool facility assets at each property. Captures facility name, facility code, facility type (spa, fitness center, golf course, pool, tennis court, salon), property reference, total treatment rooms, wet area capacity, locker room capacity, relaxation lounge capacity, operating hours by day of week, gender designation (co-ed, female-only, male-only), accessibility features, renovation status, and active status. Complements property.facility with spa-specific operational attributes.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` (
+    `therapist_certification_id` BIGINT COMMENT 'Primary key for therapist_certification',
+    `renewed_spa_therapist_certification_id` BIGINT COMMENT 'Self-referencing FK on spa_therapist_certification (renewed_spa_therapist_certification_id)',
+    `spa_therapist_certification_id` BIGINT COMMENT 'Unique identifier for the therapist certification record. Primary key.',
+    `therapist_id` BIGINT COMMENT 'Reference to the spa therapist who holds this certification. Links to the therapist master record.',
+    `certification_document_url` STRING COMMENT 'The storage location or URL of the scanned certification document or digital credential. Enables audit trail and verification support.',
+    `certification_level` STRING COMMENT 'The proficiency level or tier of the certification. Used to match therapist expertise to guest service expectations and premium treatment offerings.. Valid values are `entry|intermediate|advanced|master|instructor`',
+    `certification_name` STRING COMMENT 'The full name or title of the certification as issued by the certifying body (e.g., Licensed Massage Therapist, Certified Esthetician, Brand Signature Massage Specialist).',
+    `certification_number` STRING COMMENT 'The unique certificate or license number issued by the certifying body. This is the externally-known identifier for the certification.',
+    `certification_type` STRING COMMENT 'The category of certification held by the therapist. Distinguishes between state-mandated licenses, brand-specific training certifications, and safety certifications required for spa operations. [ENUM-REF-CANDIDATE: state_massage_license|esthetics_license|cosmetology_license|brand_certification|specialty_certification|cpr_certification|first_aid_certification — 7 candidates stripped; promote to reference product]',
+    `continuing_education_hours_completed` DECIMAL(18,2) COMMENT 'The number of continuing education hours the therapist has completed toward the current renewal cycle. Enables proactive management of renewal readiness.',
+    `continuing_education_hours_required` DECIMAL(18,2) COMMENT 'The number of continuing education hours required for renewal of this certification. Used to track therapist compliance with professional development requirements.',
+    `cost_amount` DECIMAL(18,2) COMMENT 'The cost incurred to obtain or renew this certification, including exam fees, training fees, and application fees. Used for workforce development budgeting and ROI analysis.',
+    `cost_currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code for the certification cost. Supports multi-currency operations for global property portfolios.. Valid values are `^[A-Z]{3}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this certification record was first created in the system. Audit trail field.',
+    `effective_date` DATE COMMENT 'The date from which the certification becomes valid and the therapist is authorized to perform services under this credential. May differ from issue date for pre-dated certifications.',
+    `expiry_date` DATE COMMENT 'The date on which the certification expires and is no longer valid. Null for certifications with no expiration. Critical for compliance tracking and renewal scheduling.',
+    `instructor_name` STRING COMMENT 'The name of the instructor or trainer who conducted the certification training. Relevant for brand certifications and internal training programs.',
+    `is_brand_required` BOOLEAN COMMENT 'Indicates whether this certification is mandated by brand service standards for therapists to perform certain treatments. Used to enforce brand compliance.',
+    `is_primary_certification` BOOLEAN COMMENT 'Indicates whether this is the therapists primary professional certification. Used to identify the main credential under which the therapist practices.',
+    `is_state_required` BOOLEAN COMMENT 'Indicates whether this certification is required by state or local regulatory authorities for the therapist to legally practice. Critical for compliance and risk management.',
+    `issue_date` DATE COMMENT 'The date the certification was originally issued to the therapist. Used to calculate tenure and experience levels.',
+    `issuing_body` STRING COMMENT 'The name of the organization, state board, or institution that issued the certification (e.g., California Board of Barbering and Cosmetology, American Red Cross, Brand Training Academy).',
+    `issuing_jurisdiction` STRING COMMENT 'The state, province, or country where the certification was issued. Critical for multi-property operations to ensure therapists hold valid licenses for the jurisdictions where they practice.',
+    `notes` STRING COMMENT 'Free-form text field for additional information about the certification, such as special conditions, restrictions, or verification details. Supports operational context and audit trails.',
+    `reimbursement_status` STRING COMMENT 'Indicates whether the certification cost was reimbursed by the employer. Used to track workforce development investments and employee benefit utilization.. Valid values are `not_applicable|pending|approved|reimbursed|denied`',
+    `renewal_date` DATE COMMENT 'The date the certification was last renewed. Tracks compliance with continuing education and renewal requirements.',
+    `renewal_status` STRING COMMENT 'The current renewal state of the certification. Indicates whether the credential is active, approaching renewal, or has lapsed. Used to trigger renewal workflows and prevent scheduling of non-compliant therapists.. Valid values are `current|pending_renewal|expired|suspended|revoked|not_applicable`',
+    `specialty_area` STRING COMMENT 'The specific treatment specialty or modality covered by this certification (e.g., Deep Tissue Massage, Hot Stone Therapy, Aromatherapy, Facial Treatments, Body Wraps). Enables matching therapist qualifications to guest service requests.',
+    `training_completion_date` DATE COMMENT 'The date the therapist completed the training program associated with this certification. Relevant for brand certifications and specialty training.',
+    `training_hours` DECIMAL(18,2) COMMENT 'The total number of training hours completed to earn this certification. Used to assess depth of qualification and compare against brand standards.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this certification record was last modified. Audit trail field for tracking changes to certification status, renewal, or verification.',
+    `verification_date` DATE COMMENT 'The date the certification was last verified with the issuing authority. Used to track verification currency and schedule re-verification.',
+    `verification_method` STRING COMMENT 'The method used to verify the authenticity of the certification with the issuing body.. Valid values are `online_registry|phone_verification|document_review|third_party_service|not_verified`',
+    `verification_status` STRING COMMENT 'Indicates whether the certification has been independently verified with the issuing body. Critical for regulatory compliance and risk management.. Valid values are `verified|pending_verification|failed_verification|not_verified`',
+    CONSTRAINT pk_spa_therapist_certification PRIMARY KEY(`therapist_certification_id`)
+) COMMENT 'Certification and qualification records for spa therapists tracking professional licenses, brand-mandated training completions, and specialty certifications. Captures therapist reference, certification type (state massage license, esthetics license, brand certification, CPR, first aid), issuing body, certification number, issue date, expiry date, renewal status, and verification status. Supports compliance with state licensing requirements and brand service standards.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` (
+    `class_enrollment_id` BIGINT COMMENT 'Primary key for class_enrollment',
+    `fitness_class_session_id` BIGINT COMMENT 'Reference to the scheduled fitness or wellness class session. Links to the class session schedule.',
+    `membership_id` BIGINT COMMENT 'Reference to the guests spa or fitness membership if applicable. Null for non-member enrollments.',
+    `employee_id` BIGINT COMMENT 'Reference to the system user who processed the cancellation. Null for guest self-service cancellations or non-cancelled enrollments.',
+    `profile_id` BIGINT COMMENT 'Reference to the guest or member who enrolled in the class session. Links to the guest master record.',
+    `property_id` BIGINT COMMENT 'Reference to the property where the class enrollment occurred. Links to the property master record.',
+    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Fitness class enrollments by hotel guests are charged to room folios. Billing systems and guest accounting require room linkage for charge-to-room transactions when participants are in-house guests.',
+    `spa_class_enrollment_id` BIGINT COMMENT 'Unique identifier for the class enrollment record. Primary key.',
+    `survey_response_id` BIGINT COMMENT 'Foreign key linking to marketing.survey_response. Business justification: Fitness class attendance may trigger feedback surveys (class satisfaction, instructor ratings, facility feedback). Tracks class satisfaction, instructor performance, and supports fitness program quali',
+    `transferred_spa_class_enrollment_id` BIGINT COMMENT 'Self-referencing FK on spa_class_enrollment (transferred_spa_class_enrollment_id)',
+    `attendance_confirmed_flag` BOOLEAN COMMENT 'Indicates whether the guests attendance was confirmed by the instructor or system. True if attended, False if no-show or not yet determined.',
+    `cancellation_notes` STRING COMMENT 'Free-text notes providing additional context about the cancellation. Null for non-cancelled enrollments.',
+    `cancellation_reason_code` STRING COMMENT 'Standardized code indicating the reason for cancellation. Null for non-cancelled enrollments. Used for cancellation root cause analysis. [ENUM-REF-CANDIDATE: guest_request|schedule_conflict|illness|weather|facility_closure|class_cancelled|no_show_conversion — 7 candidates stripped; promote to reference product]',
+    `cancellation_timestamp` TIMESTAMP COMMENT 'Date and time when the enrollment was cancelled. Null for active enrollments. Used for cancellation pattern analysis.',
+    `charge_amount` DECIMAL(18,2) COMMENT 'Total amount charged to the guest for the class enrollment. May be zero for complimentary or member-included classes. Expressed in the propertys local currency.',
+    `check_in_method` STRING COMMENT 'Method used by the guest to check in for the class. Null if not checked in. Used for check-in process optimization.. Valid values are `mobile_app|kiosk|staff_desk|instructor|automatic`',
+    `check_in_timestamp` TIMESTAMP COMMENT 'Date and time when the guest checked in for the class session. Null if not yet checked in. Used to determine attended vs no-show status.',
+    `confirmation_timestamp` TIMESTAMP COMMENT 'Date and time when the enrollment was confirmed by the guest or system. Null if not yet confirmed. Used for no-show prediction.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this enrollment record was first created in the system. Used for audit trail and data lineage.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts in this enrollment record. Typically matches the propertys local currency.. Valid values are `^[A-Z]{3}$`',
+    `discount_amount` DECIMAL(18,2) COMMENT 'Total discount applied to the enrollment charge. Includes member discounts, promotional offers, and loyalty redemptions. Null if no discount applied.',
+    `enrollment_channel` STRING COMMENT 'Channel through which the guest enrolled in the class. Used for channel performance analysis and guest preference tracking. [ENUM-REF-CANDIDATE: mobile_app|web_portal|front_desk|phone|concierge|spa_desk|in_room — 7 candidates stripped; promote to reference product]',
+    `enrollment_number` STRING COMMENT 'Unique business identifier for the enrollment transaction. Used for guest communication and service desk reference.. Valid values are `^ENR-[0-9]{8,12}$`',
+    `enrollment_status` STRING COMMENT 'Current lifecycle status of the class enrollment. Tracks progression from initial enrollment through attendance or cancellation.. Valid values are `enrolled|waitlisted|cancelled|attended|no-show|confirmed`',
+    `enrollment_timestamp` TIMESTAMP COMMENT 'Date and time when the guest enrolled in the class session. Primary business event timestamp for this transaction.',
+    `folio_reference_number` STRING COMMENT 'Reference number of the guest folio where charges were posted. Null for non-room-charge payment methods. Links to OPERA PMS folio.',
+    `guest_feedback_comments` STRING COMMENT 'Free-text comments provided by the guest about their class experience. Null if no feedback provided. Used for service improvement.',
+    `guest_rating` STRING COMMENT 'Rating provided by the guest for the class experience on a scale of 1-5. Null if guest has not provided feedback. Used for class quality tracking.',
+    `instructor_notes` STRING COMMENT 'Notes added by the class instructor regarding the guests participation, performance, or any incidents. Null if no notes recorded.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this enrollment record was last updated. Used for audit trail and change tracking.',
+    `loyalty_points_earned` STRING COMMENT 'Number of loyalty program points earned by the guest for this enrollment. Null or zero if not eligible for points.',
+    `loyalty_points_redeemed` STRING COMMENT 'Number of loyalty program points redeemed by the guest to pay for or discount this enrollment. Null or zero if no points used.',
+    `net_amount` DECIMAL(18,2) COMMENT 'Net amount charged after discounts and including taxes. Represents the final amount posted to the guest folio or payment method.',
+    `no_show_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged to the guest for failing to attend or cancel within the policy window. Null if no fee applies. Expressed in the propertys local currency.',
+    `no_show_fee_waived_flag` BOOLEAN COMMENT 'Indicates whether the no-show fee was waived by management. True if waived, False if charged. Used for service recovery tracking.',
+    `no_show_flag` BOOLEAN COMMENT 'Indicates whether the guest failed to attend without cancelling. True if no-show, False otherwise. Used for no-show fee enforcement and guest behavior tracking.',
+    `notes` STRING COMMENT 'General free-text notes field for any additional information about the enrollment that does not fit other structured fields. Null if no notes.',
+    `payment_method` STRING COMMENT 'Method used to pay for the class enrollment. Room charge posts to guest folio, membership indicates included in membership benefits. [ENUM-REF-CANDIDATE: room_charge|credit_card|cash|membership|complimentary|loyalty_points|gift_certificate — 7 candidates stripped; promote to reference product]',
+    `source_record_reference` STRING COMMENT 'Unique identifier of this enrollment record in the source operational system. Used for data reconciliation and audit trails.',
+    `special_requests` STRING COMMENT 'Free-text field capturing any special requests or accommodations needed by the guest for the class. Null if no special requests.',
+    `tax_amount` DECIMAL(18,2) COMMENT 'Total tax amount applied to the enrollment charge. Null if tax-exempt or zero-rated. Expressed in the propertys local currency.',
+    `waitlist_position` STRING COMMENT 'Position in the waitlist queue if enrollment status is waitlisted. Null for non-waitlisted enrollments. Used for automated promotion when spots become available.',
+    `waitlist_timestamp` TIMESTAMP COMMENT 'Date and time when the guest was placed on the waitlist. Null if never waitlisted. Used for waitlist duration analysis.',
+    CONSTRAINT pk_spa_class_enrollment PRIMARY KEY(`class_enrollment_id`)
+) COMMENT 'Transactional record of a guest or member enrolling in a scheduled fitness or wellness class session. Captures enrollment date, guest reference, session reference, membership reference if applicable, enrollment channel, enrollment status (enrolled, waitlisted, cancelled, attended, no-show), cancellation date, cancellation reason, charge amount, and check-in timestamp. Supports class attendance management, waitlist processing, and no-show fee enforcement.';
+
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ADD CONSTRAINT `fk_spa_treatment_parent_treatment_id` FOREIGN KEY (`parent_treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ADD CONSTRAINT `fk_spa_treatment_menu_superseded_treatment_menu_id` FOREIGN KEY (`superseded_treatment_menu_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment_menu`(`treatment_menu_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ADD CONSTRAINT `fk_spa_therapist_supervisor_therapist_id` FOREIGN KEY (`supervisor_therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ADD CONSTRAINT `fk_spa_spa_therapist_certification_renewed_spa_therapist_certification_id` FOREIGN KEY (`renewed_spa_therapist_certification_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification`(`spa_therapist_certification_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ADD CONSTRAINT `fk_spa_spa_therapist_certification_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ADD CONSTRAINT `fk_spa_spa_facility_parent_spa_facility_id` FOREIGN KEY (`parent_spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ADD CONSTRAINT `fk_spa_treatment_room_adjoining_treatment_room_id` FOREIGN KEY (`adjoining_treatment_room_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment_room`(`treatment_room_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ADD CONSTRAINT `fk_spa_treatment_room_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ADD CONSTRAINT `fk_spa_appointment_package_id` FOREIGN KEY (`package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ADD CONSTRAINT `fk_spa_appointment_rescheduled_appointment_id` FOREIGN KEY (`rescheduled_appointment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment`(`appointment_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ADD CONSTRAINT `fk_spa_treatment_room_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ADD CONSTRAINT `fk_spa_appointment_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ADD CONSTRAINT `fk_spa_appointment_treatment_id` FOREIGN KEY (`treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ADD CONSTRAINT `fk_spa_appointment_treatment_room_id` FOREIGN KEY (`treatment_room_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment_room`(`treatment_room_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ADD CONSTRAINT `fk_spa_appointment_package_appointment_id` FOREIGN KEY (`appointment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment`(`appointment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ADD CONSTRAINT `fk_spa_appointment_package_package_id` FOREIGN KEY (`package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ADD CONSTRAINT `fk_spa_appointment_package_parent_appointment_package_id` FOREIGN KEY (`parent_appointment_package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment_package`(`appointment_package_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ADD CONSTRAINT `fk_spa_package_parent_package_id` FOREIGN KEY (`parent_package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ADD CONSTRAINT `fk_spa_therapist_schedule_original_therapist_schedule_id` FOREIGN KEY (`original_therapist_schedule_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule`(`therapist_schedule_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ADD CONSTRAINT `fk_spa_therapist_schedule_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ADD CONSTRAINT `fk_spa_therapist_schedule_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ADD CONSTRAINT `fk_spa_therapist_schedule_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ADD CONSTRAINT `fk_spa_intake_form_appointment_id` FOREIGN KEY (`appointment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment`(`appointment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ADD CONSTRAINT `fk_spa_intake_form_prior_intake_form_id` FOREIGN KEY (`prior_intake_form_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`intake_form`(`intake_form_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ADD CONSTRAINT `fk_spa_intake_form_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_appointment_id` FOREIGN KEY (`appointment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment`(`appointment_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_original_charge_id` FOREIGN KEY (`original_charge_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`charge`(`charge_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_package_id` FOREIGN KEY (`package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_primary_original_charge_id` FOREIGN KEY (`primary_original_charge_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`charge`(`charge_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_product_id` FOREIGN KEY (`product_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`product`(`product_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_reversal_charge_id` FOREIGN KEY (`reversal_charge_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`charge`(`charge_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ADD CONSTRAINT `fk_spa_charge_treatment_id` FOREIGN KEY (`treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ADD CONSTRAINT `fk_spa_retail_transaction_primary_original_transaction_retail_transaction_id` FOREIGN KEY (`primary_original_transaction_retail_transaction_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_transaction`(`retail_transaction_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ADD CONSTRAINT `fk_spa_retail_transaction_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ADD CONSTRAINT `fk_spa_retail_transaction_original_transaction_retail_transaction_id` FOREIGN KEY (`original_transaction_retail_transaction_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_transaction`(`retail_transaction_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ADD CONSTRAINT `fk_spa_retail_transaction_return_retail_transaction_id` FOREIGN KEY (`return_retail_transaction_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_transaction`(`retail_transaction_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ADD CONSTRAINT `fk_spa_retail_transaction_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ADD CONSTRAINT `fk_spa_retail_inventory_adjustment_retail_inventory_id` FOREIGN KEY (`adjustment_retail_inventory_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_inventory`(`retail_inventory_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ADD CONSTRAINT `fk_spa_retail_inventory_retail_product_id` FOREIGN KEY (`retail_product_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_product`(`retail_product_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ADD CONSTRAINT `fk_spa_retail_inventory_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ADD CONSTRAINT `fk_spa_retail_inventory_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ADD CONSTRAINT `fk_spa_membership_renewed_membership_id` FOREIGN KEY (`renewed_membership_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`membership`(`membership_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ADD CONSTRAINT `fk_spa_membership_visit_membership_id` FOREIGN KEY (`membership_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`membership`(`membership_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ADD CONSTRAINT `fk_spa_membership_visit_prior_membership_visit_id` FOREIGN KEY (`prior_membership_visit_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`membership_visit`(`membership_visit_id`);
@@ -1418,85 +1408,75 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ADD CONSTRAINT `fk_spa
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ADD CONSTRAINT `fk_spa_fitness_class_parent_fitness_class_id` FOREIGN KEY (`parent_fitness_class_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`fitness_class`(`fitness_class_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ADD CONSTRAINT `fk_spa_fitness_class_session_fitness_class_id` FOREIGN KEY (`fitness_class_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`fitness_class`(`fitness_class_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ADD CONSTRAINT `fk_spa_fitness_class_session_rescheduled_fitness_class_session_id` FOREIGN KEY (`rescheduled_fitness_class_session_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session`(`fitness_class_session_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_spa_class_enrollment_fitness_class_session_id` FOREIGN KEY (`fitness_class_session_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session`(`fitness_class_session_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_spa_class_enrollment_membership_id` FOREIGN KEY (`membership_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`membership`(`membership_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_spa_class_enrollment_transferred_spa_class_enrollment_id` FOREIGN KEY (`transferred_spa_class_enrollment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment`(`spa_class_enrollment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ADD CONSTRAINT `fk_spa_golf_tee_time_rescheduled_golf_tee_time_id` FOREIGN KEY (`rescheduled_golf_tee_time_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time`(`golf_tee_time_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ADD CONSTRAINT `fk_spa_amenity_pricing_product_id` FOREIGN KEY (`product_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`product`(`product_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ADD CONSTRAINT `fk_spa_amenity_pricing_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ADD CONSTRAINT `fk_spa_amenity_pricing_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ADD CONSTRAINT `fk_spa_amenity_pricing_superseded_amenity_pricing_id` FOREIGN KEY (`superseded_amenity_pricing_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing`(`amenity_pricing_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ADD CONSTRAINT `fk_spa_amenity_pricing_treatment_id` FOREIGN KEY (`treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ADD CONSTRAINT `fk_spa_cancellation_log_original_cancellation_log_id` FOREIGN KEY (`original_cancellation_log_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`cancellation_log`(`cancellation_log_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ADD CONSTRAINT `fk_spa_cancellation_log_appointment_id` FOREIGN KEY (`appointment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`appointment`(`appointment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ADD CONSTRAINT `fk_spa_cancellation_log_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ADD CONSTRAINT `fk_spa_cancellation_log_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ADD CONSTRAINT `fk_spa_equipment_replaced_equipment_id` FOREIGN KEY (`replaced_equipment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`equipment`(`equipment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ADD CONSTRAINT `fk_spa_equipment_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`spa_facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ADD CONSTRAINT `fk_spa_equipment_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ADD CONSTRAINT `fk_spa_equipment_treatment_room_id` FOREIGN KEY (`treatment_room_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment_room`(`treatment_room_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ADD CONSTRAINT `fk_spa_wellness_program_prerequisite_wellness_program_id` FOREIGN KEY (`prerequisite_wellness_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`wellness_program`(`wellness_program_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ADD CONSTRAINT `fk_spa_wellness_program_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ADD CONSTRAINT `fk_spa_program_treatment_treatment_id` FOREIGN KEY (`treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ADD CONSTRAINT `fk_spa_program_treatment_wellness_program_id` FOREIGN KEY (`wellness_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`wellness_program`(`wellness_program_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ADD CONSTRAINT `fk_spa_package_treatment_primary_package_id` FOREIGN KEY (`primary_package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ADD CONSTRAINT `fk_spa_package_treatment_package_id` FOREIGN KEY (`package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ADD CONSTRAINT `fk_spa_package_treatment_spa_package_id` FOREIGN KEY (`spa_package_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`package`(`package_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ADD CONSTRAINT `fk_spa_package_treatment_treatment_id` FOREIGN KEY (`treatment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`treatment`(`treatment_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ADD CONSTRAINT `fk_spa_product_parent_product_id` FOREIGN KEY (`parent_product_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`product`(`product_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ADD CONSTRAINT `fk_spa_product_product_line_id` FOREIGN KEY (`product_line_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`product_line`(`product_line_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ADD CONSTRAINT `fk_spa_group_booking_rebooked_group_booking_id` FOREIGN KEY (`rebooked_group_booking_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`group_booking`(`group_booking_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ADD CONSTRAINT `fk_spa_retail_product_parent_retail_product_id` FOREIGN KEY (`parent_retail_product_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`retail_product`(`retail_product_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ADD CONSTRAINT `fk_spa_product_line_parent_product_line_id` FOREIGN KEY (`parent_product_line_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`product_line`(`product_line_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ADD CONSTRAINT `fk_spa_facility_parent_spa_facility_id` FOREIGN KEY (`parent_spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ADD CONSTRAINT `fk_spa_facility_spa_facility_id` FOREIGN KEY (`spa_facility_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_facility`(`facility_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ADD CONSTRAINT `fk_spa_therapist_certification_renewed_spa_therapist_certification_id` FOREIGN KEY (`renewed_spa_therapist_certification_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification`(`therapist_certification_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ADD CONSTRAINT `fk_spa_therapist_certification_spa_therapist_certification_id` FOREIGN KEY (`spa_therapist_certification_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification`(`therapist_certification_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ADD CONSTRAINT `fk_spa_therapist_certification_therapist_id` FOREIGN KEY (`therapist_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`therapist`(`therapist_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_class_enrollment_fitness_class_session_id` FOREIGN KEY (`fitness_class_session_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session`(`fitness_class_session_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_class_enrollment_membership_id` FOREIGN KEY (`membership_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`membership`(`membership_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_class_enrollment_spa_class_enrollment_id` FOREIGN KEY (`spa_class_enrollment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment`(`class_enrollment_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ADD CONSTRAINT `fk_spa_class_enrollment_transferred_spa_class_enrollment_id` FOREIGN KEY (`transferred_spa_class_enrollment_id`) REFERENCES `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment`(`class_enrollment_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`spa` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`spa` SET TAGS ('dbx_domain' = 'spa');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `content_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Content Asset Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `parent_treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Treatment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `parent_treatment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `parent_treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `parent_treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `advance_booking_required_hours` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Required (Hours)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `age_restriction` SET TAGS ('dbx_business_glossary_term' = 'Age Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `cancellation_policy_hours` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy (Hours)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_category` SET TAGS ('dbx_business_glossary_term' = 'Treatment Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_category` SET TAGS ('dbx_value_regex' = 'massage|facial|body_treatment|hydrotherapy|nail_service|beauty_service');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_category` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_code` SET TAGS ('dbx_business_glossary_term' = 'Treatment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,12}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_code` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `commission_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Commission Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate (Percent)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `contraindications` SET TAGS ('dbx_business_glossary_term' = 'Treatment Contraindications');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `cost_of_goods` SET TAGS ('dbx_business_glossary_term' = 'Cost of Goods (COGS)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `cost_of_goods` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_description` SET TAGS ('dbx_business_glossary_term' = 'Treatment Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_description` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Treatment Duration (Minutes)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_business_glossary_term' = 'Gender Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_value_regex' = 'any|male_only|female_only|couples');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gender_preference` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `gratuity_included_flag` SET TAGS ('dbx_business_glossary_term' = 'Gratuity Included Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `minimum_certification` SET TAGS ('dbx_business_glossary_term' = 'Minimum Therapist Certification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_name` SET TAGS ('dbx_business_glossary_term' = 'Treatment Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `package_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Package Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `pregnancy_safe_flag` SET TAGS ('dbx_business_glossary_term' = 'Pregnancy Safe Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `recommended_retail_price` SET TAGS ('dbx_business_glossary_term' = 'Recommended Retail Price');
@@ -1511,26 +1491,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `skill_l
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `subcategory` SET TAGS ('dbx_business_glossary_term' = 'Treatment Subcategory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_status` SET TAGS ('dbx_business_glossary_term' = 'Treatment Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_status` SET TAGS ('dbx_value_regex' = 'active|inactive|seasonal|discontinued');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_status` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `treatment_status` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment` ALTER COLUMN `upsell_treatments` SET TAGS ('dbx_business_glossary_term' = 'Recommended Upsell Treatments');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `treatment_menu_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Menu ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `treatment_menu_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `treatment_menu_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `superseded_treatment_menu_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Treatment Menu Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `superseded_treatment_menu_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `superseded_treatment_menu_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `superseded_treatment_menu_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `booking_channel_availability` SET TAGS ('dbx_business_glossary_term' = 'Booking Channel Availability');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
@@ -1568,85 +1537,60 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `se
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `season_type` SET TAGS ('dbx_value_regex' = 'peak|off_peak|shoulder|holiday|year_round');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_menu` ALTER COLUMN `target_guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Target Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_subdomain' = 'service_catalog');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` SET TAGS ('dbx_ssot_reviewed' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `supervisor_therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Therapist Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `supervisor_therapist_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `availability_schedule` SET TAGS ('dbx_business_glossary_term' = 'Availability Schedule');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `certification_level` SET TAGS ('dbx_business_glossary_term' = 'Certification Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `certification_level` SET TAGS ('dbx_value_regex' = 'entry|intermediate|advanced|master|director');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `therapist_code` SET TAGS ('dbx_business_glossary_term' = 'Therapist Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `therapist_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percent');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Therapist Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employment Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `employment_type` SET TAGS ('dbx_value_regex' = 'full-time|part-time|contractor|seasonal|on-call');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Therapist First Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `first_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_business_glossary_term' = 'Therapist Gender');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_value_regex' = 'male|female|non-binary|prefer not to say');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `gender` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `guest_rating_average` SET TAGS ('dbx_business_glossary_term' = 'Guest Rating Average');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Therapist Hire Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_business_glossary_term' = 'Hourly Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `languages_spoken` SET TAGS ('dbx_business_glossary_term' = 'Languages Spoken');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Therapist Last Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `last_training_date` SET TAGS ('dbx_business_glossary_term' = 'Last Training Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `max_appointments_per_day` SET TAGS ('dbx_business_glossary_term' = 'Maximum Appointments Per Day');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `next_certification_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Certification Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Therapist Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Therapist Phone Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `preferred_name` SET TAGS ('dbx_business_glossary_term' = 'Therapist Preferred Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Primary License Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_expiry_date` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_number` SET TAGS ('dbx_business_glossary_term' = 'Primary License Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_state` SET TAGS ('dbx_business_glossary_term' = 'Primary License State');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `primary_license_state` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Secondary License Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_expiry_date` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_number` SET TAGS ('dbx_business_glossary_term' = 'Secondary License Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_state` SET TAGS ('dbx_business_glossary_term' = 'Secondary License State');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `secondary_license_state` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `specializations` SET TAGS ('dbx_business_glossary_term' = 'Therapist Specializations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Therapist Termination Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `therapist_status` SET TAGS ('dbx_business_glossary_term' = 'Therapist Status');
@@ -1655,176 +1599,31 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `tip_eli
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `total_appointments_completed` SET TAGS ('dbx_business_glossary_term' = 'Total Appointments Completed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist` ALTER COLUMN `years_of_experience` SET TAGS ('dbx_business_glossary_term' = 'Years of Experience');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewed_spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Spa Therapist Certification Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewed_spa_therapist_certification_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_document_url` SET TAGS ('dbx_business_glossary_term' = 'Certification Document URL');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_document_url` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_level` SET TAGS ('dbx_business_glossary_term' = 'Certification Level');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_level` SET TAGS ('dbx_value_regex' = 'entry|intermediate|advanced|master|instructor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_number` SET TAGS ('dbx_business_glossary_term' = 'Certification Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `continuing_education_hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Continuing Education (CE) Hours Completed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `continuing_education_hours_required` SET TAGS ('dbx_business_glossary_term' = 'Continuing Education (CE) Hours Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `instructor_name` SET TAGS ('dbx_business_glossary_term' = 'Instructor Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_brand_required` SET TAGS ('dbx_business_glossary_term' = 'Is Brand Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_primary_certification` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Certification Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_state_required` SET TAGS ('dbx_business_glossary_term' = 'Is State Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issuing_body` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issuing_jurisdiction` SET TAGS ('dbx_business_glossary_term' = 'Issuing Jurisdiction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `reimbursement_status` SET TAGS ('dbx_business_glossary_term' = 'Reimbursement Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `reimbursement_status` SET TAGS ('dbx_value_regex' = 'not_applicable|pending|approved|reimbursed|denied');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_status` SET TAGS ('dbx_business_glossary_term' = 'Renewal Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_status` SET TAGS ('dbx_value_regex' = 'current|pending_renewal|expired|suspended|revoked|not_applicable');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `specialty_area` SET TAGS ('dbx_business_glossary_term' = 'Specialty Area');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `training_hours` SET TAGS ('dbx_business_glossary_term' = 'Training Hours');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'online_registry|phone_verification|document_review|third_party_service|not_verified');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Verification Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending_verification|failed_verification|not_verified');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `parent_spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Spa Facility Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `parent_spa_facility_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_ssot_owner' = 'property.property_facility');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_ssot_entity' = 'facility');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `accessibility_features` SET TAGS ('dbx_business_glossary_term' = 'Accessibility Features');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `average_daily_visitors` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Visitors');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `certification_accreditation` SET TAGS ('dbx_business_glossary_term' = 'Certification and Accreditation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email Address');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_code` SET TAGS ('dbx_business_glossary_term' = 'Facility Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_name` SET TAGS ('dbx_business_glossary_term' = 'Facility Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_status` SET TAGS ('dbx_business_glossary_term' = 'Facility Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_status` SET TAGS ('dbx_value_regex' = 'active|inactive|under_renovation|temporarily_closed|seasonal');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_type` SET TAGS ('dbx_business_glossary_term' = 'Facility Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_type` SET TAGS ('dbx_value_regex' = 'spa|fitness_center|golf_course|pool|tennis_court|salon');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `fire_safety_compliance_date` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Compliance Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_business_glossary_term' = 'Gender Designation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_value_regex' = 'co_ed|female_only|male_only|gender_neutral');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `guest_access_policy` SET TAGS ('dbx_business_glossary_term' = 'Guest Access Policy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `guest_access_policy` SET TAGS ('dbx_value_regex' = 'hotel_guests_only|members_only|public_access|day_pass_available');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `health_safety_compliance_date` SET TAGS ('dbx_business_glossary_term' = 'Health and Safety Compliance Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `health_safety_compliance_date` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `health_safety_compliance_date` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `last_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Renovation Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `locker_room_capacity` SET TAGS ('dbx_business_glossary_term' = 'Locker Room Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `loyalty_points_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Eligible Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `minimum_age_requirement` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Requirement');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `next_scheduled_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Renovation Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_friday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Friday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_friday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_monday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Monday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_monday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_saturday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Saturday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_saturday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_sunday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Sunday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_sunday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_thursday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Thursday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_thursday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_tuesday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Tuesday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_tuesday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_wednesday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Wednesday');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_wednesday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `outdoor_space_flag` SET TAGS ('dbx_business_glossary_term' = 'Outdoor Space Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `peak_season_months` SET TAGS ('dbx_business_glossary_term' = 'Peak Season Months');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `relaxation_lounge_capacity` SET TAGS ('dbx_business_glossary_term' = 'Relaxation Lounge Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `reservation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Reservation Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `retail_area_flag` SET TAGS ('dbx_business_glossary_term' = 'Retail Area Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_close_date` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Close Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_open_date` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Open Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_operation_flag` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Operation Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `total_treatment_rooms` SET TAGS ('dbx_business_glossary_term' = 'Total Treatment Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `total_treatment_rooms` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `total_treatment_rooms` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `wet_area_capacity` SET TAGS ('dbx_business_glossary_term' = 'Wet Area Capacity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Room ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `adjoining_treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Adjoining Treatment Room Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `adjoining_treatment_room_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `adjoining_treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `adjoining_treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `accessibility_compliant` SET TAGS ('dbx_business_glossary_term' = 'Accessibility Compliant');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `ambiance_features` SET TAGS ('dbx_business_glossary_term' = 'Ambiance Features');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `equipment_list` SET TAGS ('dbx_business_glossary_term' = 'Equipment List');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `ffe_value` SET TAGS ('dbx_business_glossary_term' = 'Furniture Fixtures and Equipment (FF&E) Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `ffe_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `floor_number` SET TAGS ('dbx_business_glossary_term' = 'Floor Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_business_glossary_term' = 'Gender Designation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_value_regex' = 'male|female|unisex|private');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `has_chromotherapy` SET TAGS ('dbx_business_glossary_term' = 'Has Chromotherapy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `has_heated_table` SET TAGS ('dbx_business_glossary_term' = 'Has Heated Table');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `has_music_system` SET TAGS ('dbx_business_glossary_term' = 'Has Music System');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `has_outdoor_access` SET TAGS ('dbx_business_glossary_term' = 'Has Outdoor Access');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `has_private_shower` SET TAGS ('dbx_business_glossary_term' = 'Has Private Shower');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_business_glossary_term' = 'Hourly Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `last_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Last Maintenance Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `last_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Renovation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `maintenance_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Status');
@@ -1846,104 +1645,100 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `te
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `turnaround_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Turnaround Time Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`treatment_room` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_subdomain' = 'guest_operations');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_refactor' = 'split_candidate');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_fk_count_review' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` SET TAGS ('dbx_junction_candidate' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Offer Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_id` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Booked By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_interaction_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Interaction Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Segment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment Guest Profile Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `rescheduled_appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Rescheduled Appointment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `rescheduled_appointment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `reservation_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Booking ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `property_id` SET TAGS ('dbx_refactored' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `room_id` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_id` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Room ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `actual_end_time` SET TAGS ('dbx_business_glossary_term' = 'Actual End Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `actual_end_time` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `actual_start_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `actual_start_time` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_date` SET TAGS ('dbx_business_glossary_term' = 'Appointment Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_date` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_status` SET TAGS ('dbx_business_glossary_term' = 'Appointment Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `appointment_status` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `arrival_time` SET TAGS ('dbx_business_glossary_term' = 'Guest Arrival Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `arrival_time` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `booking_channel` SET TAGS ('dbx_business_glossary_term' = 'Booking Channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `booking_channel` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `booking_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Booking Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `booking_timestamp` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancelled_by` SET TAGS ('dbx_business_glossary_term' = 'Cancelled By Party');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancelled_by` SET TAGS ('dbx_value_regex' = 'guest|property|system|no-show');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `cancelled_by` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `check_in_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Check-In Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `check_in_timestamp` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `confirmation_number` SET TAGS ('dbx_business_glossary_term' = 'Appointment Confirmation Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `confirmation_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,12}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `confirmation_number` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Treatment Duration in Minutes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `external_booking_reference` SET TAGS ('dbx_business_glossary_term' = 'External Booking Reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `external_booking_reference` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_business_glossary_term' = 'Guest Gender Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_value_regex' = 'male|female|no-preference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_gender_preference` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_notes` SET TAGS ('dbx_business_glossary_term' = 'Guest Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `guest_notes` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `intake_form_completed` SET TAGS ('dbx_business_glossary_term' = 'Intake Form Completed Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `intake_form_completed` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `intake_form_completed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Intake Form Completed Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `intake_form_completed_timestamp` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `no_show_flag` SET TAGS ('dbx_business_glossary_term' = 'No Show Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `no_show_flag` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `prepayment_amount` SET TAGS ('dbx_business_glossary_term' = 'Prepayment Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `prepayment_amount` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `prepayment_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Prepayment Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `prepayment_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `prepayment_currency_code` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `pressure_preference` SET TAGS ('dbx_business_glossary_term' = 'Pressure Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `pressure_preference` SET TAGS ('dbx_value_regex' = 'light|medium|firm|extra-firm|no-preference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `pressure_preference` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `scheduled_end_time` SET TAGS ('dbx_business_glossary_term' = 'Scheduled End Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `scheduled_end_time` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `scheduled_start_time` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Time');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `scheduled_start_time` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_health_notes` SET TAGS ('dbx_business_glossary_term' = 'Special Health Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_health_notes` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_health_notes` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_health_notes` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `special_requests` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_business_glossary_term' = 'Therapist Gender Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_value_regex' = 'male|female|no-preference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment` ALTER COLUMN `therapist_gender_preference` SET TAGS ('dbx_refactored' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `appointment_package_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment Package ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `attribution_event_id` SET TAGS ('dbx_business_glossary_term' = 'Attribution Event Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Booked By Staff ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `parent_appointment_package_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Appointment Package Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `parent_appointment_package_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Rate Plan Id (Foreign Key)');
@@ -1986,17 +1781,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `total_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `treatment_count` SET TAGS ('dbx_business_glossary_term' = 'Treatment Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `treatment_count` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`appointment_package` ALTER COLUMN `treatment_count` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `parent_package_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Package Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `parent_package_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `age_restriction_minimum` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `amenities_included` SET TAGS ('dbx_business_glossary_term' = 'Amenities Included');
@@ -2017,9 +1807,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `deposit_p
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `package_description` SET TAGS ('dbx_business_glossary_term' = 'Package Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_business_glossary_term' = 'Gender Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_value_regex' = 'none|male_only|female_only|couples_only');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `guest_type_eligibility` SET TAGS ('dbx_business_glossary_term' = 'Guest Type Eligibility');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `guest_type_eligibility` SET TAGS ('dbx_value_regex' = 'all|hotel_guest|day_guest|member|loyalty_tier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Active Status Flag');
@@ -2049,14 +1838,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `valid_fro
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `therapist_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Schedule ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `original_therapist_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Original Therapist Schedule Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `original_therapist_schedule_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `actual_clock_in_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Clock In Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `actual_clock_out_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Clock Out Time');
@@ -2074,8 +1860,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `overtime_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Overtime Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `primary_treatment_specialty` SET TAGS ('dbx_business_glossary_term' = 'Primary Treatment Specialty');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `primary_treatment_specialty` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `primary_treatment_specialty` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `published_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Published Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `room_assignment` SET TAGS ('dbx_business_glossary_term' = 'Room Assignment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `schedule_date` SET TAGS ('dbx_business_glossary_term' = 'Schedule Date');
@@ -2084,8 +1868,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_value_regex' = 'draft|published|confirmed|cancelled|completed|no_show');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `schedule_variance_minutes` SET TAGS ('dbx_business_glossary_term' = 'Schedule Variance Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `scheduled_treatment_slots` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Treatment Slots');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `scheduled_treatment_slots` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `scheduled_treatment_slots` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `shift_end_time` SET TAGS ('dbx_business_glossary_term' = 'Shift End Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `shift_start_time` SET TAGS ('dbx_business_glossary_term' = 'Shift Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
@@ -2096,107 +1878,65 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `utilization_percentage` SET TAGS ('dbx_business_glossary_term' = 'Utilization Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`therapist_schedule` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `intake_form_id` SET TAGS ('dbx_business_glossary_term' = 'Intake Form ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `guest_interaction_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Interaction Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `prior_intake_form_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Intake Form Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `prior_intake_form_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `allergy_details` SET TAGS ('dbx_business_glossary_term' = 'Allergy Details');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `allergy_details` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `allergy_details` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `areas_to_avoid` SET TAGS ('dbx_business_glossary_term' = 'Areas to Avoid');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `areas_to_avoid` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `areas_to_avoid` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `aromatherapy_preference` SET TAGS ('dbx_business_glossary_term' = 'Aromatherapy Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `cardiovascular_condition_details` SET TAGS ('dbx_business_glossary_term' = 'Cardiovascular Condition Details');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `cardiovascular_condition_details` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `cardiovascular_condition_details` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completion Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `current_medications` SET TAGS ('dbx_business_glossary_term' = 'Current Medications');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `current_medications` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `current_medications` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment` SET TAGS ('dbx_business_glossary_term' = 'Data Privacy Acknowledgment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Data Privacy Acknowledgment Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment_timestamp` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `data_privacy_acknowledgment_timestamp` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `form_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Form Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `form_number` SET TAGS ('dbx_business_glossary_term' = 'Form Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `form_number` SET TAGS ('dbx_value_regex' = '^IF-[0-9]{8,12}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `form_status` SET TAGS ('dbx_business_glossary_term' = 'Form Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `form_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|reviewed|approved|rejected|expired');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_allergies` SET TAGS ('dbx_business_glossary_term' = 'Allergies Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_allergies` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_allergies` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_cardiovascular_condition` SET TAGS ('dbx_business_glossary_term' = 'Cardiovascular Condition Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_cardiovascular_condition` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_cardiovascular_condition` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_previous_spa_experience` SET TAGS ('dbx_business_glossary_term' = 'Previous Spa Experience Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_recent_surgery` SET TAGS ('dbx_business_glossary_term' = 'Recent Surgery Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_recent_surgery` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_recent_surgery` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_skin_condition` SET TAGS ('dbx_business_glossary_term' = 'Skin Condition Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_skin_condition` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `has_skin_condition` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `is_pregnant` SET TAGS ('dbx_business_glossary_term' = 'Pregnancy Indicator');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `is_pregnant` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `is_pregnant` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `language_code` SET TAGS ('dbx_business_glossary_term' = 'Language Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `language_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `photography_consent_given` SET TAGS ('dbx_business_glossary_term' = 'Photography Consent Given');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `photography_consent_given` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pregnancy_trimester` SET TAGS ('dbx_business_glossary_term' = 'Pregnancy Trimester');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pregnancy_trimester` SET TAGS ('dbx_value_regex' = 'first|second|third|not_applicable');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pregnancy_trimester` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pregnancy_trimester` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pressure_preference` SET TAGS ('dbx_business_glossary_term' = 'Pressure Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `pressure_preference` SET TAGS ('dbx_value_regex' = 'light|medium|firm|very_firm|no_preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `previous_spa_experience_notes` SET TAGS ('dbx_business_glossary_term' = 'Previous Spa Experience Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `skin_condition_details` SET TAGS ('dbx_business_glossary_term' = 'Skin Condition Details');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `skin_condition_details` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `skin_condition_details` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `submission_channel` SET TAGS ('dbx_business_glossary_term' = 'Submission Channel');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `submission_channel` SET TAGS ('dbx_value_regex' = 'web_portal|mobile_app|in_person_tablet|paper_form|email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `surgery_details` SET TAGS ('dbx_business_glossary_term' = 'Surgery Details');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `surgery_details` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `surgery_details` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `therapist_review_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Therapist Review Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `therapist_reviewed` SET TAGS ('dbx_business_glossary_term' = 'Therapist Reviewed Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_given` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Given');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_given` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_given` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_timestamp` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`intake_form` ALTER COLUMN `treatment_consent_timestamp` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` SET TAGS ('dbx_subdomain' = 'revenue_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `charge_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Charge ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Posted By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `original_charge_id` SET TAGS ('dbx_business_glossary_term' = 'Original Charge ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Package ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Posted By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `primary_original_charge_id` SET TAGS ('dbx_business_glossary_term' = 'Original Charge ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `product_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
@@ -2204,12 +1944,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `property_f
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Rate Plan Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `reversal_charge_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Charge Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `service_recovery_action_id` SET TAGS ('dbx_business_glossary_term' = 'Service Recovery Action Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `voided_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Voided By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `adjustment_reason` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `charge_date` SET TAGS ('dbx_business_glossary_term' = 'Charge Date');
@@ -2239,9 +1979,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `total_char
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`charge` ALTER COLUMN `voided_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Voided Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` SET TAGS ('dbx_subdomain' = 'retail_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `retail_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Retail Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `attribution_event_id` SET TAGS ('dbx_business_glossary_term' = 'Attribution Event Id (Foreign Key)');
@@ -2250,21 +1988,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Cashier ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `primary_original_transaction_retail_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Original Transaction ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `original_transaction_retail_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Original Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `return_retail_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Return Retail Transaction Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `service_recovery_action_id` SET TAGS ('dbx_business_glossary_term' = 'Service Recovery Action Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2272,15 +2006,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `discount_code` SET TAGS ('dbx_business_glossary_term' = 'Discount Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_business_glossary_term' = 'Guest Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_business_glossary_term' = 'Guest Phone Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `guest_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `item_count` SET TAGS ('dbx_business_glossary_term' = 'Item Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `loyalty_points_redeemed` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Redeemed');
@@ -2288,7 +2018,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Transaction Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `payment_reference` SET TAGS ('dbx_business_glossary_term' = 'Payment Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `payment_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `pos_terminal_code` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Terminal ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `receipt_number` SET TAGS ('dbx_business_glossary_term' = 'Receipt Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `refund_reason` SET TAGS ('dbx_business_glossary_term' = 'Refund Reason');
@@ -2305,16 +2034,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `transaction_status` SET TAGS ('dbx_value_regex' = 'completed|voided|refunded|pending|cancelled');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_transaction` ALTER COLUMN `transaction_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transaction Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` SET TAGS ('dbx_subdomain' = 'retail_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `retail_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Retail Inventory ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `adjustment_retail_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Retail Inventory Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `adjustment_retail_inventory_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `retail_product_id` SET TAGS ('dbx_business_glossary_term' = 'Retail Product ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `available_quantity` SET TAGS ('dbx_business_glossary_term' = 'Available Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
@@ -2326,7 +2054,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `inventory_status` SET TAGS ('dbx_business_glossary_term' = 'Inventory Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `inventory_status` SET TAGS ('dbx_value_regex' = 'active|discontinued|seasonal|on_hold|expired|recalled');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `inventory_value` SET TAGS ('dbx_business_glossary_term' = 'Inventory Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `inventory_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `last_physical_count_date` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `last_physical_count_quantity` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `last_replenishment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Replenishment Date');
@@ -2341,17 +2068,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `reserved_quantity` SET TAGS ('dbx_business_glossary_term' = 'Reserved Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `unit_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'each|bottle|jar|tube|box|set');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `unit_retail_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Retail Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_inventory` ALTER COLUMN `variance_quantity` SET TAGS ('dbx_business_glossary_term' = 'Variance Quantity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` SET TAGS ('dbx_subdomain' = 'membership_programs');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_id` SET TAGS ('dbx_business_glossary_term' = 'Membership ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `attribution_event_id` SET TAGS ('dbx_business_glossary_term' = 'Attribution Event Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
@@ -2359,14 +2083,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `channe
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `guest_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `renewed_membership_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Membership Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `renewed_membership_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `annual_fee` SET TAGS ('dbx_business_glossary_term' = 'Annual Fee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto-Renewal Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `cancellation_date` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Date');
@@ -2385,24 +2106,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `expiry
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `included_fitness_access` SET TAGS ('dbx_business_glossary_term' = 'Included Fitness Access');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `included_guest_passes` SET TAGS ('dbx_business_glossary_term' = 'Included Guest Passes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `included_treatment_credits` SET TAGS ('dbx_business_glossary_term' = 'Included Treatment Credits');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `included_treatment_credits` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `included_treatment_credits` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `last_payment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Payment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `marketing_opt_in_flag` SET TAGS ('dbx_business_glossary_term' = 'Marketing Opt-In Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `marketing_opt_in_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_number` SET TAGS ('dbx_business_glossary_term' = 'Membership Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_status` SET TAGS ('dbx_business_glossary_term' = 'Membership Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_status` SET TAGS ('dbx_value_regex' = 'active|suspended|cancelled|expired|pending');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_tier` SET TAGS ('dbx_business_glossary_term' = 'Membership Tier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_tier` SET TAGS ('dbx_value_regex' = 'basic|premium|elite|unlimited');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_type` SET TAGS ('dbx_business_glossary_term' = 'Membership Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `membership_type` SET TAGS ('dbx_value_regex' = 'monthly|annual|corporate|complimentary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `monthly_fee` SET TAGS ('dbx_business_glossary_term' = 'Monthly Fee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `next_billing_date` SET TAGS ('dbx_business_glossary_term' = 'Next Billing Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_token` SET TAGS ('dbx_business_glossary_term' = 'Payment Method Token');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_token` SET TAGS ('dbx_value_regex' = '^[A-Za-z0-9_-]{16,64}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_token` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_token` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_type` SET TAGS ('dbx_business_glossary_term' = 'Payment Method Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `payment_method_type` SET TAGS ('dbx_value_regex' = 'credit_card|debit_card|bank_account|corporate_billing|room_charge');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `preferred_contact_method` SET TAGS ('dbx_business_glossary_term' = 'Preferred Contact Method');
@@ -2412,20 +2130,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `promot
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `referral_source` SET TAGS ('dbx_business_glossary_term' = 'Referral Source');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `suspension_end_date` SET TAGS ('dbx_business_glossary_term' = 'Suspension End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `suspension_start_date` SET TAGS ('dbx_business_glossary_term' = 'Suspension Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `tier` SET TAGS ('dbx_business_glossary_term' = 'Membership Tier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership` ALTER COLUMN `tier` SET TAGS ('dbx_value_regex' = 'basic|premium|elite|unlimited');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `membership_visit_id` SET TAGS ('dbx_business_glossary_term' = 'Membership Visit ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Processed By Staff ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `membership_id` SET TAGS ('dbx_business_glossary_term' = 'Membership ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `prior_membership_visit_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Membership Visit Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `prior_membership_visit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -2433,8 +2144,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `survey_response_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Nps Response Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `additional_service_charge` SET TAGS ('dbx_business_glossary_term' = 'Additional Service Charge');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
@@ -2462,9 +2171,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `visit_status` SET TAGS ('dbx_value_regex' = 'scheduled|checked_in|in_progress|completed|cancelled|no_show');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`membership_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_business_glossary_term' = 'Visit Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `day_pass_id` SET TAGS ('dbx_business_glossary_term' = 'Day Pass ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `attribution_event_id` SET TAGS ('dbx_business_glossary_term' = 'Attribution Event Id (Foreign Key)');
@@ -2472,16 +2179,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `channel_
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `campaign_offer_id` SET TAGS ('dbx_business_glossary_term' = 'Offer Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Pos Check Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `guest_communication_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Communication Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `renewed_day_pass_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Day Pass Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `renewed_day_pass_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case Id (Foreign Key)');
@@ -2526,18 +2232,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `unit_pri
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `valid_from_time` SET TAGS ('dbx_business_glossary_term' = 'Valid From Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`day_pass` ALTER COLUMN `valid_to_time` SET TAGS ('dbx_business_glossary_term' = 'Valid To Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `fitness_class_id` SET TAGS ('dbx_business_glossary_term' = 'Fitness Class ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Instructor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `fitness_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `fitness_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `fitness_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `parent_fitness_class_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Fitness Class Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `parent_fitness_class_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `advance_booking_required_hours` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Required Hours');
@@ -2584,19 +2283,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `sea
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `standard_price` SET TAGS ('dbx_business_glossary_term' = 'Standard Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class` ALTER COLUMN `target_guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Target Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `fitness_class_session_id` SET TAGS ('dbx_business_glossary_term' = 'Fitness Class Session ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `fitness_class_id` SET TAGS ('dbx_business_glossary_term' = 'Fitness Class ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Instructor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `rescheduled_fitness_class_session_id` SET TAGS ('dbx_business_glossary_term' = 'Rescheduled Fitness Class Session Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `rescheduled_fitness_class_session_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `actual_attendance_count` SET TAGS ('dbx_business_glossary_term' = 'Actual Attendance Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `advance_booking_required_hours` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Required Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `age_restriction` SET TAGS ('dbx_business_glossary_term' = 'Age Restriction');
@@ -2638,84 +2332,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `special_requirements` SET TAGS ('dbx_business_glossary_term' = 'Special Requirements');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Session Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`fitness_class_session` ALTER COLUMN `waitlist_count` SET TAGS ('dbx_business_glossary_term' = 'Waitlist Count');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_concept' = 'class_enrollment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_group' = 'class_enrollment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_canonical' = 'spa.spa_class_enrollment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_ssot_role' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `spa_class_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Class Enrollment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `fitness_class_session_id` SET TAGS ('dbx_business_glossary_term' = 'Class Session ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `guest_communication_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Communication Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `membership_id` SET TAGS ('dbx_business_glossary_term' = 'Membership ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Cancelled By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `survey_response_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Nps Response Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `transferred_spa_class_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Transferred Spa Class Enrollment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `transferred_spa_class_enrollment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `attendance_confirmed_flag` SET TAGS ('dbx_business_glossary_term' = 'Attendance Confirmed Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_notes` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `charge_amount` SET TAGS ('dbx_business_glossary_term' = 'Charge Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_method` SET TAGS ('dbx_business_glossary_term' = 'Check-In Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_method` SET TAGS ('dbx_value_regex' = 'mobile_app|kiosk|staff_desk|instructor|automatic');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Check-In Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `confirmation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Confirmation Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `discount_amount` SET TAGS ('dbx_business_glossary_term' = 'Discount Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_channel` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Channel');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_value_regex' = '^ENR-[0-9]{8,12}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|waitlisted|cancelled|attended|no-show|confirmed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `folio_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Folio Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `guest_feedback_comments` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Comments');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `guest_rating` SET TAGS ('dbx_business_glossary_term' = 'Guest Rating');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `instructor_notes` SET TAGS ('dbx_business_glossary_term' = 'Instructor Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `loyalty_points_redeemed` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Redeemed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'No-Show Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_fee_waived_flag` SET TAGS ('dbx_business_glossary_term' = 'No-Show Fee Waived Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_flag` SET TAGS ('dbx_business_glossary_term' = 'No-Show Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `waitlist_position` SET TAGS ('dbx_business_glossary_term' = 'Waitlist Position');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `waitlist_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Waitlist Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `golf_tee_time_id` SET TAGS ('dbx_business_glossary_term' = 'Golf Tee Time ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `booking_source_id` SET TAGS ('dbx_business_glossary_term' = 'Booking Source ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Booked By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `guest_communication_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Communication Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Golf Course ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `rescheduled_golf_tee_time_id` SET TAGS ('dbx_business_glossary_term' = 'Rescheduled Golf Tee Time Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `rescheduled_golf_tee_time_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `booking_channel` SET TAGS ('dbx_business_glossary_term' = 'Booking Channel');
@@ -2739,8 +2367,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `cur
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `green_fee_per_player` SET TAGS ('dbx_business_glossary_term' = 'Green Fee Per Player');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `loyalty_member_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `number_of_caddies` SET TAGS ('dbx_business_glossary_term' = 'Number of Caddies');
@@ -2760,24 +2386,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `tee
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `total_charge` SET TAGS ('dbx_business_glossary_term' = 'Total Charge');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`golf_tee_time` ALTER COLUMN `weather_cancellation_flag` SET TAGS ('dbx_business_glossary_term' = 'Weather Cancellation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` SET TAGS ('dbx_subdomain' = 'revenue_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `amenity_pricing_id` SET TAGS ('dbx_business_glossary_term' = 'Amenity Pricing ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `product_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `superseded_amenity_pricing_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Amenity Pricing Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `superseded_amenity_pricing_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `tertiary_amenity_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `tertiary_amenity_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `tertiary_amenity_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Active Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `active_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|pending');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
@@ -2822,19 +2439,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `t
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `time_of_day_start` SET TAGS ('dbx_value_regex' = '^([01]?[0-9]|2[0-3]):[0-5][0-9]$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`amenity_pricing` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` SET TAGS ('dbx_subdomain' = 'appointment_booking');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` SET TAGS ('dbx_subdomain' = 'guest_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `cancellation_log_id` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Log ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `original_cancellation_log_id` SET TAGS ('dbx_business_glossary_term' = 'Original Cancellation Log Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `original_cancellation_log_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Cancelled By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `advance_notice_hours` SET TAGS ('dbx_business_glossary_term' = 'Advance Notice Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `appointment_scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Appointment Scheduled Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `cancellation_channel` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Channel');
@@ -2868,9 +2480,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`cancellation_log` ALTER COLUMN `therapist_notified_flag` SET TAGS ('dbx_business_glossary_term' = 'Therapist Notified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` SET TAGS ('dbx_subdomain' = 'fitness_recreation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `equipment_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Vendor Id (Foreign Key)');
@@ -2878,13 +2488,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `pip_ite
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `replaced_equipment_id` SET TAGS ('dbx_business_glossary_term' = 'Replaced Equipment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `replaced_equipment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Identifier (ID)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Room Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `accumulated_depreciation` SET TAGS ('dbx_business_glossary_term' = 'Accumulated Depreciation');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `accumulated_depreciation` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `capacity_rating` SET TAGS ('dbx_business_glossary_term' = 'Capacity Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `equipment_category` SET TAGS ('dbx_business_glossary_term' = 'Equipment Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `equipment_code` SET TAGS ('dbx_business_glossary_term' = 'Equipment Code');
@@ -2909,7 +2515,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `manufac
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `equipment_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `net_book_value` SET TAGS ('dbx_business_glossary_term' = 'Net Book Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `net_book_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `next_safety_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Next Safety Inspection Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `next_service_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Service Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -2917,22 +2522,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `operati
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|under maintenance|out of service|decommissioned|pending installation|retired');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `power_requirements` SET TAGS ('dbx_business_glossary_term' = 'Power Requirements');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `purchase_cost` SET TAGS ('dbx_business_glossary_term' = 'Purchase Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `purchase_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `purchase_date` SET TAGS ('dbx_business_glossary_term' = 'Purchase Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `replacement_cost` SET TAGS ('dbx_business_glossary_term' = 'Replacement Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `replacement_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `safety_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Safety Certification Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `serial_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `service_contract_number` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `service_interval_days` SET TAGS ('dbx_business_glossary_term' = 'Service Interval Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `usage_hours_total` SET TAGS ('dbx_business_glossary_term' = 'Total Usage Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `warranty_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`equipment` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight in Kilograms (kg)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` SET TAGS ('dbx_subdomain' = 'treatment_services');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `wellness_program_id` SET TAGS ('dbx_business_glossary_term' = 'Wellness Program ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `content_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Content Asset Id (Foreign Key)');
@@ -2942,14 +2542,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `prerequisite_wellness_program_id` SET TAGS ('dbx_business_glossary_term' = 'Prerequisite Wellness Program Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `prerequisite_wellness_program_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `tertiary_wellness_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `tertiary_wellness_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `tertiary_wellness_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Program Active Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `active_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|pending_approval|discontinued');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Program Approval Timestamp');
@@ -2972,8 +2568,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `maximum_advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Maximum Advance Booking Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `maximum_participants` SET TAGS ('dbx_business_glossary_term' = 'Maximum Participants Capacity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `medical_supervision_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Medical Supervision Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `medical_supervision_required_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `medical_supervision_required_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `minimum_advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Minimum Advance Booking Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `minimum_participants` SET TAGS ('dbx_business_glossary_term' = 'Minimum Participants Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `minimum_stay_nights` SET TAGS ('dbx_business_glossary_term' = 'Minimum Stay Requirement in Nights');
@@ -2995,16 +2589,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `season_type` SET TAGS ('dbx_value_regex' = 'year_round|peak_season|shoulder_season|off_season|summer_only|winter_only');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`wellness_program` ALTER COLUMN `target_guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Target Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_subdomain' = 'treatment_services');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_association_edges' = 'spa.wellness_program,spa.treatment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `program_treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `program_treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `program_treatment_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment - Treatment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `wellness_program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment - Wellness Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `day_number` SET TAGS ('dbx_business_glossary_term' = 'Program Day Number');
@@ -3012,27 +2601,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `included_treatments_list` SET TAGS ('dbx_business_glossary_term' = 'Included Treatments List');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `optional_flag` SET TAGS ('dbx_business_glossary_term' = 'Optional Treatment Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `pre_treatment_requirements` SET TAGS ('dbx_business_glossary_term' = 'Pre-Treatment Requirements');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `pre_treatment_requirements` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `pre_treatment_requirements` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `sequence_within_day` SET TAGS ('dbx_business_glossary_term' = 'Daily Treatment Sequence');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `substitution_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Treatment Substitution Allowed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `therapeutic_goal` SET TAGS ('dbx_business_glossary_term' = 'Treatment Therapeutic Goal');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Treatment Duration Override');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`program_treatment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_subdomain' = 'treatment_services');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_association_edges' = 'spa.spa_package,spa.treatment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `package_treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Package Treatment Component Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `package_treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `package_treatment_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `primary_package_id` SET TAGS ('dbx_business_glossary_term' = 'Package Treatment - Spa Package Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Package Treatment - Spa Package Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `spa_package_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Package Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `day_number` SET TAGS ('dbx_business_glossary_term' = 'Package Day Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
@@ -3043,24 +2624,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Treatment Sequence Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `time_of_day_preference` SET TAGS ('dbx_business_glossary_term' = 'Treatment Time Preference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Package Treatment Duration');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `treatment_duration_minutes` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`package_treatment` ALTER COLUMN `upgrade_available_flag` SET TAGS ('dbx_business_glossary_term' = 'Upgrade Available Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_numeric_type_normalized' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` SET TAGS ('dbx_subdomain' = 'service_catalog');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_id` SET TAGS ('dbx_business_glossary_term' = 'Product Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `brand_id` SET TAGS ('dbx_internal' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `parent_product_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Product Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `parent_product_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_line_id` SET TAGS ('dbx_business_glossary_term' = 'Product Line Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `vendor_id` SET TAGS ('dbx_internal' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `base_price` SET TAGS ('dbx_business_glossary_term' = 'Base Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `booking_lead_time_hours` SET TAGS ('dbx_business_glossary_term' = 'Booking Lead Time Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `cancellation_policy_hours` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Hours');
@@ -3075,8 +2647,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `effective
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `equipment_required` SET TAGS ('dbx_business_glossary_term' = 'Equipment Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_business_glossary_term' = 'Gender Restriction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gift_certificate_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Gift Certificate Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `gratuity_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Gratuity Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `inventory_tracked_flag` SET TAGS ('dbx_business_glossary_term' = 'Inventory Tracked Flag');
@@ -3087,32 +2659,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `modified_
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_name` SET TAGS ('dbx_business_glossary_term' = 'Product Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `online_booking_enabled_flag` SET TAGS ('dbx_business_glossary_term' = 'Online Booking Enabled Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_type` SET TAGS ('dbx_business_glossary_term' = 'Product Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `room_type_required` SET TAGS ('dbx_business_glossary_term' = 'Room Type Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `seasonal_availability` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Availability');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `short_description` SET TAGS ('dbx_business_glossary_term' = 'Short Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `product_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `stock_keeping_unit` SET TAGS ('dbx_business_glossary_term' = 'Stock Keeping Unit');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `taxable_flag` SET TAGS ('dbx_business_glossary_term' = 'Taxable Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `therapist_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit Of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` SET TAGS ('dbx_subdomain' = 'revenue_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` SET TAGS ('dbx_subdomain' = 'membership_programs');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `group_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Group Booking Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `program_config_id` SET TAGS ('dbx_business_glossary_term' = 'Program Config Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `rebooked_group_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Rebooked Group Booking Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `rebooked_group_booking_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `reservation_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Group Block Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `arrival_date` SET TAGS ('dbx_business_glossary_term' = 'Arrival Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_business_glossary_term' = 'Billing Address');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `billing_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `booking_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `booking_name` SET TAGS ('dbx_business_glossary_term' = 'Booking Name');
@@ -3126,30 +2692,24 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `can
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `catering_required` SET TAGS ('dbx_business_glossary_term' = 'Catering Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `confirmation_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `contract_document_url` SET TAGS ('dbx_business_glossary_term' = 'Contract Document Url');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `contract_document_url` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `contract_signed_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Signed Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `cutoff_date` SET TAGS ('dbx_business_glossary_term' = 'Cutoff Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `departure_date` SET TAGS ('dbx_business_glossary_term' = 'Departure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `deposit_amount` SET TAGS ('dbx_business_glossary_term' = 'Deposit Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `deposit_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `deposit_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `deposit_due_date` SET TAGS ('dbx_business_glossary_term' = 'Deposit Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `event_space_required` SET TAGS ('dbx_business_glossary_term' = 'Event Space Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_business_glossary_term' = 'Lead Guest Email');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Guest Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_business_glossary_term' = 'Lead Guest Phone');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `lead_guest_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `market_segment` SET TAGS ('dbx_business_glossary_term' = 'Market Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -3160,17 +2720,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `pay
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `rate_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `total_ancillary_revenue` SET TAGS ('dbx_business_glossary_term' = 'Total Ancillary Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `total_ancillary_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `total_room_revenue` SET TAGS ('dbx_business_glossary_term' = 'Total Room Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `total_room_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`group_booking` ALTER COLUMN `transportation_required` SET TAGS ('dbx_business_glossary_term' = 'Transportation Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` SET TAGS ('dbx_subdomain' = 'retail_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `retail_product_id` SET TAGS ('dbx_business_glossary_term' = 'Retail Product Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `parent_retail_product_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Retail Product Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `parent_retail_product_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `allergen_information` SET TAGS ('dbx_business_glossary_term' = 'Allergen Information');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `barcode` SET TAGS ('dbx_business_glossary_term' = 'Barcode');
@@ -3178,9 +2734,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `br
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `retail_product_category` SET TAGS ('dbx_business_glossary_term' = 'Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `commission_eligible` SET TAGS ('dbx_business_glossary_term' = 'Commission Eligible');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `commission_rate` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `commission_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `cost_price` SET TAGS ('dbx_business_glossary_term' = 'Cost Price');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `cost_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country Of Origin');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `cruelty_free` SET TAGS ('dbx_business_glossary_term' = 'Cruelty Free');
@@ -3202,10 +2756,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `pr
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `product_name` SET TAGS ('dbx_business_glossary_term' = 'Product Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `product_type` SET TAGS ('dbx_business_glossary_term' = 'Product Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `reorder_quantity` SET TAGS ('dbx_business_glossary_term' = 'Reorder Quantity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `retail_product_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `seasonal_product` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Product');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `shelf_life_days` SET TAGS ('dbx_business_glossary_term' = 'Shelf Life Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `short_description` SET TAGS ('dbx_business_glossary_term' = 'Short Description');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `retail_product_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `storage_requirements` SET TAGS ('dbx_business_glossary_term' = 'Storage Requirements');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `subcategory` SET TAGS ('dbx_business_glossary_term' = 'Subcategory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `tax_category` SET TAGS ('dbx_business_glossary_term' = 'Tax Category');
@@ -3215,19 +2769,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `ve
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight Kg');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`retail_product` ALTER COLUMN `width_cm` SET TAGS ('dbx_business_glossary_term' = 'Width Cm');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` SET TAGS ('dbx_subdomain' = 'retail_membership');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` SET TAGS ('dbx_subdomain' = 'retail_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `product_line_id` SET TAGS ('dbx_business_glossary_term' = 'Product Line Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `parent_product_line_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Product Line Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `parent_product_line_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `advance_booking_days_maximum` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Days Maximum');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `advance_booking_days_minimum` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Days Minimum');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `base_price_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Price Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `brand_name` SET TAGS ('dbx_business_glossary_term' = 'Brand Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `cancellation_policy_hours` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `product_line_category` SET TAGS ('dbx_business_glossary_term' = 'Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `commission_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Commission Eligible Flag');
@@ -3240,8 +2791,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `effe
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `equipment_requirements` SET TAGS ('dbx_business_glossary_term' = 'Equipment Requirements');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `facility_type_required` SET TAGS ('dbx_business_glossary_term' = 'Facility Type Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_business_glossary_term' = 'Gender Restriction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii' = 'sensitive');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gender_restriction` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `general_ledger_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `gift_certificate_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Gift Certificate Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `inventory_managed_flag` SET TAGS ('dbx_business_glossary_term' = 'Inventory Managed Flag');
@@ -3254,15 +2805,177 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `mini
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `online_booking_enabled_flag` SET TAGS ('dbx_business_glossary_term' = 'Online Booking Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `package_component_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Package Component Eligible Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `product_line_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `requires_medical_clearance_flag` SET TAGS ('dbx_business_glossary_term' = 'Requires Medical Clearance Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `requires_medical_clearance_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `requires_medical_clearance_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `revenue_category` SET TAGS ('dbx_business_glossary_term' = 'Revenue Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `seasonal_availability` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Availability');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `service_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Service Duration Minutes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `product_line_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `subcategory` SET TAGS ('dbx_business_glossary_term' = 'Subcategory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `sustainability_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `target_guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Target Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `tax_category` SET TAGS ('dbx_business_glossary_term' = 'Tax Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`product_line` ALTER COLUMN `therapist_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification Required');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` SET TAGS ('dbx_subdomain' = 'service_catalog');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'facility Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `content_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Content Asset Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Record Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Manager Employee Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Brand Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `parent_spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Spa Facility Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `accessibility_features` SET TAGS ('dbx_business_glossary_term' = 'Accessibility Features');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `average_daily_visitors` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Visitors');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `certification_accreditation` SET TAGS ('dbx_business_glossary_term' = 'Certification and Accreditation');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_code` SET TAGS ('dbx_business_glossary_term' = 'Facility Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email Address');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_status` SET TAGS ('dbx_business_glossary_term' = 'Facility Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_status` SET TAGS ('dbx_value_regex' = 'active|inactive|under_renovation|temporarily_closed|seasonal');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_type` SET TAGS ('dbx_business_glossary_term' = 'Facility Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_type` SET TAGS ('dbx_value_regex' = 'spa|fitness_center|golf_course|pool|tennis_court|salon');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `fire_safety_compliance_date` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Compliance Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_business_glossary_term' = 'Gender Designation');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_value_regex' = 'co_ed|female_only|male_only|gender_neutral');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `gender_designation` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `guest_access_policy` SET TAGS ('dbx_business_glossary_term' = 'Guest Access Policy');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `guest_access_policy` SET TAGS ('dbx_value_regex' = 'hotel_guests_only|members_only|public_access|day_pass_available');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `health_safety_compliance_date` SET TAGS ('dbx_business_glossary_term' = 'Health and Safety Compliance Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `last_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Renovation Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `locker_room_capacity` SET TAGS ('dbx_business_glossary_term' = 'Locker Room Capacity');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `loyalty_points_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Eligible Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `minimum_age_requirement` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Requirement');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `facility_name` SET TAGS ('dbx_business_glossary_term' = 'Facility Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `next_scheduled_renovation_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Renovation Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_friday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Friday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_friday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_monday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Monday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_monday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_saturday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Saturday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_saturday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_sunday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Sunday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_sunday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_thursday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Thursday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_thursday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_tuesday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Tuesday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_tuesday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_wednesday` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Wednesday');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `operating_hours_wednesday` SET TAGS ('dbx_value_regex' = '^([0-1][0-9]|2[0-3]):[0-5][0-9]-([0-1][0-9]|2[0-3]):[0-5][0-9]$|^closed$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `outdoor_space_flag` SET TAGS ('dbx_business_glossary_term' = 'Outdoor Space Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `peak_season_months` SET TAGS ('dbx_business_glossary_term' = 'Peak Season Months');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `relaxation_lounge_capacity` SET TAGS ('dbx_business_glossary_term' = 'Relaxation Lounge Capacity');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `reservation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Reservation Required Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `retail_area_flag` SET TAGS ('dbx_business_glossary_term' = 'Retail Area Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_close_date` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Close Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_open_date` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Open Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `seasonal_operation_flag` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Operation Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `total_treatment_rooms` SET TAGS ('dbx_business_glossary_term' = 'Total Treatment Rooms');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_facility` ALTER COLUMN `wet_area_capacity` SET TAGS ('dbx_business_glossary_term' = 'Wet Area Capacity');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` SET TAGS ('dbx_subdomain' = 'service_catalog');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'therapist_certification Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewed_spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Spa Therapist Certification Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `spa_therapist_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist Certification ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `therapist_id` SET TAGS ('dbx_business_glossary_term' = 'Therapist ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_document_url` SET TAGS ('dbx_business_glossary_term' = 'Certification Document URL');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_level` SET TAGS ('dbx_business_glossary_term' = 'Certification Level');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_level` SET TAGS ('dbx_value_regex' = 'entry|intermediate|advanced|master|instructor');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_number` SET TAGS ('dbx_business_glossary_term' = 'Certification Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `continuing_education_hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Continuing Education (CE) Hours Completed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `continuing_education_hours_required` SET TAGS ('dbx_business_glossary_term' = 'Continuing Education (CE) Hours Required');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `instructor_name` SET TAGS ('dbx_business_glossary_term' = 'Instructor Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_brand_required` SET TAGS ('dbx_business_glossary_term' = 'Is Brand Required Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_primary_certification` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Certification Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `is_state_required` SET TAGS ('dbx_business_glossary_term' = 'Is State Required Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issuing_body` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `issuing_jurisdiction` SET TAGS ('dbx_business_glossary_term' = 'Issuing Jurisdiction');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `reimbursement_status` SET TAGS ('dbx_business_glossary_term' = 'Reimbursement Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `reimbursement_status` SET TAGS ('dbx_value_regex' = 'not_applicable|pending|approved|reimbursed|denied');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_status` SET TAGS ('dbx_business_glossary_term' = 'Renewal Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `renewal_status` SET TAGS ('dbx_value_regex' = 'current|pending_renewal|expired|suspended|revoked|not_applicable');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `specialty_area` SET TAGS ('dbx_business_glossary_term' = 'Specialty Area');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `training_hours` SET TAGS ('dbx_business_glossary_term' = 'Training Hours');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'online_registry|phone_verification|document_review|third_party_service|not_verified');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Verification Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_therapist_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending_verification|failed_verification|not_verified');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` SET TAGS ('dbx_subdomain' = 'guest_operations');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `class_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'class_enrollment Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `fitness_class_session_id` SET TAGS ('dbx_business_glossary_term' = 'Class Session ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `membership_id` SET TAGS ('dbx_business_glossary_term' = 'Membership ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Cancelled By User ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `spa_class_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Class Enrollment ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `survey_response_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Nps Response Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `transferred_spa_class_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Transferred Spa Class Enrollment Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `attendance_confirmed_flag` SET TAGS ('dbx_business_glossary_term' = 'Attendance Confirmed Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_notes` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `charge_amount` SET TAGS ('dbx_business_glossary_term' = 'Charge Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_method` SET TAGS ('dbx_business_glossary_term' = 'Check-In Method');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_method` SET TAGS ('dbx_value_regex' = 'mobile_app|kiosk|staff_desk|instructor|automatic');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `check_in_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Check-In Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `confirmation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Confirmation Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `discount_amount` SET TAGS ('dbx_business_glossary_term' = 'Discount Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_channel` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Channel');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_value_regex' = '^ENR-[0-9]{8,12}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|waitlisted|cancelled|attended|no-show|confirmed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `enrollment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `folio_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Folio Reference Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `guest_feedback_comments` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Comments');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `guest_rating` SET TAGS ('dbx_business_glossary_term' = 'Guest Rating');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `instructor_notes` SET TAGS ('dbx_business_glossary_term' = 'Instructor Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `loyalty_points_redeemed` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Redeemed');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'No-Show Fee Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_fee_waived_flag` SET TAGS ('dbx_business_glossary_term' = 'No-Show Fee Waived Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `no_show_flag` SET TAGS ('dbx_business_glossary_term' = 'No-Show Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `waitlist_position` SET TAGS ('dbx_business_glossary_term' = 'Waitlist Position');
+ALTER TABLE `vibe_travel_hospitality_v1`.`spa`.`spa_class_enrollment` ALTER COLUMN `waitlist_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Waitlist Timestamp');

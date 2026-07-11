@@ -1,672 +1,77 @@
--- Metric views for domain: equipment | Business: Semiconductors | Version: 2 | Generated on: 2026-06-27 11:25:39
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_calibration_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Calibration Record business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`calibration_record`"
-  dimensions:
-    - name: "Calibration Date"
-      expr: calibration_date
-    - name: "Calibration Interval Days"
-      expr: calibration_interval_days
-    - name: "Calibration Method"
-      expr: calibration_method
-    - name: "Calibration Number"
-      expr: calibration_number
-    - name: "Calibration Record Status"
-      expr: calibration_record_status
-    - name: "Calibration Report Url"
-      expr: calibration_report_url
-    - name: "Calibration Result"
-      expr: calibration_result
-    - name: "Calibration Result Code"
-      expr: calibration_result_code
-    - name: "Calibration Source System"
-      expr: calibration_source_system
-    - name: "Calibration Standard"
-      expr: calibration_standard
-    - name: "Calibration Status"
-      expr: calibration_status
-    - name: "Calibration Timestamp"
-      expr: calibration_timestamp
-    - name: "Calibration Type"
-      expr: calibration_type
-    - name: "Certificate Number"
-      expr: certificate_number
-    - name: "Comments"
-      expr: comments
-    - name: "Compliance Reference"
-      expr: compliance_reference
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Calibration Record"
-      expr: COUNT(DISTINCT calibration_record_id)
-    - name: "Total As Found Value"
-      expr: SUM(as_found_value)
-    - name: "Average As Found Value"
-      expr: AVG(as_found_value)
-    - name: "Total As Left Value"
-      expr: SUM(as_left_value)
-    - name: "Average As Left Value"
-      expr: AVG(as_left_value)
-    - name: "Total Measured Value"
-      expr: SUM(measured_value)
-    - name: "Average Measured Value"
-      expr: AVG(measured_value)
-    - name: "Total Measurement Uncertainty"
-      expr: SUM(measurement_uncertainty)
-    - name: "Average Measurement Uncertainty"
-      expr: AVG(measurement_uncertainty)
-    - name: "Total Nominal Value"
-      expr: SUM(nominal_value)
-    - name: "Average Nominal Value"
-      expr: AVG(nominal_value)
-    - name: "Total Tolerance"
-      expr: SUM(tolerance)
-    - name: "Average Tolerance"
-      expr: AVG(tolerance)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_equipment_process_recipe`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Equipment Process Recipe business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`equipment_process_recipe`"
-  dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Audit Status"
-      expr: audit_status
-    - name: "Compliance Status"
-      expr: compliance_status
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Documentation Url"
-      expr: documentation_url
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Is Active"
-      expr: is_active
-    - name: "Is Deprecated"
-      expr: is_deprecated
-    - name: "Last Audit Timestamp"
-      expr: last_audit_timestamp
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Last Used Timestamp"
-      expr: last_used_timestamp
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
-    - name: "Parameter Count"
-      expr: parameter_count
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Equipment Process Recipe"
-      expr: COUNT(DISTINCT equipment_process_recipe_id)
-    - name: "Total Exposure Dose Mj Cm2"
-      expr: SUM(exposure_dose_mj_cm2)
-    - name: "Average Exposure Dose Mj Cm2"
-      expr: AVG(exposure_dose_mj_cm2)
-    - name: "Total Focus Offset Nm"
-      expr: SUM(focus_offset_nm)
-    - name: "Average Focus Offset Nm"
-      expr: AVG(focus_offset_nm)
-    - name: "Total Gas Flow Rate Sccm"
-      expr: SUM(gas_flow_rate_sccm)
-    - name: "Average Gas Flow Rate Sccm"
-      expr: AVG(gas_flow_rate_sccm)
-    - name: "Total Oee Actual Percent"
-      expr: SUM(oee_actual_percent)
-    - name: "Average Oee Actual Percent"
-      expr: AVG(oee_actual_percent)
-    - name: "Total Oee Target Percent"
-      expr: SUM(oee_target_percent)
-    - name: "Average Oee Target Percent"
-      expr: AVG(oee_target_percent)
-    - name: "Total Pressure Setpoint Pa"
-      expr: SUM(pressure_setpoint_pa)
-    - name: "Average Pressure Setpoint Pa"
-      expr: AVG(pressure_setpoint_pa)
-    - name: "Total Rf Power Watts"
-      expr: SUM(rf_power_watts)
-    - name: "Average Rf Power Watts"
-      expr: AVG(rf_power_watts)
-    - name: "Total Ssot Owner Reference"
-      expr: SUM(ssot_owner_reference)
-    - name: "Average Ssot Owner Reference"
-      expr: AVG(ssot_owner_reference)
-    - name: "Total Temperature Setpoint C"
-      expr: SUM(temperature_setpoint_c)
-    - name: "Average Temperature Setpoint C"
-      expr: AVG(temperature_setpoint_c)
-    - name: "Total Yield Actual Percent"
-      expr: SUM(yield_actual_percent)
-    - name: "Average Yield Actual Percent"
-      expr: AVG(yield_actual_percent)
-    - name: "Total Yield Target Percent"
-      expr: SUM(yield_target_percent)
-    - name: "Average Yield Target Percent"
-      expr: AVG(yield_target_percent)
-$$;
+-- Metric views for domain: equipment | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 14:15:10
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_fab_tool`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Fab Tool business metrics"
+  comment: "Strategic fab tool performance and utilization metrics for capital asset management and operational efficiency"
   source: "`vibe_semiconductors_v1`.`equipment`.`fab_tool`"
   dimensions:
-    - name: "Asset Status"
-      expr: asset_status
-    - name: "Asset Tag"
-      expr: asset_tag
-    - name: "Calibration Date"
-      expr: calibration_date
-    - name: "Calibration Due Date"
-      expr: calibration_due_date
-    - name: "Cleanroom Class"
-      expr: cleanroom_class
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Depreciation End Date"
-      expr: depreciation_end_date
-    - name: "Depreciation Start Date"
-      expr: depreciation_start_date
-    - name: "Fab Site Code"
-      expr: fab_site_code
-    - name: "Firmware Version"
-      expr: firmware_version
-    - name: "Installation Date"
-      expr: installation_date
-    - name: "Last Maintenance Date"
-      expr: last_maintenance_date
-    - name: "Lifecycle Status"
+    - name: "tool_type"
+      expr: tool_type
+      comment: "Type of fabrication tool (e.g., lithography, etch, deposition)"
+    - name: "tool_subtype"
+      expr: tool_subtype
+      comment: "Subtype classification of the tool"
+    - name: "lifecycle_status"
       expr: lifecycle_status
-    - name: "Maintenance Interval Days"
-      expr: maintenance_interval_days
-    - name: "Manufacturer"
-      expr: manufacturer
+      comment: "Current lifecycle stage of the tool (e.g., active, deprecated, end-of-life)"
+    - name: "asset_status"
+      expr: asset_status
+      comment: "Current operational status of the asset"
+    - name: "process_node_compatibility"
+      expr: process_node_compatibility
+      comment: "Process node technology the tool supports (e.g., 7nm, 5nm, 3nm)"
+    - name: "cleanroom_class"
+      expr: cleanroom_class
+      comment: "ISO cleanroom classification for the tool environment"
+    - name: "fab_site_code"
+      expr: fab_site_code
+      comment: "Fabrication site identifier where the tool is located"
+    - name: "installation_year"
+      expr: YEAR(installation_date)
+      comment: "Year the tool was installed"
+    - name: "calibration_status"
+      expr: CASE WHEN calibration_due_date < CURRENT_DATE() THEN 'Overdue' WHEN calibration_due_date <= DATE_ADD(CURRENT_DATE(), 30) THEN 'Due Soon' ELSE 'Current' END
+      comment: "Calibration compliance status based on due date"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Fab Tool"
+    - name: "total_fab_tools"
       expr: COUNT(DISTINCT fab_tool_id)
-    - name: "Total Capacity Wafer Per Hour"
-      expr: SUM(capacity_wafer_per_hour)
-    - name: "Average Capacity Wafer Per Hour"
-      expr: AVG(capacity_wafer_per_hour)
-    - name: "Total Capital Expenditure Amount"
-      expr: SUM(capital_expenditure_amount)
-    - name: "Average Capital Expenditure Amount"
-      expr: AVG(capital_expenditure_amount)
-    - name: "Total Energy Consumption Kwh Per Year"
-      expr: SUM(energy_consumption_kwh_per_year)
-    - name: "Average Energy Consumption Kwh Per Year"
-      expr: AVG(energy_consumption_kwh_per_year)
-    - name: "Total Mtbf Hours"
-      expr: SUM(mtbf_hours)
-    - name: "Average Mtbf Hours"
-      expr: AVG(mtbf_hours)
-    - name: "Total Mttr Hours"
-      expr: SUM(mttr_hours)
-    - name: "Average Mttr Hours"
-      expr: AVG(mttr_hours)
-    - name: "Total Oee Percent"
-      expr: SUM(oee_percent)
-    - name: "Average Oee Percent"
-      expr: AVG(oee_percent)
-    - name: "Total Power Rating Kw"
-      expr: SUM(power_rating_kw)
-    - name: "Average Power Rating Kw"
-      expr: AVG(power_rating_kw)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_maintenance_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Maintenance Event business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`maintenance_event`"
-  dimensions:
-    - name: "Actual Duration Minutes"
-      expr: actual_duration_minutes
-    - name: "Baseline Change Flag"
-      expr: baseline_change_flag
-    - name: "Comments"
-      expr: comments
-    - name: "Compliance Regulation"
-      expr: compliance_regulation
-    - name: "Cost Currency"
-      expr: cost_currency
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Downtime Duration Minutes"
-      expr: downtime_duration_minutes
-    - name: "Downtime Minutes"
-      expr: downtime_minutes
-    - name: "Eco Reference"
-      expr: eco_reference
-    - name: "End Timestamp"
-      expr: end_timestamp
-    - name: "Event Description"
-      expr: event_description
-    - name: "Event Number"
-      expr: event_number
-    - name: "Event Status"
-      expr: event_status
-    - name: "Event Type"
-      expr: event_type
-    - name: "Failure Mode"
-      expr: failure_mode
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Maintenance Event"
-      expr: COUNT(DISTINCT maintenance_event_id)
-    - name: "Total Downtime Hours"
-      expr: SUM(downtime_hours)
-    - name: "Average Downtime Hours"
-      expr: AVG(downtime_hours)
-    - name: "Total Labor Cost"
-      expr: SUM(labor_cost)
-    - name: "Average Labor Cost"
-      expr: AVG(labor_cost)
-    - name: "Total Labor Cost Total"
-      expr: SUM(labor_cost_total)
-    - name: "Average Labor Cost Total"
-      expr: AVG(labor_cost_total)
-    - name: "Total Labor Cost Usd"
-      expr: SUM(labor_cost_usd)
-    - name: "Average Labor Cost Usd"
-      expr: AVG(labor_cost_usd)
-    - name: "Total Labor Hours"
-      expr: SUM(labor_hours)
-    - name: "Average Labor Hours"
-      expr: AVG(labor_hours)
-    - name: "Total Oee Impact Percentage"
-      expr: SUM(oee_impact_percentage)
-    - name: "Average Oee Impact Percentage"
-      expr: AVG(oee_impact_percentage)
-    - name: "Total Parts Cost"
-      expr: SUM(parts_cost)
-    - name: "Average Parts Cost"
-      expr: AVG(parts_cost)
-    - name: "Total Parts Cost Total"
-      expr: SUM(parts_cost_total)
-    - name: "Average Parts Cost Total"
-      expr: AVG(parts_cost_total)
-    - name: "Total Parts Cost Usd"
-      expr: SUM(parts_cost_usd)
-    - name: "Average Parts Cost Usd"
-      expr: AVG(parts_cost_usd)
-    - name: "Total Total Cost"
-      expr: SUM(total_cost)
-    - name: "Average Total Cost"
-      expr: AVG(total_cost)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_maintenance_parts_consumed`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Maintenance Parts Consumed business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`maintenance_parts_consumed`"
-  dimensions:
-    - name: "Consumption Timestamp"
-      expr: consumption_timestamp
-    - name: "Cost Currency"
-      expr: cost_currency
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Part Condition After"
-      expr: part_condition_after
-    - name: "Part Condition Before"
-      expr: part_condition_before
-    - name: "Planned Vs Unplanned"
-      expr: planned_vs_unplanned
-    - name: "Replacement Reason"
-      expr: replacement_reason
-    - name: "Updated Timestamp"
-      expr: updated_timestamp
-    - name: "Warranty Claim Eligible"
-      expr: warranty_claim_eligible
-    - name: "Work Order Line Number"
-      expr: work_order_line_number
-    - name: "Consumption Timestamp Month"
-      expr: DATE_TRUNC('MONTH', consumption_timestamp)
-    - name: "Created Timestamp Month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Maintenance Parts Consumed"
-      expr: COUNT(DISTINCT maintenance_parts_consumed_id)
-    - name: "Total Quantity Used"
-      expr: SUM(quantity_used)
-    - name: "Average Quantity Used"
-      expr: AVG(quantity_used)
-    - name: "Total Technician Code"
-      expr: SUM(technician_code)
-    - name: "Average Technician Code"
-      expr: AVG(technician_code)
-    - name: "Total Unit Cost At Time Of Use"
-      expr: SUM(unit_cost_at_time_of_use)
-    - name: "Average Unit Cost At Time Of Use"
-      expr: AVG(unit_cost_at_time_of_use)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_oee_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Oee Record business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`oee_record`"
-  dimensions:
-    - name: "Comments"
-      expr: comments
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Downtime Minutes"
-      expr: downtime_minutes
-    - name: "Event Timestamp"
-      expr: event_timestamp
-    - name: "Good Units"
-      expr: good_units
-    - name: "Measurement Period"
-      expr: measurement_period
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
-    - name: "Oee Calculation Method"
-      expr: oee_calculation_method
-    - name: "Period End Date"
-      expr: period_end_date
-    - name: "Period Start Date"
-      expr: period_start_date
-    - name: "Planned Production Minutes"
-      expr: planned_production_minutes
-    - name: "Record Date"
-      expr: record_date
-    - name: "Record Status"
-      expr: record_status
-    - name: "Responsible Party"
-      expr: responsible_party
-    - name: "Shift Date"
-      expr: shift_date
-    - name: "Shift Name"
-      expr: shift_name
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Oee Record"
-      expr: COUNT(DISTINCT oee_record_id)
-    - name: "Total Availability Percent"
-      expr: SUM(availability_percent)
-    - name: "Average Availability Percent"
-      expr: AVG(availability_percent)
-    - name: "Total Availability Rate"
-      expr: SUM(availability_rate)
-    - name: "Average Availability Rate"
-      expr: AVG(availability_rate)
-    - name: "Total Available Hours"
-      expr: SUM(available_hours)
-    - name: "Average Available Hours"
-      expr: AVG(available_hours)
-    - name: "Total Downtime Hours"
-      expr: SUM(downtime_hours)
-    - name: "Average Downtime Hours"
-      expr: AVG(downtime_hours)
-    - name: "Total Engineering Hours"
-      expr: SUM(engineering_hours)
-    - name: "Average Engineering Hours"
-      expr: AVG(engineering_hours)
-    - name: "Total Idle Hours"
-      expr: SUM(idle_hours)
-    - name: "Average Idle Hours"
-      expr: AVG(idle_hours)
-    - name: "Total Oee Percent"
-      expr: SUM(oee_percent)
-    - name: "Average Oee Percent"
-      expr: AVG(oee_percent)
-    - name: "Total Oee Percentage"
-      expr: SUM(oee_percentage)
-    - name: "Average Oee Percentage"
-      expr: AVG(oee_percentage)
-    - name: "Total Performance Percent"
-      expr: SUM(performance_percent)
-    - name: "Average Performance Percent"
-      expr: AVG(performance_percent)
-    - name: "Total Performance Rate"
-      expr: SUM(performance_rate)
-    - name: "Average Performance Rate"
-      expr: AVG(performance_rate)
-    - name: "Total Productive Hours"
-      expr: SUM(productive_hours)
-    - name: "Average Productive Hours"
-      expr: AVG(productive_hours)
-    - name: "Total Quality Percent"
-      expr: SUM(quality_percent)
-    - name: "Average Quality Percent"
-      expr: AVG(quality_percent)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_pm_schedule`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Pm Schedule business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`pm_schedule`"
-  dimensions:
-    - name: "Compliance Requirement"
-      expr: compliance_requirement
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Estimated Downtime Minutes"
-      expr: estimated_downtime_minutes
-    - name: "Frequency Days"
-      expr: frequency_days
-    - name: "Frequency Interval"
-      expr: frequency_interval
-    - name: "Interval Unit"
-      expr: interval_unit
-    - name: "Interval Value"
-      expr: interval_value
-    - name: "Is Critical"
-      expr: is_critical
-    - name: "Last Modified By"
-      expr: last_modified_by
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Last Performed Date"
-      expr: last_performed_date
-    - name: "Last Pm Date"
-      expr: last_pm_date
-    - name: "Maintenance Window End"
-      expr: maintenance_window_end
-    - name: "Maintenance Window Start"
-      expr: maintenance_window_start
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Pm Schedule"
-      expr: COUNT(DISTINCT pm_schedule_id)
-    - name: "Total Estimated Duration Hours"
-      expr: SUM(estimated_duration_hours)
-    - name: "Average Estimated Duration Hours"
-      expr: AVG(estimated_duration_hours)
-    - name: "Total Oee Impact Estimate"
-      expr: SUM(oee_impact_estimate)
-    - name: "Average Oee Impact Estimate"
-      expr: AVG(oee_impact_estimate)
-    - name: "Total Work Order Template Code"
-      expr: SUM(work_order_template_code)
-    - name: "Average Work Order Template Code"
-      expr: AVG(work_order_template_code)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_spare_part`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Spare Part business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`spare_part`"
-  dimensions:
-    - name: "Calibration Interval Days"
-      expr: calibration_interval_days
-    - name: "Calibration Required Flag"
-      expr: calibration_required_flag
-    - name: "Compliance Certifications"
-      expr: compliance_certifications
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Criticality"
-      expr: criticality
-    - name: "Criticality Rating"
-      expr: criticality_rating
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Current Stock Qty"
-      expr: current_stock_qty
-    - name: "Disposal Method"
-      expr: disposal_method
-    - name: "Hazardous Material Flag"
-      expr: hazardous_material_flag
-    - name: "Inspection Status"
-      expr: inspection_status
-    - name: "Last Inspection Date"
-      expr: last_inspection_date
-    - name: "Last Received Date"
-      expr: last_received_date
-    - name: "Last Used Date"
-      expr: last_used_date
-    - name: "Lead Time Days"
-      expr: lead_time_days
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Spare Part"
-      expr: COUNT(DISTINCT spare_part_id)
-    - name: "Total Part Volume Cm3"
-      expr: SUM(part_volume_cm3)
-    - name: "Average Part Volume Cm3"
-      expr: AVG(part_volume_cm3)
-    - name: "Total Part Weight Kg"
-      expr: SUM(part_weight_kg)
-    - name: "Average Part Weight Kg"
-      expr: AVG(part_weight_kg)
-    - name: "Total Unit Cost"
-      expr: SUM(unit_cost)
-    - name: "Average Unit Cost"
-      expr: AVG(unit_cost)
-    - name: "Total Unit Cost Usd"
-      expr: SUM(unit_cost_usd)
-    - name: "Average Unit Cost Usd"
-      expr: AVG(unit_cost_usd)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_tool_chamber`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tool Chamber business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`tool_chamber`"
-  dimensions:
-    - name: "Audit Last Date"
-      expr: audit_last_date
-    - name: "Calibration Date"
-      expr: calibration_date
-    - name: "Calibration Status"
-      expr: calibration_status
-    - name: "Chamber Code"
-      expr: chamber_code
-    - name: "Chamber Name"
-      expr: chamber_name
-    - name: "Chamber Status"
-      expr: chamber_status
-    - name: "Chamber Status Reason"
-      expr: chamber_status_reason
-    - name: "Chamber Type"
-      expr: chamber_type
-    - name: "Clean Interval Wafers"
-      expr: clean_interval_wafers
-    - name: "Compliance Status"
-      expr: compliance_status
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Firmware Version"
-      expr: firmware_version
-    - name: "Installation Date"
-      expr: installation_date
-    - name: "Last Calibration Result"
-      expr: last_calibration_result
-    - name: "Last Clean Date"
-      expr: last_clean_date
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Tool Chamber"
-      expr: COUNT(DISTINCT tool_chamber_id)
-    - name: "Total Chamber Lifetime Hours"
-      expr: SUM(chamber_lifetime_hours)
-    - name: "Average Chamber Lifetime Hours"
-      expr: AVG(chamber_lifetime_hours)
-    - name: "Total Gas Flow Rate Sccm"
-      expr: SUM(gas_flow_rate_sccm)
-    - name: "Average Gas Flow Rate Sccm"
-      expr: AVG(gas_flow_rate_sccm)
-    - name: "Total Max Pressure Torr"
-      expr: SUM(max_pressure_torr)
-    - name: "Average Max Pressure Torr"
-      expr: AVG(max_pressure_torr)
-    - name: "Total Max Temperature C"
-      expr: SUM(max_temperature_c)
-    - name: "Average Max Temperature C"
-      expr: AVG(max_temperature_c)
-    - name: "Total Mtbf Hours"
-      expr: SUM(mtbf_hours)
-    - name: "Average Mtbf Hours"
-      expr: AVG(mtbf_hours)
-    - name: "Total Mttr Hours"
-      expr: SUM(mttr_hours)
-    - name: "Average Mttr Hours"
-      expr: AVG(mttr_hours)
-    - name: "Total Oee Percentage"
-      expr: SUM(oee_percentage)
-    - name: "Average Oee Percentage"
-      expr: AVG(oee_percentage)
-    - name: "Total Pressure Setpoint Pa"
-      expr: SUM(pressure_setpoint_pa)
-    - name: "Average Pressure Setpoint Pa"
-      expr: AVG(pressure_setpoint_pa)
-    - name: "Total Temperature Setpoint C"
-      expr: SUM(temperature_setpoint_c)
-    - name: "Average Temperature Setpoint C"
-      expr: AVG(temperature_setpoint_c)
-    - name: "Total Throughput Pph"
-      expr: SUM(throughput_pph)
-    - name: "Average Throughput Pph"
-      expr: AVG(throughput_pph)
+      comment: "Total count of unique fabrication tools"
+    - name: "avg_oee_percent"
+      expr: AVG(CAST(oee_percent AS DOUBLE))
+      comment: "Average Overall Equipment Effectiveness percentage across tools - key operational efficiency KPI"
+    - name: "total_capacity_wafer_per_hour"
+      expr: SUM(CAST(capacity_wafer_per_hour AS DOUBLE))
+      comment: "Total wafer processing capacity per hour across all tools - critical throughput metric"
+    - name: "avg_capacity_wafer_per_hour"
+      expr: AVG(CAST(capacity_wafer_per_hour AS DOUBLE))
+      comment: "Average wafer processing capacity per hour per tool"
+    - name: "total_capex_amount"
+      expr: SUM(CAST(capital_expenditure_amount AS DOUBLE))
+      comment: "Total capital expenditure invested in fabrication tools - strategic investment metric"
+    - name: "avg_mtbf_hours"
+      expr: AVG(CAST(mtbf_hours AS DOUBLE))
+      comment: "Average Mean Time Between Failures in hours - reliability KPI"
+    - name: "avg_mttr_hours"
+      expr: AVG(CAST(mttr_hours AS DOUBLE))
+      comment: "Average Mean Time To Repair in hours - maintenance efficiency KPI"
+    - name: "tool_availability_ratio"
+      expr: ROUND(100.0 * AVG(CAST(mtbf_hours AS DOUBLE)) / NULLIF(AVG(CAST(mtbf_hours AS DOUBLE)) + AVG(CAST(mttr_hours AS DOUBLE)), 0), 2)
+      comment: "Tool availability percentage calculated from MTBF and MTTR - operational uptime KPI"
+    - name: "total_energy_consumption_kwh_per_year"
+      expr: SUM(CAST(energy_consumption_kwh_per_year AS DOUBLE))
+      comment: "Total annual energy consumption across all tools - sustainability and cost metric"
+    - name: "avg_power_rating_kw"
+      expr: AVG(CAST(power_rating_kw AS DOUBLE))
+      comment: "Average power rating in kilowatts per tool"
+    - name: "tools_overdue_calibration"
+      expr: COUNT(DISTINCT CASE WHEN calibration_due_date < CURRENT_DATE() THEN fab_tool_id END)
+      comment: "Count of tools with overdue calibration - compliance risk metric"
+    - name: "tools_warranty_expired"
+      expr: COUNT(DISTINCT CASE WHEN warranty_expiration_date < CURRENT_DATE() THEN fab_tool_id END)
+      comment: "Count of tools with expired warranty - financial risk and maintenance cost exposure"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_tool_downtime`
@@ -674,158 +79,373 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tool Downtime business metrics"
+  comment: "Tool downtime and availability metrics for operational efficiency and production impact analysis"
   source: "`vibe_semiconductors_v1`.`equipment`.`tool_downtime`"
   dimensions:
-    - name: "Comments"
-      expr: comments
-    - name: "Corrective Action Taken"
-      expr: corrective_action_taken
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Downtime Category"
-      expr: downtime_category
-    - name: "Downtime Code"
-      expr: downtime_code
-    - name: "Downtime Duration Minutes"
-      expr: downtime_duration_minutes
-    - name: "Downtime End Timestamp"
-      expr: downtime_end_timestamp
-    - name: "Downtime Minutes"
-      expr: downtime_minutes
-    - name: "Downtime Reason"
-      expr: downtime_reason
-    - name: "Downtime Reason Code"
-      expr: downtime_reason_code
-    - name: "Downtime Reason Description"
-      expr: downtime_reason_description
-    - name: "Downtime Start Timestamp"
-      expr: downtime_start_timestamp
-    - name: "Downtime State"
-      expr: downtime_state
-    - name: "Downtime Type"
+    - name: "downtime_type"
       expr: downtime_type
-    - name: "End Timestamp"
-      expr: end_timestamp
+      comment: "Type of downtime event (e.g., planned, unplanned, emergency)"
+    - name: "downtime_reason_code"
+      expr: downtime_reason_code
+      comment: "Standardized code for downtime reason"
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "High-level category of root cause for downtime"
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity classification of the downtime event"
+    - name: "scheduled_flag"
+      expr: scheduled_flag
+      comment: "Boolean indicating if downtime was scheduled (True) or unscheduled (False)"
+    - name: "shift"
+      expr: shift
+      comment: "Production shift during which downtime occurred"
+    - name: "responsible_party"
+      expr: responsible_party
+      comment: "Party responsible for the downtime event"
+    - name: "downtime_month"
+      expr: DATE_TRUNC('MONTH', downtime_start_timestamp)
+      comment: "Month when downtime started"
+    - name: "downtime_week"
+      expr: DATE_TRUNC('WEEK', downtime_start_timestamp)
+      comment: "Week when downtime started"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Tool Downtime"
+    - name: "total_downtime_events"
       expr: COUNT(DISTINCT tool_downtime_id)
-    - name: "Total Duration Hours"
-      expr: SUM(duration_hours)
-    - name: "Average Duration Hours"
-      expr: AVG(duration_hours)
-    - name: "Total Duration Minutes"
-      expr: SUM(duration_minutes)
-    - name: "Average Duration Minutes"
-      expr: AVG(duration_minutes)
+      comment: "Total count of downtime events"
+    - name: "total_downtime_minutes"
+      expr: SUM(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Total downtime duration in minutes - critical production loss metric"
+    - name: "avg_downtime_minutes_per_event"
+      expr: AVG(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Average downtime duration per event in minutes"
+    - name: "unscheduled_downtime_events"
+      expr: COUNT(DISTINCT CASE WHEN scheduled_flag = FALSE THEN tool_downtime_id END)
+      comment: "Count of unscheduled downtime events - operational disruption indicator"
+    - name: "unscheduled_downtime_minutes"
+      expr: SUM(CASE WHEN scheduled_flag = FALSE THEN CAST(downtime_duration_minutes AS DOUBLE) ELSE 0 END)
+      comment: "Total unscheduled downtime in minutes - key reliability metric"
+    - name: "avg_oee_impact_percentage"
+      expr: AVG(CAST(oee_impact_percentage AS DOUBLE))
+      comment: "Average OEE impact percentage per downtime event - productivity loss metric"
+    - name: "total_wip_lot_impact"
+      expr: SUM(CAST(impact_wip_lot_count AS DOUBLE))
+      comment: "Total work-in-progress lots impacted by downtime - production disruption metric"
+    - name: "high_severity_events"
+      expr: COUNT(DISTINCT CASE WHEN severity_level IN ('High', 'Critical') THEN tool_downtime_id END)
+      comment: "Count of high and critical severity downtime events - risk and escalation metric"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_tool_qualification`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_maintenance_event`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tool Qualification business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`tool_qualification`"
+  comment: "Maintenance cost, efficiency, and quality metrics for asset management and operational excellence"
+  source: "`vibe_semiconductors_v1`.`equipment`.`maintenance_event`"
   dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Calibration Date"
-      expr: calibration_date
-    - name: "Calibration Status"
+    - name: "event_type"
+      expr: event_type
+      comment: "Type of maintenance event (e.g., preventive, corrective, upgrade)"
+    - name: "maintenance_category"
+      expr: maintenance_category
+      comment: "Category classification of maintenance work"
+    - name: "maintenance_event_status"
+      expr: maintenance_event_status
+      comment: "Current status of the maintenance event"
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "Root cause category for corrective maintenance"
+    - name: "trigger_source"
+      expr: trigger_source
+      comment: "Source that triggered the maintenance event"
+    - name: "upgrade_type"
+      expr: upgrade_type
+      comment: "Type of upgrade performed during maintenance"
+    - name: "requalification_required"
+      expr: requalification_required
+      comment: "Boolean indicating if tool requalification is required post-maintenance"
+    - name: "requalification_status"
+      expr: requalification_status
+      comment: "Status of requalification process"
+    - name: "safety_incident_flag"
+      expr: safety_incident_flag
+      comment: "Boolean indicating if a safety incident occurred during maintenance"
+    - name: "baseline_change_flag"
+      expr: baseline_change_flag
+      comment: "Boolean indicating if maintenance changed tool baseline configuration"
+    - name: "maintenance_month"
+      expr: DATE_TRUNC('MONTH', start_timestamp)
+      comment: "Month when maintenance started"
+  measures:
+    - name: "total_maintenance_events"
+      expr: COUNT(DISTINCT maintenance_event_id)
+      comment: "Total count of maintenance events"
+    - name: "total_maintenance_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total maintenance cost across all events - key operational expense metric"
+    - name: "avg_maintenance_cost_per_event"
+      expr: AVG(CAST(total_cost AS DOUBLE))
+      comment: "Average maintenance cost per event"
+    - name: "total_labor_cost"
+      expr: SUM(CAST(labor_cost_total AS DOUBLE))
+      comment: "Total labor cost for maintenance activities"
+    - name: "total_parts_cost"
+      expr: SUM(CAST(parts_cost_total AS DOUBLE))
+      comment: "Total parts and materials cost for maintenance"
+    - name: "labor_cost_ratio"
+      expr: ROUND(100.0 * SUM(CAST(labor_cost_total AS DOUBLE)) / NULLIF(SUM(CAST(total_cost AS DOUBLE)), 0), 2)
+      comment: "Labor cost as percentage of total maintenance cost - cost structure metric"
+    - name: "parts_cost_ratio"
+      expr: ROUND(100.0 * SUM(CAST(parts_cost_total AS DOUBLE)) / NULLIF(SUM(CAST(total_cost AS DOUBLE)), 0), 2)
+      comment: "Parts cost as percentage of total maintenance cost - cost structure metric"
+    - name: "total_labor_hours"
+      expr: SUM(CAST(labor_hours AS DOUBLE))
+      comment: "Total labor hours spent on maintenance - resource utilization metric"
+    - name: "avg_labor_hours_per_event"
+      expr: AVG(CAST(labor_hours AS DOUBLE))
+      comment: "Average labor hours per maintenance event"
+    - name: "total_downtime_minutes"
+      expr: SUM(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Total downtime duration in minutes due to maintenance - production impact metric"
+    - name: "avg_downtime_minutes_per_event"
+      expr: AVG(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Average downtime per maintenance event in minutes"
+    - name: "avg_oee_impact_percentage"
+      expr: AVG(CAST(oee_impact_percentage AS DOUBLE))
+      comment: "Average OEE impact percentage from maintenance - efficiency loss metric"
+    - name: "events_with_safety_incidents"
+      expr: COUNT(DISTINCT CASE WHEN safety_incident_flag = TRUE THEN maintenance_event_id END)
+      comment: "Count of maintenance events with safety incidents - safety performance metric"
+    - name: "events_requiring_requalification"
+      expr: COUNT(DISTINCT CASE WHEN requalification_required = TRUE THEN maintenance_event_id END)
+      comment: "Count of events requiring tool requalification - quality assurance metric"
+    - name: "events_with_baseline_change"
+      expr: COUNT(DISTINCT CASE WHEN baseline_change_flag = TRUE THEN maintenance_event_id END)
+      comment: "Count of events that changed tool baseline - change management metric"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_tool_chamber`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tool chamber performance, utilization, and compliance metrics for process control and quality management"
+  source: "`vibe_semiconductors_v1`.`equipment`.`tool_chamber`"
+  dimensions:
+    - name: "chamber_type"
+      expr: chamber_type
+      comment: "Type of tool chamber (e.g., process chamber, load lock)"
+    - name: "tool_chamber_status"
+      expr: tool_chamber_status
+      comment: "Current operational status of the chamber"
+    - name: "chamber_status_reason"
+      expr: chamber_status_reason
+      comment: "Reason for current chamber status"
+    - name: "qualification_status"
+      expr: qualification_status
+      comment: "Qualification status of the chamber for production use"
+    - name: "calibration_status"
       expr: calibration_status
-    - name: "Change Control Number"
-      expr: change_control_number
-    - name: "Compliance Approval Status"
-      expr: compliance_approval_status
-    - name: "Compliance Document Reference"
-      expr: compliance_document_reference
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Documentation Url"
-      expr: documentation_url
-    - name: "Equipment Serial Number"
-      expr: equipment_serial_number
-    - name: "Expiry Date"
-      expr: expiry_date
-    - name: "Is Critical"
-      expr: is_critical
-    - name: "Last Maintenance Date"
-      expr: last_maintenance_date
-    - name: "Maintenance Status"
-      expr: maintenance_status
-    - name: "Measurement Method"
-      expr: measurement_method
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
+      comment: "Current calibration status of the chamber"
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Regulatory and process compliance status"
+    - name: "safety_lock_status"
+      expr: safety_lock_status
+      comment: "Safety interlock status of the chamber"
+    - name: "location"
+      expr: location
+      comment: "Physical location of the chamber"
+    - name: "maintenance_due_status"
+      expr: CASE WHEN next_maintenance_due < CURRENT_DATE() THEN 'Overdue' WHEN next_maintenance_due <= DATE_ADD(CURRENT_DATE(), 7) THEN 'Due This Week' ELSE 'Current' END
+      comment: "Maintenance due status based on next scheduled date"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Tool Qualification"
-      expr: COUNT(DISTINCT tool_qualification_id)
-    - name: "Total Baseline Value"
-      expr: SUM(baseline_value)
-    - name: "Average Baseline Value"
-      expr: AVG(baseline_value)
-    - name: "Total Cpk Value"
-      expr: SUM(cpk_value)
-    - name: "Average Cpk Value"
-      expr: AVG(cpk_value)
-    - name: "Total Oee Impact"
-      expr: SUM(oee_impact)
-    - name: "Average Oee Impact"
-      expr: AVG(oee_impact)
-    - name: "Total Result Metric Value"
-      expr: SUM(result_metric_value)
-    - name: "Average Result Metric Value"
-      expr: AVG(result_metric_value)
-    - name: "Total Tolerance"
-      expr: SUM(tolerance)
-    - name: "Average Tolerance"
-      expr: AVG(tolerance)
+    - name: "total_tool_chambers"
+      expr: COUNT(DISTINCT tool_chamber_id)
+      comment: "Total count of unique tool chambers"
+    - name: "avg_oee_percentage"
+      expr: AVG(CAST(oee_percentage AS DOUBLE))
+      comment: "Average Overall Equipment Effectiveness percentage for chambers - operational efficiency KPI"
+    - name: "avg_throughput_pph"
+      expr: AVG(CAST(throughput_pph AS DOUBLE))
+      comment: "Average throughput in parts per hour - productivity metric"
+    - name: "total_throughput_capacity_pph"
+      expr: SUM(CAST(throughput_pph AS DOUBLE))
+      comment: "Total throughput capacity across all chambers in parts per hour"
+    - name: "avg_mtbf_hours"
+      expr: AVG(CAST(mtbf_hours AS DOUBLE))
+      comment: "Average Mean Time Between Failures for chambers - reliability KPI"
+    - name: "avg_mttr_hours"
+      expr: AVG(CAST(mttr_hours AS DOUBLE))
+      comment: "Average Mean Time To Repair for chambers - maintenance efficiency KPI"
+    - name: "chamber_availability_ratio"
+      expr: ROUND(100.0 * AVG(CAST(mtbf_hours AS DOUBLE)) / NULLIF(AVG(CAST(mtbf_hours AS DOUBLE)) + AVG(CAST(mttr_hours AS DOUBLE)), 0), 2)
+      comment: "Chamber availability percentage from MTBF and MTTR - uptime KPI"
+    - name: "avg_chamber_lifetime_hours"
+      expr: AVG(CAST(chamber_lifetime_hours AS DOUBLE))
+      comment: "Average cumulative operating hours per chamber - asset utilization metric"
+    - name: "chambers_overdue_maintenance"
+      expr: COUNT(DISTINCT CASE WHEN next_maintenance_due < CURRENT_DATE() THEN tool_chamber_id END)
+      comment: "Count of chambers with overdue maintenance - compliance risk metric"
+    - name: "chambers_not_qualified"
+      expr: COUNT(DISTINCT CASE WHEN qualification_status NOT IN ('Qualified', 'Active') THEN tool_chamber_id END)
+      comment: "Count of chambers not qualified for production - capacity constraint metric"
+    - name: "chambers_calibration_overdue"
+      expr: COUNT(DISTINCT CASE WHEN calibration_status IN ('Overdue', 'Expired') THEN tool_chamber_id END)
+      comment: "Count of chambers with overdue calibration - quality risk metric"
+    - name: "chambers_warranty_expired"
+      expr: COUNT(DISTINCT CASE WHEN warranty_expiration_date < CURRENT_DATE() THEN tool_chamber_id END)
+      comment: "Count of chambers with expired warranty - cost exposure metric"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_tool_spare_part_compatibility`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_calibration_record`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tool Spare Part Compatibility business metrics"
-  source: "`vibe_semiconductors_v1`.`equipment`.`tool_spare_part_compatibility`"
+  comment: "Calibration compliance, quality, and measurement accuracy metrics for regulatory adherence and process control"
+  source: "`vibe_semiconductors_v1`.`equipment`.`calibration_record`"
   dimensions:
-    - name: "Compatibility Type"
-      expr: compatibility_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Criticality For Tool"
-      expr: criticality_for_tool
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Equipment Compatible"
-      expr: equipment_compatible
-    - name: "Installation Procedure Reference"
-      expr: installation_procedure_reference
-    - name: "Last Updated Timestamp"
-      expr: last_updated_timestamp
-    - name: "Lead Time For Tool"
-      expr: lead_time_for_tool
-    - name: "Created Timestamp Month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-    - name: "Effective End Date Month"
-      expr: DATE_TRUNC('MONTH', effective_end_date)
+    - name: "calibration_type"
+      expr: calibration_type
+      comment: "Type of calibration performed (e.g., full, partial, verification)"
+    - name: "calibration_method"
+      expr: calibration_method
+      comment: "Method used for calibration"
+    - name: "calibration_standard"
+      expr: calibration_standard
+      comment: "Calibration standard or reference used"
+    - name: "calibration_record_status"
+      expr: calibration_record_status
+      comment: "Status of the calibration record"
+    - name: "pass_fail_result"
+      expr: pass_fail_result
+      comment: "Pass or fail result of calibration"
+    - name: "calibration_result_code"
+      expr: calibration_result_code
+      comment: "Detailed result code from calibration"
+    - name: "measurement_unit"
+      expr: measurement_unit
+      comment: "Unit of measurement for calibration"
+    - name: "location"
+      expr: location
+      comment: "Location where calibration was performed"
+    - name: "technician_name"
+      expr: technician_name
+      comment: "Name of technician who performed calibration"
+    - name: "calibration_month"
+      expr: DATE_TRUNC('MONTH', calibration_timestamp)
+      comment: "Month when calibration was performed"
+    - name: "compliance_reference"
+      expr: compliance_reference
+      comment: "Regulatory compliance reference for calibration"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Tool Spare Part Compatibility"
-      expr: COUNT(DISTINCT tool_spare_part_compatibility_id)
-    - name: "Total Quantity Required Per Pm"
-      expr: SUM(quantity_required_per_pm)
-    - name: "Average Quantity Required Per Pm"
-      expr: AVG(quantity_required_per_pm)
+    - name: "total_calibration_records"
+      expr: COUNT(DISTINCT calibration_record_id)
+      comment: "Total count of calibration records"
+    - name: "calibration_pass_count"
+      expr: COUNT(DISTINCT CASE WHEN pass_fail_result = 'Pass' THEN calibration_record_id END)
+      comment: "Count of calibrations that passed"
+    - name: "calibration_fail_count"
+      expr: COUNT(DISTINCT CASE WHEN pass_fail_result = 'Fail' THEN calibration_record_id END)
+      comment: "Count of calibrations that failed - quality risk indicator"
+    - name: "calibration_pass_rate"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN pass_fail_result = 'Pass' THEN calibration_record_id END) / NULLIF(COUNT(DISTINCT calibration_record_id), 0), 2)
+      comment: "Calibration pass rate percentage - quality and compliance KPI"
+    - name: "avg_measured_value"
+      expr: AVG(CAST(measured_value AS DOUBLE))
+      comment: "Average measured value across calibrations"
+    - name: "avg_nominal_value"
+      expr: AVG(CAST(nominal_value AS DOUBLE))
+      comment: "Average nominal (target) value across calibrations"
+    - name: "avg_measurement_uncertainty"
+      expr: AVG(CAST(measurement_uncertainty AS DOUBLE))
+      comment: "Average measurement uncertainty - precision metric"
+    - name: "avg_measurement_deviation"
+      expr: AVG(ABS(CAST(measured_value AS DOUBLE) - CAST(nominal_value AS DOUBLE)))
+      comment: "Average absolute deviation between measured and nominal values - accuracy metric"
+    - name: "calibrations_overdue"
+      expr: COUNT(DISTINCT CASE WHEN next_due_date < CURRENT_DATE() THEN calibration_record_id END)
+      comment: "Count of calibrations that are overdue - compliance risk metric"
+    - name: "calibrations_due_soon"
+      expr: COUNT(DISTINCT CASE WHEN next_due_date BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), 30) THEN calibration_record_id END)
+      comment: "Count of calibrations due within next 30 days - planning metric"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`equipment_spare_part`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Spare parts inventory, cost, and availability metrics for supply chain optimization and maintenance planning"
+  source: "`vibe_semiconductors_v1`.`equipment`.`spare_part`"
+  dimensions:
+    - name: "part_type"
+      expr: part_type
+      comment: "Type classification of spare part"
+    - name: "part_category"
+      expr: part_category
+      comment: "Category of spare part"
+    - name: "spare_part_status"
+      expr: spare_part_status
+      comment: "Current status of the spare part"
+    - name: "criticality_rating"
+      expr: criticality_rating
+      comment: "Criticality rating for production impact (e.g., critical, high, medium, low)"
+    - name: "calibration_required_flag"
+      expr: calibration_required_flag
+      comment: "Boolean indicating if part requires calibration"
+    - name: "hazardous_material_flag"
+      expr: hazardous_material_flag
+      comment: "Boolean indicating if part is hazardous material"
+    - name: "inspection_status"
+      expr: inspection_status
+      comment: "Current inspection status of the part"
+    - name: "storage_condition"
+      expr: storage_condition
+      comment: "Required storage conditions for the part"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency code for part cost"
+    - name: "stock_status"
+      expr: CASE WHEN CAST(current_stock_qty AS DOUBLE) <= CAST(min_stock_level AS DOUBLE) THEN 'Below Minimum' WHEN CAST(current_stock_qty AS DOUBLE) <= CAST(reorder_point AS DOUBLE) THEN 'Reorder Needed' ELSE 'Adequate' END
+      comment: "Stock level status relative to minimum and reorder thresholds"
+  measures:
+    - name: "total_spare_parts"
+      expr: COUNT(DISTINCT spare_part_id)
+      comment: "Total count of unique spare parts in inventory"
+    - name: "total_inventory_value"
+      expr: SUM(CAST(current_stock_qty AS DOUBLE) * CAST(unit_cost AS DOUBLE))
+      comment: "Total inventory value of spare parts - working capital metric"
+    - name: "avg_unit_cost"
+      expr: AVG(CAST(unit_cost AS DOUBLE))
+      comment: "Average unit cost per spare part"
+    - name: "total_current_stock_qty"
+      expr: SUM(CAST(current_stock_qty AS DOUBLE))
+      comment: "Total current stock quantity across all parts"
+    - name: "parts_below_minimum"
+      expr: COUNT(DISTINCT CASE WHEN CAST(current_stock_qty AS DOUBLE) < CAST(min_stock_level AS DOUBLE) THEN spare_part_id END)
+      comment: "Count of parts below minimum stock level - stockout risk metric"
+    - name: "parts_at_reorder_point"
+      expr: COUNT(DISTINCT CASE WHEN CAST(current_stock_qty AS DOUBLE) <= CAST(reorder_point AS DOUBLE) THEN spare_part_id END)
+      comment: "Count of parts at or below reorder point - procurement action metric"
+    - name: "critical_parts_below_minimum"
+      expr: COUNT(DISTINCT CASE WHEN criticality_rating = 'Critical' AND CAST(current_stock_qty AS DOUBLE) < CAST(min_stock_level AS DOUBLE) THEN spare_part_id END)
+      comment: "Count of critical parts below minimum stock - high-risk shortage metric"
+    - name: "avg_lead_time_days"
+      expr: AVG(CAST(lead_time_days AS DOUBLE))
+      comment: "Average lead time in days for spare parts procurement"
+    - name: "parts_requiring_calibration"
+      expr: COUNT(DISTINCT CASE WHEN calibration_required_flag = TRUE THEN spare_part_id END)
+      comment: "Count of parts requiring calibration - quality control metric"
+    - name: "hazardous_parts_count"
+      expr: COUNT(DISTINCT CASE WHEN hazardous_material_flag = TRUE THEN spare_part_id END)
+      comment: "Count of hazardous material parts - safety and compliance metric"
+    - name: "parts_warranty_expired"
+      expr: COUNT(DISTINCT CASE WHEN warranty_expiration_date < CURRENT_DATE() THEN spare_part_id END)
+      comment: "Count of parts with expired warranty - cost exposure metric"
+    - name: "avg_part_weight_kg"
+      expr: AVG(CAST(part_weight_kg AS DOUBLE))
+      comment: "Average part weight in kilograms - logistics planning metric"
 $$;

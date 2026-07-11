@@ -1,68 +1,71 @@
--- Metric views for domain: order | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
+-- Metric views for domain: order | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_header`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs over sales orders — order volume, revenue, average order value, and order mix by channel, type, and status. Used by Sales VPs and COOs to steer order intake, pricing, and fulfillment strategy."
+  comment: "Strategic KPIs for order intake, value, and fulfillment performance at the order header level. Used by Sales VPs and Supply Chain leaders to monitor order pipeline health, revenue exposure, and delivery commitments."
   source: "`vibe_manufacturing_v1`.`order`.`order_header`"
   dimensions:
     - name: "order_status"
       expr: order_status
-      comment: "Current lifecycle status of the order (e.g., Open, Confirmed, Delivered, Cancelled) — primary filter for pipeline vs. closed analysis."
+      comment: "Current lifecycle status of the order (e.g. Open, Confirmed, Shipped, Cancelled). Primary dimension for pipeline stage analysis."
     - name: "order_type"
       expr: order_type
-      comment: "Classification of the order (e.g., Standard, Rush, Blanket Release) — used to segment order mix and prioritization."
-    - name: "sales_organization"
-      expr: sales_organization
-      comment: "Sales org responsible for the order — enables regional and organizational performance comparison."
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Channel through which the order was placed (e.g., Direct, Distributor, Online) — critical for channel mix analysis."
-    - name: "order_month"
-      expr: DATE_TRUNC('MONTH', order_date)
-      comment: "Month the order was placed — enables trend analysis of order intake over time."
+      comment: "Classification of the order (e.g. Standard, Rush, Blanket Release). Drives fulfillment routing and SLA assignment."
     - name: "order_priority"
       expr: order_priority
-      comment: "Priority level assigned to the order — used to track expedited vs. standard order volumes."
-    - name: "order_reason"
-      expr: order_reason
-      comment: "Business reason for the order — supports demand pattern and root-cause analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency of the order — required for multi-currency revenue reporting."
-    - name: "requested_delivery_month"
-      expr: DATE_TRUNC('MONTH', requested_delivery_date)
-      comment: "Month of the customer-requested delivery date — used to align demand with supply planning."
+      comment: "Priority level assigned to the order. Used to triage backlog and allocate capacity."
+    - name: "distribution_channel"
+      expr: distribution_channel
+      comment: "Sales distribution channel through which the order was placed. Enables channel-mix revenue analysis."
+    - name: "sales_organization"
+      expr: sales_organization
+      comment: "Sales organization responsible for the order. Supports regional and organizational revenue attribution."
+    - name: "order_currency"
+      expr: order_currency
+      comment: "Currency in which the order is denominated. Required for multi-currency revenue normalization."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Agreed payment terms for the order. Informs cash flow forecasting and credit risk analysis."
+    - name: "requested_delivery_date"
+      expr: DATE_TRUNC('month', requested_delivery_date)
+      comment: "Month of the customer-requested delivery date. Used to bucket demand commitments by period."
+    - name: "order_placed_month"
+      expr: DATE_TRUNC('month', order_placed_timestamp)
+      comment: "Month the order was placed. Primary time dimension for order intake trend analysis."
+    - name: "incoterms"
+      expr: incoterms
+      comment: "International commercial terms governing delivery responsibility. Affects freight cost allocation and risk transfer point."
   measures:
     - name: "total_orders"
       expr: COUNT(DISTINCT order_header_id)
-      comment: "Total number of distinct sales orders — primary volume KPI for order intake tracking."
+      comment: "Total number of distinct orders. Baseline volume KPI for order intake monitoring and capacity planning."
     - name: "total_net_revenue"
       expr: SUM(CAST(total_net_amount AS DOUBLE))
-      comment: "Sum of net order value across all orders — top-line revenue KPI used in QBRs and board decks."
+      comment: "Sum of net order value across all orders. Primary revenue pipeline measure used in QBRs and board reporting."
     - name: "total_gross_revenue"
       expr: SUM(CAST(total_gross_amount AS DOUBLE))
-      comment: "Sum of gross order value including taxes and surcharges — used for gross revenue reporting."
-    - name: "total_tax_collected"
+      comment: "Sum of gross order value before tax deductions. Used to assess top-line revenue exposure."
+    - name: "total_tax_amount"
       expr: SUM(CAST(total_tax_amount AS DOUBLE))
-      comment: "Total tax amount across all orders — used for tax liability and compliance reporting."
-    - name: "avg_order_value"
+      comment: "Total tax liability across all orders. Required for tax compliance reporting and cash flow planning."
+    - name: "avg_order_net_value"
       expr: AVG(CAST(total_net_amount AS DOUBLE))
-      comment: "Average net value per order — key pricing and customer segmentation KPI; a declining AOV signals pricing pressure or mix shift."
-    - name: "avg_gross_weight_kg"
+      comment: "Average net value per order. Strategic KPI for monitoring deal size trends and pricing effectiveness."
+    - name: "avg_order_gross_weight_kg"
       expr: AVG(CAST(gross_weight_kg AS DOUBLE))
-      comment: "Average gross weight per order in kilograms — used by logistics to plan freight capacity and cost."
-    - name: "total_gross_weight_kg"
+      comment: "Average gross weight per order in kilograms. Used by logistics to plan carrier capacity and freight cost budgeting."
+    - name: "total_order_weight_kg"
       expr: SUM(CAST(gross_weight_kg AS DOUBLE))
-      comment: "Total gross weight shipped across all orders — freight volume KPI for logistics capacity planning."
-    - name: "total_volume_m3"
+      comment: "Total gross weight of all orders in kilograms. Drives freight capacity planning and logistics cost forecasting."
+    - name: "total_order_volume_m3"
       expr: SUM(CAST(volume_m3 AS DOUBLE))
-      comment: "Total volumetric size of all orders in cubic meters — used for warehouse and transport capacity planning."
-    - name: "distinct_customers"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of unique customers placing orders — measures customer breadth and concentration risk."
+      comment: "Total volumetric size of all orders in cubic meters. Used for warehouse space and container utilization planning."
+    - name: "avg_currency_rate"
+      expr: AVG(CAST(currency_rate AS DOUBLE))
+      comment: "Average exchange rate applied across orders. Used by Finance to assess FX exposure in multi-currency order books."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_line`
@@ -70,76 +73,85 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-level order KPIs covering revenue, quantity, pricing, and fulfillment performance. Used by Sales Operations and Supply Chain to manage order profitability and delivery commitments."
+  comment: "Line-level order KPIs covering revenue, quantity, pricing, and fulfillment performance. Used by Sales Operations and Supply Chain to analyze product-level demand, pricing effectiveness, and delivery execution."
   source: "`vibe_manufacturing_v1`.`order`.`line`"
   dimensions:
-    - name: "line_status"
-      expr: line_status
-      comment: "Current status of the order line (e.g., Open, Confirmed, Delivered, Cancelled) — primary filter for open order book analysis."
     - name: "delivery_status"
       expr: delivery_status
-      comment: "Delivery fulfillment status of the line — used to identify lines at risk of late delivery."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the ordered quantity — required for accurate volume aggregation."
-    - name: "plant"
-      expr: plant
-      comment: "Manufacturing or fulfillment plant assigned to the line — enables plant-level order load analysis."
-    - name: "sales_org"
-      expr: sales_org
-      comment: "Sales organization responsible for the line — supports regional revenue breakdown."
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Distribution channel for the line — used for channel mix and margin analysis."
+      comment: "Current delivery status of the order line (e.g. Pending, Shipped, Delivered, Backordered). Core dimension for fulfillment performance analysis."
     - name: "quality_status"
       expr: quality_status
-      comment: "Quality inspection status of the line — used to track lines blocked by quality holds."
+      comment: "Quality inspection status of the line item. Used to track quality-related holds and rejections at line level."
+    - name: "rejection_reason"
+      expr: rejection_reason
+      comment: "Reason code for line rejection. Drives root-cause analysis of order fulfillment failures."
+    - name: "distribution_channel"
+      expr: distribution_channel
+      comment: "Distribution channel for the order line. Enables channel-level revenue and volume analysis."
+    - name: "plant"
+      expr: plant
+      comment: "Manufacturing or fulfillment plant assigned to the line. Used for plant-level capacity and output analysis."
+    - name: "unit_of_measure"
+      expr: unit_of_measure
+      comment: "Unit of measure for the ordered quantity. Required for volume normalization across product lines."
     - name: "backorder_indicator"
       expr: backorder_indicator
-      comment: "Flag indicating whether the line is on backorder — key metric for customer service and supply risk."
-    - name: "delivery_month"
-      expr: DATE_TRUNC('MONTH', delivery_date)
-      comment: "Month of the scheduled delivery date — used for demand and fulfillment trend analysis."
+      comment: "Flag indicating whether the line is on backorder. Key dimension for backlog and service level analysis."
+    - name: "delivery_date_month"
+      expr: DATE_TRUNC('month', delivery_date)
+      comment: "Month of the scheduled delivery date. Used to bucket line-level demand by delivery period."
+    - name: "promised_date_month"
+      expr: DATE_TRUNC('month', promised_date)
+      comment: "Month of the promised delivery date. Used to measure promise-to-actual delivery performance."
   measures:
     - name: "total_order_lines"
       expr: COUNT(DISTINCT line_id)
-      comment: "Total number of distinct order lines — baseline volume metric for order complexity and workload."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net revenue across all order lines — line-level revenue KPI for product and channel profitability."
-    - name: "total_gross_price"
+      comment: "Total number of distinct order lines. Baseline volume measure for order complexity and workload analysis."
+    - name: "total_net_revenue"
+      expr: SUM(CAST(net_price AS DOUBLE))
+      comment: "Sum of net price across all order lines. Primary line-level revenue measure for product and channel mix analysis."
+    - name: "total_gross_revenue"
       expr: SUM(CAST(gross_price AS DOUBLE))
-      comment: "Total gross price before discounts across all lines — used to measure discount impact."
+      comment: "Sum of gross price across all order lines before discounts. Used to assess pricing power and discount impact."
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount granted across all order lines — critical for margin leakage and pricing discipline analysis."
+      comment: "Total discount granted across order lines. Strategic KPI for pricing governance and margin protection."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount across all order lines — used for tax compliance and reporting."
-    - name: "total_ordered_quantity"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total quantity ordered across all lines — demand volume KPI for production and supply planning."
-    - name: "total_confirmed_quantity"
-      expr: SUM(CAST(confirmed_quantity AS DOUBLE))
-      comment: "Total quantity confirmed for delivery — measures supply commitment vs. demand."
+      comment: "Total tax charged across order lines. Required for tax compliance and financial reporting."
+    - name: "total_sales_revenue"
+      expr: SUM(CAST(sales_price AS DOUBLE))
+      comment: "Sum of sales price across all order lines. Used for top-line revenue reporting by product and channel."
     - name: "total_requested_quantity"
       expr: SUM(CAST(requested_quantity AS DOUBLE))
-      comment: "Total quantity requested by customers — used to measure unmet demand and backlog."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit selling price across all order lines — pricing trend KPI; decline signals price erosion."
-    - name: "avg_net_price"
+      comment: "Total quantity requested by customers across all order lines. Drives demand planning and inventory replenishment decisions."
+    - name: "total_confirmed_quantity"
+      expr: SUM(CAST(confirmed_quantity AS DOUBLE))
+      comment: "Total quantity confirmed for fulfillment. Measures supply commitment against customer demand."
+    - name: "total_sales_quantity"
+      expr: SUM(CAST(sales_quantity AS DOUBLE))
+      comment: "Total quantity sold across all order lines. Core volume KPI for sales performance and market share analysis."
+    - name: "avg_net_price_per_line"
       expr: AVG(CAST(net_price AS DOUBLE))
-      comment: "Average net price per line after discounts — used to track effective pricing vs. list price."
-    - name: "confirmation_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(confirmed_quantity AS DOUBLE)) / NULLIF(SUM(CAST(requested_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of requested quantity that has been confirmed for delivery — measures supply availability and order fulfillment capability; a low rate signals supply constraints."
+      comment: "Average net price per order line. Used to monitor pricing trends and average selling price (ASP) movements."
+    - name: "avg_quality_score"
+      expr: AVG(CAST(quality_score AS DOUBLE))
+      comment: "Average quality score across order lines. Tracks product quality at point of order fulfillment for supplier and production accountability."
+    - name: "total_gross_weight"
+      expr: SUM(CAST(gross_weight AS DOUBLE))
+      comment: "Total gross weight across all order lines. Used for freight planning and logistics cost allocation."
+    - name: "total_volume"
+      expr: SUM(CAST(volume AS DOUBLE))
+      comment: "Total volumetric size across all order lines. Drives container and warehouse space planning."
+    - name: "backorder_line_count"
+      expr: COUNT(CASE WHEN backorder_indicator = TRUE THEN line_id END)
+      comment: "Number of order lines currently on backorder. Critical KPI for service level monitoring and customer escalation management."
     - name: "discount_rate_pct"
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_price AS DOUBLE)), 0), 2)
-      comment: "Discount as a percentage of gross price — pricing discipline KPI; high values indicate margin leakage from excessive discounting."
-    - name: "total_backorder_lines"
-      expr: COUNT(CASE WHEN backorder_indicator = TRUE THEN line_id END)
-      comment: "Number of order lines currently on backorder — customer service risk KPI; high backorder counts signal supply-demand imbalance."
+      comment: "Discount as a percentage of gross price. Measures pricing discipline and discount leakage across the order book."
+    - name: "fill_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(confirmed_quantity AS DOUBLE)) / NULLIF(SUM(CAST(requested_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of requested quantity confirmed for fulfillment. Key supply chain KPI measuring ability to meet customer demand commitments."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_delivery`
@@ -147,73 +159,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Delivery performance KPIs covering on-time delivery, freight costs, and delivery quality. Used by Supply Chain and Customer Service leadership to manage fulfillment reliability and logistics spend."
+  comment: "Delivery execution KPIs covering freight costs, on-time performance, and logistics efficiency. Used by Supply Chain and Logistics leaders to monitor delivery reliability and cost-to-serve."
   source: "`vibe_manufacturing_v1`.`order`.`delivery`"
   dimensions:
     - name: "delivery_status"
       expr: delivery_status
-      comment: "Current status of the delivery (e.g., Pending, In Transit, Delivered, Failed) — primary filter for open vs. completed deliveries."
+      comment: "Current status of the delivery (e.g. In Transit, Delivered, Failed). Primary dimension for delivery pipeline monitoring."
     - name: "delivery_type"
       expr: delivery_type
-      comment: "Type of delivery (e.g., Standard, Express, Partial) — used to segment delivery performance by service level."
+      comment: "Type of delivery (e.g. Standard, Express, Drop-Ship). Used to analyze cost and performance by delivery mode."
     - name: "shipping_condition"
       expr: shipping_condition
-      comment: "Shipping terms and conditions applied to the delivery — used for freight cost and carrier performance analysis."
-    - name: "carrier_code"
-      expr: carrier_code
-      comment: "Carrier responsible for the delivery — enables carrier performance benchmarking."
+      comment: "Shipping condition code governing carrier and route selection. Enables cost and SLA analysis by shipping mode."
     - name: "shipping_point"
       expr: shipping_point
-      comment: "Origin shipping point for the delivery — used for warehouse and dispatch performance analysis."
-    - name: "country"
-      expr: country
-      comment: "Destination country of the delivery — enables geographic delivery performance analysis."
-    - name: "is_partial_delivery"
-      expr: is_partial_delivery
-      comment: "Flag indicating whether the delivery is a partial fulfillment — used to track split delivery rates."
+      comment: "Origin shipping point for the delivery. Used for plant-level outbound logistics performance analysis."
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the delivery. Used to assess whether high-priority deliveries are being expedited appropriately."
     - name: "is_backorder"
       expr: is_backorder
-      comment: "Flag indicating whether the delivery originated from a backorder — used to measure backorder fulfillment performance."
+      comment: "Flag indicating whether the delivery fulfills a backorder. Used to track backorder clearance rates."
+    - name: "is_partial_delivery"
+      expr: is_partial_delivery
+      comment: "Flag indicating a partial delivery was made. Tracks split-shipment frequency and its impact on customer satisfaction."
+    - name: "hazardous_material_flag"
+      expr: hazardous_material_flag
+      comment: "Indicates whether the delivery contains hazardous materials. Required for compliance and carrier routing analysis."
     - name: "planned_delivery_month"
-      expr: DATE_TRUNC('MONTH', planned_delivery_date)
-      comment: "Month of the planned delivery date — used for delivery volume trend analysis."
+      expr: DATE_TRUNC('month', planned_delivery_date)
+      comment: "Month of the planned delivery date. Used to bucket delivery commitments by period for capacity planning."
     - name: "actual_delivery_month"
-      expr: DATE_TRUNC('MONTH', actual_delivery_date)
-      comment: "Month the delivery was actually completed — used to compare planned vs. actual delivery timing."
+      expr: DATE_TRUNC('month', actual_delivery_date)
+      comment: "Month of the actual delivery date. Used to measure delivery volume trends and seasonal patterns."
+    - name: "country"
+      expr: country
+      comment: "Destination country of the delivery. Enables geographic analysis of delivery performance and freight costs."
   measures:
     - name: "total_deliveries"
       expr: COUNT(DISTINCT delivery_id)
-      comment: "Total number of distinct deliveries — baseline volume KPI for logistics throughput."
+      comment: "Total number of distinct deliveries. Baseline volume KPI for outbound logistics workload and throughput."
     - name: "total_freight_cost"
       expr: SUM(CAST(freight_cost_amount AS DOUBLE))
-      comment: "Total freight cost across all deliveries — logistics spend KPI used to manage carrier costs and negotiate contracts."
+      comment: "Total freight cost across all deliveries. Primary cost KPI for logistics spend management and carrier negotiation."
     - name: "total_freight_tax"
       expr: SUM(CAST(freight_tax_amount AS DOUBLE))
-      comment: "Total freight tax amount — used for tax compliance and total landed cost calculation."
+      comment: "Total freight tax across all deliveries. Required for tax compliance and landed cost calculation."
     - name: "total_freight_total"
       expr: SUM(CAST(freight_total_amount AS DOUBLE))
-      comment: "Total all-in freight cost including taxes — true logistics cost KPI for P&L and cost-to-serve analysis."
+      comment: "Total all-in freight cost including tax. Used for cost-to-serve analysis and customer profitability."
     - name: "avg_freight_cost_per_delivery"
       expr: AVG(CAST(freight_cost_amount AS DOUBLE))
-      comment: "Average freight cost per delivery — used to benchmark carrier efficiency and identify cost outliers."
+      comment: "Average freight cost per delivery. Benchmarks carrier efficiency and identifies cost outliers for renegotiation."
     - name: "total_gross_weight_kg"
       expr: SUM(CAST(total_gross_weight_kg AS DOUBLE))
-      comment: "Total gross weight shipped across all deliveries in kilograms — freight capacity utilization KPI."
+      comment: "Total weight shipped across all deliveries in kilograms. Used for carrier capacity planning and freight rate benchmarking."
     - name: "total_volume_m3"
       expr: SUM(CAST(total_volume_m3 AS DOUBLE))
-      comment: "Total volumetric size of all deliveries in cubic meters — used for transport capacity planning."
-    - name: "on_time_delivery_count"
-      expr: COUNT(CASE WHEN actual_delivery_date <= planned_delivery_date THEN delivery_id END)
-      comment: "Number of deliveries completed on or before the planned delivery date — numerator for OTD rate calculation."
-    - name: "on_time_delivery_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN actual_delivery_date <= planned_delivery_date THEN delivery_id END) / NULLIF(COUNT(DISTINCT delivery_id), 0), 2)
-      comment: "Percentage of deliveries completed on or before the planned date — premier customer service KPI; directly impacts customer satisfaction scores and SLA compliance."
+      comment: "Total volume shipped across all deliveries in cubic meters. Drives container utilization and warehouse throughput analysis."
+    - name: "partial_delivery_count"
+      expr: COUNT(CASE WHEN is_partial_delivery = TRUE THEN delivery_id END)
+      comment: "Number of partial deliveries. High partial delivery rates signal supply constraints and negatively impact customer satisfaction scores."
+    - name: "backorder_delivery_count"
+      expr: COUNT(CASE WHEN is_backorder = TRUE THEN delivery_id END)
+      comment: "Number of deliveries fulfilling backorders. Tracks backlog clearance velocity and supply recovery performance."
     - name: "partial_delivery_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN is_partial_delivery = TRUE THEN delivery_id END) / NULLIF(COUNT(DISTINCT delivery_id), 0), 2)
-      comment: "Percentage of deliveries that were partial — measures fulfillment completeness; high rates indicate supply shortfalls or picking inefficiencies."
-    - name: "hazmat_delivery_count"
-      expr: COUNT(CASE WHEN hazardous_material_flag = TRUE THEN delivery_id END)
-      comment: "Number of deliveries containing hazardous materials — compliance and risk management KPI for regulatory reporting."
+      comment: "Percentage of deliveries that were partial. Key customer experience KPI — high rates indicate supply chain fragmentation."
+    - name: "avg_gross_weight_per_delivery_kg"
+      expr: AVG(CAST(total_gross_weight_kg AS DOUBLE))
+      comment: "Average shipment weight per delivery. Used to optimize load planning and assess carrier rate efficiency."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_delivery_item`
@@ -221,61 +236,61 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Item-level delivery KPIs covering quantity accuracy, picking performance, and quality status. Used by Warehouse Operations and Quality teams to manage fulfillment accuracy and inspection compliance."
+  comment: "Item-level delivery KPIs covering quantity accuracy, picking performance, and quality at the shipment line level. Used by Warehouse Operations and Quality teams to monitor fulfillment precision and goods movement efficiency."
   source: "`vibe_manufacturing_v1`.`order`.`delivery_item`"
   dimensions:
     - name: "goods_movement_status"
       expr: goods_movement_status
-      comment: "Status of the goods movement for the delivery item — used to track items pending vs. completed goods issue."
+      comment: "Status of the goods movement for the delivery item. Tracks physical inventory transfer completion."
     - name: "picking_status"
       expr: picking_status
-      comment: "Picking status of the delivery item — used to manage warehouse pick queue and identify bottlenecks."
+      comment: "Warehouse picking status for the item. Used to monitor pick completion rates and warehouse throughput."
     - name: "quality_inspection_status"
       expr: quality_inspection_status
-      comment: "Quality inspection status of the delivery item — used to track items blocked by quality holds."
+      comment: "Quality inspection outcome for the delivery item. Tracks quality gate pass/fail rates at point of shipment."
     - name: "item_category"
       expr: item_category
-      comment: "Category classification of the delivery item — used for product mix and fulfillment analysis."
-    - name: "plant"
-      expr: plant
-      comment: "Plant from which the item is being shipped — enables plant-level fulfillment performance analysis."
-    - name: "shipping_condition"
-      expr: shipping_condition
-      comment: "Shipping condition applied to the item — used for freight and handling cost analysis."
+      comment: "Category classification of the delivery item. Enables product-category-level fulfillment analysis."
     - name: "movement_type"
       expr: movement_type
-      comment: "Inventory movement type for the delivery item — used to classify goods issue transactions."
-    - name: "delivery_month"
-      expr: DATE_TRUNC('MONTH', delivery_date)
-      comment: "Month of the delivery date for the item — used for volume trend analysis."
+      comment: "Inventory movement type code. Distinguishes standard shipments from returns, transfers, and adjustments."
+    - name: "plant"
+      expr: plant
+      comment: "Plant from which the item was shipped. Enables plant-level outbound performance benchmarking."
+    - name: "shipping_condition"
+      expr: shipping_condition
+      comment: "Shipping condition for the item. Used to analyze fulfillment performance by shipping mode."
+    - name: "delivery_date_month"
+      expr: DATE_TRUNC('month', delivery_date)
+      comment: "Month of the item delivery date. Used to trend item-level fulfillment volumes over time."
   measures:
     - name: "total_delivery_items"
       expr: COUNT(DISTINCT delivery_item_id)
-      comment: "Total number of distinct delivery line items — baseline volume KPI for warehouse throughput."
+      comment: "Total number of distinct delivery line items. Baseline volume KPI for warehouse throughput and pick workload."
     - name: "total_quantity_ordered"
       expr: SUM(CAST(quantity_ordered AS DOUBLE))
-      comment: "Total quantity ordered across all delivery items — demand volume baseline for fulfillment analysis."
+      comment: "Total quantity ordered across all delivery items. Measures demand volume flowing through the warehouse."
     - name: "total_quantity_picked"
       expr: SUM(CAST(quantity_picked AS DOUBLE))
-      comment: "Total quantity picked in the warehouse — measures warehouse execution progress against order demand."
+      comment: "Total quantity picked in the warehouse. Measures warehouse execution against order demand."
     - name: "total_quantity_delivered"
       expr: SUM(CAST(quantity_delivered AS DOUBLE))
-      comment: "Total quantity actually delivered to customers — actual fulfillment volume KPI."
-    - name: "pick_accuracy_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(quantity_picked AS DOUBLE)) / NULLIF(SUM(CAST(quantity_ordered AS DOUBLE)), 0), 2)
-      comment: "Percentage of ordered quantity that has been picked — warehouse execution KPI; gaps indicate picking shortfalls or inventory discrepancies."
-    - name: "delivery_fill_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(quantity_delivered AS DOUBLE)) / NULLIF(SUM(CAST(quantity_ordered AS DOUBLE)), 0), 2)
-      comment: "Percentage of ordered quantity successfully delivered — premier order fulfillment KPI; directly measures customer order satisfaction."
+      comment: "Total quantity actually delivered to customers. Core fulfillment volume KPI for revenue recognition and customer service."
     - name: "total_weight_kg"
       expr: SUM(CAST(weight_kg AS DOUBLE))
-      comment: "Total weight of all delivered items in kilograms — used for freight cost allocation and logistics planning."
+      comment: "Total weight of delivered items in kilograms. Used for freight cost allocation and carrier performance benchmarking."
     - name: "total_volume_m3"
       expr: SUM(CAST(volume_m3 AS DOUBLE))
-      comment: "Total volume of all delivered items in cubic meters — used for transport capacity utilization analysis."
-    - name: "items_pending_quality_inspection"
-      expr: COUNT(CASE WHEN quality_inspection_status NOT IN ('Passed', 'Released') THEN delivery_item_id END)
-      comment: "Number of delivery items pending or failing quality inspection — quality risk KPI; high counts indicate fulfillment delays due to quality holds."
+      comment: "Total volume of delivered items in cubic meters. Drives container and warehouse space utilization analysis."
+    - name: "pick_accuracy_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_picked AS DOUBLE)) / NULLIF(SUM(CAST(quantity_ordered AS DOUBLE)), 0), 2)
+      comment: "Percentage of ordered quantity successfully picked. Measures warehouse accuracy — low rates indicate pick errors, shortages, or process failures."
+    - name: "delivery_fill_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_delivered AS DOUBLE)) / NULLIF(SUM(CAST(quantity_ordered AS DOUBLE)), 0), 2)
+      comment: "Percentage of ordered quantity actually delivered. Key customer service KPI measuring end-to-end fulfillment completeness."
+    - name: "quantity_shortfall"
+      expr: SUM(CAST(quantity_ordered AS DOUBLE) - CAST(quantity_delivered AS DOUBLE))
+      comment: "Total quantity gap between what was ordered and what was delivered. Quantifies unfulfilled demand for backorder and supply recovery planning."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_rma`
@@ -283,376 +298,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Return merchandise authorization KPIs covering return volumes, credit values, and return reasons. Used by Customer Service and Finance leadership to manage return rates, credit exposure, and product quality signals."
+  comment: "Return Merchandise Authorization KPIs covering return volumes, credit exposure, and return reason analysis. Used by Customer Service, Quality, and Finance leaders to manage return rates, credit liability, and product quality feedback loops."
   source: "`vibe_manufacturing_v1`.`order`.`order_rma`"
   dimensions:
-    - name: "rma_status"
-      expr: rma_status
-      comment: "Current status of the RMA (e.g., Pending, Approved, Received, Closed) — primary filter for open vs. resolved returns."
+    - name: "order_rma_status"
+      expr: order_rma_status
+      comment: "Current status of the RMA (e.g. Pending, Approved, Received, Closed). Primary dimension for return pipeline management."
     - name: "rma_type"
       expr: rma_type
-      comment: "Type of return (e.g., Defective, Wrong Item, Warranty, Customer Change) — used to classify return root causes."
+      comment: "Type of return (e.g. Defective, Wrong Item, Warranty). Drives root-cause analysis and quality improvement initiatives."
     - name: "return_reason_code"
       expr: return_reason_code
-      comment: "Standardized reason code for the return — used for Pareto analysis of return drivers."
+      comment: "Standardized reason code for the return. Used to identify systemic quality or fulfillment issues requiring corrective action."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the RMA request — used to track authorization bottlenecks."
+      comment: "Approval status of the RMA request. Tracks authorization bottlenecks in the returns process."
     - name: "is_warranty_claim"
       expr: is_warranty_claim
-      comment: "Flag indicating whether the return is a warranty claim — used to separate warranty liability from commercial returns."
+      comment: "Flag indicating whether the return is a warranty claim. Separates warranty liability from standard returns for financial provisioning."
     - name: "is_damaged"
       expr: is_damaged
-      comment: "Flag indicating whether the returned item was damaged — used to assess carrier and handling damage rates."
+      comment: "Flag indicating whether the returned item was damaged. Used to assess carrier damage rates and packaging quality."
     - name: "is_repairable"
       expr: is_repairable
-      comment: "Flag indicating whether the returned item can be repaired — used to optimize disposition decisions and recovery value."
+      comment: "Flag indicating whether the returned item can be repaired. Drives repair vs. scrap disposition decisions and cost recovery."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the RMA credit. Required for multi-currency credit liability reporting."
     - name: "request_month"
-      expr: DATE_TRUNC('MONTH', request_timestamp)
-      comment: "Month the RMA was requested — used for return volume trend analysis."
+      expr: DATE_TRUNC('month', request_timestamp)
+      comment: "Month the RMA was requested. Used to trend return volumes and identify seasonal quality patterns."
   measures:
     - name: "total_rmas"
       expr: COUNT(DISTINCT order_rma_id)
-      comment: "Total number of distinct RMA requests — baseline return volume KPI; rising trend signals product quality or fulfillment issues."
+      comment: "Total number of distinct RMAs. Baseline return volume KPI for customer service workload and quality performance monitoring."
     - name: "total_credit_amount"
       expr: SUM(CAST(credit_amount AS DOUBLE))
-      comment: "Total credit value issued for returns — financial exposure KPI for Finance and Customer Service; directly impacts revenue recognition."
+      comment: "Total credit value issued or pending across all RMAs. Primary financial KPI for return liability and revenue reversal exposure."
     - name: "total_refund_amount"
       expr: SUM(CAST(refund_amount AS DOUBLE))
-      comment: "Total refund amount issued across all RMAs — cash outflow KPI for treasury and customer service cost management."
+      comment: "Total refund amount across all RMAs. Measures cash outflow from returns for cash flow and P&L impact analysis."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net value of returned goods. Used to quantify the revenue impact of returns on the order book."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax associated with RMAs. Required for tax reclaim processing and compliance reporting."
     - name: "total_handling_fee"
       expr: SUM(CAST(handling_fee AS DOUBLE))
-      comment: "Total handling fees charged on returns — used to assess cost recovery from return processing."
-    - name: "total_net_return_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net value of returned goods — used to calculate net revenue impact of returns."
+      comment: "Total handling fees charged on returns. Measures cost recovery from return processing operations."
     - name: "avg_credit_per_rma"
       expr: AVG(CAST(credit_amount AS DOUBLE))
-      comment: "Average credit value per RMA — used to benchmark return severity and identify high-value return patterns."
+      comment: "Average credit value per RMA. Tracks average return value to identify high-value return patterns requiring management attention."
     - name: "warranty_claim_count"
       expr: COUNT(CASE WHEN is_warranty_claim = TRUE THEN order_rma_id END)
-      comment: "Number of RMAs that are warranty claims — warranty liability KPI used by Finance and Engineering to manage warranty reserves."
+      comment: "Number of RMAs that are warranty claims. Tracks warranty liability exposure and product reliability performance."
     - name: "damaged_return_count"
       expr: COUNT(CASE WHEN is_damaged = TRUE THEN order_rma_id END)
-      comment: "Number of returns involving damaged goods — carrier and handling quality KPI; high counts trigger carrier performance reviews."
-    - name: "repairable_return_count"
-      expr: COUNT(CASE WHEN is_repairable = TRUE THEN order_rma_id END)
-      comment: "Number of returned items that are repairable — asset recovery KPI; high counts indicate refurbishment and resale opportunity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_fulfillment_sla`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "SLA compliance KPIs measuring on-time delivery performance against contractual commitments. Used by Customer Service VPs and Account Managers to manage SLA adherence and identify breach risk."
-  source: "`vibe_manufacturing_v1`.`order`.`fulfillment_sla`"
-  dimensions:
-    - name: "fulfillment_sla_status"
-      expr: fulfillment_sla_status
-      comment: "Current status of the SLA agreement (e.g., Active, Expired, Breached) — primary filter for active SLA monitoring."
-    - name: "sla_type"
-      expr: sla_type
-      comment: "Type of SLA (e.g., Delivery Lead Time, Order Confirmation, Fill Rate) — used to segment SLA performance by commitment type."
-    - name: "sla_met_flag"
-      expr: sla_met_flag
-      comment: "Boolean flag indicating whether the SLA was met — primary compliance indicator for SLA performance reporting."
-    - name: "applicable_product_category_code"
-      expr: applicable_product_category_code
-      comment: "Product category to which the SLA applies — used to analyze SLA performance by product segment."
-    - name: "expedite_eligible"
-      expr: expedite_eligible
-      comment: "Flag indicating whether expediting is allowed under this SLA — used to assess escalation options for at-risk orders."
-    - name: "effective_start_month"
-      expr: DATE_TRUNC('MONTH', effective_start_date)
-      comment: "Month the SLA became effective — used for cohort analysis of SLA performance over time."
-  measures:
-    - name: "total_sla_agreements"
-      expr: COUNT(DISTINCT fulfillment_sla_id)
-      comment: "Total number of active SLA agreements — baseline coverage KPI for customer commitment management."
-    - name: "sla_met_count"
-      expr: COUNT(CASE WHEN sla_met_flag = TRUE THEN fulfillment_sla_id END)
-      comment: "Number of SLA agreements where the commitment was met — numerator for SLA compliance rate."
-    - name: "sla_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN sla_met_flag = TRUE THEN fulfillment_sla_id END) / NULLIF(COUNT(DISTINCT fulfillment_sla_id), 0), 2)
-      comment: "Percentage of SLA agreements where the commitment was met — premier customer service KPI; breaches trigger penalty clauses and customer escalations."
-    - name: "avg_on_time_delivery_threshold_pct"
-      expr: AVG(CAST(on_time_delivery_threshold_pct AS DOUBLE))
-      comment: "Average contractual on-time delivery threshold across all SLAs — used to benchmark the stringency of customer commitments."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_goods_issue`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Goods issue KPIs covering inventory outflow volumes, values, and posting performance. Used by Supply Chain and Finance to manage inventory accuracy, cost of goods sold, and outbound logistics."
-  source: "`vibe_manufacturing_v1`.`order`.`goods_issue`"
-  dimensions:
-    - name: "goods_issue_status"
-      expr: goods_issue_status
-      comment: "Current status of the goods issue posting (e.g., Posted, Reversed, Pending) — primary filter for completed vs. open goods movements."
-    - name: "movement_type"
-      expr: movement_type
-      comment: "Inventory movement type code — used to classify goods issue transactions by business purpose."
-    - name: "plant"
-      expr: plant
-      comment: "Plant from which goods were issued — enables plant-level inventory outflow analysis."
-    - name: "storage_location"
-      expr: storage_location
-      comment: "Storage location from which goods were issued — used for warehouse-level inventory management."
-    - name: "reversal_indicator"
-      expr: reversal_indicator
-      comment: "Flag indicating whether the goods issue was reversed — used to identify and investigate posting errors."
-    - name: "is_automated"
-      expr: is_automated
-      comment: "Flag indicating whether the goods issue was system-automated — used to measure automation adoption in outbound logistics."
-    - name: "posting_month"
-      expr: DATE_TRUNC('MONTH', posting_timestamp)
-      comment: "Month the goods issue was posted — used for inventory outflow trend analysis and period-end reconciliation."
-    - name: "quality_status"
-      expr: quality_status
-      comment: "Quality status at time of goods issue — used to track goods issued under quality holds or waivers."
-  measures:
-    - name: "total_goods_issues"
-      expr: COUNT(DISTINCT goods_issue_id)
-      comment: "Total number of distinct goods issue transactions — baseline outbound inventory movement volume KPI."
-    - name: "total_issued_quantity"
-      expr: SUM(CAST(issued_quantity AS DOUBLE))
-      comment: "Total quantity of goods issued — inventory outflow volume KPI used for COGS calculation and inventory reconciliation."
-    - name: "total_goods_value"
-      expr: SUM(CAST(total_value_cost AS DOUBLE))
-      comment: "Total cost value of goods issued — COGS contribution KPI used by Finance for period-end inventory valuation."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net amount of goods issued — revenue-side goods movement value for financial reconciliation."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount on goods issues — used for tax liability reporting and compliance."
-    - name: "reversal_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reversal_indicator = TRUE THEN goods_issue_id END) / NULLIF(COUNT(DISTINCT goods_issue_id), 0), 2)
-      comment: "Percentage of goods issues that were reversed — data quality and process accuracy KPI; high reversal rates indicate posting errors or process breakdowns."
-    - name: "avg_value_per_goods_issue"
-      expr: AVG(CAST(total_value_cost AS DOUBLE))
-      comment: "Average cost value per goods issue transaction — used to benchmark transaction size and identify outliers."
-    - name: "automated_goods_issue_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_automated = TRUE THEN goods_issue_id END) / NULLIF(COUNT(DISTINCT goods_issue_id), 0), 2)
-      comment: "Percentage of goods issues processed automatically — automation adoption KPI; higher rates reduce manual effort and posting errors."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_status_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Order lifecycle event KPIs measuring status transition velocity, SLA breach rates, and process bottlenecks. Used by Sales Operations and Customer Service to manage order cycle time and escalation triggers."
-  source: "`vibe_manufacturing_v1`.`order`.`order_status_event`"
-  dimensions:
-    - name: "event_type"
-      expr: event_type
-      comment: "Type of status change event (e.g., Created, Confirmed, Shipped, Cancelled) — used to analyze order lifecycle stage distribution."
-    - name: "new_status"
-      expr: new_status
-      comment: "The status the order transitioned to — used to measure order flow through lifecycle stages."
-    - name: "previous_status"
-      expr: previous_status
-      comment: "The status the order transitioned from — used to identify common transition paths and bottlenecks."
-    - name: "event_source"
-      expr: event_source
-      comment: "System or process that triggered the status event — used to attribute status changes to specific systems or users."
-    - name: "sla_breach_flag"
-      expr: sla_breach_flag
-      comment: "Flag indicating whether this status event represents an SLA breach — primary filter for SLA compliance monitoring."
-    - name: "event_month"
-      expr: DATE_TRUNC('MONTH', event_timestamp)
-      comment: "Month the status event occurred — used for order lifecycle trend analysis."
-  measures:
-    - name: "total_status_events"
-      expr: COUNT(DISTINCT order_status_event_id)
-      comment: "Total number of order status change events — baseline order activity volume KPI."
-    - name: "total_sla_breaches"
-      expr: COUNT(CASE WHEN sla_breach_flag = TRUE THEN order_status_event_id END)
-      comment: "Total number of status events that triggered an SLA breach — customer service risk KPI; directly impacts penalty exposure and customer satisfaction."
-    - name: "sla_breach_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN sla_breach_flag = TRUE THEN order_status_event_id END) / NULLIF(COUNT(DISTINCT order_status_event_id), 0), 2)
-      comment: "Percentage of order status events that resulted in an SLA breach — premier order management KPI; high rates signal systemic process failures requiring executive intervention."
-    - name: "distinct_orders_with_events"
-      expr: COUNT(DISTINCT order_header_id)
-      comment: "Number of distinct orders that have had at least one status event — used to measure order activity coverage."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_blanket_order`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Blanket order utilization and commitment KPIs. Used by Sales and Procurement leadership to manage long-term customer commitments, release cadence, and contract value realization."
-  source: "`vibe_manufacturing_v1`.`order`.`blanket_order`"
-  dimensions:
-    - name: "blanket_order_status"
-      expr: blanket_order_status
-      comment: "Current status of the blanket order (e.g., Active, Expired, Closed) — primary filter for active contract monitoring."
-    - name: "contract_type"
-      expr: contract_type
-      comment: "Type of blanket order contract — used to segment commitment analysis by contract structure."
-    - name: "sales_organization"
-      expr: sales_organization
-      comment: "Sales organization responsible for the blanket order — enables regional contract performance analysis."
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Distribution channel for the blanket order — used for channel mix analysis of long-term commitments."
-    - name: "is_jit_enabled"
-      expr: is_jit_enabled
-      comment: "Flag indicating whether just-in-time releases are enabled — used to segment JIT vs. standard blanket order performance."
-    - name: "release_frequency"
-      expr: release_frequency
-      comment: "Frequency of scheduled releases (e.g., Weekly, Monthly) — used to plan supply and production scheduling."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the blanket order — required for multi-currency contract value reporting."
-    - name: "effective_from_month"
-      expr: DATE_TRUNC('MONTH', effective_from)
-      comment: "Month the blanket order became effective — used for contract cohort analysis."
-  measures:
-    - name: "total_blanket_orders"
-      expr: COUNT(DISTINCT blanket_order_id)
-      comment: "Total number of active blanket orders — baseline long-term commitment volume KPI."
-    - name: "total_contract_value"
-      expr: SUM(CAST(total_contract_value AS DOUBLE))
-      comment: "Total committed contract value across all blanket orders — strategic revenue pipeline KPI used in sales forecasting and capacity planning."
-    - name: "total_released_value"
-      expr: SUM(CAST(cumulative_released_value AS DOUBLE))
-      comment: "Total value released against blanket orders to date — measures contract consumption and revenue realization."
-    - name: "total_committed_value"
-      expr: SUM(CAST(total_committed_value AS DOUBLE))
-      comment: "Total value committed under blanket orders — used to measure firm demand backlog from long-term contracts."
-    - name: "contract_utilization_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(cumulative_released_value AS DOUBLE)) / NULLIF(SUM(CAST(total_contract_value AS DOUBLE)), 0), 2)
-      comment: "Percentage of total contract value that has been released — contract consumption KPI; low utilization signals under-ordering risk or customer demand shortfall."
-    - name: "total_contract_quantity"
-      expr: SUM(CAST(total_contract_quantity AS DOUBLE))
-      comment: "Total quantity committed across all blanket orders — demand volume KPI for production and supply planning."
-    - name: "total_released_quantity"
-      expr: SUM(CAST(cumulative_released_quantity AS DOUBLE))
-      comment: "Total quantity released against blanket orders — measures actual demand draw-down against committed volumes."
-    - name: "quantity_utilization_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(cumulative_released_quantity AS DOUBLE)) / NULLIF(SUM(CAST(total_contract_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of committed quantity that has been released — volume consumption KPI; used alongside value utilization to detect price vs. volume mix shifts."
-    - name: "avg_contract_value"
-      expr: AVG(CAST(total_contract_value AS DOUBLE))
-      comment: "Average contract value per blanket order — used to benchmark deal size and identify strategic vs. transactional customers."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_pricing_condition`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Pricing condition KPIs covering discount rates, surcharges, and tax exposure. Used by Revenue Management and Finance to govern pricing discipline, margin protection, and tax compliance."
-  source: "`vibe_manufacturing_v1`.`order`.`pricing_condition`"
-  dimensions:
-    - name: "condition_type"
-      expr: condition_type
-      comment: "Type of pricing condition (e.g., Base Price, Discount, Surcharge, Tax) — primary dimension for pricing structure analysis."
-    - name: "condition_status"
-      expr: condition_status
-      comment: "Current status of the pricing condition (e.g., Active, Expired, Pending) — used to filter active vs. historical pricing."
-    - name: "condition_group"
-      expr: condition_group
-      comment: "Grouping of related pricing conditions — used for pricing procedure and customer group analysis."
-    - name: "condition_origin"
-      expr: condition_origin
-      comment: "Source of the pricing condition (e.g., Manual, Contract, Price List) — used to audit pricing overrides and contract compliance."
-    - name: "is_active"
-      expr: is_active
-      comment: "Flag indicating whether the pricing condition is currently active — used to filter live pricing conditions."
-    - name: "is_expedited"
-      expr: is_expedited
-      comment: "Flag indicating whether the condition applies to expedited orders — used to analyze premium pricing on rush orders."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the pricing condition — required for multi-currency pricing analysis."
-    - name: "validity_start_month"
-      expr: DATE_TRUNC('MONTH', validity_start_date)
-      comment: "Month the pricing condition became valid — used for pricing trend and seasonality analysis."
-  measures:
-    - name: "total_pricing_conditions"
-      expr: COUNT(DISTINCT pricing_condition_id)
-      comment: "Total number of distinct pricing conditions — baseline pricing complexity KPI; high counts may indicate pricing governance issues."
-    - name: "total_condition_value"
-      expr: SUM(CAST(condition_value AS DOUBLE))
-      comment: "Total monetary value of all pricing conditions — used to measure the aggregate financial impact of pricing adjustments."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount amount granted across all pricing conditions — margin leakage KPI; directly impacts gross margin and requires executive oversight."
-    - name: "total_surcharge_amount"
-      expr: SUM(CAST(surcharge_amount AS DOUBLE))
-      comment: "Total surcharge amount applied — used to measure revenue recovery from freight, handling, and special service charges."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount across all pricing conditions — tax liability KPI for compliance and financial reporting."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net amount after all pricing conditions applied — effective revenue KPI after discounts and surcharges."
-    - name: "avg_condition_rate_percent"
-      expr: AVG(CAST(condition_rate_percent AS DOUBLE))
-      comment: "Average pricing condition rate as a percentage — used to benchmark discount and surcharge rates across the order book."
-    - name: "discount_to_net_ratio_pct"
-      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_amount AS DOUBLE)), 0), 2)
-      comment: "Discount amount as a percentage of net revenue — pricing discipline KPI; high ratios indicate margin erosion from excessive discounting."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_hold`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Order hold KPIs measuring hold frequency, duration risk, and financial exposure. Used by Order Management and Finance to manage order release bottlenecks and credit/compliance risk."
-  source: "`vibe_manufacturing_v1`.`order`.`hold`"
-  dimensions:
-    - name: "hold_type"
-      expr: hold_type
-      comment: "Type of hold applied to the order (e.g., Credit, Compliance, Quality, Manual) — primary dimension for hold root-cause analysis."
-    - name: "hold_status"
-      expr: hold_status
-      comment: "Current status of the hold (e.g., Active, Released, Escalated) — used to filter open vs. resolved holds."
-    - name: "hold_category"
-      expr: hold_category
-      comment: "Category of the hold — used to group holds by business function (e.g., Financial, Operational, Regulatory)."
-    - name: "hold_reason"
-      expr: hold_reason
-      comment: "Reason the hold was applied — used for Pareto analysis of hold drivers."
-    - name: "is_system_generated"
-      expr: is_system_generated
-      comment: "Flag indicating whether the hold was automatically generated by the system — used to distinguish automated risk controls from manual interventions."
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Flag indicating whether the hold is compliance-related — used to prioritize regulatory holds for immediate resolution."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the hold — used to triage hold resolution workload."
-    - name: "applied_month"
-      expr: DATE_TRUNC('MONTH', applied_timestamp)
-      comment: "Month the hold was applied — used for hold volume trend analysis."
-  measures:
-    - name: "total_holds"
-      expr: COUNT(DISTINCT hold_id)
-      comment: "Total number of distinct order holds — baseline hold volume KPI; rising trends signal systemic order management issues."
-    - name: "active_holds"
-      expr: COUNT(CASE WHEN hold_status = 'Active' THEN hold_id END)
-      comment: "Number of currently active holds — real-time order book risk KPI; high active hold counts indicate revenue at risk."
-    - name: "total_hold_amount"
-      expr: SUM(CAST(amount AS DOUBLE))
-      comment: "Total financial value of orders under hold — revenue at risk KPI; directly measures the financial impact of order holds on cash flow."
-    - name: "avg_hold_amount"
-      expr: AVG(CAST(amount AS DOUBLE))
-      comment: "Average financial value per hold — used to benchmark hold severity and prioritize resolution efforts."
-    - name: "compliance_hold_count"
-      expr: COUNT(CASE WHEN compliance_flag = TRUE THEN hold_id END)
-      comment: "Number of holds flagged as compliance-related — regulatory risk KPI; compliance holds require immediate escalation to avoid legal exposure."
-    - name: "system_generated_hold_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_system_generated = TRUE THEN hold_id END) / NULLIF(COUNT(DISTINCT hold_id), 0), 2)
-      comment: "Percentage of holds generated automatically by the system — automation effectiveness KPI; high rates indicate robust automated risk controls."
+      comment: "Number of returns involving damaged goods. Used to assess carrier damage rates and packaging adequacy."
+    - name: "warranty_claim_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_warranty_claim = TRUE THEN order_rma_id END) / NULLIF(COUNT(DISTINCT order_rma_id), 0), 2)
+      comment: "Percentage of RMAs that are warranty claims. Strategic quality KPI — rising rates signal product reliability issues requiring engineering intervention."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_amendment`
@@ -660,79 +366,327 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Order amendment KPIs measuring change frequency, financial impact, and approval cycle performance. Used by Sales Operations and Finance to manage order change risk, pricing accuracy, and contract discipline."
-  source: "`vibe_manufacturing_v1`.`order`.`amendment`"
+  comment: "Order amendment KPIs measuring change frequency, value impact, and approval cycle times. Used by Sales Operations and Customer Service to monitor order instability, rework costs, and amendment processing efficiency."
+  source: "`vibe_manufacturing_v1`.`order`.`order_amendment`"
   dimensions:
     - name: "amendment_type"
       expr: amendment_type
-      comment: "Type of amendment (e.g., Quantity Change, Price Change, Delivery Date Change, Address Change) — used to classify change drivers."
+      comment: "Type of amendment (e.g. Quantity Change, Price Change, Delivery Date Change). Identifies the most common sources of order instability."
     - name: "amendment_status"
       expr: amendment_status
-      comment: "Current status of the amendment (e.g., Pending, Approved, Rejected) — used to track amendment pipeline."
+      comment: "Current status of the amendment (e.g. Pending, Approved, Rejected). Tracks amendment pipeline and approval bottlenecks."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the amendment — used to identify bottlenecks in the change approval process."
+      comment: "Approval decision on the amendment. Used to measure approval rates and rejection patterns."
     - name: "reason_code"
       expr: reason_code
-      comment: "Standardized reason code for the amendment — used for Pareto analysis of change drivers."
+      comment: "Reason code for the amendment. Drives root-cause analysis of order changes and customer behavior patterns."
     - name: "is_critical"
       expr: is_critical
-      comment: "Flag indicating whether the amendment is critical — used to prioritize high-impact changes for expedited approval."
-    - name: "priority_code"
-      expr: priority_code
-      comment: "Priority level of the amendment — used to triage amendment processing workload."
+      comment: "Flag indicating whether the amendment is business-critical. Used to prioritize amendment processing and escalation."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the amendment values. Required for multi-currency financial impact analysis."
     - name: "amendment_month"
-      expr: DATE_TRUNC('MONTH', amendment_timestamp)
-      comment: "Month the amendment was submitted — used for change volume trend analysis."
+      expr: DATE_TRUNC('month', amendment_timestamp)
+      comment: "Month the amendment was submitted. Used to trend amendment frequency and identify periods of high order instability."
   measures:
     - name: "total_amendments"
-      expr: COUNT(DISTINCT amendment_id)
-      comment: "Total number of order amendments — baseline change volume KPI; high amendment rates signal poor order quality at entry or unstable customer demand."
-    - name: "total_revised_amount"
-      expr: SUM(CAST(revised_amount AS DOUBLE))
-      comment: "Total revised order value across all amendments — measures the financial scale of order changes."
+      expr: COUNT(DISTINCT order_amendment_id)
+      comment: "Total number of order amendments. Baseline KPI for order instability — high amendment rates increase operational cost and delivery risk."
     - name: "total_original_amount"
       expr: SUM(CAST(original_amount AS DOUBLE))
-      comment: "Total original order value before amendments — baseline for measuring amendment financial impact."
-    - name: "net_amendment_value_impact"
+      comment: "Total original order value before amendments. Baseline for measuring the financial scale of order changes."
+    - name: "total_revised_amount"
+      expr: SUM(CAST(revised_amount AS DOUBLE))
+      comment: "Total revised order value after amendments. Used to measure net revenue impact of order changes."
+    - name: "total_value_change"
       expr: SUM(CAST(revised_amount AS DOUBLE) - CAST(original_amount AS DOUBLE))
-      comment: "Net financial impact of amendments (revised minus original) — revenue adjustment KPI; positive values indicate upsells, negative values indicate order reductions."
-    - name: "avg_quantity_change"
-      expr: AVG(CAST(revised_quantity AS DOUBLE) - CAST(original_quantity AS DOUBLE))
-      comment: "Average quantity change per amendment — demand volatility KPI; large average changes indicate unstable customer demand patterns."
+      comment: "Net change in order value due to amendments. Quantifies revenue uplift or erosion from order modifications."
+    - name: "total_quantity_change"
+      expr: SUM(CAST(revised_quantity AS DOUBLE) - CAST(original_quantity AS DOUBLE))
+      comment: "Net change in order quantity due to amendments. Measures demand volatility and its impact on production and inventory planning."
+    - name: "avg_value_change_per_amendment"
+      expr: AVG(CAST(revised_amount AS DOUBLE) - CAST(original_amount AS DOUBLE))
+      comment: "Average value change per amendment. Identifies whether amendments are systematically increasing or decreasing order values."
+    - name: "critical_amendment_count"
+      expr: COUNT(CASE WHEN is_critical = TRUE THEN order_amendment_id END)
+      comment: "Number of critical amendments requiring expedited processing. Used to manage escalation workload and SLA compliance."
     - name: "critical_amendment_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_critical = TRUE THEN amendment_id END) / NULLIF(COUNT(DISTINCT amendment_id), 0), 2)
-      comment: "Percentage of amendments flagged as critical — escalation risk KPI; high rates indicate systemic order instability requiring process intervention."
-    - name: "distinct_orders_amended"
-      expr: COUNT(DISTINCT order_header_id)
-      comment: "Number of distinct orders that have been amended — measures the breadth of order change activity across the order book."
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_critical = TRUE THEN order_amendment_id END) / NULLIF(COUNT(DISTINCT order_amendment_id), 0), 2)
+      comment: "Percentage of amendments flagged as critical. High rates indicate systemic order quality issues or customer instability."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_schedule_line`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_hold`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Schedule line KPIs measuring delivery commitment accuracy, quantity confirmation rates, and backorder exposure. Used by Supply Chain and Customer Service to manage delivery scheduling and MRP alignment."
-  source: "`vibe_manufacturing_v1`.`order`.`line`"
+  comment: "Order hold KPIs measuring hold frequency, duration, and financial exposure. Used by Credit, Compliance, and Sales Operations to manage order release velocity and identify systemic hold causes."
+  source: "`vibe_manufacturing_v1`.`order`.`order_hold`"
   dimensions:
+    - name: "hold_type"
+      expr: hold_type
+      comment: "Type of hold placed on the order (e.g. Credit, Compliance, Quality). Primary dimension for hold root-cause analysis."
+    - name: "hold_category"
+      expr: hold_category
+      comment: "Category grouping for the hold. Used to aggregate hold volumes by business function for management reporting."
+    - name: "hold_status"
+      expr: hold_status
+      comment: "Current status of the hold (e.g. Active, Released, Escalated). Tracks hold pipeline and release backlog."
+    - name: "hold_source"
+      expr: hold_source
+      comment: "System or process that triggered the hold. Used to identify automated vs. manual hold sources and process improvement opportunities."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Flag indicating whether the hold is compliance-related. Separates regulatory holds from operational holds for risk reporting."
+    - name: "is_system_generated"
+      expr: is_system_generated
+      comment: "Flag indicating whether the hold was automatically generated. Used to assess automation effectiveness in credit and compliance controls."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the hold amount. Required for multi-currency financial exposure reporting."
+    - name: "placed_month"
+      expr: DATE_TRUNC('month', placed_timestamp)
+      comment: "Month the hold was placed. Used to trend hold frequency and identify periods of elevated credit or compliance risk."
+  measures:
+    - name: "total_holds"
+      expr: COUNT(DISTINCT order_hold_id)
+      comment: "Total number of order holds placed. Baseline KPI for order release friction — high hold counts delay revenue recognition."
+    - name: "total_hold_amount"
+      expr: SUM(CAST(amount AS DOUBLE))
+      comment: "Total financial value of orders currently or historically on hold. Measures revenue at risk from hold-related delays."
+    - name: "avg_hold_amount"
+      expr: AVG(CAST(amount AS DOUBLE))
+      comment: "Average financial value per hold. Used to assess the typical revenue impact of a hold event and prioritize release actions."
+    - name: "compliance_hold_count"
+      expr: COUNT(CASE WHEN compliance_flag = TRUE THEN order_hold_id END)
+      comment: "Number of holds flagged as compliance-related. Tracks regulatory risk exposure in the order book."
+    - name: "system_generated_hold_count"
+      expr: COUNT(CASE WHEN is_system_generated = TRUE THEN order_hold_id END)
+      comment: "Number of holds automatically generated by system controls. Measures effectiveness of automated credit and compliance monitoring."
+    - name: "compliance_hold_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_flag = TRUE THEN order_hold_id END) / NULLIF(COUNT(DISTINCT order_hold_id), 0), 2)
+      comment: "Percentage of holds that are compliance-related. Rising rates signal increasing regulatory risk in the order pipeline."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_goods_issue`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Goods issue KPIs covering outbound inventory movement values, reversal rates, and posting performance. Used by Inventory Control and Finance to monitor inventory outflow accuracy and cost of goods issued."
+  source: "`vibe_manufacturing_v1`.`order`.`goods_issue`"
+  dimensions:
+    - name: "goods_issue_status"
+      expr: goods_issue_status
+      comment: "Current status of the goods issue posting (e.g. Posted, Reversed, Pending). Primary dimension for goods movement pipeline analysis."
+    - name: "movement_type"
+      expr: movement_type
+      comment: "Inventory movement type code. Distinguishes standard outbound shipments from transfers, adjustments, and reversals."
+    - name: "quality_status"
+      expr: quality_status
+      comment: "Quality status at time of goods issue. Used to track quality-related holds on outbound inventory."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Flag indicating whether the goods issue was reversed. High reversal rates signal posting errors or process failures."
+    - name: "is_automated"
+      expr: is_automated
+      comment: "Flag indicating whether the goods issue was automatically posted. Measures automation adoption in outbound inventory processing."
     - name: "plant"
       expr: plant
-      comment: "Plant responsible for fulfilling the schedule line — enables plant-level delivery commitment analysis."
-    - name: "backorder_indicator"
-      expr: backorder_indicator
-      comment: "Flag indicating whether the schedule line is on backorder — used to measure backorder exposure."
-    - name: "requested_delivery_month"
-      expr: DATE_TRUNC('MONTH', requested_delivery_date)
-      comment: "Month of the customer-requested delivery date — used to compare requested vs. confirmed delivery timing."
+      comment: "Plant from which goods were issued. Enables plant-level inventory outflow and cost analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the goods issue valuation. Required for multi-currency inventory cost reporting."
+    - name: "posting_month"
+      expr: DATE_TRUNC('month', posting_timestamp)
+      comment: "Month the goods issue was posted. Primary time dimension for inventory outflow trend analysis and period-end reconciliation."
   measures:
-    - name: "total_requested_quantity"
-      expr: SUM(CAST(requested_quantity AS DOUBLE))
-      comment: "Total quantity requested by customers across all schedule lines — demand volume KPI for supply planning."
-    - name: "total_confirmed_quantity"
-      expr: SUM(CAST(confirmed_quantity AS DOUBLE))
-      comment: "Total quantity confirmed for delivery — supply commitment KPI; gap vs. requested quantity measures unmet demand."
-    - name: "schedule_confirmation_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(confirmed_quantity AS DOUBLE)) / NULLIF(SUM(CAST(requested_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of requested quantity confirmed for delivery — supply availability KPI; low rates signal supply constraints or MRP planning gaps."
+    - name: "total_goods_issues"
+      expr: COUNT(DISTINCT goods_issue_id)
+      comment: "Total number of goods issue postings. Baseline volume KPI for outbound inventory transaction throughput."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net value of goods issued. Primary financial KPI for cost of goods sold (COGS) and inventory outflow reporting."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax on goods issued. Required for tax compliance and landed cost analysis."
+    - name: "total_cost_value"
+      expr: SUM(CAST(total_value_cost AS DOUBLE))
+      comment: "Total cost value of goods issued. Used for inventory valuation, COGS calculation, and margin analysis."
+    - name: "total_quantity_issued"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity of goods issued across all postings. Measures physical inventory outflow volume for supply planning."
+    - name: "avg_cost_per_issue"
+      expr: AVG(CAST(total_value_cost AS DOUBLE))
+      comment: "Average cost value per goods issue posting. Used to benchmark unit cost trends and identify cost anomalies."
+    - name: "reversal_count"
+      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN goods_issue_id END)
+      comment: "Number of goods issues that were reversed. High reversal counts indicate posting errors, process failures, or fraudulent activity."
+    - name: "reversal_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN reversal_indicator = TRUE THEN goods_issue_id END) / NULLIF(COUNT(DISTINCT goods_issue_id), 0), 2)
+      comment: "Percentage of goods issues that were reversed. Key process quality KPI — high rates increase audit risk and inventory inaccuracy."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_blanket_order`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Blanket order KPIs measuring committed value, release utilization, and contract compliance. Used by Procurement and Sales leaders to monitor long-term supply agreements, release cadence, and commitment fulfillment."
+  source: "`vibe_manufacturing_v1`.`order`.`blanket_order`"
+  dimensions:
+    - name: "blanket_order_status"
+      expr: blanket_order_status
+      comment: "Current status of the blanket order (e.g. Active, Expired, Closed). Primary dimension for agreement portfolio management."
+    - name: "contract_type"
+      expr: contract_type
+      comment: "Type of blanket order contract. Used to analyze commitment structures and pricing arrangements by contract category."
+    - name: "contract_status_reason"
+      expr: contract_status_reason
+      comment: "Reason for the current contract status. Used to understand why agreements are inactive or terminated."
+    - name: "distribution_channel"
+      expr: distribution_channel
+      comment: "Distribution channel for the blanket order. Enables channel-level commitment and release analysis."
+    - name: "sales_organization"
+      expr: sales_organization
+      comment: "Sales organization owning the blanket order. Supports organizational-level commitment portfolio analysis."
+    - name: "release_frequency"
+      expr: release_frequency
+      comment: "Frequency at which releases are expected (e.g. Weekly, Monthly). Used to assess release cadence compliance."
+    - name: "is_jit_enabled"
+      expr: is_jit_enabled
+      comment: "Flag indicating whether Just-In-Time delivery is enabled. Used to segment JIT vs. standard blanket order performance."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the blanket order. Required for multi-currency commitment portfolio reporting."
+    - name: "effective_from_month"
+      expr: DATE_TRUNC('month', effective_from)
+      comment: "Month the blanket order became effective. Used to analyze agreement vintage and portfolio renewal patterns."
+  measures:
+    - name: "total_blanket_orders"
+      expr: COUNT(DISTINCT blanket_order_id)
+      comment: "Total number of active blanket orders. Baseline KPI for long-term supply agreement portfolio size."
+    - name: "total_committed_value"
+      expr: SUM(CAST(total_committed_value AS DOUBLE))
+      comment: "Total value committed across all blanket orders. Primary financial KPI for long-term revenue and supply commitment exposure."
+    - name: "total_released_value"
+      expr: SUM(CAST(cumulative_released_value AS DOUBLE))
+      comment: "Total value released against blanket orders. Measures actual revenue realization from committed agreements."
+    - name: "total_committed_quantity"
+      expr: SUM(CAST(total_committed_quantity AS DOUBLE))
+      comment: "Total quantity committed across all blanket orders. Used for long-range demand planning and capacity reservation."
+    - name: "total_released_quantity"
+      expr: SUM(CAST(cumulative_released_quantity AS DOUBLE))
+      comment: "Total quantity released against blanket orders. Measures physical fulfillment progress against committed volumes."
+    - name: "release_value_utilization_pct"
+      expr: ROUND(100.0 * SUM(CAST(cumulative_released_value AS DOUBLE)) / NULLIF(SUM(CAST(total_committed_value AS DOUBLE)), 0), 2)
+      comment: "Percentage of committed value that has been released. Measures blanket order utilization — low rates may indicate demand shortfalls or supply issues."
+    - name: "release_quantity_utilization_pct"
+      expr: ROUND(100.0 * SUM(CAST(cumulative_released_quantity AS DOUBLE)) / NULLIF(SUM(CAST(total_committed_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of committed quantity that has been released. Key procurement KPI for monitoring take-or-pay compliance and demand realization."
+    - name: "avg_committed_value_per_order"
+      expr: AVG(CAST(total_committed_value AS DOUBLE))
+      comment: "Average committed value per blanket order. Used to benchmark deal size and assess portfolio concentration risk."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_fulfillment_sla`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Fulfillment SLA KPIs measuring on-time delivery thresholds, SLA coverage, and contract compliance. Used by Customer Service and Supply Chain leaders to monitor service level commitments and identify at-risk customer agreements."
+  source: "`vibe_manufacturing_v1`.`order`.`fulfillment_sla`"
+  dimensions:
+    - name: "fulfillment_sla_status"
+      expr: fulfillment_sla_status
+      comment: "Current status of the SLA agreement (e.g. Active, Expired, Breached). Primary dimension for SLA portfolio health monitoring."
+    - name: "sla_type"
+      expr: sla_type
+      comment: "Type of SLA (e.g. Delivery, Response, Resolution). Used to analyze performance by SLA category."
+    - name: "expedite_eligible"
+      expr: expedite_eligible
+      comment: "Flag indicating whether expedited fulfillment is permitted under the SLA. Used to assess premium service tier coverage."
+    - name: "applicable_product_category_code"
+      expr: applicable_product_category_code
+      comment: "Product category to which the SLA applies. Enables product-category-level service level analysis."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('month', effective_start_date)
+      comment: "Month the SLA became effective. Used to analyze SLA portfolio vintage and renewal patterns."
+  measures:
+    - name: "total_sla_agreements"
+      expr: COUNT(DISTINCT fulfillment_sla_id)
+      comment: "Total number of fulfillment SLA agreements. Baseline KPI for service commitment portfolio size."
+    - name: "avg_on_time_delivery_threshold_pct"
+      expr: AVG(CAST(on_time_delivery_threshold_pct AS DOUBLE))
+      comment: "Average on-time delivery threshold committed across SLA agreements. Benchmarks the service level bar set with customers — rising averages indicate tightening commitments."
+    - name: "expedite_eligible_count"
+      expr: COUNT(CASE WHEN expedite_eligible = TRUE THEN fulfillment_sla_id END)
+      comment: "Number of SLA agreements with expedite eligibility. Measures premium service tier exposure and associated cost risk."
+    - name: "expedite_eligible_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN expedite_eligible = TRUE THEN fulfillment_sla_id END) / NULLIF(COUNT(DISTINCT fulfillment_sla_id), 0), 2)
+      comment: "Percentage of SLA agreements that allow expedited fulfillment. High rates increase logistics cost exposure and operational complexity."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`order_pricing_condition`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Pricing condition KPIs measuring discount depth, surcharge application, and net pricing effectiveness. Used by Revenue Management and Sales Finance to monitor pricing discipline, tax exposure, and condition-level margin impact."
+  source: "`vibe_manufacturing_v1`.`order`.`pricing_condition`"
+  dimensions:
+    - name: "condition_type"
+      expr: condition_type
+      comment: "Type of pricing condition (e.g. Discount, Surcharge, Tax, Freight). Primary dimension for pricing component analysis."
+    - name: "condition_status"
+      expr: condition_status
+      comment: "Current status of the pricing condition (e.g. Active, Expired, Inactive). Used to filter active vs. historical pricing analysis."
+    - name: "condition_group"
+      expr: condition_group
+      comment: "Grouping of related pricing conditions. Enables analysis of pricing bundles and condition hierarchies."
+    - name: "condition_origin"
+      expr: condition_origin
+      comment: "Source of the pricing condition (e.g. Manual, Contract, Automatic). Used to assess pricing governance and manual override rates."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the pricing condition. Required for multi-currency pricing analysis."
+    - name: "is_active"
+      expr: is_active
+      comment: "Flag indicating whether the pricing condition is currently active. Used to filter live pricing conditions for real-time analysis."
+    - name: "is_expedited"
+      expr: is_expedited
+      comment: "Flag indicating whether the condition applies to expedited orders. Used to analyze premium pricing uplift from expedite surcharges."
+    - name: "tax_code"
+      expr: tax_code
+      comment: "Tax code applied to the pricing condition. Required for tax compliance and jurisdiction-level tax analysis."
+    - name: "condition_effective_month"
+      expr: DATE_TRUNC('month', condition_effective_timestamp)
+      comment: "Month the pricing condition became effective. Used to trend pricing condition changes over time."
+  measures:
+    - name: "total_pricing_conditions"
+      expr: COUNT(DISTINCT pricing_condition_id)
+      comment: "Total number of pricing conditions applied. Baseline KPI for pricing complexity and condition volume management."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net amount after all pricing conditions. Primary revenue measure at the pricing condition level."
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total discount granted across all pricing conditions. Key margin management KPI for pricing governance and leakage control."
+    - name: "total_surcharge_amount"
+      expr: SUM(CAST(surcharge_amount AS DOUBLE))
+      comment: "Total surcharge revenue collected. Measures recovery of premium service costs through pricing conditions."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount across all pricing conditions. Required for tax liability reporting and compliance."
+    - name: "avg_condition_rate"
+      expr: AVG(CAST(condition_rate AS DOUBLE))
+      comment: "Average pricing condition rate applied. Used to benchmark discount and surcharge rates across the order book."
+    - name: "avg_tax_rate"
+      expr: AVG(CAST(tax_rate AS DOUBLE))
+      comment: "Average effective tax rate across pricing conditions. Used by Tax to monitor effective tax rate trends and jurisdiction mix."
+    - name: "discount_to_net_ratio_pct"
+      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_amount AS DOUBLE)), 0), 2)
+      comment: "Discount as a percentage of net amount. Measures pricing discipline — high ratios indicate margin erosion from excessive discounting."
 $$;

@@ -1,139 +1,94 @@
--- Metric views for domain: guest | Business: Restaurants | Version: 2 | Generated on: 2026-07-02 03:59:48
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_visit`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Core guest visit performance metrics tracking visit volume, spend, satisfaction, loyalty engagement, and repeat behavior — the primary operational KPI layer for restaurant guest experience management."
-  source: "`vibe_restaurants_v1`.`guest`.`visit`"
-  dimensions:
-    - name: "visit_date"
-      expr: visit_date
-      comment: "Calendar date of the guest visit, used for daily/weekly/monthly trend analysis."
-    - name: "visit_channel"
-      expr: channel
-      comment: "Service channel through which the visit occurred (e.g., dine-in, drive-thru, delivery, takeout)."
-    - name: "visit_type"
-      expr: visit_type
-      comment: "Classification of the visit type (e.g., walk-in, reservation, loyalty redemption)."
-    - name: "daypart"
-      expr: daypart
-      comment: "Meal period of the visit (e.g., breakfast, lunch, dinner, late-night) for daypart performance analysis."
-    - name: "is_loyalty_visit"
-      expr: is_loyalty_visit
-      comment: "Flag indicating whether the visit was associated with a loyalty program member."
-    - name: "is_repeat_visit"
-      expr: is_repeat_visit
-      comment: "Flag indicating whether the guest has visited before, used to distinguish new vs. returning guests."
-    - name: "visit_month"
-      expr: DATE_TRUNC('MONTH', visit_date)
-      comment: "Month bucket of the visit date for monthly cohort and trend reporting."
-    - name: "visit_week"
-      expr: DATE_TRUNC('WEEK', visit_date)
-      comment: "Week bucket of the visit date for weekly operational performance tracking."
-  measures:
-    - name: "total_visits"
-      expr: COUNT(1)
-      comment: "Total number of guest visits. Baseline volume KPI used to track traffic trends and capacity utilization."
-    - name: "total_check_amount"
-      expr: SUM(CAST(check_amount AS DOUBLE))
-      comment: "Sum of all guest check amounts. Primary revenue proxy at the visit level for top-line performance tracking."
-    - name: "avg_check_amount"
-      expr: AVG(CAST(check_amount AS DOUBLE))
-      comment: "Average check amount per visit. Key pricing and upsell effectiveness KPI used in QBRs and menu strategy."
-    - name: "total_spend_amount"
-      expr: SUM(CAST(spend_amount AS DOUBLE))
-      comment: "Total guest spend across all visits. Captures full revenue contribution including all spend components."
-    - name: "avg_spend_per_visit"
-      expr: AVG(CAST(spend_amount AS DOUBLE))
-      comment: "Average spend per visit. Tracks per-visit monetization efficiency and informs promotional strategy."
-    - name: "avg_satisfaction_score"
-      expr: AVG(CAST(satisfaction_score AS DOUBLE))
-      comment: "Average guest satisfaction score per visit. Core CX KPI tied directly to retention and NPS outcomes."
-    - name: "avg_visit_duration_minutes"
-      expr: AVG(CAST(duration_minutes AS DOUBLE))
-      comment: "Average visit duration in minutes. Operational efficiency metric used to manage table turns and throughput."
-    - name: "loyalty_visit_count"
-      expr: COUNT(CASE WHEN is_loyalty_visit = TRUE THEN 1 END)
-      comment: "Number of visits attributed to loyalty program members. Measures loyalty program engagement and ROI."
-    - name: "repeat_visit_count"
-      expr: COUNT(CASE WHEN is_repeat_visit = TRUE THEN 1 END)
-      comment: "Number of repeat visits. Retention signal used to evaluate guest loyalty and frequency programs."
-    - name: "unique_guests"
-      expr: COUNT(DISTINCT primary_guest_profile_id)
-      comment: "Count of distinct guests who visited. Used to measure reach, active guest base size, and retention cohorts."
-    - name: "total_check_total"
-      expr: SUM(CAST(check_total AS DOUBLE))
-      comment: "Sum of check totals across all visits. Provides an alternative total revenue view inclusive of all charges."
-$$;
+-- Metric views for domain: guest | Business: Restaurants | Version: 2 | Generated on: 2026-07-10 19:59:49
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_profile`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest profile health and value metrics covering active guest base, lifetime value, consent rates, and marketing opt-in — essential for CRM strategy, segmentation, and personalization investment decisions."
+  comment: "Guest profile metrics tracking customer lifetime value, engagement, and demographic segmentation for strategic marketing and retention decisions."
   source: "`vibe_restaurants_v1`.`guest`.`profile`"
   dimensions:
     - name: "profile_status"
       expr: profile_status
-      comment: "Current status of the guest profile (e.g., active, inactive, merged, deleted)."
+      comment: "Current status of the guest profile (active, inactive, suspended) for cohort analysis."
     - name: "guest_type"
       expr: guest_type
-      comment: "Classification of the guest (e.g., regular, VIP, corporate, loyalty member)."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country of the guest for geographic segmentation and regional performance analysis."
-    - name: "gender"
-      expr: gender
-      comment: "Guest gender for demographic segmentation and targeted marketing analysis."
+      comment: "Classification of guest (new, returning, VIP, etc.) for segmentation and targeting."
     - name: "preferred_language"
       expr: preferred_language
-      comment: "Guest preferred language for localization and communication strategy decisions."
+      comment: "Guest's preferred language for localized marketing and service delivery."
     - name: "marketing_opt_in"
       expr: marketing_opt_in
-      comment: "Whether the guest has opted into marketing communications — critical for reachable audience sizing."
-    - name: "primary_contact_method"
-      expr: primary_contact_method
-      comment: "Preferred contact channel (e.g., email, SMS, push) for channel mix optimization."
+      comment: "Whether guest has opted into marketing communications for campaign targeting."
+    - name: "gender"
+      expr: gender
+      comment: "Guest gender for demographic analysis and personalization."
+    - name: "country_code"
+      expr: country_code
+      comment: "Guest country for geographic market analysis."
+    - name: "state"
+      expr: state
+      comment: "Guest state/province for regional performance tracking."
+    - name: "city"
+      expr: city
+      comment: "Guest city for local market analysis."
     - name: "data_source"
       expr: data_source
-      comment: "Origin system of the guest profile record for data quality and acquisition channel analysis."
-    - name: "profile_created_month"
-      expr: DATE_TRUNC('MONTH', record_audit_created)
-      comment: "Month the profile was created, used for new guest acquisition cohort analysis."
+      comment: "Origin system of guest profile for data quality and channel attribution."
+    - name: "primary_contact_method"
+      expr: primary_contact_method
+      comment: "Preferred contact channel (email, SMS, phone) for communication strategy."
+    - name: "birthday_month"
+      expr: birthday_month
+      comment: "Month of guest birthday for seasonal campaign planning."
   measures:
-    - name: "total_guest_profiles"
-      expr: COUNT(1)
-      comment: "Total number of guest profiles. Baseline measure of the known guest universe size."
-    - name: "active_guest_profiles"
-      expr: COUNT(CASE WHEN profile_status = 'active' THEN 1 END)
-      comment: "Number of active guest profiles. Measures the reachable, engaged guest base for CRM and marketing investment."
-    - name: "total_lifetime_spend"
+    - name: "total_guests"
+      expr: COUNT(DISTINCT profile_id)
+      comment: "Unique count of guest profiles for customer base sizing and growth tracking."
+    - name: "total_lifetime_value"
       expr: SUM(CAST(total_spent AS DOUBLE))
-      comment: "Sum of total lifetime spend across all guest profiles. Top-line guest value KPI for portfolio valuation."
-    - name: "avg_lifetime_spend"
+      comment: "Aggregate lifetime spend across all guests for revenue attribution and customer value analysis."
+    - name: "avg_lifetime_value"
       expr: AVG(CAST(total_spent AS DOUBLE))
-      comment: "Average lifetime spend per guest profile. Core CLV metric used in retention investment and tier strategy decisions."
+      comment: "Average lifetime spend per guest for customer value benchmarking and segment comparison."
     - name: "avg_check_value"
       expr: AVG(CAST(average_check_value AS DOUBLE))
-      comment: "Average check value across guest profiles. Indicates typical per-visit spend level for pricing and upsell strategy."
-    - name: "avg_lifetime_visits"
-      expr: AVG(CAST(total_lifetime_visits AS DOUBLE))
-      comment: "Average number of lifetime visits per guest. Frequency KPI used to evaluate loyalty program effectiveness."
+      comment: "Average transaction size per guest for pricing strategy and upsell opportunity identification."
     - name: "marketing_opt_in_count"
-      expr: COUNT(CASE WHEN marketing_opt_in = TRUE THEN 1 END)
-      comment: "Number of guests opted into marketing. Defines the addressable marketing audience for campaign planning."
-    - name: "consent_email_count"
-      expr: COUNT(CASE WHEN consent_email = TRUE THEN 1 END)
-      comment: "Number of guests with email marketing consent. Drives email channel audience sizing and deliverability planning."
-    - name: "consent_sms_count"
-      expr: COUNT(CASE WHEN consent_sms = TRUE THEN 1 END)
-      comment: "Number of guests with SMS consent. Drives SMS channel audience sizing for promotional and transactional messaging."
-    - name: "total_lifetime_visits_sum"
-      expr: SUM(CAST(total_lifetime_visits AS DOUBLE))
-      comment: "Total lifetime visits across all guest profiles. Aggregate traffic volume proxy for the full guest base."
+      expr: SUM(CASE WHEN marketing_opt_in = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests opted into marketing for addressable audience sizing."
+    - name: "marketing_opt_in_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN marketing_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of guests opted into marketing for consent health monitoring and campaign reach estimation."
+    - name: "email_consent_count"
+      expr: SUM(CASE WHEN consent_email = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests consented to email for email campaign audience sizing."
+    - name: "sms_consent_count"
+      expr: SUM(CASE WHEN consent_sms = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests consented to SMS for SMS campaign audience sizing."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_visit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Guest visit metrics tracking foot traffic, frequency, and visit patterns for operational planning and guest engagement strategy."
+  source: "`vibe_restaurants_v1`.`guest`.`visit`"
+  dimensions:
+    - name: "visit_date"
+      expr: DATE_TRUNC('day', CAST(visit_id AS TIMESTAMP))
+      comment: "Date of visit for daily traffic trend analysis (using visit_id as proxy timestamp)."
+  measures:
+    - name: "total_visits"
+      expr: COUNT(1)
+      comment: "Total count of guest visits for traffic volume tracking and capacity planning."
+    - name: "unique_guests"
+      expr: COUNT(DISTINCT profile_id)
+      comment: "Unique guests visiting for reach and engagement measurement."
+    - name: "visits_per_guest"
+      expr: ROUND(CAST(COUNT(1) AS DOUBLE) / NULLIF(COUNT(DISTINCT profile_id), 0), 2)
+      comment: "Average visit frequency per guest for loyalty and retention assessment."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_complaint`
@@ -141,58 +96,52 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest complaint and resolution quality metrics tracking complaint volume, escalation rates, resolution effectiveness, and satisfaction impact — critical for operational quality management and brand risk mitigation."
+  comment: "Guest complaint metrics tracking service quality, resolution effectiveness, and customer satisfaction risk for operational excellence and brand protection."
   source: "`vibe_restaurants_v1`.`guest`.`complaint`"
   dimensions:
-    - name: "complaint_category"
-      expr: category
-      comment: "Category of the complaint (e.g., food quality, service, cleanliness) for root cause analysis."
-    - name: "complaint_channel"
-      expr: channel
-      comment: "Channel through which the complaint was submitted (e.g., in-store, app, phone, social media)."
     - name: "complaint_status"
       expr: complaint_status
-      comment: "Current status of the complaint (e.g., open, resolved, escalated) for workload and SLA tracking."
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "Resolution outcome status for measuring complaint closure rates and resolution quality."
-    - name: "resolution_type"
-      expr: resolution_type
-      comment: "Type of resolution applied (e.g., refund, replacement, apology) for resolution strategy analysis."
+      comment: "Current status of complaint (open, resolved, escalated) for case management and SLA tracking."
+    - name: "category"
+      expr: category
+      comment: "Complaint category (food quality, service, cleanliness, etc.) for root cause analysis."
     - name: "severity_level"
       expr: severity_level
-      comment: "Severity classification of the complaint for prioritization and escalation threshold management."
+      comment: "Severity classification for prioritization and escalation management."
+    - name: "channel"
+      expr: channel
+      comment: "Channel through which complaint was received for omnichannel service quality monitoring."
+    - name: "resolution_status"
+      expr: resolution_status
+      comment: "Resolution outcome status for closure rate and effectiveness tracking."
+    - name: "resolution_type"
+      expr: resolution_type
+      comment: "Type of resolution provided (refund, replacement, apology, etc.) for cost and policy analysis."
     - name: "escalation_flag"
       expr: escalation_flag
-      comment: "Whether the complaint was escalated to a higher tier for escalation rate monitoring."
+      comment: "Whether complaint was escalated for severity and handling effectiveness assessment."
     - name: "complaint_month"
-      expr: DATE_TRUNC('MONTH', complaint_timestamp)
-      comment: "Month the complaint was filed for trend and seasonality analysis."
+      expr: DATE_TRUNC('month', complaint_timestamp)
+      comment: "Month of complaint for trend analysis and seasonal pattern identification."
   measures:
     - name: "total_complaints"
       expr: COUNT(1)
-      comment: "Total number of guest complaints. Baseline quality KPI used to track complaint volume trends and brand health."
-    - name: "escalated_complaint_count"
-      expr: COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END)
-      comment: "Number of escalated complaints. High-severity signal used by operations leadership to assess systemic quality failures."
-    - name: "resolved_complaint_count"
-      expr: COUNT(CASE WHEN resolution_status = 'resolved' THEN 1 END)
-      comment: "Number of complaints with a resolved status. Measures complaint closure effectiveness and team responsiveness."
-    - name: "avg_csat_score"
-      expr: AVG(CAST(csat_score AS DOUBLE))
-      comment: "Average CSAT score from complaint records. Measures post-complaint satisfaction and recovery effectiveness."
-    - name: "avg_nps_score"
-      expr: AVG(CAST(nps_score AS DOUBLE))
-      comment: "Average NPS score from complaint records. Tracks loyalty impact of complaint experiences on brand advocacy."
+      comment: "Total complaint volume for service quality monitoring and trend detection."
+    - name: "unique_complaining_guests"
+      expr: COUNT(DISTINCT complaint_profile_id)
+      comment: "Unique guests filing complaints for dissatisfaction reach and churn risk assessment."
+    - name: "escalation_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN escalation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of complaints escalated for first-contact resolution effectiveness and training needs identification."
     - name: "total_resolution_amount"
       expr: SUM(CAST(resolution_amount AS DOUBLE))
-      comment: "Total monetary value of complaint resolutions (refunds, credits). Measures financial cost of service failures."
+      comment: "Total financial compensation paid for complaint cost tracking and budget management."
     - name: "avg_resolution_amount"
       expr: AVG(CAST(resolution_amount AS DOUBLE))
-      comment: "Average resolution amount per complaint. Informs cost-per-complaint benchmarking and recovery policy calibration."
-    - name: "unique_complaining_guests"
-      expr: COUNT(DISTINCT complaint_guest_profile_id)
-      comment: "Number of distinct guests who filed complaints. Measures breadth of dissatisfaction across the guest base."
+      comment: "Average compensation per complaint for cost-per-incident benchmarking and policy evaluation."
+    - name: "complaints_per_guest"
+      expr: ROUND(CAST(COUNT(1) AS DOUBLE) / NULLIF(COUNT(DISTINCT complaint_profile_id), 0), 2)
+      comment: "Average complaints per complaining guest for repeat-issue identification and service recovery effectiveness."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_satisfaction_survey`
@@ -200,277 +149,257 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest satisfaction survey response metrics covering CSAT, NPS, response rates, and survey completion — the primary voice-of-customer KPI layer for experience management and service improvement decisions."
+  comment: "Guest satisfaction survey metrics tracking NPS, CSAT, and feedback trends for customer experience management and service improvement prioritization."
   source: "`vibe_restaurants_v1`.`guest`.`satisfaction_survey`"
   dimensions:
-    - name: "survey_type"
-      expr: survey_type
-      comment: "Type of satisfaction survey (e.g., post-visit, delivery, event) for survey program performance segmentation."
     - name: "satisfaction_survey_status"
       expr: satisfaction_survey_status
-      comment: "Current status of the survey record for pipeline and completion tracking."
+      comment: "Survey completion status for response rate tracking."
     - name: "completion_status"
       expr: completion_status
-      comment: "Whether the survey was fully completed by the guest — used to calculate response completion rates."
+      comment: "Whether survey was fully completed for data quality assessment."
+    - name: "survey_type"
+      expr: survey_type
+      comment: "Type of survey (transactional, relationship, etc.) for program effectiveness comparison."
     - name: "daypart"
       expr: daypart
-      comment: "Meal period associated with the surveyed visit for daypart-level satisfaction analysis."
+      comment: "Time of day for daypart-specific experience analysis."
     - name: "delivery_channel"
       expr: delivery_channel
-      comment: "Channel through which the survey was delivered (e.g., email, SMS, in-app) for channel effectiveness analysis."
-    - name: "survey_language"
+      comment: "Channel through which survey was delivered for channel effectiveness comparison."
+    - name: "language"
       expr: language
-      comment: "Language in which the survey was completed for localization and demographic analysis."
-    - name: "visit_date"
-      expr: visit_date
-      comment: "Date of the visit associated with the survey for time-series satisfaction trend analysis."
+      comment: "Survey language for localized experience tracking."
+    - name: "nps_score"
+      expr: nps_score
+      comment: "Net Promoter Score value for loyalty and advocacy measurement."
+    - name: "csat_score"
+      expr: csat_score
+      comment: "Customer Satisfaction Score value for satisfaction level tracking."
     - name: "survey_month"
-      expr: DATE_TRUNC('MONTH', visit_date)
-      comment: "Month bucket of the associated visit date for monthly satisfaction trend reporting."
+      expr: DATE_TRUNC('month', response_timestamp)
+      comment: "Month of survey response for trend analysis."
   measures:
-    - name: "total_surveys_sent"
+    - name: "total_surveys"
       expr: COUNT(1)
-      comment: "Total number of satisfaction surveys issued. Baseline measure for survey program reach and volume."
-    - name: "completed_surveys"
-      expr: COUNT(CASE WHEN completion_status = 'completed' THEN 1 END)
-      comment: "Number of fully completed surveys. Measures survey response quality and program engagement."
-    - name: "avg_csat_score"
-      expr: AVG(CAST(csat_score AS DOUBLE))
-      comment: "Average CSAT score across all survey responses. Primary guest satisfaction KPI used in executive dashboards and QBRs."
-    - name: "avg_nps_score"
-      expr: AVG(CAST(nps_score AS DOUBLE))
-      comment: "Average NPS score across all survey responses. Brand loyalty and advocacy KPI used to benchmark against industry standards."
-    - name: "promoter_count"
-      expr: COUNT(CASE WHEN CAST(nps_score AS DOUBLE) >= 9 THEN 1 END)
-      comment: "Number of NPS promoters (score 9-10). Used to calculate net promoter score and identify brand advocates."
-    - name: "detractor_count"
-      expr: COUNT(CASE WHEN CAST(nps_score AS DOUBLE) <= 6 THEN 1 END)
-      comment: "Number of NPS detractors (score 0-6). Used to calculate net promoter score and identify at-risk guests."
-    - name: "surveys_with_response"
-      expr: COUNT(CASE WHEN response_timestamp IS NOT NULL THEN 1 END)
-      comment: "Number of surveys that received any guest response. Measures survey program response rate numerator."
+      comment: "Total survey volume for feedback program scale and engagement tracking."
     - name: "unique_surveyed_guests"
       expr: COUNT(DISTINCT primary_satisfaction_guest_profile_id)
-      comment: "Number of distinct guests surveyed. Measures breadth of voice-of-customer data collection across the guest base."
+      comment: "Unique guests providing feedback for voice-of-customer reach measurement."
+    - name: "completed_surveys"
+      expr: SUM(CASE WHEN completion_status = 'completed' THEN 1 ELSE 0 END)
+      comment: "Count of fully completed surveys for data quality and engagement assessment."
+    - name: "completion_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN completion_status = 'completed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of surveys completed for survey design effectiveness and respondent burden evaluation."
+    - name: "consent_given_count"
+      expr: SUM(CASE WHEN consent_given = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of surveys with consent for follow-up for actionable feedback pool sizing."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_segment`
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_preference`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest segment portfolio metrics tracking segment health, churn risk, estimated value, and visit frequency — used by marketing and CRM leadership to prioritize segment investment and personalization strategy."
-  source: "`vibe_restaurants_v1`.`guest`.`segment`"
+  comment: "Guest preference metrics tracking dietary needs, communication preferences, and personalization data for targeted marketing and service customization."
+  source: "`vibe_restaurants_v1`.`guest`.`preference`"
   dimensions:
-    - name: "segment_type"
-      expr: segment_type
-      comment: "Type of guest segment (e.g., behavioral, demographic, value-based) for segment portfolio analysis."
-    - name: "guest_segment_status"
-      expr: guest_segment_status
-      comment: "Current operational status of the segment (e.g., active, archived, draft)."
-    - name: "segment_category"
-      expr: category
-      comment: "Business category of the segment for grouping related segments in reporting."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the segment is currently active and in use for targeting."
-    - name: "is_dynamic"
-      expr: is_dynamic
-      comment: "Whether the segment membership is dynamically recalculated vs. static — impacts refresh cost and accuracy."
-    - name: "target_channel"
-      expr: target_channel
-      comment: "Primary marketing channel targeted by this segment for channel mix planning."
-    - name: "segmentation_method"
-      expr: segmentation_method
-      comment: "Method used to define segment membership (e.g., rules-based, ML model, manual) for model governance."
-    - name: "segment_created_month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the segment was created for segment lifecycle and portfolio age analysis."
+    - name: "preference_type"
+      expr: preference_type
+      comment: "Type of preference recorded for preference portfolio analysis."
+    - name: "preference_status"
+      expr: preference_status
+      comment: "Status of preference record for data currency tracking."
+    - name: "is_vegan"
+      expr: is_vegan
+      comment: "Vegan dietary preference for menu planning and inventory optimization."
+    - name: "is_vegetarian"
+      expr: is_vegetarian
+      comment: "Vegetarian dietary preference for menu planning and inventory optimization."
+    - name: "has_gluten_allergy"
+      expr: has_gluten_allergy
+      comment: "Gluten allergy flag for food safety and menu customization."
+    - name: "has_nut_allergy"
+      expr: has_nut_allergy
+      comment: "Nut allergy flag for food safety and menu customization."
+    - name: "has_dairy_allergy"
+      expr: has_dairy_allergy
+      comment: "Dairy allergy flag for food safety and menu customization."
+    - name: "is_halal"
+      expr: is_halal
+      comment: "Halal dietary requirement for menu planning and cultural accommodation."
+    - name: "is_kosher"
+      expr: is_kosher
+      comment: "Kosher dietary requirement for menu planning and cultural accommodation."
+    - name: "favorite_cuisine"
+      expr: favorite_cuisine
+      comment: "Preferred cuisine type for personalization and menu development."
+    - name: "preferred_daypart"
+      expr: preferred_daypart
+      comment: "Preferred dining time for capacity planning and promotional timing."
+    - name: "preferred_seating"
+      expr: preferred_seating
+      comment: "Seating preference for table management and guest experience optimization."
+    - name: "preferred_service_channel"
+      expr: preferred_service_channel
+      comment: "Preferred service channel (dine-in, takeout, delivery) for channel mix planning."
+    - name: "communication_channel_preference"
+      expr: communication_channel_preference
+      comment: "Preferred communication channel for marketing effectiveness optimization."
+    - name: "language_preference"
+      expr: language_preference
+      comment: "Preferred language for localized communication."
+    - name: "marketing_opt_in"
+      expr: marketing_opt_in
+      comment: "Marketing consent status for campaign targeting."
   measures:
-    - name: "total_segments"
+    - name: "total_preferences"
       expr: COUNT(1)
-      comment: "Total number of guest segments defined. Measures the breadth of the segmentation portfolio."
-    - name: "active_segment_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of currently active segments. Measures the live targeting portfolio size for marketing operations."
-    - name: "avg_churn_risk_score"
-      expr: AVG(CAST(churn_risk_score AS DOUBLE))
-      comment: "Average churn risk score across segments. Identifies portfolio-level retention risk for proactive intervention."
-    - name: "avg_lifetime_value"
-      expr: AVG(CAST(avg_lifetime_value AS DOUBLE))
-      comment: "Average estimated lifetime value across segments. Used to prioritize high-value segment investment and resource allocation."
-    - name: "avg_check_amount"
-      expr: AVG(CAST(avg_check_amount AS DOUBLE))
-      comment: "Average check amount across segments. Indicates typical spend level per segment for pricing and offer strategy."
-    - name: "avg_visit_frequency"
-      expr: AVG(CAST(avg_visit_frequency AS DOUBLE))
-      comment: "Average visit frequency across segments. Frequency KPI used to identify high-engagement vs. lapsing segments."
-    - name: "total_lifetime_value_sum"
-      expr: SUM(CAST(avg_lifetime_value AS DOUBLE))
-      comment: "Sum of average lifetime values across all segments. Proxy for total addressable value of the segmented guest portfolio."
+      comment: "Total preference records for personalization data richness assessment."
+    - name: "unique_guests_with_preferences"
+      expr: COUNT(DISTINCT preference_profile_id)
+      comment: "Unique guests with recorded preferences for personalization coverage measurement."
+    - name: "vegan_guest_count"
+      expr: SUM(CASE WHEN is_vegan = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of vegan guests for menu planning and inventory decisions."
+    - name: "vegetarian_guest_count"
+      expr: SUM(CASE WHEN is_vegetarian = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of vegetarian guests for menu planning and inventory decisions."
+    - name: "gluten_allergy_count"
+      expr: SUM(CASE WHEN has_gluten_allergy = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests with gluten allergies for food safety risk management and menu development."
+    - name: "nut_allergy_count"
+      expr: SUM(CASE WHEN has_nut_allergy = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests with nut allergies for food safety risk management and menu development."
+    - name: "dairy_allergy_count"
+      expr: SUM(CASE WHEN has_dairy_allergy = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests with dairy allergies for food safety risk management and menu development."
+    - name: "halal_guest_count"
+      expr: SUM(CASE WHEN is_halal = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests requiring halal options for menu planning and cultural accommodation strategy."
+    - name: "kosher_guest_count"
+      expr: SUM(CASE WHEN is_kosher = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of guests requiring kosher options for menu planning and cultural accommodation strategy."
+    - name: "active_preference_count"
+      expr: SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of active preferences for data currency and personalization effectiveness."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_segment_membership`
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_consent_record`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest segment membership metrics tracking active membership counts, assignment confidence, membership scores, and churn signals — used to evaluate segment quality, model accuracy, and CRM targeting effectiveness."
-  source: "`vibe_restaurants_v1`.`guest`.`segment_membership`"
-  dimensions:
-    - name: "membership_status"
-      expr: membership_status
-      comment: "Current status of the segment membership (e.g., active, exited, pending) for membership lifecycle analysis."
-    - name: "assignment_method"
-      expr: assignment_method
-      comment: "Method used to assign the guest to the segment (e.g., rule-based, ML, manual) for model governance."
-    - name: "membership_source"
-      expr: membership_source
-      comment: "Source system or process that created the membership record for data lineage tracking."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the membership is currently active — used to filter to the live targeting audience."
-    - name: "joined_date"
-      expr: joined_date
-      comment: "Date the guest joined the segment for cohort entry analysis."
-    - name: "exited_date"
-      expr: exited_date
-      comment: "Date the guest exited the segment for churn and tenure analysis."
-    - name: "membership_month"
-      expr: DATE_TRUNC('MONTH', joined_date)
-      comment: "Month the guest joined the segment for monthly cohort and growth trend analysis."
-  measures:
-    - name: "total_memberships"
-      expr: COUNT(1)
-      comment: "Total segment membership records. Baseline measure of total segment assignments across the guest base."
-    - name: "active_memberships"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of currently active segment memberships. Defines the live targetable audience size per segment."
-    - name: "unique_guests_in_segments"
-      expr: COUNT(DISTINCT primary_guest_profile_id)
-      comment: "Number of distinct guests assigned to at least one segment. Measures segmentation coverage of the guest base."
-    - name: "avg_confidence_score"
-      expr: AVG(CAST(confidence_score AS DOUBLE))
-      comment: "Average model confidence score for segment assignments. Measures segmentation model quality and reliability."
-    - name: "avg_membership_score"
-      expr: AVG(CAST(membership_score AS DOUBLE))
-      comment: "Average membership score across all assignments. Indicates the strength of guest-segment fit for targeting precision."
-    - name: "avg_assignment_score"
-      expr: AVG(CAST(assignment_score AS DOUBLE))
-      comment: "Average assignment score at time of segment entry. Used to evaluate assignment model calibration over time."
-    - name: "exited_membership_count"
-      expr: COUNT(CASE WHEN exited_date IS NOT NULL THEN 1 END)
-      comment: "Number of memberships where the guest has exited the segment. Measures segment churn and audience stability."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_digital_account`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Digital account health and engagement metrics covering active accounts, account tier distribution, login activity, and security posture — used by digital product and CRM teams to manage the digital guest base."
-  source: "`vibe_restaurants_v1`.`guest`.`digital_account`"
-  dimensions:
-    - name: "digital_account_status"
-      expr: digital_account_status
-      comment: "Current status of the digital account (e.g., active, suspended, locked, closed)."
-    - name: "account_tier"
-      expr: account_tier
-      comment: "Tier level of the digital account (e.g., standard, premium, VIP) for value-based segmentation."
-    - name: "device_type"
-      expr: device_type
-      comment: "Device type used for the digital account (e.g., iOS, Android, web) for platform mix analysis."
-    - name: "consent_marketing"
-      expr: consent_marketing
-      comment: "Whether the account holder has consented to marketing communications — defines digital marketing audience."
-    - name: "privacy_opt_out"
-      expr: privacy_opt_out
-      comment: "Whether the guest has opted out of data processing — critical for compliance and reachable audience sizing."
-    - name: "account_created_month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the digital account was created for new account acquisition trend analysis."
-    - name: "effective_from"
-      expr: effective_from
-      comment: "Date from which the digital account became effective for account lifecycle analysis."
-  measures:
-    - name: "total_digital_accounts"
-      expr: COUNT(1)
-      comment: "Total number of digital accounts. Baseline measure of the digital guest base size."
-    - name: "active_digital_accounts"
-      expr: COUNT(CASE WHEN digital_account_status = 'active' THEN 1 END)
-      comment: "Number of active digital accounts. Measures the engaged digital audience for app and digital channel investment decisions."
-    - name: "marketing_consent_accounts"
-      expr: COUNT(CASE WHEN consent_marketing = TRUE THEN 1 END)
-      comment: "Number of digital accounts with marketing consent. Defines the addressable digital marketing audience."
-    - name: "privacy_opt_out_accounts"
-      expr: COUNT(CASE WHEN privacy_opt_out = TRUE THEN 1 END)
-      comment: "Number of accounts with privacy opt-out. Compliance KPI used to monitor data processing restrictions."
-    - name: "accounts_with_recent_login"
-      expr: COUNT(CASE WHEN last_login_timestamp IS NOT NULL THEN 1 END)
-      comment: "Number of accounts with a recorded login. Proxy for digital engagement activity across the account base."
-    - name: "unique_guests_with_digital_account"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of distinct guest profiles with a digital account. Measures digital adoption across the known guest base."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_consent`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Guest consent and data privacy compliance metrics tracking consent rates, active consent coverage, and opt-out trends — essential for regulatory compliance (GDPR, CCPA) and addressable marketing audience management."
+  comment: "Guest consent record metrics tracking privacy compliance, consent health, and regulatory adherence for legal risk management and marketing program governance."
   source: "`vibe_restaurants_v1`.`guest`.`consent_record`"
   dimensions:
-    - name: "consent_type"
-      expr: consent_type
-      comment: "Type of consent captured (e.g., marketing, data processing, third-party sharing) for compliance categorization."
     - name: "consent_status"
       expr: consent_status
-      comment: "Current status of the consent record (e.g., active, revoked, expired) for compliance monitoring."
-    - name: "consent_method"
-      expr: consent_method
-      comment: "Method by which consent was obtained (e.g., web form, in-store, app) for consent quality assessment."
-    - name: "consent_source_channel"
-      expr: consent_source_channel
-      comment: "Channel through which consent was collected for channel-level compliance reporting."
+      comment: "Current consent status for compliance monitoring and addressable audience tracking."
+    - name: "consent_type"
+      expr: consent_type
+      comment: "Type of consent (marketing, data processing, etc.) for consent portfolio management."
     - name: "consent_purpose"
       expr: consent_purpose
-      comment: "Purpose for which consent was granted (e.g., email marketing, analytics) for purpose-based compliance tracking."
+      comment: "Purpose for which consent was granted for use-case specific compliance."
+    - name: "consent_method"
+      expr: consent_method
+      comment: "Method through which consent was captured for audit trail and quality assessment."
+    - name: "consent_source_channel"
+      expr: consent_source_channel
+      comment: "Channel where consent was obtained for channel effectiveness and compliance tracking."
     - name: "email_consent"
       expr: email_consent
-      comment: "Whether email marketing consent was granted — defines email-reachable audience."
+      comment: "Email consent flag for email marketing audience sizing."
     - name: "sms_consent"
       expr: sms_consent
-      comment: "Whether SMS consent was granted — defines SMS-reachable audience."
+      comment: "SMS consent flag for SMS marketing audience sizing."
     - name: "marketing_consent"
       expr: marketing_consent
-      comment: "Whether general marketing consent was granted — defines the overall marketing-reachable audience."
+      comment: "Marketing consent flag for overall marketing addressability."
+    - name: "data_sharing_consent"
+      expr: data_sharing_consent
+      comment: "Data sharing consent flag for third-party partnership compliance."
+    - name: "third_party_consent"
+      expr: third_party_consent
+      comment: "Third-party consent flag for partner marketing compliance."
+    - name: "consent_language"
+      expr: consent_language
+      comment: "Language in which consent was provided for regulatory compliance verification."
+    - name: "consent_version"
+      expr: consent_version
+      comment: "Version of consent terms for audit trail and re-consent campaign management."
+    - name: "privacy_notice_version"
+      expr: privacy_notice_version
+      comment: "Privacy notice version for compliance tracking and update campaign management."
+    - name: "consent_revoked_reason"
+      expr: consent_revoked_reason
+      comment: "Reason for consent revocation for opt-out analysis and program improvement."
     - name: "consent_month"
-      expr: DATE_TRUNC('MONTH', consent_timestamp)
-      comment: "Month consent was recorded for consent acquisition trend analysis."
+      expr: DATE_TRUNC('month', consent_timestamp)
+      comment: "Month of consent for consent acquisition trend analysis."
   measures:
     - name: "total_consent_records"
       expr: COUNT(1)
-      comment: "Total number of consent records. Baseline compliance KPI for consent management program coverage."
-    - name: "active_consent_count"
-      expr: COUNT(CASE WHEN consent_status = 'active' THEN 1 END)
-      comment: "Number of currently active consent records. Defines the compliant, reachable audience for marketing and data processing."
-    - name: "revoked_consent_count"
-      expr: COUNT(CASE WHEN consent_status = 'revoked' THEN 1 END)
-      comment: "Number of revoked consent records. Compliance risk KPI used to monitor opt-out trends and regulatory exposure."
+      comment: "Total consent records for consent management scale and audit readiness."
     - name: "email_consent_count"
-      expr: COUNT(CASE WHEN email_consent = TRUE THEN 1 END)
-      comment: "Number of records with active email consent. Defines the email-addressable audience for campaign planning."
+      expr: SUM(CASE WHEN email_consent = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of email consents for email marketing addressable audience sizing."
     - name: "sms_consent_count"
-      expr: COUNT(CASE WHEN sms_consent = TRUE THEN 1 END)
-      comment: "Number of records with active SMS consent. Defines the SMS-addressable audience for mobile marketing."
+      expr: SUM(CASE WHEN sms_consent = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of SMS consents for SMS marketing addressable audience sizing."
     - name: "marketing_consent_count"
-      expr: COUNT(CASE WHEN marketing_consent = TRUE THEN 1 END)
-      comment: "Number of records with general marketing consent. Measures total addressable marketing audience under consent compliance."
+      expr: SUM(CASE WHEN marketing_consent = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of marketing consents for overall marketing reach estimation."
+    - name: "data_sharing_consent_count"
+      expr: SUM(CASE WHEN data_sharing_consent = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of data sharing consents for partnership program compliance and opportunity sizing."
     - name: "third_party_consent_count"
-      expr: COUNT(CASE WHEN third_party_consent = TRUE THEN 1 END)
-      comment: "Number of records with third-party data sharing consent. Compliance KPI for data partnership and monetization programs."
-    - name: "unique_consenting_guests"
-      expr: COUNT(DISTINCT primary_consent_guest_profile_id)
-      comment: "Number of distinct guests with at least one consent record. Measures consent program coverage across the guest base."
+      expr: SUM(CASE WHEN third_party_consent = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of third-party consents for partner marketing compliance and revenue opportunity."
+    - name: "email_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN email_consent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of records with email consent for consent health monitoring and campaign planning."
+    - name: "marketing_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN marketing_consent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of records with marketing consent for consent program effectiveness and regulatory compliance assessment."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_interaction`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Guest interaction metrics tracking engagement touchpoints, channel effectiveness, and customer journey for omnichannel strategy optimization and engagement program ROI."
+  source: "`vibe_restaurants_v1`.`guest`.`interaction`"
+  dimensions:
+    - name: "interaction_type"
+      expr: interaction_type
+      comment: "Type of interaction (click, view, purchase, inquiry, etc.) for engagement pattern analysis."
+    - name: "channel"
+      expr: channel
+      comment: "Channel through which interaction occurred for omnichannel effectiveness comparison."
+    - name: "outcome"
+      expr: outcome
+      comment: "Outcome of interaction (success, failure, abandoned, etc.) for conversion and effectiveness tracking."
+    - name: "is_test"
+      expr: is_test
+      comment: "Whether interaction was a test for data quality filtering."
+    - name: "interaction_month"
+      expr: DATE_TRUNC('month', event_timestamp)
+      comment: "Month of interaction for engagement trend analysis."
+  measures:
+    - name: "total_interactions"
+      expr: COUNT(1)
+      comment: "Total interaction volume for engagement scale and activity level tracking."
+    - name: "unique_interacting_guests"
+      expr: COUNT(DISTINCT interaction_profile_id)
+      comment: "Unique guests with interactions for engagement reach and active user measurement."
+    - name: "interactions_per_guest"
+      expr: ROUND(CAST(COUNT(1) AS DOUBLE) / NULLIF(COUNT(DISTINCT interaction_profile_id), 0), 2)
+      comment: "Average interactions per guest for engagement depth and stickiness assessment."
+    - name: "non_test_interactions"
+      expr: SUM(CASE WHEN is_test = FALSE THEN 1 ELSE 0 END)
+      comment: "Count of production interactions for accurate engagement measurement excluding test data."
 $$;

@@ -1,737 +1,590 @@
 -- Schema for Domain: franchise | Business:  | Version: v2_ecm
--- Generated on: 2026-07-02 03:00:41
+-- Generated on: 2026-07-10 18:45:39
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_restaurants_v1`.`franchise` COMMENT 'SSOT for franchise partner identity, FDD agreements, territory management, royalty rate calculations, franchise fees, compliance tracking, NRO (New Restaurant Opening) pipeline, franchisee performance metrics, and development lifecycle via FranConnect. Ensures adherence to brand standards, IFA best practices, and FTC Franchise Rule.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` (
-    `franchisee_id` BIGINT COMMENT 'Unique identifier for the franchisee',
-    `area_representative_id` BIGINT COMMENT 'FK to the area representative managing this franchisee',
-    `bank_account_id` BIGINT COMMENT 'FK to the franchisee bank account for royalty payments',
-    `distribution_center_id` BIGINT COMMENT 'FK to the primary distribution center serving this franchisee',
-    `program_id` BIGINT COMMENT 'FK to the loyalty program this franchisee participates in',
-    `territory_id` BIGINT COMMENT 'FK to the territory assigned to this franchisee',
-    `address_line1` STRING COMMENT 'Primary street address of the franchisee',
-    `address_line2` STRING COMMENT 'Secondary address line',
-    `annual_revenue` DECIMAL(18,2) COMMENT 'Total annual revenue across all units',
-    `average_unit_volume` DECIMAL(18,2) COMMENT 'Average unit volume across all locations',
-    `city` STRING COMMENT 'City of the franchisee headquarters',
-    `compliance_status` STRING COMMENT 'Current compliance status of the franchisee',
-    `country_code` STRING COMMENT 'ISO country code',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `credit_rating` STRING COMMENT 'Credit rating of the franchisee entity',
-    `dba_name` STRING COMMENT 'Doing-business-as name',
-    `established_date` DATE COMMENT 'Date the franchisee entity was established',
-    `fdd_disclosure_status` STRING COMMENT 'Status of FDD disclosure for this franchisee',
-    `food_safety_certified` BOOLEAN COMMENT 'Whether the franchisee holds food safety certification',
-    `franchise_fee_amount` DECIMAL(18,2) COMMENT 'Initial franchise fee paid',
-    `franchisee_number` STRING COMMENT 'Business identifier number for the franchisee',
-    `franchisee_status` STRING COMMENT 'Current operational status (active, inactive, suspended)',
-    `franchisee_type` STRING COMMENT 'Type of franchisee (single-unit, multi-unit, area developer)',
-    `ifa_membership_status` STRING COMMENT 'International Franchise Association membership status',
-    `industry_segment` STRING COMMENT 'Industry segment classification',
-    `insurance_expiry_date` DATE COMMENT 'Date when insurance coverage expires',
-    `insurance_policy_number` STRING COMMENT 'Insurance policy reference number',
-    `legal_name` STRING COMMENT 'Legal registered name of the franchisee entity',
-    `next_renewal_date` DATE COMMENT 'Date of next franchise agreement renewal',
-    `number_of_units` STRING COMMENT 'Total number of restaurant units operated',
-    `postal_code` STRING COMMENT 'Postal/ZIP code',
-    `royalty_fee_amount` DECIMAL(18,2) COMMENT 'Current royalty fee amount',
-    `royalty_rate` DECIMAL(18,2) COMMENT 'Royalty rate percentage',
-    `state_province` STRING COMMENT 'State or province',
-    `state_tax_number` STRING COMMENT 'State tax identification number',
-    `tax_id_ein` STRING COMMENT 'Federal employer identification number',
-    `termination_date` DATE COMMENT 'Date franchise was terminated if applicable',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `franchisee_id` BIGINT COMMENT 'System-generated unique identifier for the franchise partner.',
+    `area_representative_id` BIGINT COMMENT 'Foreign key linking to franchise.area_representative. Business justification: A franchisee is managed by a single Area Representative; linking franchisee to area_representative enables reporting of franchisee assignments and eliminates need for separate mapping tables.',
+    `bank_account_id` BIGINT COMMENT 'Foreign key linking to finance.bank_account. Business justification: Royalty payment processing requires linking each franchisee to its bank account for ACH transfers; experts expect a direct bank_account_id FK.',
+    `distribution_center_id` BIGINT COMMENT 'Foreign key linking to supply.distribution_center. Business justification: Assigning each franchisee to a primary distribution center supports logistics planning and delivery scheduling reports.',
+    `program_id` BIGINT COMMENT 'Foreign key linking to loyalty.program. Business justification: Enables franchisee to assign a specific loyalty program for its restaurants, required for franchise‑level program performance reporting.',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to franchise.territory. Business justification: Franchisee belongs to a geographic territory; linking franchisee to territory via territory_id enables proper reporting and eliminates reliance on free‑text codes.',
+    `address_line1` STRING COMMENT 'First line of the franchisees primary business address.',
+    `address_line2` STRING COMMENT 'Second line of the franchisees primary business address, if applicable.',
+    `annual_revenue` DECIMAL(18,2) COMMENT 'Reported annual gross revenue of the franchisee.',
+    `average_unit_volume` DECIMAL(18,2) COMMENT 'Average sales volume per unit for the franchisee.',
+    `city` STRING COMMENT 'City of the franchisees primary business address.',
+    `compliance_status` STRING COMMENT 'Overall compliance status with brand standards and regulatory requirements.. Valid values are `compliant|non_compliant|under_review`',
+    `country_code` STRING COMMENT 'Three‑letter ISO country code of the franchisees primary business address.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the franchisee record was first created in the system.',
+    `credit_rating` STRING COMMENT 'Credit rating assigned to the franchisee by a rating agency. [ENUM-REF-CANDIDATE: aaa|aa|a|bbb|bb|b|ccc|cc|c|d — promote to reference product]',
+    `dba_name` STRING COMMENT 'Trade name under which the franchisee operates, if different from the legal name.',
+    `established_date` DATE COMMENT 'Date the franchisee entity was legally formed.',
+    `fdd_disclosure_status` STRING COMMENT 'Status of the Franchise Disclosure Document compliance for the franchisee.. Valid values are `disclosed|pending|exempt`',
+    `food_safety_certified` BOOLEAN COMMENT 'Indicates whether the franchisee holds a current food safety certification (e.g., ServSafe).',
+    `franchise_fee_amount` DECIMAL(18,2) COMMENT 'Initial fee paid by the franchisee for the franchise rights.',
+    `franchisee_number` STRING COMMENT 'Unique business identifier assigned to the franchisee for internal tracking.',
+    `franchisee_status` STRING COMMENT 'Current lifecycle status of the franchisee partnership.. Valid values are `active|inactive|terminated|pending`',
+    `franchisee_type` STRING COMMENT 'Legal structure of the franchisee entity.. Valid values are `individual|llc|corporation|partnership`',
+    `ifa_membership_status` STRING COMMENT 'International Franchise Association membership status of the franchisee.. Valid values are `member|non_member|pending`',
+    `industry_segment` STRING COMMENT 'Segment of the restaurant industry the franchisee operates in.. Valid values are `qsr|casual|fine_dining`',
+    `insurance_expiry_date` DATE COMMENT 'Expiration date of the current insurance policy.',
+    `insurance_policy_number` STRING COMMENT 'Policy number for the franchisees liability and property insurance.',
+    `legal_name` STRING COMMENT 'Full legal name of the franchisee entity as registered with government authorities.',
+    `next_renewal_date` DATE COMMENT 'Scheduled date for the next franchise agreement renewal.',
+    `number_of_units` STRING COMMENT 'Total number of restaurant locations operated by the franchisee.',
+    `postal_code` STRING COMMENT 'Postal/ZIP code of the franchisees primary business address.',
+    `royalty_fee_amount` DECIMAL(18,2) COMMENT 'Monetary amount of royalty fees calculated for a reporting period.',
+    `royalty_rate` DECIMAL(18,2) COMMENT 'Percentage of gross sales payable to the brand as royalty.',
+    `state_province` STRING COMMENT 'State or province of the franchisees primary business address.',
+    `state_tax_number` STRING COMMENT 'State-level tax identification number for the franchisee.',
+    `tax_id_ein` STRING COMMENT 'Federal tax identification number for the franchisee.',
+    `termination_date` DATE COMMENT 'Date the franchise agreement was terminated, if applicable.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the franchisee record.',
     CONSTRAINT pk_franchisee PRIMARY KEY(`franchisee_id`)
-) COMMENT 'A franchisee entity representing an individual or organization that operates one or more franchise restaurant units under a franchise agreement.';
+) COMMENT 'Master record for each franchise partner entity — the legal business entity (individual, LLC, corporation) that holds one or more franchise agreements with the brand. Captures franchisee identity, legal structure, ownership details, contact information, financial standing, FDD disclosure status, IFA membership, and FranConnect system ID. SSOT for franchise partner identity across the enterprise.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`agreement` (
-    `agreement_id` BIGINT COMMENT 'Unique identifier for the franchise agreement',
-    `legal_entity_id` BIGINT COMMENT 'FK to the franchisor legal entity',
-    `agreement_legal_entity_id` BIGINT COMMENT 'FK to the franchisee legal entity',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee party',
-    `territory_id` BIGINT COMMENT 'FK to the territory covered by this agreement',
-    `agreement_number` STRING COMMENT 'Business reference number for the agreement',
-    `agreement_status` STRING COMMENT 'Current status (active, expired, terminated)',
-    `agreement_type` STRING COMMENT 'Type of agreement (single-unit, multi-unit, area development)',
-    `amendment_effective_date` DATE COMMENT 'Effective date of the latest amendment',
-    `amendment_number` STRING COMMENT 'Sequential amendment number',
-    `average_unit_volume` DECIMAL(18,2) COMMENT 'Expected average unit volume under this agreement',
-    `compliance_review_date` DATE COMMENT 'Date of last compliance review',
-    `compliance_status` STRING COMMENT 'Compliance status of the agreement',
-    `contract_version` STRING COMMENT 'Version of the contract template used',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `effective_end_date` DATE COMMENT 'Agreement end date',
-    `effective_start_date` DATE COMMENT 'Agreement start date',
-    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Whether FTC compliance has been attested',
-    `initial_fee_amount` DECIMAL(18,2) COMMENT 'Initial franchise fee amount',
-    `marketing_fee_percent` DECIMAL(18,2) COMMENT 'Marketing fund contribution percentage',
-    `notes` STRING COMMENT 'Free-text notes about the agreement',
-    `renewal_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged upon renewal',
-    `renewal_term_years` STRING COMMENT 'Length of renewal term in years',
-    `royalty_rate_percent` DECIMAL(18,2) COMMENT 'Royalty rate as a percentage of gross sales',
-    `sales_target_amount` DECIMAL(18,2) COMMENT 'Minimum sales target amount',
-    `signed_date` DATE COMMENT 'Date the agreement was signed',
-    `termination_date` DATE COMMENT 'Date the agreement was terminated',
-    `transfer_rights_flag` BOOLEAN COMMENT 'Whether the agreement includes transfer rights',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `agreement_id` BIGINT COMMENT 'System-generated unique identifier for the franchise agreement record.',
+    `legal_entity_id` BIGINT COMMENT 'Unique identifier of the franchisor (company) party.',
+    `agreement_legal_entity_id` BIGINT COMMENT 'Unique identifier of the franchisor (company) party.',
+    `franchisee_id` BIGINT COMMENT 'Unique identifier of the franchisee party.',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to franchise.territory. Business justification: A franchise agreement is tied to a specific geographic territory; adding territory_id FK normalizes territory data and removes redundant code/description fields.',
+    `agreement_number` STRING COMMENT 'External business identifier assigned to the agreement (e.g., FA-2023-001).',
+    `agreement_status` STRING COMMENT 'Current lifecycle status of the agreement.. Valid values are `active|inactive|terminated|pending|draft`',
+    `agreement_type` STRING COMMENT 'Classifies the agreement as initial, renewal, transfer, or amendment.. Valid values are `initial|renewal|transfer|amendment`',
+    `amendment_effective_date` DATE COMMENT 'Date when the amendment becomes effective.',
+    `amendment_number` STRING COMMENT 'Sequential number of the amendment applied to the agreement.',
+    `average_unit_volume` DECIMAL(18,2) COMMENT 'Projected average sales per unit location for the franchisee.',
+    `compliance_review_date` DATE COMMENT 'Date of the most recent compliance audit of the agreement.',
+    `compliance_status` STRING COMMENT 'Result of the latest compliance review.. Valid values are `compliant|non_compliant|pending`',
+    `contract_version` STRING COMMENT 'Version identifier for the agreement (e.g., v1, v2).',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the agreement record was first created in the system.',
+    `effective_end_date` DATE COMMENT 'Scheduled expiration date of the agreement (null for open‑ended).',
+    `effective_start_date` DATE COMMENT 'Date the agreement becomes legally binding.',
+    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Attestation that the agreement complies with FTC Franchise Rule disclosures.',
+    `initial_fee_amount` DECIMAL(18,2) COMMENT 'Up‑front fee paid by the franchisee to obtain the franchise rights.',
+    `marketing_fee_percent` DECIMAL(18,2) COMMENT 'Percentage of sales contributed to the brand‑wide marketing fund.',
+    `notes` STRING COMMENT 'Free‑form text for additional comments, special conditions, or observations.',
+    `renewal_fee_amount` DECIMAL(18,2) COMMENT 'Fee payable by the franchisee to renew the agreement for the next term.',
+    `renewal_term_years` STRING COMMENT 'Number of years for each renewal period after the initial term.',
+    `royalty_rate_percent` DECIMAL(18,2) COMMENT 'Ongoing royalty percentage of gross sales payable to the franchisor.',
+    `sales_target_amount` DECIMAL(18,2) COMMENT 'Target gross sales amount the franchisee commits to achieve during the term.',
+    `signed_date` DATE COMMENT 'Date the agreement was signed by both parties.',
+    `termination_date` DATE COMMENT 'Actual date the agreement was terminated prior to its scheduled end.',
+    `transfer_rights_flag` BOOLEAN COMMENT 'Indicates whether the franchisee may transfer the agreement to another party.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the agreement record.',
     CONSTRAINT pk_agreement PRIMARY KEY(`agreement_id`)
-) COMMENT 'A franchise agreement governing the relationship between franchisor and franchisee including terms, fees, and obligations.';
+) COMMENT 'Authoritative record of each franchise agreement between the franchisor and a franchisee, encompassing the full agreement lifecycle from execution through renewal, transfer, or termination. Captures agreement type (initial, renewal, transfer, successor), effective and expiration dates, territory grant, initial franchise fee, royalty rate and basis, marketing fund contribution rate, renewal terms, and agreement status. Owns all lifecycle event records including: transfers (transferor/transferee, ROFR exercise, approval, transfer conditions, effective date), renewals (updated terms, FDD re-disclosure, renewal fee, execution date), and terminations (type, default notice, cure period, de-identification, post-termination obligations, non-compete). SSOT for all contractual franchise obligations and their complete lifecycle history. Supports FTC Franchise Rule Items 5, 6, 17 disclosure requirements.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`territory` (
-    `territory_id` BIGINT COMMENT 'Unique identifier for the territory',
-    `distribution_center_id` BIGINT COMMENT 'FK to the distribution center serving this territory',
-    `area_sq_miles` DECIMAL(18,2) COMMENT 'Total area of the territory in square miles',
-    `assignment_status` STRING COMMENT 'Whether the territory is assigned or available',
-    `average_unit_volume` DECIMAL(18,2) COMMENT 'Average unit volume for locations in this territory',
-    `city` STRING COMMENT 'Primary city within the territory',
-    `territory_code` STRING COMMENT 'Short code for the territory',
-    `compliance_status` STRING COMMENT 'Compliance status of the territory',
-    `country_code` STRING COMMENT 'ISO country code',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `territory_description` STRING COMMENT 'Description of the territory',
-    `dma` STRING COMMENT 'Designated Market Area',
-    `effective_end_date` DATE COMMENT 'End date of territory assignment',
-    `effective_start_date` DATE COMMENT 'Start date of territory assignment',
-    `franchise_fee` DECIMAL(18,2) COMMENT 'Franchise fee applicable in this territory',
-    `geometry_wkt` STRING COMMENT 'Well-Known Text representation of territory boundary',
-    `last_inspection_date` DATE COMMENT 'Date of last territory inspection',
-    `median_income` DECIMAL(18,2) COMMENT 'Median household income in the territory',
-    `territory_name` STRING COMMENT 'Name of the territory',
-    `notes` STRING COMMENT 'Free-text notes',
-    `number_of_locations` STRING COMMENT 'Number of restaurant locations in the territory',
-    `population` STRING COMMENT 'Population within the territory',
-    `radius_miles` DECIMAL(18,2) COMMENT 'Radius of the territory in miles',
-    `region` STRING COMMENT 'Region classification',
-    `royalty_rate` DECIMAL(18,2) COMMENT 'Royalty rate applicable in this territory',
-    `territory_status` STRING COMMENT 'Current status of the territory',
-    `territory_type` STRING COMMENT 'Type of territory (exclusive, non-exclusive)',
-    `trade_area_classification` STRING COMMENT 'Classification of the trade area',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `zip_codes` STRING COMMENT 'Comma-separated list of ZIP codes in the territory',
+    `territory_id` BIGINT COMMENT 'Unique identifier for the territory.',
+    `distribution_center_id` BIGINT COMMENT 'Foreign key linking to supply.distribution_center. Business justification: Territory‑level supply routing uses a designated DC; needed for regional supply‑chain optimization and KPI dashboards.',
+    `area_sq_miles` DECIMAL(18,2) COMMENT 'Total land area of the territory in square miles.',
+    `assignment_status` STRING COMMENT 'Current status of the territory assignment process.. Valid values are `assigned|unassigned|pending`',
+    `average_unit_volume` DECIMAL(18,2) COMMENT 'Average sales per unit (AUV) across locations in the territory (USD).',
+    `city` STRING COMMENT 'Primary city associated with the territory.',
+    `territory_code` STRING COMMENT 'Business identifier code assigned to the territory.',
+    `compliance_status` STRING COMMENT 'Current food‑safety and regulatory compliance status of the territory.. Valid values are `compliant|non_compliant|under_review`',
+    `country_code` STRING COMMENT 'Three‑letter ISO country code for the territory.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the territory record was created.',
+    `territory_description` STRING COMMENT 'Free‑form description of the territorys characteristics.',
+    `dma` STRING COMMENT 'DMA region identifier for the territory.',
+    `effective_end_date` DATE COMMENT 'Date when the territory expires or is terminated (null if open‑ended).',
+    `effective_start_date` DATE COMMENT 'Date when the territory became effective for the franchisee.',
+    `franchise_fee` DECIMAL(18,2) COMMENT 'One‑time fee charged to the franchisee for the territory grant.',
+    `geometry_wkt` STRING COMMENT 'Well‑Known Text representation of the territorys polygon boundary.',
+    `last_inspection_date` DATE COMMENT 'Date of the most recent compliance inspection for the territory.',
+    `median_income` DECIMAL(18,2) COMMENT 'Median household income for the territory (USD).',
+    `territory_name` STRING COMMENT 'Human‑readable name of the territory.',
+    `notes` STRING COMMENT 'Free‑form field for any supplemental information about the territory.',
+    `number_of_locations` STRING COMMENT 'Count of restaurant units operating within the territory.',
+    `population` STRING COMMENT 'Estimated resident population within the territory.',
+    `radius_miles` DECIMAL(18,2) COMMENT 'Radius in miles for circular territories (if applicable).',
+    `region` STRING COMMENT 'Two‑letter state or province code for the territory.. Valid values are `^[A-Z]{2}$`',
+    `royalty_rate` DECIMAL(18,2) COMMENT 'Royalty percentage applied to franchisee sales within the territory.',
+    `territory_status` STRING COMMENT 'Current lifecycle status of the territory.. Valid values are `active|inactive|pending|closed`',
+    `territory_type` STRING COMMENT 'Classification of the territorys exclusivity rights.. Valid values are `exclusive|protected|non_exclusive`',
+    `trade_area_classification` STRING COMMENT 'Business classification of the trade area based on demographics and spend.. Valid values are `high|medium|low`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the territory record.',
+    `zip_codes` STRING COMMENT 'List of ZIP codes included in the territory, separated by commas.',
     CONSTRAINT pk_territory PRIMARY KEY(`territory_id`)
-) COMMENT 'A geographic territory assigned to a franchisee defining the exclusive or protected area for franchise operations.';
+) COMMENT 'Defines the protected or exclusive geographic territory granted to a franchisee under a franchise agreement. Captures territory boundaries (polygon, zip codes, DMA, radius), territory type (exclusive, protected, non-exclusive), population count, trade area classification, territory status, and assignment history. Supports territory conflict resolution and development pipeline planning.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`billing` (
-    `billing_id` BIGINT COMMENT 'Unique identifier for the billing record',
-    `agreement_id` BIGINT COMMENT 'FK to the governing franchise agreement',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee being billed',
-    `amount_due` DECIMAL(18,2) COMMENT 'The amount due attribute value for this billing record in the franchise domain',
-    `amount_paid` DECIMAL(18,2) COMMENT 'Amount already paid',
-    `balance_outstanding` DECIMAL(18,2) COMMENT 'Remaining balance outstanding',
-    `billing_date` DATE COMMENT 'The date and time when the billing event occurred for this billing',
-    `billing_number` STRING COMMENT 'Business reference number for the billing',
-    `billing_status` STRING COMMENT 'Status of the billing (draft, sent, paid, overdue)',
-    `billing_type` STRING COMMENT 'Type of billing (recurring, one-time, adjustment)',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `due_date` DATE COMMENT 'Payment due date',
-    `invoice_date` DATE COMMENT 'Date the invoice was issued',
-    `invoice_number` STRING COMMENT 'Invoice reference number',
-    `is_paid` BOOLEAN COMMENT 'Whether the billing has been fully paid',
-    `marketing_fee_amount` DECIMAL(18,2) COMMENT 'Marketing fund contribution amount',
-    `paid_date` DATE COMMENT 'Date payment was received',
-    `payment_status` STRING COMMENT 'The current status of the payment for this billing',
-    `period` STRING COMMENT 'The period attribute value for this billing record in the franchise domain',
-    `period_end` DATE COMMENT 'End date of the billing period',
-    `period_start` DATE COMMENT 'Start date of the billing period',
-    `royalty_amount` DECIMAL(18,2) COMMENT 'Royalty fee amount billed',
-    `technology_fee_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for technology fee in this billing',
-    `total_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for total in this billing',
-    `total_amount_due` DECIMAL(18,2) COMMENT 'Total amount due on this billing',
-    `total_due` DECIMAL(18,2) COMMENT 'The total due attribute value for this billing record in the franchise domain',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `billing_id` BIGINT COMMENT 'Primary key for billing',
+    `agreement_id` BIGINT COMMENT 'add column agreement_id (BIGINT) with FK to franchise.agreement.agreement_id - franchise billing must reference the governing agreement for fee calculation',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to franchise.franchisee. Business justification: Franchise billing records are generated per franchisee; linking to franchisee provides ownership and enables reporting.',
     CONSTRAINT pk_billing PRIMARY KEY(`billing_id`)
-) COMMENT 'Franchise billing records representing invoices sent to franchisees for royalties, marketing fees, and technology fees.';
+) COMMENT 'Transactional record of all periodic franchise fees billed to a franchisee for a specific reporting period, including royalties, marketing fund contributions, technology fees, and other recurring charges. Captures billing period, gross sales reported, rates applied, line-item amounts (royalty, marketing fund, technology, other), total amount billed, payment due date, payment status, and variance from prior period. Source of truth for franchise revenue recognition, AR aging, and marketing fund governance. Supports FDD Item 6 and Item 11 disclosure compliance.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` (
-    `sales_report_id` BIGINT COMMENT 'Unique identifier for the sales report',
-    `franchisee_id` BIGINT COMMENT 'FK to the reporting franchisee',
-    `unit_id` BIGINT COMMENT 'FK to the restaurant unit',
-    `sales_unit_id` BIGINT COMMENT 'FK to the restaurant unit',
-    `employee_id` BIGINT COMMENT 'FK to the employee who submitted the report',
-    `adjustments_amount` DECIMAL(18,2) COMMENT 'Total adjustments to gross sales',
-    `audit_trail` STRING COMMENT 'The audit trail attribute value for this sales report record in the franchise domain',
-    `average_check_value` DECIMAL(18,2) COMMENT 'Average transaction value',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `daypart_sales_breakdown` DECIMAL(18,2) COMMENT 'The daypart sales breakdown attribute value for this sales report record in the franchise domain',
-    `franchise_fee` DECIMAL(18,2) COMMENT 'The franchise fee attribute value for this sales report record in the franchise domain',
-    `gross_sales_amount` DECIMAL(18,2) COMMENT 'Total gross sales for the period',
-    `net_sales_amount` DECIMAL(18,2) COMMENT 'Net sales after adjustments',
-    `notes` STRING COMMENT 'Free-text notes',
-    `report_number` STRING COMMENT 'Business reference number',
-    `reporting_period_end` DATE COMMENT 'End date of the reporting period',
-    `reporting_period_start` DATE COMMENT 'Start date of the reporting period',
-    `reporting_period_type` STRING COMMENT 'Type of period (weekly, monthly, quarterly)',
-    `royalty_amount` DECIMAL(18,2) COMMENT 'Calculated royalty amount',
-    `royalty_rate` DECIMAL(18,2) COMMENT 'Royalty rate applied',
-    `sales_report_status` STRING COMMENT 'Status of the report (draft, submitted, validated)',
-    `same_store_sales` DECIMAL(18,2) COMMENT 'Same-store sales comparison amount',
-    `submission_method` STRING COMMENT 'How the report was submitted',
-    `submission_timestamp` TIMESTAMP COMMENT 'When the report was submitted',
-    `transaction_count` BIGINT COMMENT 'Number of transactions in the period',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `validation_status` STRING COMMENT 'Validation status of the report',
-    `variance_amount` DECIMAL(18,2) COMMENT 'Variance from expected sales',
-    `variance_flag` BOOLEAN COMMENT 'Whether a significant variance was detected',
+    `sales_report_id` BIGINT COMMENT 'System-generated unique identifier for the sales report record.',
+    `financial_period_id` BIGINT COMMENT 'add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id - franchise sales reports need period context for royalty calculations',
+    `franchisee_id` BIGINT COMMENT 'Unique identifier of the franchise partner submitting the report.',
+    `unit_id` BIGINT COMMENT 'Identifier of the restaurant location to which the sales data applies.',
+    `sales_unit_id` BIGINT COMMENT 'Identifier of the restaurant location to which the sales data applies.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Identifies the employee submitting the sales report, providing audit trail, accountability, and performance monitoring for franchisee reporting.',
+    `adjustments_amount` DECIMAL(18,2) COMMENT 'Sum of discounts, taxes, and other adjustments applied to gross sales.',
+    `audit_trail` STRING COMMENT 'Chronological log of key actions performed on the report (e.g., submissions, approvals).',
+    `average_check_value` DECIMAL(18,2) COMMENT 'Average dollar amount per transaction for the reporting period.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the sales report record was first created in the system.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for monetary values.. Valid values are `USD|CAD|EUR|GBP|JPY|AUD`',
+    `daypart_sales_breakdown` STRING COMMENT 'JSON string summarizing sales by daypart (e.g., breakfast, lunch, dinner).',
+    `franchise_fee` DECIMAL(18,2) COMMENT 'Fixed fee charged to the franchisee for brand usage during the period.',
+    `gross_sales_amount` DECIMAL(18,2) COMMENT 'Total gross sales reported for the period before any deductions.',
+    `net_sales_amount` DECIMAL(18,2) COMMENT 'Net sales after adjustments; basis for royalty calculations.',
+    `notes` STRING COMMENT 'Free‑form comments entered by the franchisee or reviewer.',
+    `report_number` STRING COMMENT 'External reference number assigned to the sales report by the franchisee.',
+    `reporting_period_end` DATE COMMENT 'Last calendar date of the reporting period covered by the sales report.',
+    `reporting_period_start` DATE COMMENT 'First calendar date of the reporting period covered by the sales report.',
+    `reporting_period_type` STRING COMMENT 'Granularity of the reporting period (e.g., weekly, monthly).. Valid values are `weekly|monthly|quarterly|yearly`',
+    `royalty_amount` DECIMAL(18,2) COMMENT 'Calculated royalty amount based on royalty_rate and net_sales_amount.',
+    `royalty_rate` DECIMAL(18,2) COMMENT 'Percentage rate applied to net sales to calculate royalty owed.',
+    `sales_report_status` STRING COMMENT 'Current lifecycle status of the sales report.. Valid values are `draft|submitted|validated|rejected`',
+    `same_store_sales` DECIMAL(18,2) COMMENT 'Comparable sales metric for existing stores, used for performance benchmarking.',
+    `submission_method` STRING COMMENT 'Channel used by the franchisee to submit the report.. Valid values are `portal|email|ftp|api`',
+    `submission_timestamp` TIMESTAMP COMMENT 'Date and time when the franchisee submitted the sales report.',
+    `transaction_count` BIGINT COMMENT 'Total number of individual transactions (average transaction count) recorded in the period.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the sales report record.',
+    `validation_status` STRING COMMENT 'Result of the automated/manual validation process.. Valid values are `pending|passed|failed`',
+    `variance_amount` DECIMAL(18,2) COMMENT 'Monetary amount of the variance when variance_flag is true.',
+    `variance_flag` BOOLEAN COMMENT 'Indicates whether reported figures deviate beyond predefined thresholds.',
     CONSTRAINT pk_sales_report PRIMARY KEY(`sales_report_id`)
-) COMMENT 'Periodic sales reports submitted by franchisees to the franchisor for royalty calculation and performance tracking.';
+) COMMENT 'Franchisee-submitted periodic gross sales report used as the basis for royalty and marketing fund calculation, SSS (Same-Store Sales) tracking, and operational benchmarking. Captures reporting period (weekly, monthly), reported gross sales by daypart, net sales, transaction count (ATC), average check value (ACV), submission date, submission method (POS auto-pull, manual entry, EDI), validation status, and variance flags. Supports royalty billing, comp sales analysis, franchisee performance benchmarking, and FDD Item 19 financial performance representation validation.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` (
-    `nro_pipeline_id` BIGINT COMMENT 'Unique identifier for the NRO pipeline record',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee developing the new unit',
-    `employee_id` BIGINT COMMENT 'FK to the consulting employee',
-    `nro_employee_id` BIGINT COMMENT 'FK to the responsible employee',
-    `actual_capex_spent` DECIMAL(18,2) COMMENT 'Actual capital expenditure spent to date',
-    `actual_open_date` DATE COMMENT 'Actual opening date',
-    `actual_opex_spent` DECIMAL(18,2) COMMENT 'The actual opex spent attribute value for this nro pipeline record in the franchise domain',
-    `brand` STRING COMMENT 'The brand attribute value for this nro pipeline record in the franchise domain',
-    `budget_capex` DECIMAL(18,2) COMMENT 'Budgeted capital expenditure',
-    `budget_opex` DECIMAL(18,2) COMMENT 'The budget opex attribute value for this nro pipeline record in the franchise domain',
-    `capital_investment_estimate` DECIMAL(18,2) COMMENT 'Estimated total capital investment',
-    `compliance_status` STRING COMMENT 'Compliance status of the NRO project',
-    `construction_complete_flag` BOOLEAN COMMENT 'Whether construction is complete',
-    `construction_start_flag` BOOLEAN COMMENT 'Boolean indicator flag for construction start flag status in this nro pipeline',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `development_type` STRING COMMENT 'Type of development (new build, conversion, relocation)',
-    `effective_from` DATE COMMENT 'The effective from attribute value for this nro pipeline record in the franchise domain',
-    `effective_until` DATE COMMENT 'The effective until attribute value for this nro pipeline record in the franchise domain',
-    `expected_acuv` DECIMAL(18,2) COMMENT 'The expected acuv attribute value for this nro pipeline record in the franchise domain',
-    `expected_cogs_percent` DECIMAL(18,2) COMMENT 'The expected cogs percent attribute value for this nro pipeline record in the franchise domain',
-    `expected_labor_percent` DECIMAL(18,2) COMMENT 'The expected labor percent attribute value for this nro pipeline record in the franchise domain',
-    `expected_roi` DECIMAL(18,2) COMMENT 'Expected return on investment percentage',
-    `expected_traffic_volume` STRING COMMENT 'The expected traffic volume attribute value for this nro pipeline record in the franchise domain',
-    `health_inspection_score` DECIMAL(18,2) COMMENT 'The health inspection score attribute value for this nro pipeline record in the franchise domain',
-    `last_milestone_date` DATE COMMENT 'Date of the last milestone achieved',
-    `last_milestone_name` STRING COMMENT 'Name of the last milestone achieved',
-    `notes` STRING COMMENT 'Free-text notes',
-    `opening_announced_flag` BOOLEAN COMMENT 'Boolean indicator flag for opening announced flag status in this nro pipeline',
-    `permits_obtained_flag` BOOLEAN COMMENT 'Whether all permits have been obtained',
-    `project_code` STRING COMMENT 'Project reference code',
-    `project_name` STRING COMMENT 'Name of the NRO project',
-    `project_status` STRING COMMENT 'Current status of the project',
-    `risk_level` STRING COMMENT 'Risk level assessment',
-    `stage` STRING COMMENT 'Current pipeline stage',
-    `stage_change_timestamp` TIMESTAMP COMMENT 'The stage change timestamp attribute value for this nro pipeline record in the franchise domain',
-    `target_open_date` DATE COMMENT 'Target opening date',
-    `territory_code` STRING COMMENT 'Territory code for the new location',
-    `training_complete_flag` BOOLEAN COMMENT 'Whether pre-opening training is complete',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `nro_pipeline_id` BIGINT COMMENT 'System-generated unique identifier for each NRO pipeline record.',
+    `franchisee_id` BIGINT COMMENT 'Identifier of the franchisee responsible for the new restaurant.',
+    `employee_id` BIGINT COMMENT 'Identifier of the development consultant assigned to the project.',
+    `nro_employee_id` BIGINT COMMENT 'Identifier of the development consultant assigned to the project.',
+    `actual_capex_spent` DECIMAL(18,2) COMMENT 'Cumulative capital expenditures incurred to date.',
+    `actual_open_date` DATE COMMENT 'Date the restaurant actually opened for business.',
+    `actual_opex_spent` DECIMAL(18,2) COMMENT 'Cumulative operating expenses incurred to date.',
+    `brand` STRING COMMENT 'Brand classification of the restaurant (e.g., Quick-Service, Casual, Fine Dining).. Valid values are `QSR|Casual|Fine_Dining`',
+    `budget_capex` DECIMAL(18,2) COMMENT 'Approved capital expenditure budget for the project.',
+    `budget_opex` DECIMAL(18,2) COMMENT 'Approved operating expense budget for the pre‑opening period.',
+    `capital_investment_estimate` DECIMAL(18,2) COMMENT 'Projected capital expenditure required to open the restaurant, in USD.',
+    `compliance_status` STRING COMMENT 'Current status of regulatory and brand compliance for the project.. Valid values are `compliant|non_compliant|pending`',
+    `construction_complete_flag` BOOLEAN COMMENT 'True when construction is finished.',
+    `construction_start_flag` BOOLEAN COMMENT 'True when construction work has commenced.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the NRO pipeline record was first created.',
+    `development_type` STRING COMMENT 'Category of the restaurant development: new build, conversion of existing location, or remodel.. Valid values are `new_build|conversion|remodel`',
+    `effective_from` DATE COMMENT 'Date the NRO agreement becomes effective (typically the target open date).',
+    `effective_until` DATE COMMENT 'Date the NRO agreement ends or is superseded; null if open‑ended.',
+    `expected_acuv` DECIMAL(18,2) COMMENT 'Forecasted average transaction value (USD) for the new restaurant.',
+    `expected_cogs_percent` DECIMAL(18,2) COMMENT 'Projected Cost of Goods Sold as a percentage of sales.',
+    `expected_labor_percent` DECIMAL(18,2) COMMENT 'Projected labor cost as a percentage of sales.',
+    `expected_roi` DECIMAL(18,2) COMMENT 'Forecasted ROI for the new restaurant over a 12‑month horizon.',
+    `expected_traffic_volume` STRING COMMENT 'Projected daily customer count for the first 30 days after opening.',
+    `health_inspection_score` STRING COMMENT 'Score from the most recent health inspection (0‑100).',
+    `last_milestone_date` DATE COMMENT 'Date when the most recent project milestone was achieved.',
+    `last_milestone_name` STRING COMMENT 'Name of the most recent milestone (e.g., "Construction Complete").',
+    `notes` STRING COMMENT 'Free‑form notes or comments about the project.',
+    `opening_announced_flag` BOOLEAN COMMENT 'True when the grand opening has been publicly announced.',
+    `permits_obtained_flag` BOOLEAN COMMENT 'Indicates whether all required permits have been secured.',
+    `project_code` STRING COMMENT 'External business identifier for the NRO project, used in reporting and contracts.. Valid values are `^NRO-[A-Z0-9]{6}$`',
+    `project_name` STRING COMMENT 'Descriptive name of the NRO development project.',
+    `project_status` STRING COMMENT 'Overall status of the NRO project.. Valid values are `active|on_hold|cancelled|completed`',
+    `risk_level` STRING COMMENT 'Assessed risk category for the project.. Valid values are `low|medium|high`',
+    `stage` STRING COMMENT 'Current lifecycle stage of the NRO project. [ENUM-REF-CANDIDATE: site_identified|loi_signed|lease_executed|permits_obtained|construction_started|construction_complete|training_complete|opened|closed — 9 candidates stripped; promote to reference product]',
+    `stage_change_timestamp` TIMESTAMP COMMENT 'Timestamp when the project moved into the current stage.',
+    `target_open_date` DATE COMMENT 'Planned date for the restaurant to begin operations.',
+    `territory_code` STRING COMMENT 'Geographic territory code where the new restaurant will be located.',
+    `training_complete_flag` BOOLEAN COMMENT 'True when staff training is completed.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the NRO pipeline record.',
     CONSTRAINT pk_nro_pipeline PRIMARY KEY(`nro_pipeline_id`)
-) COMMENT 'New Restaurant Opening pipeline tracking projects from site selection through grand opening.';
+) COMMENT 'Tracks all franchise capital construction and development projects from initiation through completion, including New Restaurant Openings (NROs), remodels, reimaging, refreshes, and conversions. Captures project type (new build, conversion, full remodel, refresh, reimaging, ADA compliance), project stage (site identified, LOI signed, lease executed, permits obtained, construction started, construction complete, training complete, opened/completed), target and actual completion dates, development type, assigned development consultant, capital investment estimate, approved contractor, permit and inspection status, brand approval status, contractual obligation source, and milestone completion dates. SSOT for the franchise development and facility lifecycle in FranConnect.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` (
-    `development_schedule_id` BIGINT COMMENT 'Unique identifier for the development schedule',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `territory_id` BIGINT COMMENT 'FK to the territory',
-    `compliance_status` STRING COMMENT 'Whether the franchisee is on track',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `cure_period_months` STRING COMMENT 'Months allowed to cure non-compliance',
-    `development_phase` STRING COMMENT 'Current development phase',
-    `development_schedule_status` STRING COMMENT 'Status of the schedule',
-    `end_date` DATE COMMENT 'Schedule end date',
-    `last_compliance_check` DATE COMMENT 'The last compliance check attribute value for this development schedule record in the franchise domain',
-    `notes` STRING COMMENT 'Free-text notes',
-    `schedule_number` STRING COMMENT 'Business reference number',
-    `schedule_type` STRING COMMENT 'Type of schedule',
-    `schedule_version` STRING COMMENT 'The schedule version attribute value for this development schedule record in the franchise domain',
-    `start_date` DATE COMMENT 'Schedule start date',
-    `target_units_year_1` STRING COMMENT 'Units to open in year 1',
-    `target_units_year_2` STRING COMMENT 'Units to open in year 2',
-    `target_units_year_3` STRING COMMENT 'Units to open in year 3',
-    `total_units_committed` STRING COMMENT 'Total number of units committed',
-    `units_opened_to_date` STRING COMMENT 'Number of units opened so far',
-    `units_remaining` STRING COMMENT 'Units remaining to be opened',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `development_schedule_id` BIGINT COMMENT 'System-generated unique identifier for the franchise development schedule.',
+    `franchisee_id` BIGINT COMMENT 'Identifier of the franchisee to whom the development schedule is assigned.',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - development schedules should link to the unit being developed once assigned',
+    `territory_id` BIGINT COMMENT 'Geographic territory identifier governing the development schedule.',
+    `compliance_status` STRING COMMENT 'Current compliance assessment of the franchisee against the development schedule.. Valid values are `compliant|non_compliant|pending`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the development schedule record was first created in the system.',
+    `cure_period_months` STRING COMMENT 'Number of months granted to the franchisee to cure a schedule breach before penalties apply.',
+    `development_phase` STRING COMMENT 'Current phase of the development schedule lifecycle.. Valid values are `planning|execution|monitoring|closed`',
+    `development_schedule_status` STRING COMMENT 'Current lifecycle state of the schedule (active, inactive, suspended, completed, default).. Valid values are `active|inactive|suspended|completed|default`',
+    `end_date` DATE COMMENT 'Date when the development schedule expires if the required units are not opened.',
+    `last_compliance_check` DATE COMMENT 'Date of the most recent compliance review for the development schedule.',
+    `notes` STRING COMMENT 'Free-text field for additional comments, exceptions, or special conditions related to the schedule.',
+    `schedule_number` STRING COMMENT 'External reference number assigned to the development schedule, used in franchise contracts and reporting.',
+    `schedule_type` STRING COMMENT 'Category of the development agreement (e.g., Multi-Unit Development Agreement, single-unit, renewal).. Valid values are `MUDA|single_unit|renewal`',
+    `schedule_version` STRING COMMENT 'Version number of the schedule record to track revisions.',
+    `start_date` DATE COMMENT 'Date when the development schedule becomes effective and the franchisee may begin opening units.',
+    `target_units_year_1` STRING COMMENT 'Number of units the franchisee must open in the first calendar year of the schedule.',
+    `target_units_year_2` STRING COMMENT 'Number of units the franchisee must open in the second calendar year of the schedule.',
+    `target_units_year_3` STRING COMMENT 'Number of units the franchisee must open in the third calendar year of the schedule.',
+    `total_units_committed` STRING COMMENT 'Total number of restaurant units the franchisee has agreed to open under the schedule.',
+    `units_opened_to_date` STRING COMMENT 'Cumulative count of units the franchisee has opened to date under this schedule.',
+    `units_remaining` STRING COMMENT 'Number of units still required to meet the schedule commitment.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the development schedule record.',
     CONSTRAINT pk_development_schedule PRIMARY KEY(`development_schedule_id`)
-) COMMENT 'Development schedule defining the committed timeline for opening new franchise units within a territory.';
+) COMMENT 'Contractual development schedule committing a franchisee to open a specified number of restaurants within defined time windows under a multi-unit development agreement (MUDA). Captures total units committed, units opened to date, units remaining, development period start and end dates, annual opening targets by year, cure period terms, and schedule compliance status. Supports franchise development pipeline forecasting and default tracking.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` (
-    `compliance_audit_id` BIGINT COMMENT 'Unique identifier for the compliance audit',
-    `employee_id` BIGINT COMMENT 'FK to the auditor employee',
-    `compliance_employee_id` BIGINT COMMENT 'Unique identifier referencing the compliance employee associated with this compliance audit record',
-    `franchisee_id` BIGINT COMMENT 'Unique identifier for the compliance franchise franchisee associated with this compliance audit',
-    `compliance_franchisee_id` BIGINT COMMENT 'FK to the franchisee being audited',
-    `audit_disposition` STRING COMMENT 'The audit disposition attribute value for this compliance audit record in the franchise domain',
-    `audit_location_code` STRING COMMENT 'A standardized code representing the audit location classification for this compliance audit',
-    `audit_notes` STRING COMMENT 'Notes from the audit',
-    `audit_number` STRING COMMENT 'Business reference number',
-    `audit_source_system` STRING COMMENT 'The audit source system attribute value for this compliance audit record in the franchise domain',
-    `audit_timestamp` TIMESTAMP COMMENT 'When the audit was conducted',
-    `audit_type` STRING COMMENT 'Type of audit (scheduled, surprise, follow-up)',
-    `brand_standards_score` DECIMAL(18,2) COMMENT 'Score for brand standards compliance',
-    `cleanliness_score` DECIMAL(18,2) COMMENT 'Score for cleanliness',
-    `compliance_audit_status` STRING COMMENT 'Status of the audit',
-    `corrective_action_required` BOOLEAN COMMENT 'Whether corrective action is needed',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `critical_violations_count` STRING COMMENT 'Number of critical violations found',
-    `equipment_score` DECIMAL(18,2) COMMENT 'The equipment score attribute value for this compliance audit record in the franchise domain',
-    `food_safety_score` DECIMAL(18,2) COMMENT 'Score for food safety compliance',
-    `non_critical_violations_count` STRING COMMENT 'Number of non-critical violations',
-    `overall_score` DECIMAL(18,2) COMMENT 'Overall audit score',
-    `service_score` DECIMAL(18,2) COMMENT 'Score for service standards',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `compliance_audit_id` BIGINT COMMENT 'System‑generated unique identifier for each compliance audit record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier of the internal or external auditor who performed the audit.',
+    `compliance_employee_id` BIGINT COMMENT 'Unique identifier of the internal or external auditor who performed the audit.',
+    `franchisee_id` BIGINT COMMENT 'Unique identifier of the franchised restaurant unit subject to the audit.',
+    `compliance_franchisee_id` BIGINT COMMENT 'Unique identifier of the franchised restaurant unit subject to the audit.',
+    `audit_disposition` STRING COMMENT 'Final outcome of the audit after any follow‑up actions.. Valid values are `pass|conditional_pass|fail`',
+    `audit_location_code` STRING COMMENT 'Identifier of the restaurant location where the audit was performed.',
+    `audit_notes` STRING COMMENT 'Free‑form comments and observations recorded by the auditor.',
+    `audit_number` STRING COMMENT 'External audit reference number used in franchise compliance reporting.',
+    `audit_source_system` STRING COMMENT 'Name of the source system that supplied the audit data (e.g., Zenput, FranConnect).',
+    `audit_timestamp` TIMESTAMP COMMENT 'Date and time when the audit was performed on site.',
+    `audit_type` STRING COMMENT 'Classification of the audit execution method.. Valid values are `scheduled|unannounced|follow_up`',
+    `brand_standards_score` DECIMAL(18,2) COMMENT 'Compliance percentage for the Brand Standards section.',
+    `cleanliness_score` DECIMAL(18,2) COMMENT 'Compliance percentage for the Cleanliness section.',
+    `compliance_audit_status` STRING COMMENT 'Current processing state of the audit record.. Valid values are `pending|in_progress|completed|cancelled`',
+    `corrective_action_required` BOOLEAN COMMENT 'Indicates whether any corrective actions must be taken as a result of the audit.',
+    `created_timestamp` TIMESTAMP COMMENT 'System timestamp when the audit record was first created.',
+    `critical_violations_count` STRING COMMENT 'Number of critical compliance violations identified during the audit.',
+    `equipment_score` DECIMAL(18,2) COMMENT 'Compliance percentage for the Equipment section.',
+    `food_safety_score` DECIMAL(18,2) COMMENT 'Compliance percentage for the Food Safety section.',
+    `non_critical_violations_count` STRING COMMENT 'Number of non‑critical compliance violations identified during the audit.',
+    `overall_score` DECIMAL(18,2) COMMENT 'Aggregated compliance percentage across all audit sections (0‑100).',
+    `service_score` DECIMAL(18,2) COMMENT 'Compliance percentage for the Service section.',
+    `updated_timestamp` TIMESTAMP COMMENT 'System timestamp of the most recent modification to the audit record.',
     CONSTRAINT pk_compliance_audit PRIMARY KEY(`compliance_audit_id`)
-) COMMENT 'Compliance audits conducted on franchise locations to assess adherence to brand standards, food safety, and operational requirements.';
+) COMMENT 'Records the results of brand standards compliance audits conducted at franchised restaurant units. Captures audit date, audit type (scheduled, unannounced, follow-up), auditor identity, overall compliance score, section scores (food safety, cleanliness, service, brand standards, equipment), critical and non-critical violation counts, corrective action required flag, and audit disposition (pass, conditional pass, fail). Supports franchise agreement compliance enforcement and performance scorecard inputs.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` (
-    `franchise_corrective_action_id` BIGINT COMMENT 'Unique identifier for the corrective action',
-    `compliance_audit_id` BIGINT COMMENT 'FK to the triggering compliance audit',
-    `foodsafety_corrective_action_id` BIGINT COMMENT 'FK to related food safety corrective action if applicable',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `action_description` STRING COMMENT 'Description of the corrective action required',
-    `action_number` STRING COMMENT 'Business reference number',
-    `action_plan` STRING COMMENT 'The action plan attribute value for this franchise corrective action record in the franchise domain',
-    `action_status` STRING COMMENT 'Current status of the corrective action',
-    `assigned_to` STRING COMMENT 'Person responsible for resolution',
-    `closed_date` DATE COMMENT 'The date and time when the closed event occurred for this franchise corrective action',
-    `completed_date` DATE COMMENT 'The date and time when the completed event occurred for this franchise corrective action',
-    `completion_date` DATE COMMENT 'Date the action was completed',
-    `corrective_action_description` STRING COMMENT 'The corrective action description attribute value for this franchise corrective action record in the franchise domain',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `due_date` DATE COMMENT 'Deadline for corrective action completion',
-    `is_closed` BOOLEAN COMMENT 'Whether the action is closed',
-    `is_resolved` BOOLEAN COMMENT 'Boolean indicator flag for is resolved status in this franchise corrective action',
-    `issue_category` STRING COMMENT 'Category of the issue',
-    `issue_description` STRING COMMENT 'The issue description attribute value for this franchise corrective action record in the franchise domain',
-    `issued_date` DATE COMMENT 'The date and time when the issued event occurred for this franchise corrective action',
-    `resolution_date` DATE COMMENT 'The date and time when the resolution event occurred for this franchise corrective action',
-    `resolution_notes` STRING COMMENT 'Notes on how the issue was resolved',
-    `resolved_date` DATE COMMENT 'The date and time when the resolved event occurred for this franchise corrective action',
-    `responsible_party` STRING COMMENT 'The responsible party attribute value for this franchise corrective action record in the franchise domain',
-    `root_cause` STRING COMMENT 'Identified root cause of the issue',
-    `severity` STRING COMMENT 'Severity level (critical, major, minor)',
-    `severity_level` STRING COMMENT 'The severity level attribute value for this franchise corrective action record in the franchise domain',
-    `franchise_corrective_action_status` STRING COMMENT 'The current status of the franchise corrective action for this franchise corrective action',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `franchise_corrective_action_id` BIGINT COMMENT 'Unique identifier for the franchise_corrective_action data product (auto-inserted pre-linking).',
+    `compliance_audit_id` BIGINT COMMENT 'add column compliance_audit_id (BIGINT) with FK to franchise.compliance_audit.compliance_audit_id - corrective actions should trace back to the audit that identified the issue',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to franchise.franchisee. Business justification: Corrective actions issued to a franchisee need to be tied to that franchisee for tracking and compliance.',
     CONSTRAINT pk_franchise_corrective_action PRIMARY KEY(`franchise_corrective_action_id`)
-) COMMENT 'Corrective actions issued to franchisees as a result of compliance audits, requiring remediation of identified issues.';
+) COMMENT 'Tracks corrective action plans (CAPs) issued to franchisees following compliance audit failures, brand standards violations, or contractual defaults. Captures violation description, severity level, corrective action required, due date, responsible party, resolution status, follow-up audit date, escalation level, and cure period expiration. Supports IFA best practices for franchisee remediation and FTC Franchise Rule default notice requirements.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` (
-    `fee_schedule_id` BIGINT COMMENT 'Unique identifier for the fee schedule',
-    `agreement_id` BIGINT COMMENT 'FK to the franchise agreement',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `territory_id` BIGINT COMMENT 'FK to the territory',
-    `active_flag` BOOLEAN COMMENT 'Boolean indicator flag for active flag status in this fee schedule',
-    `calculation_basis` STRING COMMENT 'Basis for calculation (gross sales, net sales)',
-    `calculation_method` STRING COMMENT 'How the fee is calculated (percentage, flat, tiered)',
-    `fee_schedule_code` STRING COMMENT 'Business reference code',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `effective_date` DATE COMMENT 'The date and time when the effective event occurred for this fee schedule',
-    `effective_end_date` DATE COMMENT 'End date of the fee schedule',
-    `effective_start_date` DATE COMMENT 'Start date of the fee schedule',
-    `expiration_date` DECIMAL(18,2) COMMENT 'The date and time when the expiration event occurred for this fee schedule',
-    `expiry_date` DATE COMMENT 'The date and time when the expiry event occurred for this fee schedule',
-    `fee_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for fee in this fee schedule',
-    `fee_basis` STRING COMMENT 'The fee basis attribute value for this fee schedule record in the franchise domain',
-    `fee_name` STRING COMMENT 'Name of the fee',
-    `fee_percent` DECIMAL(18,2) COMMENT 'The fee percent attribute value for this fee schedule record in the franchise domain',
-    `fee_percentage` DECIMAL(18,2) COMMENT 'The fee percentage attribute value for this fee schedule record in the franchise domain',
-    `fee_rate` DECIMAL(18,2) COMMENT 'The fee rate attribute value for this fee schedule record in the franchise domain',
-    `fee_rate_pct` DECIMAL(18,2) COMMENT 'Fee rate as a percentage',
-    `fee_type` STRING COMMENT 'Type of fee (royalty, marketing, technology, other)',
-    `flat_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for flat in this fee schedule',
-    `flat_fee_amount` DECIMAL(18,2) COMMENT 'Flat fee amount if applicable',
-    `frequency` STRING COMMENT 'Billing frequency (weekly, monthly, quarterly)',
-    `is_active` BOOLEAN COMMENT 'Whether the fee schedule is currently active',
-    `marketing_fee_rate_pct` DECIMAL(18,2) COMMENT 'The marketing fee rate pct attribute value for this fee schedule record in the franchise domain',
-    `minimum_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for minimum in this fee schedule',
-    `minimum_fee_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for minimum fee in this fee schedule',
-    `rate_percent` DECIMAL(18,2) COMMENT 'The rate percent attribute value for this fee schedule record in the franchise domain',
-    `royalty_rate_pct` DECIMAL(18,2) COMMENT 'The royalty rate pct attribute value for this fee schedule record in the franchise domain',
-    `technology_fee_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for technology fee in this fee schedule',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `fee_schedule_id` BIGINT COMMENT 'Primary key for fee_schedule',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to franchise.franchise_agreement. Business justification: Fee schedule entries are defined by a specific franchise agreement; linking to agreement captures contractual context.',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to franchise.franchisee. Business justification: Fee schedule fees are charged to a particular franchisee; linking provides financial attribution.',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to franchise.territory. Business justification: Fee schedule rates vary by territory; linking to territory enables territorial reporting and compliance.',
     CONSTRAINT pk_fee_schedule PRIMARY KEY(`fee_schedule_id`)
-) COMMENT 'Fee schedules defining the various fees (royalty, marketing, technology) applicable to franchise agreements.';
+) COMMENT 'Records all one-time and recurring franchise fees charged to franchisees beyond royalties, including initial franchise fees, renewal fees, transfer fees, training fees, technology fees, and marketing fund contributions. Captures fee type, fee amount, billing trigger event, payment status, waiver or discount applied, and associated agreement. Complements royalty_invoice which handles periodic royalty billing specifically.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` (
-    `training_enrollment_id` BIGINT COMMENT 'Unique identifier for the training enrollment',
-    `employee_id` BIGINT COMMENT 'Unique identifier referencing the primary training employee associated with this training enrollment record',
-    `training_employee_id` BIGINT COMMENT 'FK to the employee being trained',
-    `training_trainer_employee_id` BIGINT COMMENT 'FK to the trainer',
-    `unit_id` BIGINT COMMENT 'FK to the restaurant unit where training occurs',
-    `actual_completion_date` DATE COMMENT 'The date and time when the actual completion event occurred for this training enrollment',
-    `certification_expiration_date` DECIMAL(18,2) COMMENT 'The date and time when the certification expiration event occurred for this training enrollment',
-    `certification_issued` BOOLEAN COMMENT 'Whether a certification was issued',
-    `compliance_flag` BOOLEAN COMMENT 'Whether training meets compliance requirements',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `effective_until` DATE COMMENT 'The effective until attribute value for this training enrollment record in the franchise domain',
-    `enrollment_date` TIMESTAMP COMMENT 'Date of enrollment',
-    `enrollment_number` STRING COMMENT 'Business reference number',
-    `hours_completed` DECIMAL(18,2) COMMENT 'Training hours completed',
-    `hours_required` DECIMAL(18,2) COMMENT 'Total training hours required',
-    `notes` STRING COMMENT 'Free-text notes',
-    `pass_fail_status` STRING COMMENT 'Whether the trainee passed or failed',
-    `scheduled_completion_date` DATE COMMENT 'Expected completion date',
-    `score` DECIMAL(18,2) COMMENT 'Assessment score',
-    `training_enrollment_status` STRING COMMENT 'Status of the enrollment',
-    `training_type` STRING COMMENT 'Type of training program',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `training_enrollment_id` BIGINT COMMENT 'System-generated unique identifier for the training enrollment record.',
+    `employee_id` BIGINT COMMENT 'Identifier of the franchisee or manager who is enrolled in the training.',
+    `training_employee_id` BIGINT COMMENT 'Identifier of the franchisee or manager who is enrolled in the training.',
+    `training_trainer_employee_id` BIGINT COMMENT 'Identifier of the trainer or instructor responsible for the training.',
+    `unit_id` BIGINT COMMENT 'Identifier of the restaurant or site where the training took place (if in‑restaurant).',
+    `actual_completion_date` DATE COMMENT 'Actual date when the trainee completed the training.',
+    `certification_expiration_date` DATE COMMENT 'Expiration date of the issued certification, if applicable.',
+    `certification_issued` BOOLEAN COMMENT 'Indicates whether a certification was issued upon successful completion.',
+    `compliance_flag` BOOLEAN COMMENT 'Indicates if the enrollment satisfies regulatory compliance requirements (e.g., ServSafe).',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the enrollment record was created in the system.',
+    `effective_until` DATE COMMENT 'Date when the enrollment agreement ends (typically the scheduled completion date or certification expiration).',
+    `enrollment_date` TIMESTAMP COMMENT 'Date and time when the trainee was enrolled in the training program.',
+    `enrollment_number` STRING COMMENT 'Unique enrollment reference number assigned by the system.',
+    `hours_completed` DECIMAL(18,2) COMMENT 'Number of training hours the trainee has completed.',
+    `hours_required` DECIMAL(18,2) COMMENT 'Total number of training hours required for completion.',
+    `notes` STRING COMMENT 'Free‑text notes regarding the enrollment, special accommodations, or observations.',
+    `pass_fail_status` STRING COMMENT 'Result of the training assessment.. Valid values are `pass|fail|not_applicable`',
+    `scheduled_completion_date` DATE COMMENT 'Planned date by which the trainee should complete the training.',
+    `score` DECIMAL(18,2) COMMENT 'Numeric score achieved in the training assessment (0‑100).',
+    `training_enrollment_status` STRING COMMENT 'Current lifecycle status of the enrollment.. Valid values are `enrolled|completed|failed|cancelled|in-progress`',
+    `training_type` STRING COMMENT 'Mode of delivery for the training.. Valid values are `classroom|online|in-restaurant`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the enrollment record.',
     CONSTRAINT pk_training_enrollment PRIMARY KEY(`training_enrollment_id`)
-) COMMENT 'Training enrollments for franchise employees tracking required training programs, completion, and certification.';
+) COMMENT 'Tracks franchisee and designated manager enrollment and completion of required brand training programs (initial training, refresher, new product, food safety certification). Captures trainee identity, training program name, training type (classroom, online, in-restaurant), enrollment date, scheduled completion date, actual completion date, pass/fail status, certification issued, and expiration date. Supports compliance tracking for brand standards and ServSafe/NRA certification requirements.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` (
-    `franchise_remodel_project_id` BIGINT COMMENT 'Unique identifier for the remodel project',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `unit_id` BIGINT COMMENT 'FK to the restaurant unit being remodeled',
-    `remodel_project_id` BIGINT COMMENT 'FK to the corresponding real estate remodel project',
-    `actual_completion_date` DATE COMMENT 'The date and time when the actual completion event occurred for this franchise remodel project',
-    `actual_cost` DECIMAL(18,2) COMMENT 'The actual cost attribute value for this franchise remodel project record in the franchise domain',
-    `actual_cost_amount` DECIMAL(18,2) COMMENT 'Actual cost incurred',
-    `actual_start_date` DATE COMMENT 'The date and time when the actual start event occurred for this franchise remodel project',
-    `budget_amount` DECIMAL(18,2) COMMENT 'Approved budget amount',
-    `completion_date` DATE COMMENT 'The date and time when the completion event occurred for this franchise remodel project',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `estimated_cost` DECIMAL(18,2) COMMENT 'The estimated cost attribute value for this franchise remodel project record in the franchise domain',
-    `is_complete` BOOLEAN COMMENT 'Whether the project is complete',
-    `percent_complete` DECIMAL(18,2) COMMENT 'Percentage of project completed',
-    `planned_completion_date` DATE COMMENT 'The date and time when the planned completion event occurred for this franchise remodel project',
-    `planned_end_date` DATE COMMENT 'The date and time when the planned end event occurred for this franchise remodel project',
-    `planned_start_date` DATE COMMENT 'The date and time when the planned start event occurred for this franchise remodel project',
-    `project_code` STRING COMMENT 'Project reference code',
-    `project_name` STRING COMMENT 'Name of the remodel project',
-    `project_status` STRING COMMENT 'Current status of the project',
-    `remodel_type` STRING COMMENT 'Type of remodel (full, partial, refresh)',
-    `scope_description` STRING COMMENT 'Description of the remodel scope',
-    `start_date` DATE COMMENT 'The date and time when the start event occurred for this franchise remodel project',
-    `franchise_remodel_project_status` STRING COMMENT 'The current status of the franchise remodel project for this franchise remodel project',
-    `target_completion_date` DATE COMMENT 'The date and time when the target completion event occurred for this franchise remodel project',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `franchise_remodel_project_id` BIGINT COMMENT 'Unique identifier for the franchise_remodel_project data product (auto-inserted pre-linking).',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to franchise.franchisee. Business justification: Remodel projects are owned by a franchisee; linking provides ownership and financial responsibility.',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - remodel projects must specify which unit is being remodeled',
     CONSTRAINT pk_franchise_remodel_project PRIMARY KEY(`franchise_remodel_project_id`)
-) COMMENT 'Remodel projects for franchise restaurant units tracking scope, budget, timeline, and completion status.';
+) COMMENT 'Tracks mandatory and voluntary restaurant remodel and reimaging projects for franchised units. Captures remodel type (full remodel, refresh, reimaging, ADA compliance), contractual obligation source (franchise agreement, remodel rider), required completion date, actual completion date, estimated CapEx, approved contractor, permit status, inspection status, and brand approval status. Supports facility lifecycle management and franchise agreement compliance.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` (
-    `transfer_event_id` BIGINT COMMENT 'Unique identifier for the transfer event',
-    `agreement_id` BIGINT COMMENT 'FK to the franchise agreement being transferred',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee transferring ownership',
-    `employee_id` BIGINT COMMENT 'FK to the employee who approved the transfer',
-    `transfer_employee_id` BIGINT COMMENT 'Unique identifier referencing the transfer employee associated with this transfer event record',
-    `compliance_review_date` DATE COMMENT 'The date and time when the compliance review event occurred for this transfer event',
-    `compliance_status` STRING COMMENT 'Compliance status of the transfer',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `effective_transfer_date` DATE COMMENT 'Date the transfer becomes effective',
-    `event_timestamp` TIMESTAMP COMMENT 'The event timestamp attribute value for this transfer event record in the franchise domain',
-    `fdd_redisclosure_date` DATE COMMENT 'The date and time when the fdd redisclosure event occurred for this transfer event',
-    `franchisor_approval_date` DATE COMMENT 'Date franchisor approved the transfer',
-    `marketing_fee_percent` DECIMAL(18,2) COMMENT 'The marketing fee percent attribute value for this transfer event record in the franchise domain',
-    `new_territory_code` STRING COMMENT 'A standardized code representing the new territory classification for this transfer event',
-    `notes` STRING COMMENT 'Free-text notes',
-    `previous_territory_code` STRING COMMENT 'A standardized code representing the previous territory classification for this transfer event',
-    `right_of_first_refusal_exercised_flag` BOOLEAN COMMENT 'Boolean indicator flag for right of first refusal exercised flag status in this transfer event',
-    `royalty_rate_percent` DECIMAL(18,2) COMMENT 'The royalty rate percent attribute value for this transfer event record in the franchise domain',
-    `total_transfer_amount` DECIMAL(18,2) COMMENT 'Total monetary value of the transfer',
-    `transfer_conditions` STRING COMMENT 'The transfer conditions attribute value for this transfer event record in the franchise domain',
-    `transfer_event_status` STRING COMMENT 'Status of the transfer event',
-    `transfer_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged for the transfer',
-    `transfer_fee_due_date` DATE COMMENT 'The date and time when the transfer fee due event occurred for this transfer event',
-    `transfer_fee_paid_flag` BOOLEAN COMMENT 'Whether the transfer fee has been paid',
-    `transfer_fee_tax_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for transfer fee tax in this transfer event',
-    `transfer_number` STRING COMMENT 'Business reference number',
-    `transfer_reason` STRING COMMENT 'Reason for the transfer',
-    `transfer_type` STRING COMMENT 'Type of transfer (sale, inheritance, corporate restructure)',
-    `units_transferred` STRING COMMENT 'Number of units being transferred',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `transfer_event_id` BIGINT COMMENT 'System-generated unique identifier for the transfer event record.',
+    `agreement_id` BIGINT COMMENT 'Identifier of the underlying franchise agreement being transferred.',
+    `franchisee_id` BIGINT COMMENT 'Unique identifier of the franchisee transferring ownership.',
+    `employee_id` BIGINT COMMENT 'System identifier of the user who approved the transfer.',
+    `transfer_employee_id` BIGINT COMMENT 'System identifier of the user who approved the transfer.',
+    `compliance_review_date` DATE COMMENT 'Date when the transfer compliance review was performed.',
+    `compliance_status` STRING COMMENT 'Current compliance standing of the transfer with FTC and franchise regulations.. Valid values are `compliant|non_compliant|pending_review`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the transfer event record was first created.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 currency code for monetary amounts. [ENUM-REF-CANDIDATE: USD|EUR|GBP|CAD|AUD|JPY|CHF|CNY|MXN|BRL — promote to reference product]',
+    `effective_transfer_date` DATE COMMENT 'Date the ownership transfer becomes legally effective.',
+    `event_timestamp` TIMESTAMP COMMENT 'Date and time when the transfer event was recorded in the system.',
+    `fdd_redisclosure_date` DATE COMMENT 'Date the Franchise Disclosure Document was re‑disclosed to the transferee as required by FTC.',
+    `franchisor_approval_date` DATE COMMENT 'Date the franchisor approved the transfer request.',
+    `marketing_fee_percent` DECIMAL(18,2) COMMENT 'Post‑transfer marketing fee percentage payable by the new franchisee.',
+    `new_territory_code` STRING COMMENT 'Code representing the geographic territory assigned to the transferee after the transfer.',
+    `notes` STRING COMMENT 'Additional free‑form comments or observations about the transfer.',
+    `previous_territory_code` STRING COMMENT 'Code of the territory previously held by the transferor.',
+    `right_of_first_refusal_exercised_flag` BOOLEAN COMMENT 'Indicates whether the franchisor or existing franchisee exercised a right of first refusal.',
+    `royalty_rate_percent` DECIMAL(18,2) COMMENT 'Post‑transfer royalty percentage the new franchisee must pay to the franchisor.',
+    `total_transfer_amount` DECIMAL(18,2) COMMENT 'Aggregate monetary amount of the transfer (fee plus tax).',
+    `transfer_conditions` STRING COMMENT 'Free‑text description of any special conditions, covenants, or contingencies attached to the transfer.',
+    `transfer_event_status` STRING COMMENT 'Current processing state of the transfer event.. Valid values are `pending|approved|rejected|completed|cancelled`',
+    `transfer_fee_amount` DECIMAL(18,2) COMMENT 'Monetary fee charged for the franchise transfer, before tax.',
+    `transfer_fee_due_date` DATE COMMENT 'Date by which the transfer fee must be paid.',
+    `transfer_fee_paid_flag` BOOLEAN COMMENT 'Indicates whether the transfer fee has been fully paid.',
+    `transfer_fee_tax_amount` DECIMAL(18,2) COMMENT 'Tax component applied to the transfer fee.',
+    `transfer_number` STRING COMMENT 'External reference number assigned to the transfer event for tracking and audit purposes.',
+    `transfer_reason` STRING COMMENT 'Business reason prompting the franchise transfer.. Valid values are `retirement|sale|bankruptcy|strategic|other`',
+    `transfer_type` STRING COMMENT 'Category of the franchise transfer (e.g., sale, inheritance, estate, corporate acquisition, internal reassignment).. Valid values are `sale|inheritance|estate|corporate_acquisition|internal_reassignment`',
+    `units_transferred` STRING COMMENT 'Count of restaurant units (stores) included in the transfer.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the transfer event record.',
     CONSTRAINT pk_transfer_event PRIMARY KEY(`transfer_event_id`)
-) COMMENT 'Transfer events recording the transfer of franchise ownership from one franchisee to another.';
+) COMMENT 'Records the transfer of a franchise agreement or restaurant unit from one franchisee to another, including ownership changes, estate transfers, and corporate acquisitions. Captures transfer type, transferor franchisee, transferee franchisee, units transferred, transfer fee paid, FDD re-disclosure date, franchisor approval date, effective transfer date, right of first refusal exercise status, and transfer conditions. Supports FTC Franchise Rule transfer disclosure requirements.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` (
-    `renewal_event_id` BIGINT COMMENT 'Unique identifier for the renewal event',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `agreement_id` BIGINT COMMENT 'FK to the original agreement being renewed',
-    `compliance_review_flag` BOOLEAN COMMENT 'Whether compliance review was conducted',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `effective_from` DATE COMMENT 'Start date of the renewed term',
-    `effective_until` DATE COMMENT 'End date of the renewed term',
-    `fdd_redisclosure_timestamp` TIMESTAMP COMMENT 'The fdd redisclosure timestamp attribute value for this renewal event record in the franchise domain',
-    `franchisor_approval_timestamp` TIMESTAMP COMMENT 'The franchisor approval timestamp attribute value for this renewal event record in the franchise domain',
-    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Whether FTC compliance was attested',
-    `notes` STRING COMMENT 'Free-text notes',
-    `renewal_application_timestamp` TIMESTAMP COMMENT 'The renewal application timestamp attribute value for this renewal event record in the franchise domain',
-    `renewal_event_status` STRING COMMENT 'Status of the renewal event',
-    `renewal_execution_timestamp` TIMESTAMP COMMENT 'The renewal execution timestamp attribute value for this renewal event record in the franchise domain',
-    `renewal_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged for renewal',
-    `renewal_fee_currency` STRING COMMENT 'The renewal fee currency attribute value for this renewal event record in the franchise domain',
-    `renewal_fee_paid_flag` BOOLEAN COMMENT 'Whether the renewal fee has been paid',
-    `renewal_fee_payment_date` DATE COMMENT 'Date the renewal fee was paid',
-    `renewal_number` STRING COMMENT 'Business reference number',
-    `renewal_term_years` STRING COMMENT 'Length of the renewal term in years',
-    `updated_royalty_rate_percent` DECIMAL(18,2) COMMENT 'New royalty rate if changed',
-    `updated_territory_code` STRING COMMENT 'A standardized code representing the updated territory classification for this renewal event',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `renewal_event_id` BIGINT COMMENT 'System-generated unique identifier for the renewal event.',
+    `franchisee_id` BIGINT COMMENT 'Identifier of the franchisee party involved in the renewal.',
+    `agreement_id` BIGINT COMMENT 'Identifier of the franchise agreement that is being renewed.',
+    `compliance_review_flag` BOOLEAN COMMENT 'Indicates whether the renewal has passed internal compliance review.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the renewal event record was first created in the system.',
+    `effective_from` DATE COMMENT 'Date when the renewed franchise agreement becomes effective.',
+    `effective_until` DATE COMMENT 'Date when the renewed franchise agreement expires (nullable for open‑ended).',
+    `fdd_redisclosure_timestamp` TIMESTAMP COMMENT 'Date‑time when the Franchise Disclosure Document was re‑disclosed to the franchisee.',
+    `franchisor_approval_timestamp` TIMESTAMP COMMENT 'Date‑time when the franchisor approved the renewal.',
+    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Indicates franchisor’s attestation that the renewal complies with FTC franchise rule.',
+    `notes` STRING COMMENT 'Free‑form comments or remarks about the renewal.',
+    `renewal_application_timestamp` TIMESTAMP COMMENT 'Date‑time when the franchise submitted the renewal application.',
+    `renewal_event_status` STRING COMMENT 'Current lifecycle status of the renewal event.. Valid values are `pending|approved|rejected|completed|cancelled`',
+    `renewal_execution_timestamp` TIMESTAMP COMMENT 'Date‑time when the renewal agreement was executed and signed.',
+    `renewal_fee_amount` DECIMAL(18,2) COMMENT 'Monetary fee charged for the franchise renewal.',
+    `renewal_fee_currency` STRING COMMENT 'Three‑letter ISO 4217 currency code for the renewal fee.. Valid values are `[A-Z]{3}`',
+    `renewal_fee_paid_flag` BOOLEAN COMMENT 'True if the renewal fee has been received.',
+    `renewal_fee_payment_date` DATE COMMENT 'Date on which the renewal fee payment was recorded.',
+    `renewal_number` STRING COMMENT 'Unique human‑readable code assigned to the renewal event.. Valid values are `RN-[0-9]{8}`',
+    `renewal_term_years` STRING COMMENT 'Number of years for the renewed franchise term.',
+    `updated_royalty_rate_percent` DECIMAL(18,2) COMMENT 'New royalty rate percentage applied after renewal.',
+    `updated_territory_code` STRING COMMENT 'Code representing the revised franchise territory after renewal.. Valid values are `[A-Z0-9]{3,10}`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the renewal event record.',
     CONSTRAINT pk_renewal_event PRIMARY KEY(`renewal_event_id`)
-) COMMENT 'Renewal events tracking the renewal of franchise agreements including terms, fees, and compliance review.';
+) COMMENT 'Records franchise agreement renewal transactions including renewal application, FDD re-disclosure, updated terms negotiation, renewal fee payment, and executed renewal agreement. Captures original agreement reference, renewal term length, renewal fee, updated royalty rate, updated territory terms, renewal application date, FDD re-disclosure date, franchisor approval date, and renewal execution date. Supports franchise lifecycle management and revenue forecasting.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` (
-    `termination_event_id` BIGINT COMMENT 'Unique identifier for the termination event',
-    `agreement_id` BIGINT COMMENT 'FK to the agreement being terminated',
-    `compliance_review_date` DATE COMMENT 'The date and time when the compliance review event occurred for this termination event',
-    `compliance_status` STRING COMMENT 'The current status of the compliance for this termination event',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `cure_period_end_date` DATE COMMENT 'End date of the cure period',
-    `effective_termination_date` DATE COMMENT 'Date termination becomes effective',
-    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Whether FTC compliance was attested',
-    `legal_dispute_flag` BOOLEAN COMMENT 'Whether there is a legal dispute',
-    `notes` STRING COMMENT 'Free-text notes',
-    `notice_date` DATE COMMENT 'Date termination notice was given',
-    `outstanding_royalty_balance` DECIMAL(18,2) COMMENT 'Outstanding royalty balance at termination',
-    `outstanding_royalty_currency_code` STRING COMMENT 'A standardized code representing the outstanding royalty currency classification for this termination event',
-    `post_termination_obligation` STRING COMMENT 'Post-termination obligations',
-    `termination_cure_period_days` STRING COMMENT 'Number of days in the cure period',
-    `termination_event_status` STRING COMMENT 'Status of the termination event',
-    `termination_fee_amount` DECIMAL(18,2) COMMENT 'Fee charged for termination',
-    `termination_fee_currency_code` STRING COMMENT 'A standardized code representing the termination fee currency classification for this termination event',
-    `termination_notice_method` STRING COMMENT 'The termination notice method attribute value for this termination event record in the franchise domain',
-    `termination_reason` STRING COMMENT 'Reason for termination',
-    `termination_type` STRING COMMENT 'Type of termination (voluntary, involuntary, mutual)',
-    `units_affected` STRING COMMENT 'Number of units affected by termination',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `termination_event_id` BIGINT COMMENT 'System-generated unique identifier for the termination event record.',
+    `agreement_id` BIGINT COMMENT 'Identifier of the franchise agreement that is being terminated.',
+    `compliance_review_date` DATE COMMENT 'Date when compliance review of the termination was performed.',
+    `compliance_status` STRING COMMENT 'Result of the compliance review.. Valid values are `compliant|non_compliant|pending`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the termination event record was created.',
+    `cure_period_end_date` DATE COMMENT 'Date when the cure period expires, after which termination becomes effective if not remedied.',
+    `effective_termination_date` DATE COMMENT 'Date the termination legally takes effect.',
+    `ftc_compliance_attestation_flag` BOOLEAN COMMENT 'Flag indicating franchisee attested to FTC compliance for termination disclosure.',
+    `legal_dispute_flag` BOOLEAN COMMENT 'Indicates whether a legal dispute is associated with the termination.',
+    `notes` STRING COMMENT 'Additional free-form notes related to the termination event.',
+    `notice_date` DATE COMMENT 'Date the termination notice was delivered to the franchisee.',
+    `outstanding_royalty_balance` DECIMAL(18,2) COMMENT 'Total royalty amount owed at termination.',
+    `outstanding_royalty_currency_code` STRING COMMENT 'Three-letter ISO currency code for the outstanding royalty balance.. Valid values are `[A-Z]{3}`',
+    `post_termination_obligation` STRING COMMENT 'Obligation required after termination, such as data de-identification or non-compete.. Valid values are `de_identification|non_compete|none`',
+    `termination_cure_period_days` STRING COMMENT 'Number of days allocated for the franchisee to cure any default before termination.',
+    `termination_event_status` STRING COMMENT 'Current processing status of the termination event.. Valid values are `pending|approved|executed|closed|rejected`',
+    `termination_fee_amount` DECIMAL(18,2) COMMENT 'Any fee charged to the franchisee as part of the termination.',
+    `termination_fee_currency_code` STRING COMMENT 'ISO currency code for the termination fee.. Valid values are `[A-Z]{3}`',
+    `termination_notice_method` STRING COMMENT 'Method used to deliver the termination notice.. Valid values are `email|postal|fax|in_person`',
+    `termination_reason` STRING COMMENT 'Free-text reason provided for the termination.',
+    `termination_type` STRING COMMENT 'Category of termination: voluntary, default, non-renewal, or abandonment.. Valid values are `voluntary|default|non_renewal|abandonment`',
+    `units_affected` STRING COMMENT 'Number of restaurant units impacted by the termination.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the termination event record.',
     CONSTRAINT pk_termination_event PRIMARY KEY(`termination_event_id`)
-) COMMENT 'Termination events recording the termination of franchise agreements including reason, notice, and financial obligations.';
+) COMMENT 'Records franchise agreement termination and non-renewal events including voluntary terminations, defaults, and forced closures. Captures termination type (voluntary, default, non-renewal, abandonment), notice date, cure period expiration, effective termination date, units affected, outstanding royalty balance, post-termination obligations (de-identification, non-compete), and legal dispute flag. Supports FTC Franchise Rule Item 17 disclosure and franchise portfolio management.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` (
-    `performance_scorecard_id` DECIMAL(18,2) COMMENT 'Unique identifier for the scorecard',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `average_unit_volume` DECIMAL(18,2) COMMENT 'The average unit volume attribute value for this performance scorecard record in the franchise domain',
-    `compliance_audit_average_score` DECIMAL(18,2) COMMENT 'Average compliance audit score',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `customer_satisfaction_score` DECIMAL(18,2) COMMENT 'The customer satisfaction score attribute value for this performance scorecard record in the franchise domain',
-    `evaluation_month` STRING COMMENT 'The evaluation month attribute value for this performance scorecard record in the franchise domain',
-    `evaluation_period_end` DATE COMMENT 'End of evaluation period',
-    `evaluation_period_start` DATE COMMENT 'Start of evaluation period',
-    `evaluation_status` STRING COMMENT 'Status of the evaluation',
-    `evaluation_type` STRING COMMENT 'Type of evaluation',
-    `evaluation_year` STRING COMMENT 'The evaluation year attribute value for this performance scorecard record in the franchise domain',
-    `food_safety_score` DECIMAL(18,2) COMMENT 'Food safety audit score',
-    `net_promoter_score` DECIMAL(18,2) COMMENT 'The net promoter score attribute value for this performance scorecard record in the franchise domain',
-    `notes` STRING COMMENT 'Free-text notes',
-    `number_of_restaurants` STRING COMMENT 'Number of restaurants operated',
-    `overall_performance_tier` STRING COMMENT 'Overall performance tier (A, B, C, D)',
-    `region_code` STRING COMMENT 'A standardized code representing the region classification for this performance scorecard',
-    `royalty_payment_timeliness_pct` DECIMAL(18,2) COMMENT 'Percentage of royalty payments made on time',
-    `same_store_sales_growth_pct` DECIMAL(18,2) COMMENT 'Same-store sales growth percentage',
-    `total_royalty_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for total royalty in this performance scorecard',
-    `total_sales_amount` DECIMAL(18,2) COMMENT 'Total sales in the period',
-    `training_completion_rate_pct` DECIMAL(18,2) COMMENT 'Training completion rate',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `performance_scorecard_id` BIGINT COMMENT 'System-generated unique identifier for each franchisee performance scorecard record.',
+    `franchisee_id` BIGINT COMMENT 'Unique identifier of the franchisee to which this scorecard applies.',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - performance scorecards should be traceable to specific units, not just franchisees',
+    `average_unit_volume` DECIMAL(18,2) COMMENT 'Average weekly sales per restaurant unit for the franchisee, expressed in local currency.',
+    `compliance_audit_average_score` DECIMAL(18,2) COMMENT 'Average score from all compliance audits performed during the period, on a 0‑100 scale.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the scorecard record was first created.',
+    `customer_satisfaction_score` DECIMAL(18,2) COMMENT 'Average customer satisfaction rating collected from surveys, on a 0‑100 scale.',
+    `evaluation_month` STRING COMMENT 'Numeric month (1‑12) of the evaluation period.',
+    `evaluation_period_end` DATE COMMENT 'Last day of the evaluation period covered by the scorecard.',
+    `evaluation_period_start` DATE COMMENT 'First day of the evaluation period covered by the scorecard.',
+    `evaluation_status` STRING COMMENT 'Current processing status of the scorecard record.. Valid values are `pending|completed|reviewed`',
+    `evaluation_type` STRING COMMENT 'Frequency classification of the scorecard (e.g., annual, quarterly, monthly).. Valid values are `annual|quarterly|monthly`',
+    `evaluation_year` STRING COMMENT 'Calendar year in which the evaluation period falls.',
+    `food_safety_score` DECIMAL(18,2) COMMENT 'Composite score from food safety inspections and audits, on a 0‑100 scale.',
+    `net_promoter_score` STRING COMMENT 'Net promoter score for the franchisee, ranging from -100 to 100.',
+    `notes` STRING COMMENT 'Free‑form comments or observations related to the scorecard.',
+    `number_of_restaurants` STRING COMMENT 'Count of active restaurant units owned or operated by the franchisee.',
+    `overall_performance_tier` STRING COMMENT 'Tier classification of franchisee performance for the period.. Valid values are `platinum|gold|silver|at_risk`',
+    `region_code` STRING COMMENT 'Three‑letter ISO code representing the primary geographic region of the franchisee.. Valid values are `[A-Z]{3}`',
+    `royalty_payment_timeliness_pct` DECIMAL(18,2) COMMENT 'Percentage of royalty invoices paid on or before the due date during the period.',
+    `same_store_sales_growth_pct` DECIMAL(18,2) COMMENT 'Year‑over‑year percentage change in same‑store sales for the franchisee portfolio.',
+    `total_royalty_amount` DECIMAL(18,2) COMMENT 'Total royalty fees accrued for the franchisee during the period.',
+    `total_sales_amount` DECIMAL(18,2) COMMENT 'Aggregate gross sales across all franchisee locations for the evaluation period.',
+    `training_completion_rate_pct` DECIMAL(18,2) COMMENT 'Proportion of required franchisee staff training modules completed on schedule.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent modification to the scorecard record.',
     CONSTRAINT pk_performance_scorecard PRIMARY KEY(`performance_scorecard_id`)
-) COMMENT 'Performance scorecards evaluating franchisee performance across multiple dimensions including sales, compliance, and customer satisfaction.';
+) COMMENT 'Periodic franchisee performance evaluation record aggregating key operational and financial KPIs for a franchisee across their restaurant portfolio. Captures evaluation period, AUV (Average Unit Volume), SSS (Same-Store Sales) growth, CSAT score, NPS, compliance audit average score, royalty payment timeliness, training completion rate, food safety score, and overall performance tier (platinum, gold, silver, at-risk). Supports franchisee recognition programs and remediation prioritization.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` (
-    `fdd_disclosure_id` BIGINT COMMENT 'Unique identifier for the FDD disclosure',
-    `prospect_id` BIGINT COMMENT 'FK to the prospect receiving the FDD',
-    `fdd_recipient_prospect_id` BIGINT COMMENT 'Unique identifier for the fdd recipient prospect associated with this fdd disclosure',
-    `acknowledgment_received_date` DATE COMMENT 'Date acknowledgment was received',
-    `compliance_review_date` DATE COMMENT 'The date and time when the compliance review event occurred for this fdd disclosure',
-    `compliance_review_status` STRING COMMENT 'The current status of the compliance review for this fdd disclosure',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `delivery_date` DATE COMMENT 'Date the FDD was delivered',
-    `document_title` STRING COMMENT 'The document title attribute value for this fdd disclosure record in the franchise domain',
-    `document_type` STRING COMMENT 'The classification type for document in this fdd disclosure',
-    `expiration_date` DECIMAL(18,2) COMMENT 'The date and time when the expiration event occurred for this fdd disclosure',
-    `fdd_disclosure_status` STRING COMMENT 'Status of the disclosure',
-    `fdd_document_url` STRING COMMENT 'URL to the FDD document',
-    `fdd_version_number` STRING COMMENT 'Version number of the FDD',
-    `material_change_description` STRING COMMENT 'Description of material changes',
-    `material_change_flag` BOOLEAN COMMENT 'Whether there were material changes',
-    `notes` STRING COMMENT 'Free-text notes',
-    `recipient_type` STRING COMMENT 'The classification type for recipient in this fdd disclosure',
-    `state_code` STRING COMMENT 'State where disclosure was made',
-    `state_registration_status` DECIMAL(18,2) COMMENT 'The current status of the state registration for this fdd disclosure',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `version_year` STRING COMMENT 'Year of the FDD version',
-    `waiting_period_end_date` DATE COMMENT 'End of the mandatory waiting period',
-    `waiting_period_start_date` DATE COMMENT 'Start of the mandatory waiting period',
+    `fdd_disclosure_id` BIGINT COMMENT 'System-generated unique identifier for each FDD disclosure record.',
+    `prospect_id` BIGINT COMMENT 'Foreign‑key reference to the franchisee or prospect receiving the disclosure.',
+    `fdd_recipient_prospect_id` BIGINT COMMENT 'Foreign‑key reference to the franchisee or prospect receiving the disclosure.',
+    `acknowledgment_received_date` DATE COMMENT 'Date the recipient signed or otherwise confirmed receipt of the disclosure.',
+    `compliance_review_date` DATE COMMENT 'Calendar date the compliance team completed its review.',
+    `compliance_review_status` STRING COMMENT 'Indicates whether the disclosure has passed FTC Franchise Rule compliance review.. Valid values are `compliant|non_compliant|pending`',
+    `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the disclosure record was entered into the system.',
+    `delivery_date` DATE COMMENT 'The calendar date the FDD was provided to the prospect or franchisee.',
+    `document_title` STRING COMMENT 'Descriptive title of the FDD document (e.g., "2023 Franchise Disclosure Document").',
+    `document_type` STRING COMMENT 'Classifies the document as an initial disclosure, an amendment, or a supplemental update.. Valid values are `initial|amendment|supplement`',
+    `expiration_date` DATE COMMENT 'The date on which the disclosed version expires and must be superseded.',
+    `fdd_disclosure_status` STRING COMMENT 'Indicates whether the disclosure is in draft, has been issued to a recipient, archived, or revoked.. Valid values are `draft|issued|archived|revoked`',
+    `fdd_document_url` STRING COMMENT 'Secure URL or path where the electronic copy of the disclosure is stored.',
+    `fdd_version_number` STRING COMMENT 'Internal version code (e.g., "2023‑01") assigned to the disclosure document.',
+    `material_change_description` STRING COMMENT 'Narrative explaining the nature of any material change flagged.',
+    `material_change_flag` BOOLEAN COMMENT 'True if the disclosed document contains material changes that could affect the prospects decision.',
+    `notes` STRING COMMENT 'Additional comments or observations related to the disclosure.',
+    `recipient_type` STRING COMMENT 'Identifies whether the recipient is a new prospect, an existing franchisee, or a prospective franchisee.. Valid values are `prospect|existing_franchisee|prospective_franchisee`',
+    `state_code` STRING COMMENT 'ISO‑3166‑2 style two‑letter code of the US state for registration status.. Valid values are `^[A-Z]{2}$`',
+    `state_registration_status` STRING COMMENT 'Indicates whether the disclosure has been registered with the state regulatory authority.. Valid values are `registered|not_registered|pending`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the latest modification to the disclosure record.',
+    `version_year` STRING COMMENT 'Calendar year associated with the specific version of the FDD.',
+    `waiting_period_end_date` DATE COMMENT 'Date when the 14‑day waiting period ends, after which the prospect may sign agreements.',
+    `waiting_period_start_date` DATE COMMENT 'Date when the 14‑day waiting period begins after delivery of the disclosure.',
     CONSTRAINT pk_fdd_disclosure PRIMARY KEY(`fdd_disclosure_id`)
-) COMMENT 'Franchise Disclosure Document (FDD) records tracking the delivery and acknowledgment of disclosure documents to prospects.';
+) COMMENT 'Tracks each Franchise Disclosure Document (FDD) version issued to prospective and existing franchisees in compliance with FTC Franchise Rule. Captures FDD version year, state-specific registration status (for registration states), disclosure delivery date, recipient franchisee or prospect, 14-day waiting period start and end dates, acknowledgment receipt date, and material change flags. SSOT for FTC Franchise Rule pre-sale disclosure compliance.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`prospect` (
-    `prospect_id` BIGINT COMMENT 'Unique identifier for the prospect',
-    `employee_id` BIGINT COMMENT 'FK to the assigned franchise consultant',
-    `address_line1` STRING COMMENT 'Primary address',
-    `address_line2` STRING COMMENT 'The address line2 attribute value for this prospect record in the franchise domain',
-    `application_status` STRING COMMENT 'Status of the franchise application',
-    `application_submitted_date` DATE COMMENT 'The date and time when the application submitted event occurred for this prospect',
-    `background_check_date` DATE COMMENT 'The date and time when the background check event occurred for this prospect',
-    `background_check_status` STRING COMMENT 'Status of background check',
-    `city` STRING COMMENT 'The city attribute value for this prospect record in the franchise domain',
-    `compliance_flag` BOOLEAN COMMENT 'Boolean indicator flag for compliance flag status in this prospect',
-    `contact_email` STRING COMMENT 'Email address of the prospect',
-    `contact_phone` STRING COMMENT 'Phone number of the prospect',
-    `country_code` STRING COMMENT 'ISO country code',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `discovery_day_attended` BOOLEAN COMMENT 'Whether prospect attended discovery day',
-    `discovery_day_date` DATE COMMENT 'The date and time when the discovery day event occurred for this prospect',
-    `estimated_initial_investment` DECIMAL(18,2) COMMENT 'The estimated initial investment attribute value for this prospect record in the franchise domain',
-    `estimated_initial_investment_currency` STRING COMMENT 'The estimated initial investment currency attribute value for this prospect record in the franchise domain',
-    `expected_open_date` DATE COMMENT 'The date and time when the expected open event occurred for this prospect',
-    `fdd_disclosure_date` DATE COMMENT 'The date and time when the fdd disclosure event occurred for this prospect',
-    `fdd_sent_flag` BOOLEAN COMMENT 'Whether FDD has been sent',
-    `franchise_type_preference` STRING COMMENT 'Preferred franchise type',
-    `last_contact_date` DATE COMMENT 'Date of last contact',
-    `last_contact_method` STRING COMMENT 'The last contact method attribute value for this prospect record in the franchise domain',
-    `legal_entity_type` STRING COMMENT 'The classification type for legal entity in this prospect',
-    `liquid_capital_amount` DECIMAL(18,2) COMMENT 'Available liquid capital',
-    `liquid_capital_currency` STRING COMMENT 'The liquid capital currency attribute value for this prospect record in the franchise domain',
-    `prospect_name` STRING COMMENT 'Name of the prospect',
-    `net_worth_amount` DECIMAL(18,2) COMMENT 'Declared net worth',
-    `net_worth_currency` STRING COMMENT 'The net worth currency attribute value for this prospect record in the franchise domain',
-    `notes` STRING COMMENT 'Free-text notes',
-    `pipeline_stage` STRING COMMENT 'Current stage in the franchise sales pipeline',
-    `postal_code` STRING COMMENT 'A standardized code representing the postal classification for this prospect',
-    `prospect_status` STRING COMMENT 'Status of the prospect',
-    `source_channel` STRING COMMENT 'How the prospect was sourced',
-    `source_detail` STRING COMMENT 'The source detail attribute value for this prospect record in the franchise domain',
-    `state` STRING COMMENT 'The state attribute value for this prospect record in the franchise domain',
-    `territory_preference` STRING COMMENT 'Preferred territory',
-    `updated_by` STRING COMMENT 'The updated by attribute value for this prospect record in the franchise domain',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `created_by` STRING COMMENT 'The created by attribute value for this prospect record in the franchise domain',
+    `prospect_id` BIGINT COMMENT 'System-generated unique identifier for the franchise development prospect.',
+    `employee_id` BIGINT COMMENT 'Identifier of the internal development consultant responsible for the prospect.',
+    `prospect_employee_id` BIGINT COMMENT 'Identifier of the internal development consultant responsible for the prospect.',
+    `address_line1` STRING COMMENT 'First line of the prospects mailing address.',
+    `address_line2` STRING COMMENT 'Second line of the prospects mailing address, if applicable.',
+    `application_status` STRING COMMENT 'Current status of the franchise application.. Valid values are `not_submitted|submitted|under_review|approved|rejected`',
+    `application_submitted_date` DATE COMMENT 'Date the prospect submitted the franchise application.',
+    `background_check_date` DATE COMMENT 'Date when the background check was completed.',
+    `background_check_status` STRING COMMENT 'Result of the prospects background screening.. Valid values are `pending|cleared|failed`',
+    `city` STRING COMMENT 'City component of the prospects mailing address.',
+    `compliance_flag` BOOLEAN COMMENT 'Indicates whether the prospect has attested to required FTC and IFA compliance statements.',
+    `contact_email` STRING COMMENT 'Primary email address used for prospect communications.',
+    `contact_phone` STRING COMMENT 'Primary telephone number for the prospect.',
+    `country_code` STRING COMMENT 'Three‑letter ISO country code for the prospects address.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the prospect record was first created.',
+    `discovery_day_attended` BOOLEAN COMMENT 'Indicates whether the prospect attended a Discovery Day session.',
+    `discovery_day_date` DATE COMMENT 'Date of the Discovery Day attended by the prospect.',
+    `estimated_initial_investment` DECIMAL(18,2) COMMENT 'Prospects estimated total investment required to launch the franchise.',
+    `estimated_initial_investment_currency` STRING COMMENT 'Currency code for the estimated initial investment.',
+    `expected_open_date` DATE COMMENT 'Projected date for the new restaurant to open if the prospect is approved.',
+    `fdd_disclosure_date` DATE COMMENT 'Date the Franchise Disclosure Document was provided to the prospect.',
+    `fdd_sent_flag` BOOLEAN COMMENT 'Indicates whether the FDD has been sent to the prospect.',
+    `franchise_type_preference` STRING COMMENT 'Preferred restaurant format (e.g., Quick‑Service, Casual, Fine‑Dining).. Valid values are `QSR|Casual|Fine_Dining`',
+    `last_contact_date` DATE COMMENT 'Date of the most recent interaction with the prospect.',
+    `last_contact_method` STRING COMMENT 'Channel used for the most recent contact with the prospect.. Valid values are `email|phone|in_person|online`',
+    `legal_entity_type` STRING COMMENT 'Indicates whether the prospect is an individual or a corporate entity.. Valid values are `individual|company`',
+    `liquid_capital_amount` DECIMAL(18,2) COMMENT 'Available liquid capital of the prospect.',
+    `liquid_capital_currency` STRING COMMENT 'Currency code for the liquid capital amount.',
+    `prospect_name` STRING COMMENT 'Full legal name of the individual or entity seeking a franchise.',
+    `net_worth_amount` DECIMAL(18,2) COMMENT 'Prospects total net worth, used for financial qualification.',
+    `net_worth_currency` STRING COMMENT 'Currency code for the net worth amount.',
+    `notes` STRING COMMENT 'Free‑form notes captured by development staff about the prospect.',
+    `pipeline_stage` STRING COMMENT 'Specific stage of the franchise development funnel.. Valid values are `lead|discovery|application|approval|contract|onboarding`',
+    `postal_code` STRING COMMENT 'Postal/ZIP code of the prospects mailing address.',
+    `prospect_status` STRING COMMENT 'Current overall status of the prospect in the development pipeline.. Valid values are `new|qualified|disqualified|in_progress|won|lost`',
+    `source_channel` STRING COMMENT 'Origin of the prospect lead.. Valid values are `referral|trade_show|digital_lead|broker`',
+    `source_detail` STRING COMMENT 'Additional free‑text information about the lead source.',
+    `state` STRING COMMENT 'State or province component of the prospects mailing address.',
+    `territory_preference` STRING COMMENT 'Geographic territory or market the prospect prefers for a franchise location.',
+    `updated_by` STRING COMMENT 'User identifier of the person who last updated the prospect record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the prospect record.',
+    `created_by` STRING COMMENT 'User identifier of the person who created the prospect record.',
     CONSTRAINT pk_prospect PRIMARY KEY(`prospect_id`)
-) COMMENT 'Franchise prospects representing potential franchisees in the sales pipeline from initial inquiry through approval.';
+) COMMENT 'Master record for franchise development prospects — individuals or entities in the pipeline to become franchisees. Captures prospect source (referral, trade show, digital lead, broker, area representative), contact details, financial qualification status (net worth, liquid capital per FDD Item 7 requirements), background check status, discovery day attendance, FDD disclosure date, 14-day waiting period compliance, application status, assigned development consultant, pipeline stage, and conversion probability. Supports franchise development funnel management and FTC pre-sale compliance tracking.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` (
-    `area_representative_id` BIGINT COMMENT 'Unique identifier for the area representative',
-    `territory_id` BIGINT COMMENT 'FK to the assigned territory',
-    `area_representative_status` STRING COMMENT 'Current status',
-    `average_unit_volume_target` DECIMAL(18,2) COMMENT 'The average unit volume target attribute value for this area representative record in the franchise domain',
-    `base_salary_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for base salary in this area representative',
-    `commission_rate_percent` DECIMAL(18,2) COMMENT 'Commission rate percentage',
-    `compensation_type` STRING COMMENT 'The classification type for compensation in this area representative',
-    `compliance_status` STRING COMMENT 'The current status of the compliance for this area representative',
-    `created_by_user` STRING COMMENT 'The created by user attribute value for this area representative record in the franchise domain',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `effective_end_date` DATE COMMENT 'End date of assignment',
-    `effective_start_date` DATE COMMENT 'Start date of assignment',
-    `email_address` STRING COMMENT 'The email address attribute value for this area representative record in the franchise domain',
-    `external_reference_number` STRING COMMENT 'The external reference number attribute value for this area representative record in the franchise domain',
-    `fee_structure_description` STRING COMMENT 'The fee structure description attribute value for this area representative record in the franchise domain',
-    `full_name` STRING COMMENT 'Full name of the area representative',
-    `last_compliance_review_date` DATE COMMENT 'The date and time when the last compliance review event occurred for this area representative',
-    `market_segment` STRING COMMENT 'The market segment attribute value for this area representative record in the franchise domain',
-    `notes` STRING COMMENT 'Free-text notes',
-    `number_of_franchisees_managed` STRING COMMENT 'The number of franchisees managed attribute value for this area representative record in the franchise domain',
-    `performance_score` DECIMAL(18,2) COMMENT 'The performance score attribute value for this area representative record in the franchise domain',
-    `phone_number` STRING COMMENT 'The phone number attribute value for this area representative record in the franchise domain',
-    `primary_contact_method` STRING COMMENT 'The primary contact method attribute value for this area representative record in the franchise domain',
-    `region_code` STRING COMMENT 'A standardized code representing the region classification for this area representative',
-    `role_type` STRING COMMENT 'Type of role',
-    `royalty_fee_cap_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for royalty fee cap in this area representative',
-    `royalty_split_percent` DECIMAL(18,2) COMMENT 'Percentage of royalty split',
-    `training_completed_flag` BOOLEAN COMMENT 'Whether required training is complete',
-    `updated_by_user` STRING COMMENT 'The updated by user attribute value for this area representative record in the franchise domain',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `area_representative_id` BIGINT COMMENT 'Unique surrogate key for the area representative.',
+    `territory_id` BIGINT COMMENT 'Identifier of the geographic territory assigned.',
+    `area_representative_status` STRING COMMENT 'Current lifecycle status.. Valid values are `active|inactive|suspended|terminated|pending`',
+    `average_unit_volume_target` DECIMAL(18,2) COMMENT 'Target AUV for franchisees in the territory.',
+    `base_salary_amount` DECIMAL(18,2) COMMENT 'Fixed salary component (if applicable).',
+    `commission_rate_percent` DECIMAL(18,2) COMMENT 'Commission rate applied to sales or royalties.',
+    `compensation_type` STRING COMMENT 'Type of compensation arrangement.. Valid values are `salary|commission|salary_plus_commission|bonus`',
+    `compliance_status` STRING COMMENT 'Current compliance standing with franchise standards.. Valid values are `compliant|non_compliant|under_review`',
+    `created_by_user` STRING COMMENT 'System user who created the record.',
+    `created_timestamp` TIMESTAMP COMMENT 'When the record was first created in the system.',
+    `effective_end_date` DATE COMMENT 'Date when the agreement ends (nullable if ongoing).',
+    `effective_start_date` DATE COMMENT 'Date when the representatives agreement becomes effective.',
+    `email_address` STRING COMMENT 'Primary email for communication.. Valid values are `^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$`',
+    `external_reference_number` STRING COMMENT 'Identifier used in external systems (e.g., FranConnect).',
+    `fee_structure_description` STRING COMMENT 'Narrative description of fees charged to the representative.',
+    `full_name` STRING COMMENT 'Legal name of the area representative.',
+    `last_compliance_review_date` DATE COMMENT 'Date of most recent compliance audit.',
+    `market_segment` STRING COMMENT 'Segment classification of the territory market.. Valid values are `urban|suburban|rural|airport|high_traffic`',
+    `notes` STRING COMMENT 'Free-text notes regarding the representative.',
+    `number_of_franchisees_managed` STRING COMMENT 'Count of franchisees under the representatives oversight.',
+    `performance_score` DECIMAL(18,2) COMMENT 'Composite score evaluating representative performance (e.g., based on sales, compliance).',
+    `phone_number` STRING COMMENT 'Primary contact phone.',
+    `primary_contact_method` STRING COMMENT 'Preferred method of contact.. Valid values are `email|phone|sms`',
+    `region_code` STRING COMMENT 'Standard code for the broader region (e.g., NA, EU).',
+    `role_type` STRING COMMENT 'Classification of the representatives role within franchise hierarchy.. Valid values are `area_representative|area_developer|sub_franchisor`',
+    `royalty_fee_cap_amount` DECIMAL(18,2) COMMENT 'Maximum royalty fee payable to the representative.',
+    `royalty_split_percent` DECIMAL(18,2) COMMENT 'Percentage of royalty revenue shared with the representative.',
+    `training_completed_flag` BOOLEAN COMMENT 'Indicates if mandatory training has been completed.',
+    `updated_by_user` STRING COMMENT 'System user who last updated the record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last time the record was modified.',
     CONSTRAINT pk_area_representative PRIMARY KEY(`area_representative_id`)
-) COMMENT 'Area representatives who manage and support franchisees within assigned territories on behalf of the franchisor.';
+) COMMENT 'Master record for Area Representatives (ARs) and Area Developers who hold sub-franchisor rights to recruit, support, and oversee franchisees within a defined geographic region. Captures AR entity name, territory covered, AR agreement effective and expiration dates, royalty split percentage, number of franchisees under management, performance obligations, and AR fee structure. Supports multi-tier franchise system management.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` (
-    `support_visit_id` BIGINT COMMENT 'Unique identifier for the support visit',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `employee_id` BIGINT COMMENT 'FK to the consulting employee',
-    `support_employee_id` BIGINT COMMENT 'Unique identifier referencing the support employee associated with this support visit record',
-    `unit_id` BIGINT COMMENT 'Unique identifier for the support store unit associated with this support visit',
-    `support_unit_id` BIGINT COMMENT 'FK to the restaurant unit visited',
-    `action_items` STRING COMMENT 'Action items identified',
-    `city` STRING COMMENT 'The city attribute value for this support visit record in the franchise domain',
-    `compliance_flag` BOOLEAN COMMENT 'Whether compliance issues were found',
-    `compliance_score` DECIMAL(18,2) COMMENT 'Compliance score from the visit',
-    `country_code` STRING COMMENT 'A standardized code representing the country classification for this support visit',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency_code` STRING COMMENT 'A standardized code representing the currency classification for this support visit',
-    `equipment_inspected_flag` BOOLEAN COMMENT 'Boolean indicator flag for equipment inspected flag status in this support visit',
-    `equipment_issue_count` STRING COMMENT 'The count or quantity of equipment issue items in this support visit',
-    `expense_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for expense in this support visit',
-    `expense_category` STRING COMMENT 'The expense category attribute value for this support visit record in the franchise domain',
-    `follow_up_required` BOOLEAN COMMENT 'Whether follow-up is needed',
-    `is_training_visit` BOOLEAN COMMENT 'Whether this was a training visit',
-    `notes` STRING COMMENT 'Free-text notes',
-    `region` STRING COMMENT 'The region attribute value for this support visit record in the franchise domain',
-    `sales_impact_estimate` DECIMAL(18,2) COMMENT 'The sales impact estimate attribute value for this support visit record in the franchise domain',
-    `satisfaction_rating` STRING COMMENT 'The satisfaction rating attribute value for this support visit record in the franchise domain',
-    `state_province` STRING COMMENT 'The state province attribute value for this support visit record in the franchise domain',
-    `support_visit_status` STRING COMMENT 'Status of the visit',
-    `topics_covered` STRING COMMENT 'Topics covered during the visit',
-    `training_topic` STRING COMMENT 'The training topic attribute value for this support visit record in the franchise domain',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `visit_duration_minutes` DECIMAL(18,2) COMMENT 'Duration of the visit in minutes',
-    `visit_number` STRING COMMENT 'Business reference number',
-    `visit_timestamp` TIMESTAMP COMMENT 'When the visit occurred',
-    `visit_type` STRING COMMENT 'Type of visit (routine, follow-up, training)',
-    `waste_percentage` DECIMAL(18,2) COMMENT 'The waste percentage attribute value for this support visit record in the franchise domain',
+    `support_visit_id` BIGINT COMMENT 'System-generated unique identifier for the support visit record.',
+    `franchisee_id` BIGINT COMMENT 'Identifier of the franchisee restaurant unit that received the support visit.',
+    `employee_id` BIGINT COMMENT 'Identifier of the field business consultant (FBC) who performed the visit.',
+    `support_employee_id` BIGINT COMMENT 'Identifier of the field business consultant (FBC) who performed the visit.',
+    `unit_id` BIGINT COMMENT 'Identifier of the specific restaurant location visited.',
+    `support_unit_id` BIGINT COMMENT 'Identifier of the specific restaurant location visited.',
+    `action_items` STRING COMMENT 'Detailed description of action items identified for the franchisee after the visit.',
+    `city` STRING COMMENT 'City where the visited restaurant is located.',
+    `compliance_flag` BOOLEAN COMMENT 'Indicates whether any compliance issues were identified during the visit.',
+    `compliance_score` DECIMAL(18,2) COMMENT 'Numeric score (0‑100) summarizing overall compliance performance observed.',
+    `country_code` STRING COMMENT 'Three‑letter ISO country code of the restaurant location.. Valid values are `^[A-Z]{3}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the support visit record was first created in the system.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the expense amount.. Valid values are `^[A-Z]{3}$`',
+    `equipment_inspected_flag` BOOLEAN COMMENT 'Indicates whether kitchen or back‑of‑house equipment was inspected.',
+    `equipment_issue_count` STRING COMMENT 'Number of equipment issues identified during the inspection.',
+    `expense_amount` DECIMAL(18,2) COMMENT 'Monetary cost incurred for the support visit (travel, lodging, etc.).',
+    `expense_category` STRING COMMENT 'Category of the expense associated with the support visit.. Valid values are `travel|lodging|meals|supplies|other`',
+    `follow_up_required` BOOLEAN COMMENT 'Indicates whether a follow‑up visit or action is required after this support visit.',
+    `is_training_visit` BOOLEAN COMMENT 'True if the visit included formal training for franchise staff.',
+    `notes` STRING COMMENT 'Additional free‑form observations or comments recorded by the consultant.',
+    `region` STRING COMMENT 'Broad geographic region (e.g., Midwest, West Coast) of the visited restaurant.',
+    `sales_impact_estimate` DECIMAL(18,2) COMMENT 'Projected increase or decrease in sales attributable to the support visit actions.',
+    `satisfaction_rating` STRING COMMENT 'Numeric rating (1‑5) provided by the franchisee to assess visit effectiveness.',
+    `state_province` STRING COMMENT 'State or province of the visited restaurant location.',
+    `support_visit_status` STRING COMMENT 'Current lifecycle status of the support visit.. Valid values are `scheduled|completed|cancelled|postponed|in_progress`',
+    `topics_covered` STRING COMMENT 'Comma‑separated list of operational, marketing, financial, or training topics addressed during the visit.',
+    `training_topic` STRING COMMENT 'Specific training subject covered during the visit (e.g., food safety, service standards).',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the support visit record.',
+    `visit_duration_minutes` STRING COMMENT 'Total time spent on the support visit, measured in minutes.',
+    `visit_number` STRING COMMENT 'Human‑readable sequential number assigned to the support visit.',
+    `visit_timestamp` TIMESTAMP COMMENT 'Date and time when the support visit actually occurred.',
+    `visit_type` STRING COMMENT 'Classification of the visit purpose (e.g., scheduled, unannounced, follow‑up, opening support).. Valid values are `scheduled|unannounced|follow_up|opening_support`',
+    `waste_percentage` DECIMAL(18,2) COMMENT 'Estimated percentage of food waste observed during the visit.',
     CONSTRAINT pk_support_visit PRIMARY KEY(`support_visit_id`)
-) COMMENT 'Support visits conducted by franchise consultants to franchisee locations for operational support, training, and compliance review.';
+) COMMENT 'Records field support visits conducted by franchise business consultants (FBCs) or field operations teams to franchisee restaurant units. Captures visit date, visit type (scheduled, unannounced, follow-up, opening support), FBC identity, topics covered (operations, marketing, financial review, training), action items identified, franchisee satisfaction rating, and follow-up required flag. Supports franchisee relationship management and field support effectiveness tracking.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` (
-    `marketing_fund_contribution_id` BIGINT COMMENT 'Unique identifier for the contribution',
-    `franchisee_id` BIGINT COMMENT 'FK to the contributing franchisee',
-    `calculation_basis` STRING COMMENT 'Basis for calculation (gross sales, net sales)',
-    `contribution_amount` DECIMAL(18,2) COMMENT 'Calculated contribution amount',
-    `contribution_date` DATE COMMENT 'The date and time when the contribution event occurred for this marketing fund contribution',
-    `contribution_number` STRING COMMENT 'Business reference number',
-    `contribution_percent` DECIMAL(18,2) COMMENT 'The contribution percent attribute value for this marketing fund contribution record in the franchise domain',
-    `contribution_period` STRING COMMENT 'The contribution period attribute value for this marketing fund contribution record in the franchise domain',
-    `contribution_period_end` DATE COMMENT 'End of the contribution period',
-    `contribution_period_start` DATE COMMENT 'Start of the contribution period',
-    `contribution_rate` DECIMAL(18,2) COMMENT 'The contribution rate attribute value for this marketing fund contribution record in the franchise domain',
-    `contribution_rate_pct` DECIMAL(18,2) COMMENT 'Contribution rate as a percentage',
-    `contribution_rate_percent` DECIMAL(18,2) COMMENT 'The contribution rate percent attribute value for this marketing fund contribution record in the franchise domain',
-    `contribution_status` STRING COMMENT 'Status of the contribution',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency` STRING COMMENT 'The currency attribute value for this marketing fund contribution record in the franchise domain',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `due_date` DATE COMMENT 'Payment due date',
-    `gross_sales` DECIMAL(18,2) COMMENT 'The gross sales attribute value for this marketing fund contribution record in the franchise domain',
-    `gross_sales_base` DECIMAL(18,2) COMMENT 'The gross sales base attribute value for this marketing fund contribution record in the franchise domain',
-    `gross_sales_basis` DECIMAL(18,2) COMMENT 'The gross sales basis attribute value for this marketing fund contribution record in the franchise domain',
-    `gross_sales_basis_amount` DECIMAL(18,2) COMMENT 'Gross sales amount used as calculation basis',
-    `is_paid` BOOLEAN COMMENT 'Whether the contribution has been paid',
-    `paid_date` DATE COMMENT 'The date and time when the paid event occurred for this marketing fund contribution',
-    `payment_date` DATE COMMENT 'Date payment was made',
-    `payment_status` STRING COMMENT 'The current status of the payment for this marketing fund contribution',
-    `sales_basis_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for sales basis in this marketing fund contribution',
-    `marketing_fund_contribution_status` STRING COMMENT 'The current status of the marketing fund contribution for this marketing fund contribution',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `marketing_fund_contribution_id` BIGINT COMMENT 'Unique identifier for the franchise_marketing_fund_contribution data product (auto-inserted pre-linking).',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to franchise.franchisee. Business justification: Marketing fund contributions are made by franchisees; adding franchisee_id creates the required relationship and resolves the siloed marketing_fund_contribution table.',
+    `fund_id` BIGINT COMMENT 'add column fund_id (BIGINT) with FK to marketing.fund.fund_id - contributions must specify which marketing fund they flow into',
     CONSTRAINT pk_marketing_fund_contribution PRIMARY KEY(`marketing_fund_contribution_id`)
-) COMMENT 'Marketing fund contributions collected from franchisees based on gross sales for cooperative advertising and brand marketing.';
+) COMMENT 'Tracks franchisee contributions to the national and regional marketing/advertising fund as required by the franchise agreement. Captures contribution period, contribution rate applied, gross sales basis, contribution amount, fund type (national advertising fund, regional co-op, local), payment status, and cumulative YTD contribution. Supports marketing fund governance, co-op advertising management, and FDD Item 11 advertising disclosure compliance.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` (
-    `lease_agreement_id` BIGINT COMMENT 'Unique identifier for the lease agreement',
-    `franchisee_id` BIGINT COMMENT 'FK to the franchisee',
-    `landlord_id` BIGINT COMMENT 'FK to the landlord',
-    `unit_id` BIGINT COMMENT 'FK to the restaurant unit',
-    `site_id` BIGINT COMMENT 'FK to the real estate site',
-    `base_rent_amount` DECIMAL(18,2) COMMENT 'Base monthly rent amount',
-    `cam_charge_amount` DECIMAL(18,2) COMMENT 'Common area maintenance charges',
-    `lease_agreement_code` STRING COMMENT 'Business reference code',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency` STRING COMMENT 'The currency attribute value for this lease agreement record in the franchise domain',
-    `currency_code` STRING COMMENT 'ISO currency code',
-    `end_date` DATE COMMENT 'The date and time when the end event occurred for this lease agreement',
-    `is_active` BOOLEAN COMMENT 'Whether the lease is currently active',
-    `lease_end_date` DATE COMMENT 'Lease expiration date',
-    `lease_number` STRING COMMENT 'The lease number attribute value for this lease agreement record in the franchise domain',
-    `lease_start_date` DATE COMMENT 'Lease commencement date',
-    `lease_status` STRING COMMENT 'Current status of the lease',
-    `lease_term_months` STRING COMMENT 'Total lease term in months',
-    `lease_type` STRING COMMENT 'Type of lease (gross, net, triple-net, percentage)',
-    `monthly_rent` DECIMAL(18,2) COMMENT 'The monthly rent attribute value for this lease agreement record in the franchise domain',
-    `monthly_rent_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for monthly rent in this lease agreement',
-    `percentage_rent_rate` DECIMAL(18,2) COMMENT 'Percentage rent rate if applicable',
-    `renewal_option` STRING COMMENT 'The renewal option attribute value for this lease agreement record in the franchise domain',
-    `renewal_option_count` STRING COMMENT 'Number of renewal options',
-    `renewal_option_term_months` STRING COMMENT 'Term of each renewal option in months',
-    `rent_escalation_rate` DECIMAL(18,2) COMMENT 'Annual rent escalation rate',
-    `security_deposit_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for security deposit in this lease agreement',
-    `start_date` DATE COMMENT 'The date and time when the start event occurred for this lease agreement',
-    `lease_agreement_status` STRING COMMENT 'The current status of the lease agreement for this lease agreement',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `lease_agreement_id` BIGINT COMMENT 'Primary key for the LeaseAgreement association',
+    `franchisee_id` BIGINT COMMENT 'Foreign key linking to the franchisee tenant',
+    `landlord_id` BIGINT COMMENT 'Foreign key linking to the landlord property owner',
+    `site_id` BIGINT COMMENT 'add column site_id (BIGINT) with FK to realestate.site.site_id - franchise lease agreements must reference the physical site',
+    `base_rent_amount` DECIMAL(18,2) COMMENT 'Monthly base rent amount agreed in the lease',
+    `lease_end_date` DATE COMMENT 'Date the lease ends',
+    `lease_start_date` DATE COMMENT 'Date the lease begins',
+    `lease_term_months` STRING COMMENT 'Length of the lease in months',
+    `lease_type` STRING COMMENT 'Classification of lease (e.g., gross, net, triple‑net)',
+    `rent_escalation_rate` DECIMAL(18,2) COMMENT 'Annual rent escalation percentage',
     CONSTRAINT pk_lease_agreement PRIMARY KEY(`lease_agreement_id`)
-) COMMENT 'Lease agreements for franchise restaurant locations linking franchisees to their real estate leases.';
+) COMMENT 'Represents the contractual lease relationship between a franchisee and a landlord, capturing rent, term, escalation, and type details for each property lease.. Existence Justification: Franchisees (tenants) can lease properties from multiple landlords, and landlords can lease to multiple franchisees. The lease agreement is an operational contract that is created, updated, and terminated by business users and contains its own data such as rent amount, term, and escalation.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ADD CONSTRAINT `fk_franchise_franchisee_area_representative_id` FOREIGN KEY (`area_representative_id`) REFERENCES `vibe_restaurants_v1`.`franchise`.`area_representative`(`area_representative_id`);
@@ -771,84 +624,96 @@ ALTER SCHEMA `vibe_restaurants_v1`.`franchise` SET TAGS ('dbx_domain' = 'franchi
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `area_representative_id` SET TAGS ('dbx_business_glossary_term' = 'Area Representative ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `area_representative_id` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `distribution_center_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Center ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `annual_revenue` SET TAGS ('dbx_business_glossary_term' = 'Annual Revenue');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `credit_rating` SET TAGS ('dbx_business_glossary_term' = 'Credit Rating');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `dba_name` SET TAGS ('dbx_business_glossary_term' = 'DBA Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `dba_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `established_date` SET TAGS ('dbx_business_glossary_term' = 'Established Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_business_glossary_term' = 'FDD Disclosure Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `food_safety_certified` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Certified');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchise_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_number` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_status` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_type` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `ifa_membership_status` SET TAGS ('dbx_business_glossary_term' = 'IFA Membership Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `industry_segment` SET TAGS ('dbx_business_glossary_term' = 'Industry Segment');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `insurance_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Insurance Expiry Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Policy Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_business_glossary_term' = 'Legal Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `next_renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Next Renewal Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `number_of_units` SET TAGS ('dbx_business_glossary_term' = 'Number of Units');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `distribution_center_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Center Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1 (Address Line 1)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2 (Address Line 2)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `annual_revenue` SET TAGS ('dbx_business_glossary_term' = 'Annual Revenue (Annual Revenue)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City (City)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `city` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status (Compliance Status)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|under_review');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (Country Code)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp (Record Created Timestamp)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `credit_rating` SET TAGS ('dbx_business_glossary_term' = 'Credit Rating (Credit Rating)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `credit_rating` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `dba_name` SET TAGS ('dbx_business_glossary_term' = 'Doing Business As Name (DBA Name)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `dba_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `dba_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `established_date` SET TAGS ('dbx_business_glossary_term' = 'Established Date (Established Date)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_business_glossary_term' = 'FDD Disclosure Status (FDD Disclosure Status)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_value_regex' = 'disclosed|pending|exempt');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `food_safety_certified` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Certified (Food Safety Certified)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchise_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee Amount (Franchise Fee Amount)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_number` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Number (Franchisee Number)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_status` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Status (Franchisee Status)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_status` SET TAGS ('dbx_value_regex' = 'active|inactive|terminated|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_type` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Type (Franchisee Type)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `franchisee_type` SET TAGS ('dbx_value_regex' = 'individual|llc|corporation|partnership');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `ifa_membership_status` SET TAGS ('dbx_business_glossary_term' = 'IFA Membership Status (IFA Membership Status)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `ifa_membership_status` SET TAGS ('dbx_value_regex' = 'member|non_member|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `industry_segment` SET TAGS ('dbx_business_glossary_term' = 'Industry Segment (Industry Segment)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `industry_segment` SET TAGS ('dbx_value_regex' = 'qsr|casual|fine_dining');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `insurance_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Insurance Expiry Date (Insurance Expiry Date)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Policy Number (Insurance Policy Number)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_business_glossary_term' = 'Legal Name (Legal Name)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `next_renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Next Renewal Date (Next Renewal Date)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `number_of_units` SET TAGS ('dbx_business_glossary_term' = 'Number of Units (Number of Units)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code (Postal Code)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `royalty_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Royalty Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `royalty_rate` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_business_glossary_term' = 'State Tax Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_business_glossary_term' = 'Tax ID EIN');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `royalty_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Royalty Fee Amount (Royalty Fee Amount)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `royalty_rate` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate (Royalty Rate)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State/Province (State/Province)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_province` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_business_glossary_term' = 'State Tax ID (State Tax ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `state_tax_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_business_glossary_term' = 'Employer Identification Number (EIN)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `tax_id_ein` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date (Termination Date)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchisee` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp (Record Updated Timestamp)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` SET TAGS ('dbx_subdomain' = 'partner_management');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisor Legal Entity ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisor ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisor ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Agreement Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Agreement Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_type` SET TAGS ('dbx_business_glossary_term' = 'Agreement Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Number');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_value_regex' = 'active|inactive|terminated|pending|draft');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_type` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `agreement_type` SET TAGS ('dbx_value_regex' = 'initial|renewal|transfer|amendment');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `amendment_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Amendment Effective Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `amendment_number` SET TAGS ('dbx_business_glossary_term' = 'Amendment Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `compliance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `contract_version` SET TAGS ('dbx_business_glossary_term' = 'Contract Version');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `ftc_compliance_attestation_flag` SET TAGS ('dbx_business_glossary_term' = 'FTC Compliance Attestation Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `initial_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Initial Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `marketing_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fee Percent');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `initial_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Initial Franchise Fee Amount');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `marketing_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fund Contribution Percent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Agreement Notes');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `renewal_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `renewal_term_years` SET TAGS ('dbx_business_glossary_term' = 'Renewal Term Years');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percent');
@@ -856,549 +721,603 @@ ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `sales_ta
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `signed_date` SET TAGS ('dbx_business_glossary_term' = 'Signed Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `transfer_rights_flag` SET TAGS ('dbx_business_glossary_term' = 'Transfer Rights Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`agreement` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `distribution_center_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Center ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `area_sq_miles` SET TAGS ('dbx_business_glossary_term' = 'Area Square Miles');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `distribution_center_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Center Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `area_sq_miles` SET TAGS ('dbx_business_glossary_term' = 'Territory Area (Square Miles)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Territory Assignment Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `assignment_status` SET TAGS ('dbx_value_regex' = 'assigned|unassigned|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV) for Territory');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Territory City Name');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_code` SET TAGS ('dbx_business_glossary_term' = 'Territory Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Territory Compliance Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|under_review');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Territory Country Code (ISO 3166‑1 Alpha‑3)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_description` SET TAGS ('dbx_business_glossary_term' = 'Territory Description');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `dma` SET TAGS ('dbx_business_glossary_term' = 'DMA');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `franchise_fee` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `geometry_wkt` SET TAGS ('dbx_business_glossary_term' = 'Geometry WKT');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `median_income` SET TAGS ('dbx_business_glossary_term' = 'Median Income');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `median_income` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `dma` SET TAGS ('dbx_business_glossary_term' = 'Designated Market Area (DMA) Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Territory Effective End Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Territory Effective Start Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `franchise_fee` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee Amount for Territory');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `geometry_wkt` SET TAGS ('dbx_business_glossary_term' = 'Territory Geographic Boundary (WKT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Compliance Inspection Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `median_income` SET TAGS ('dbx_business_glossary_term' = 'Territory Median Household Income');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_name` SET TAGS ('dbx_business_glossary_term' = 'Territory Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `number_of_locations` SET TAGS ('dbx_business_glossary_term' = 'Number of Locations');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `population` SET TAGS ('dbx_business_glossary_term' = 'Population');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `radius_miles` SET TAGS ('dbx_business_glossary_term' = 'Radius Miles');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `royalty_rate` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_status` SET TAGS ('dbx_business_glossary_term' = 'Territory Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_type` SET TAGS ('dbx_business_glossary_term' = 'Territory Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Additional Notes on Territory');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `number_of_locations` SET TAGS ('dbx_business_glossary_term' = 'Number of Restaurant Locations in Territory');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `population` SET TAGS ('dbx_business_glossary_term' = 'Territory Population Count');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `radius_miles` SET TAGS ('dbx_business_glossary_term' = 'Territory Radius (Miles)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Territory State/Province Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `region` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `royalty_rate` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percentage for Territory');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_status` SET TAGS ('dbx_business_glossary_term' = 'Territory Lifecycle Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|closed');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_type` SET TAGS ('dbx_business_glossary_term' = 'Territory Type (Exclusive/Protected/Non‑Exclusive)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `territory_type` SET TAGS ('dbx_value_regex' = 'exclusive|protected|non_exclusive');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `trade_area_classification` SET TAGS ('dbx_business_glossary_term' = 'Trade Area Classification');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `zip_codes` SET TAGS ('dbx_business_glossary_term' = 'Zip Codes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `zip_codes` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `trade_area_classification` SET TAGS ('dbx_value_regex' = 'high|medium|low');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Update Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`territory` ALTER COLUMN `zip_codes` SET TAGS ('dbx_business_glossary_term' = 'Territory ZIP Codes (Comma‑Separated)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` SET TAGS ('dbx_subdomain' = 'financial_reporting');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `billing_id` SET TAGS ('dbx_business_glossary_term' = 'Billing ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `amount_paid` SET TAGS ('dbx_business_glossary_term' = 'Amount Paid');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `balance_outstanding` SET TAGS ('dbx_business_glossary_term' = 'Balance Outstanding');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `billing_number` SET TAGS ('dbx_business_glossary_term' = 'Billing Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `billing_status` SET TAGS ('dbx_business_glossary_term' = 'Billing Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `billing_type` SET TAGS ('dbx_business_glossary_term' = 'Billing Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Due Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `invoice_date` SET TAGS ('dbx_business_glossary_term' = 'Invoice Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `invoice_number` SET TAGS ('dbx_business_glossary_term' = 'Invoice Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `is_paid` SET TAGS ('dbx_business_glossary_term' = 'Is Paid');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `marketing_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `paid_date` SET TAGS ('dbx_business_glossary_term' = 'Paid Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `period_end` SET TAGS ('dbx_business_glossary_term' = 'Billing Period End');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `period_start` SET TAGS ('dbx_business_glossary_term' = 'Billing Period Start');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `royalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Royalty Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `technology_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Technology Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `total_amount_due` SET TAGS ('dbx_business_glossary_term' = 'Total Amount Due');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` SET TAGS ('dbx_subdomain' = 'compliance_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `billing_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`billing` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` SET TAGS ('dbx_subdomain' = 'financial_reporting');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` SET TAGS ('dbx_subdomain' = 'compliance_operations');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_report_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Report ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Location Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `unit_id` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Submitted By Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Submitted By Employee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `adjustments_amount` SET TAGS ('dbx_business_glossary_term' = 'Adjustments Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `average_check_value` SET TAGS ('dbx_business_glossary_term' = 'Average Check Value');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `audit_trail` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `average_check_value` SET TAGS ('dbx_business_glossary_term' = 'Average Check Value (ACV)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|CAD|EUR|GBP|JPY|AUD');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `daypart_sales_breakdown` SET TAGS ('dbx_business_glossary_term' = 'Daypart Sales Breakdown');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `franchise_fee` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `gross_sales_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Sales Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `net_sales_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Sales Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Report Notes');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `report_number` SET TAGS ('dbx_business_glossary_term' = 'Report Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_type` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `reporting_period_type` SET TAGS ('dbx_value_regex' = 'weekly|monthly|quarterly|yearly');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `royalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Royalty Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `royalty_rate` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_report_status` SET TAGS ('dbx_business_glossary_term' = 'Sales Report Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `same_store_sales` SET TAGS ('dbx_business_glossary_term' = 'Same Store Sales');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_report_status` SET TAGS ('dbx_business_glossary_term' = 'Report Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `sales_report_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|validated|rejected');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `same_store_sales` SET TAGS ('dbx_business_glossary_term' = 'Same‑Store Sales (SSS)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `submission_method` SET TAGS ('dbx_business_glossary_term' = 'Submission Method');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `submission_method` SET TAGS ('dbx_value_regex' = 'portal|email|ftp|api');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `submission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submission Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `transaction_count` SET TAGS ('dbx_business_glossary_term' = 'Transaction Count');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `transaction_count` SET TAGS ('dbx_business_glossary_term' = 'Transaction Count (ATC)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `validation_status` SET TAGS ('dbx_business_glossary_term' = 'Validation Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `validation_status` SET TAGS ('dbx_value_regex' = 'pending|passed|failed');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Variance Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`sales_report` ALTER COLUMN `variance_flag` SET TAGS ('dbx_business_glossary_term' = 'Variance Flag');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` SET TAGS ('dbx_subdomain' = 'development_operations');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_pipeline_id` SET TAGS ('dbx_business_glossary_term' = 'NRO Pipeline ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` SET TAGS ('dbx_subdomain' = 'growth_execution');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_pipeline_id` SET TAGS ('dbx_business_glossary_term' = 'New Restaurant Opening (NRO) Pipeline ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Consultant Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Development Consultant ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Development Consultant ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `nro_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `actual_capex_spent` SET TAGS ('dbx_business_glossary_term' = 'Actual Capex Spent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `actual_capex_spent` SET TAGS ('dbx_business_glossary_term' = 'Actual CAPEX Spent');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `actual_open_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Open Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `budget_capex` SET TAGS ('dbx_business_glossary_term' = 'Budget Capex');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `actual_opex_spent` SET TAGS ('dbx_business_glossary_term' = 'Actual OPEX Spent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `brand` SET TAGS ('dbx_business_glossary_term' = 'Brand');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `brand` SET TAGS ('dbx_value_regex' = 'QSR|Casual|Fine_Dining');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `budget_capex` SET TAGS ('dbx_business_glossary_term' = 'CAPEX Budget');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `budget_opex` SET TAGS ('dbx_business_glossary_term' = 'OPEX Budget');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `capital_investment_estimate` SET TAGS ('dbx_business_glossary_term' = 'Capital Investment Estimate');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `construction_complete_flag` SET TAGS ('dbx_business_glossary_term' = 'Construction Complete Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `construction_start_flag` SET TAGS ('dbx_business_glossary_term' = 'Construction Started Flag');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `development_type` SET TAGS ('dbx_business_glossary_term' = 'Development Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_roi` SET TAGS ('dbx_business_glossary_term' = 'Expected ROI');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `development_type` SET TAGS ('dbx_value_regex' = 'new_build|conversion|remodel');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_acuv` SET TAGS ('dbx_business_glossary_term' = 'Expected Average Check Value (ACV)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_cogs_percent` SET TAGS ('dbx_business_glossary_term' = 'Expected COGS Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_labor_percent` SET TAGS ('dbx_business_glossary_term' = 'Expected Labor Cost Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_roi` SET TAGS ('dbx_business_glossary_term' = 'Expected Return on Investment (ROI)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `expected_traffic_volume` SET TAGS ('dbx_business_glossary_term' = 'Expected Traffic Volume');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_business_glossary_term' = 'Health Inspection Score');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `health_inspection_score` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `last_milestone_date` SET TAGS ('dbx_business_glossary_term' = 'Last Milestone Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `last_milestone_name` SET TAGS ('dbx_business_glossary_term' = 'Last Milestone Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `last_milestone_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `last_milestone_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Project Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `opening_announced_flag` SET TAGS ('dbx_business_glossary_term' = 'Opening Announced Flag');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `permits_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Permits Obtained Flag');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_code` SET TAGS ('dbx_value_regex' = '^NRO-[A-Z0-9]{6}$');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'Project Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `project_status` SET TAGS ('dbx_value_regex' = 'active|on_hold|cancelled|completed');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Risk Level');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `stage` SET TAGS ('dbx_business_glossary_term' = 'Stage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `stage` SET TAGS ('dbx_business_glossary_term' = 'Project Stage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `stage_change_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Stage Change Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `target_open_date` SET TAGS ('dbx_business_glossary_term' = 'Target Open Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `territory_code` SET TAGS ('dbx_business_glossary_term' = 'Territory Code');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `training_complete_flag` SET TAGS ('dbx_business_glossary_term' = 'Training Complete Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`nro_pipeline` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` SET TAGS ('dbx_subdomain' = 'development_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `development_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Development Schedule ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `cure_period_months` SET TAGS ('dbx_business_glossary_term' = 'Cure Period Months');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Schedule Compliance Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `cure_period_months` SET TAGS ('dbx_business_glossary_term' = 'Cure Period (Months)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `development_phase` SET TAGS ('dbx_business_glossary_term' = 'Development Phase');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `development_phase` SET TAGS ('dbx_value_regex' = 'planning|execution|monitoring|closed');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `development_schedule_status` SET TAGS ('dbx_business_glossary_term' = 'Development Schedule Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_number` SET TAGS ('dbx_business_glossary_term' = 'Schedule Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_type` SET TAGS ('dbx_business_glossary_term' = 'Schedule Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `development_schedule_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|completed|default');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Schedule End Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `last_compliance_check` SET TAGS ('dbx_business_glossary_term' = 'Last Compliance Check Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Schedule Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_number` SET TAGS ('dbx_business_glossary_term' = 'Development Schedule Number');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_type` SET TAGS ('dbx_business_glossary_term' = 'Development Schedule Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_type` SET TAGS ('dbx_value_regex' = 'MUDA|single_unit|renewal');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `schedule_version` SET TAGS ('dbx_business_glossary_term' = 'Schedule Version');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Schedule Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `target_units_year_1` SET TAGS ('dbx_business_glossary_term' = 'Target Units Year 1');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `target_units_year_2` SET TAGS ('dbx_business_glossary_term' = 'Target Units Year 2');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `target_units_year_3` SET TAGS ('dbx_business_glossary_term' = 'Target Units Year 3');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `total_units_committed` SET TAGS ('dbx_business_glossary_term' = 'Total Units Committed');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `units_opened_to_date` SET TAGS ('dbx_business_glossary_term' = 'Units Opened to Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `units_opened_to_date` SET TAGS ('dbx_business_glossary_term' = 'Units Opened To Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `units_remaining` SET TAGS ('dbx_business_glossary_term' = 'Units Remaining');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`development_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` SET TAGS ('dbx_subdomain' = 'compliance_support');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` SET TAGS ('dbx_subdomain' = 'compliance_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor Identifier (AUDITOR_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor Identifier (AUDITOR_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_location_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_notes` SET TAGS ('dbx_business_glossary_term' = 'Audit Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_number` SET TAGS ('dbx_business_glossary_term' = 'Audit Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Audit Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_type` SET TAGS ('dbx_business_glossary_term' = 'Audit Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `brand_standards_score` SET TAGS ('dbx_business_glossary_term' = 'Brand Standards Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `cleanliness_score` SET TAGS ('dbx_business_glossary_term' = 'Cleanliness Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_audit_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `critical_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Violations Count');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `food_safety_score` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `non_critical_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Non-Critical Violations Count');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `overall_score` SET TAGS ('dbx_business_glossary_term' = 'Overall Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `service_score` SET TAGS ('dbx_business_glossary_term' = 'Service Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Identifier (FRANCHISE_ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Identifier (FRANCHISE_ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_disposition` SET TAGS ('dbx_business_glossary_term' = 'Audit Disposition (DISPOSITION)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_disposition` SET TAGS ('dbx_value_regex' = 'pass|conditional_pass|fail');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_location_code` SET TAGS ('dbx_business_glossary_term' = 'Audit Location Code (LOC_CODE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_notes` SET TAGS ('dbx_business_glossary_term' = 'Audit Notes (NOTES)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_number` SET TAGS ('dbx_business_glossary_term' = 'Audit Number (AUDIT_NO)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_source_system` SET TAGS ('dbx_business_glossary_term' = 'Audit Source System (SOURCE_SYS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Audit Event Timestamp (AUDIT_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_type` SET TAGS ('dbx_business_glossary_term' = 'Audit Type (AUDIT_TYPE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `audit_type` SET TAGS ('dbx_value_regex' = 'scheduled|unannounced|follow_up');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `brand_standards_score` SET TAGS ('dbx_business_glossary_term' = 'Brand Standards Section Score (BRAND_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `cleanliness_score` SET TAGS ('dbx_business_glossary_term' = 'Cleanliness Section Score (CLN_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_audit_status` SET TAGS ('dbx_business_glossary_term' = 'Audit Lifecycle Status (STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `compliance_audit_status` SET TAGS ('dbx_value_regex' = 'pending|in_progress|completed|cancelled');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag (CORR_ACT_REQ)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `critical_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Violations Count (CRIT_VIOL_CNT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `equipment_score` SET TAGS ('dbx_business_glossary_term' = 'Equipment Section Score (EQP_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `food_safety_score` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Section Score (FS_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `non_critical_violations_count` SET TAGS ('dbx_business_glossary_term' = 'Non‑Critical Violations Count (NONCRIT_VIOL_CNT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `overall_score` SET TAGS ('dbx_business_glossary_term' = 'Overall Compliance Score (OVERALL_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `service_score` SET TAGS ('dbx_business_glossary_term' = 'Service Section Score (SRV_SCORE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`compliance_audit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp (UPDATED_TS)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_subdomain' = 'compliance_support');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_canonical' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot' = 'deprecated_duplicate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_role' = 'reference');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_canonical_of' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_of' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_source' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_ref' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_context' = 'franchise_compliance_audit_findings');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_duplicate' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_master' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_canonical' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_ssot_deprecated_duplicate' = 'foodsafety.foodsafety_corrective_action');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `franchise_corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Corrective Action ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `compliance_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `foodsafety_corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Corrective Action ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `action_description` SET TAGS ('dbx_business_glossary_term' = 'Action Description');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `action_number` SET TAGS ('dbx_business_glossary_term' = 'Action Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `action_status` SET TAGS ('dbx_business_glossary_term' = 'Action Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `assigned_to` SET TAGS ('dbx_business_glossary_term' = 'Assigned To');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Due Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `is_closed` SET TAGS ('dbx_business_glossary_term' = 'Is Closed');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `issue_category` SET TAGS ('dbx_business_glossary_term' = 'Issue Category');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_business_glossary_term' = 'Resolution Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `root_cause` SET TAGS ('dbx_business_glossary_term' = 'Root Cause');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Severity');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` SET TAGS ('dbx_subdomain' = 'compliance_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `franchise_corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for franchise_corrective_action');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_corrective_action` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` SET TAGS ('dbx_subdomain' = 'agreement_lifecycle');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Fee Schedule ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `calculation_basis` SET TAGS ('dbx_business_glossary_term' = 'Calculation Basis');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `calculation_method` SET TAGS ('dbx_business_glossary_term' = 'Calculation Method');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_schedule_code` SET TAGS ('dbx_business_glossary_term' = 'Fee Schedule Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_name` SET TAGS ('dbx_business_glossary_term' = 'Fee Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Fee Rate Percent');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_type` SET TAGS ('dbx_business_glossary_term' = 'Fee Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `flat_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Flat Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `frequency` SET TAGS ('dbx_business_glossary_term' = 'Frequency');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `minimum_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` SET TAGS ('dbx_subdomain' = 'compliance_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `fee_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Fee Schedule Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fee_schedule` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` SET TAGS ('dbx_subdomain' = 'compliance_support');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` SET TAGS ('dbx_subdomain' = 'growth_execution');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Training Enrollment ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Trainee ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Trainee ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_trainer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Trainer Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_trainer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Trainer ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_trainer_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_trainer_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `certification_issued` SET TAGS ('dbx_business_glossary_term' = 'Certification Issued');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Hours Completed');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `hours_required` SET TAGS ('dbx_business_glossary_term' = 'Hours Required');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `pass_fail_status` SET TAGS ('dbx_business_glossary_term' = 'Pass Fail Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `scheduled_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Completion Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `score` SET TAGS ('dbx_business_glossary_term' = 'Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Training Enrollment Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_type` SET TAGS ('dbx_business_glossary_term' = 'Training Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date (ACD)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `certification_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiration Date (CED)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `certification_issued` SET TAGS ('dbx_business_glossary_term' = 'Certification Issued (CI)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Flag (CF)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp (CT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until (EU)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Date (ED)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Number (ENR)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Hours Completed (HC)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `hours_required` SET TAGS ('dbx_business_glossary_term' = 'Hours Required (HR)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Notes (EN)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `pass_fail_status` SET TAGS ('dbx_business_glossary_term' = 'Pass/Fail Status (PFS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `pass_fail_status` SET TAGS ('dbx_value_regex' = 'pass|fail|not_applicable');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `scheduled_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Completion Date (SCD)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `score` SET TAGS ('dbx_business_glossary_term' = 'Training Score (TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status (ES)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|completed|failed|cancelled|in-progress');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_type` SET TAGS ('dbx_business_glossary_term' = 'Training Type (TT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `training_type` SET TAGS ('dbx_value_regex' = 'classroom|online|in-restaurant');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`training_enrollment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp (UT)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_subdomain' = 'development_operations');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_canonical' = 'realestate.realestate_remodel_project');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_pair' = 'realestate.realestate_remodel_project');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_ref' = 'realestate.realestate_remodel_project');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_context' = 'franchisee_funded_remodel_projects');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_duplicate' = 'realestate.realestate_remodel_project');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_deprecated' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_ssot_canonical' = 'realestate.realestate_remodel_project');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `franchise_remodel_project_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Remodel Project ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `remodel_project_id` SET TAGS ('dbx_business_glossary_term' = 'Real Estate Remodel Project ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `actual_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `is_complete` SET TAGS ('dbx_business_glossary_term' = 'Is Complete');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `planned_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planned End Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `project_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'Project Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `remodel_type` SET TAGS ('dbx_business_glossary_term' = 'Remodel Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `scope_description` SET TAGS ('dbx_business_glossary_term' = 'Scope Description');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` SET TAGS ('dbx_subdomain' = 'growth_execution');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `franchise_remodel_project_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for franchise_remodel_project');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`franchise_remodel_project` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` SET TAGS ('dbx_subdomain' = 'agreement_lifecycle');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_event_id` SET TAGS ('dbx_business_glossary_term' = 'Transfer Event ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Transferor Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approval User Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` SET TAGS ('dbx_subdomain' = 'partner_management');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_event_id` SET TAGS ('dbx_business_glossary_term' = 'Transfer Event Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Transferor Franchisee Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approval User Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approval User Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `compliance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending_review');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `effective_transfer_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Transfer Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `event_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transfer Event Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `fdd_redisclosure_date` SET TAGS ('dbx_business_glossary_term' = 'Franchise Disclosure Document Redisclosure Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `franchisor_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Franchisor Approval Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `marketing_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fee Percent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `new_territory_code` SET TAGS ('dbx_business_glossary_term' = 'New Territory Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Transfer Event Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `previous_territory_code` SET TAGS ('dbx_business_glossary_term' = 'Previous Territory Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `right_of_first_refusal_exercised_flag` SET TAGS ('dbx_business_glossary_term' = 'Right of First Refusal Exercised Flag');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percent');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `total_transfer_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Transfer Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_event_status` SET TAGS ('dbx_business_glossary_term' = 'Transfer Event Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_conditions` SET TAGS ('dbx_business_glossary_term' = 'Transfer Conditions');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_event_status` SET TAGS ('dbx_business_glossary_term' = 'Transfer Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_event_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|completed|cancelled');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Transfer Fee Amount');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_fee_due_date` SET TAGS ('dbx_business_glossary_term' = 'Transfer Fee Due Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_fee_paid_flag` SET TAGS ('dbx_business_glossary_term' = 'Transfer Fee Paid Flag');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_fee_tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Transfer Fee Tax Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_number` SET TAGS ('dbx_business_glossary_term' = 'Transfer Number');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_reason` SET TAGS ('dbx_business_glossary_term' = 'Transfer Reason');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_reason` SET TAGS ('dbx_value_regex' = 'retirement|sale|bankruptcy|strategic|other');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_type` SET TAGS ('dbx_business_glossary_term' = 'Transfer Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `units_transferred` SET TAGS ('dbx_business_glossary_term' = 'Units Transferred');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `transfer_type` SET TAGS ('dbx_value_regex' = 'sale|inheritance|estate|corporate_acquisition|internal_reassignment');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `units_transferred` SET TAGS ('dbx_business_glossary_term' = 'Number of Units Transferred');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`transfer_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` SET TAGS ('dbx_subdomain' = 'agreement_lifecycle');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_event_id` SET TAGS ('dbx_business_glossary_term' = 'Renewal Event ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Original Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `compliance_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `ftc_compliance_attestation_flag` SET TAGS ('dbx_business_glossary_term' = 'FTC Compliance Attestation Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_event_status` SET TAGS ('dbx_business_glossary_term' = 'Renewal Event Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_paid_flag` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Paid Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_payment_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Payment Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_number` SET TAGS ('dbx_business_glossary_term' = 'Renewal Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_term_years` SET TAGS ('dbx_business_glossary_term' = 'Renewal Term Years');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Updated Royalty Rate Percent');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Identifier (FRANCHISEE_ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Original Franchise Agreement ID (FA_ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `compliance_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Completed Flag (COMPLIANCE_REVIEWED)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Renewal Effective Start Date (EFFECTIVE_FROM)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Renewal Effective End Date (EFFECTIVE_UNTIL)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `fdd_redisclosure_timestamp` SET TAGS ('dbx_business_glossary_term' = 'FDD Redisclosure Timestamp (FDD_REDISCLOSE_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `franchisor_approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Franchisor Approval Timestamp (APPROVAL_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `ftc_compliance_attestation_flag` SET TAGS ('dbx_business_glossary_term' = 'FTC Compliance Attestation Flag (FTC_ATTEST)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Renewal Event Notes (NOTES)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_application_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Renewal Application Timestamp (APP_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_event_status` SET TAGS ('dbx_business_glossary_term' = 'Renewal Event Status (STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_event_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|completed|cancelled');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_execution_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Renewal Execution Timestamp (EXEC_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Amount (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_currency` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Currency Code (CURRENCY_CODE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_currency` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_paid_flag` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Paid Flag (FEE_PAID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_fee_payment_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Fee Payment Date (FEE_PAYMENT_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_number` SET TAGS ('dbx_business_glossary_term' = 'Renewal Event Number (REN_NUM)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_number` SET TAGS ('dbx_value_regex' = 'RN-[0-9]{8}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `renewal_term_years` SET TAGS ('dbx_business_glossary_term' = 'Renewal Term Length in Years (TERM_YRS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Updated Royalty Rate Percentage (ROYALTY_RATE_PCT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_territory_code` SET TAGS ('dbx_business_glossary_term' = 'Updated Territory Code (TERR_CODE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_territory_code` SET TAGS ('dbx_value_regex' = '[A-Z0-9]{3,10}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`renewal_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp (UPDATED_TS)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` SET TAGS ('dbx_subdomain' = 'agreement_lifecycle');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_event_id` SET TAGS ('dbx_business_glossary_term' = 'Termination Event ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `cure_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Cure Period End Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `effective_termination_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Termination Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `ftc_compliance_attestation_flag` SET TAGS ('dbx_business_glossary_term' = 'FTC Compliance Attestation Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `legal_dispute_flag` SET TAGS ('dbx_business_glossary_term' = 'Legal Dispute Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `notice_date` SET TAGS ('dbx_business_glossary_term' = 'Notice Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `outstanding_royalty_balance` SET TAGS ('dbx_business_glossary_term' = 'Outstanding Royalty Balance');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `post_termination_obligation` SET TAGS ('dbx_business_glossary_term' = 'Post Termination Obligation');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_cure_period_days` SET TAGS ('dbx_business_glossary_term' = 'Termination Cure Period Days');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_event_status` SET TAGS ('dbx_business_glossary_term' = 'Termination Event Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Termination Fee Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_type` SET TAGS ('dbx_business_glossary_term' = 'Termination Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `units_affected` SET TAGS ('dbx_business_glossary_term' = 'Units Affected');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `compliance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Date (COMPLIANCE_REVIEW_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status (COMPLIANCE_STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp (CREATED_TIMESTAMP)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `cure_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Cure Period End Date (CURE_PERIOD_END_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `effective_termination_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Termination Date (EFFECTIVE_TERMINATION_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `ftc_compliance_attestation_flag` SET TAGS ('dbx_business_glossary_term' = 'FTC Compliance Attestation Flag (FTC_COMPLIANCE_ATTESTATION_FLAG)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `legal_dispute_flag` SET TAGS ('dbx_business_glossary_term' = 'Legal Dispute Flag (LEGAL_DISPUTE_FLAG)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes (NOTES)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `notice_date` SET TAGS ('dbx_business_glossary_term' = 'Notice Date (NOTICE_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `outstanding_royalty_balance` SET TAGS ('dbx_business_glossary_term' = 'Outstanding Royalty Balance (OUTSTANDING_ROYALTY_BALANCE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `outstanding_royalty_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `outstanding_royalty_currency_code` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `post_termination_obligation` SET TAGS ('dbx_business_glossary_term' = 'Post-Termination Obligation (POST_TERMINATION_OBLIGATION)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `post_termination_obligation` SET TAGS ('dbx_value_regex' = 'de_identification|non_compete|none');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_cure_period_days` SET TAGS ('dbx_business_glossary_term' = 'Termination Cure Period Days (TERMINATION_CURE_PERIOD_DAYS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_event_status` SET TAGS ('dbx_business_glossary_term' = 'Termination Event Status (STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_event_status` SET TAGS ('dbx_value_regex' = 'pending|approved|executed|closed|rejected');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Termination Fee Amount (TERMINATION_FEE_AMOUNT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_fee_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_fee_currency_code` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_notice_method` SET TAGS ('dbx_business_glossary_term' = 'Termination Notice Method (TERMINATION_NOTICE_METHOD)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_notice_method` SET TAGS ('dbx_value_regex' = 'email|postal|fax|in_person');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason (TERMINATION_REASON)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_type` SET TAGS ('dbx_business_glossary_term' = 'Termination Type (TERMINATION_TYPE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `termination_type` SET TAGS ('dbx_value_regex' = 'voluntary|default|non_renewal|abandonment');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `units_affected` SET TAGS ('dbx_business_glossary_term' = 'Units Affected (UNITS_AFFECTED)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`termination_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp (UPDATED_TIMESTAMP)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` SET TAGS ('dbx_subdomain' = 'financial_reporting');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` SET TAGS ('dbx_subdomain' = 'compliance_operations');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `performance_scorecard_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Scorecard ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `average_unit_volume` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `compliance_audit_average_score` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Average Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `customer_satisfaction_score` SET TAGS ('dbx_business_glossary_term' = 'Customer Satisfaction Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_period_end` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period End');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_period_start` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period Start');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `customer_satisfaction_score` SET TAGS ('dbx_business_glossary_term' = 'Customer Satisfaction (CSAT) Score');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_month` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Month');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_period_end` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period End Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_period_start` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Period Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_status` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_status` SET TAGS ('dbx_value_regex' = 'pending|completed|reviewed');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_type` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_type` SET TAGS ('dbx_value_regex' = 'annual|quarterly|monthly');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `evaluation_year` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Year');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `food_safety_score` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Score');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `net_promoter_score` SET TAGS ('dbx_business_glossary_term' = 'Net Promoter Score (NPS)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `number_of_restaurants` SET TAGS ('dbx_business_glossary_term' = 'Number of Restaurants');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `overall_performance_tier` SET TAGS ('dbx_business_glossary_term' = 'Overall Performance Tier');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `royalty_payment_timeliness_pct` SET TAGS ('dbx_business_glossary_term' = 'Royalty Payment Timeliness Pct');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `same_store_sales_growth_pct` SET TAGS ('dbx_business_glossary_term' = 'Same Store Sales Growth Pct');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `overall_performance_tier` SET TAGS ('dbx_value_regex' = 'platinum|gold|silver|at_risk');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `region_code` SET TAGS ('dbx_business_glossary_term' = 'Region Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `region_code` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `royalty_payment_timeliness_pct` SET TAGS ('dbx_business_glossary_term' = 'Royalty Payment Timeliness Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `same_store_sales_growth_pct` SET TAGS ('dbx_business_glossary_term' = 'Same‑Store Sales Growth Percentage (SSS Growth)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `total_royalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Royalty Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `total_sales_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Sales Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `training_completion_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Rate Pct');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `training_completion_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Rate Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`performance_scorecard` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` SET TAGS ('dbx_subdomain' = 'partner_management');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_disclosure_id` SET TAGS ('dbx_business_glossary_term' = 'FDD Disclosure ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_disclosure_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Disclosure Document ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Recipient Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_recipient_prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Recipient Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `acknowledgment_received_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Received Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `compliance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `compliance_review_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Review Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Delivery Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `document_title` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_business_glossary_term' = 'FDD Disclosure Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `compliance_review_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Delivery Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `document_title` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Document Title');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `document_type` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Document Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `document_type` SET TAGS ('dbx_value_regex' = 'initial|amendment|supplement');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Expiration Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_disclosure_status` SET TAGS ('dbx_value_regex' = 'draft|issued|archived|revoked');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_document_url` SET TAGS ('dbx_business_glossary_term' = 'FDD Document URL');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `fdd_version_number` SET TAGS ('dbx_business_glossary_term' = 'FDD Version Number');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `material_change_description` SET TAGS ('dbx_business_glossary_term' = 'Material Change Description');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `material_change_flag` SET TAGS ('dbx_business_glossary_term' = 'Material Change Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `recipient_type` SET TAGS ('dbx_business_glossary_term' = 'Recipient Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `recipient_type` SET TAGS ('dbx_value_regex' = 'prospect|existing_franchisee|prospective_franchisee');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_code` SET TAGS ('dbx_business_glossary_term' = 'State Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_registration_status` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `version_year` SET TAGS ('dbx_business_glossary_term' = 'Version Year');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_registration_status` SET TAGS ('dbx_business_glossary_term' = 'State Registration Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `state_registration_status` SET TAGS ('dbx_value_regex' = 'registered|not_registered|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `version_year` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Version Year');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `waiting_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Waiting Period End Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`fdd_disclosure` ALTER COLUMN `waiting_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Waiting Period Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` SET TAGS ('dbx_subdomain' = 'partner_management');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Consultant Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Development Consultant ID (CONSULTANT_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Development Consultant ID (CONSULTANT_ID)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1 (ADDR1)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2 (ADDR2)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `application_status` SET TAGS ('dbx_business_glossary_term' = 'Application Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `background_check_status` SET TAGS ('dbx_business_glossary_term' = 'Background Check Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `discovery_day_attended` SET TAGS ('dbx_business_glossary_term' = 'Discovery Day Attended');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `fdd_sent_flag` SET TAGS ('dbx_business_glossary_term' = 'FDD Sent Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `franchise_type_preference` SET TAGS ('dbx_business_glossary_term' = 'Franchise Type Preference');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_method` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `liquid_capital_amount` SET TAGS ('dbx_business_glossary_term' = 'Liquid Capital Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_business_glossary_term' = 'Prospect Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `net_worth_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Worth Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `pipeline_stage` SET TAGS ('dbx_business_glossary_term' = 'Pipeline Stage');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `application_status` SET TAGS ('dbx_business_glossary_term' = 'Application Status (APP_STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `application_status` SET TAGS ('dbx_value_regex' = 'not_submitted|submitted|under_review|approved|rejected');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `application_submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Application Submitted Date (APP_SUBMIT_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `background_check_date` SET TAGS ('dbx_business_glossary_term' = 'Background Check Completion Date (BG_CHECK_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `background_check_status` SET TAGS ('dbx_business_glossary_term' = 'Background Check Status (BG_CHECK_STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `background_check_status` SET TAGS ('dbx_value_regex' = 'pending|cleared|failed');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City (CITY)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `city` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Attestation Flag (COMPLIANCE_FLAG)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Prospect Email Address (EMAIL)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Prospect Phone Number (PHONE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (ISO)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `discovery_day_attended` SET TAGS ('dbx_business_glossary_term' = 'Discovery Day Attended Flag (DISCOVERY_ATTEND)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `discovery_day_date` SET TAGS ('dbx_business_glossary_term' = 'Discovery Day Date (DISCOVERY_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `estimated_initial_investment` SET TAGS ('dbx_business_glossary_term' = 'Estimated Initial Investment (EST_INVEST)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `estimated_initial_investment` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `estimated_initial_investment` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `estimated_initial_investment_currency` SET TAGS ('dbx_business_glossary_term' = 'Initial Investment Currency (EST_INVEST_CURR)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `expected_open_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Opening Date (EXP_OPEN_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `fdd_disclosure_date` SET TAGS ('dbx_business_glossary_term' = 'Franchise Disclosure Document Disclosure Date (FDD_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `fdd_sent_flag` SET TAGS ('dbx_business_glossary_term' = 'FDD Sent Flag (FDD_SENT)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `franchise_type_preference` SET TAGS ('dbx_business_glossary_term' = 'Franchise Type Preference (TYPE_PREF)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `franchise_type_preference` SET TAGS ('dbx_value_regex' = 'QSR|Casual|Fine_Dining');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Date (LAST_CONTACT_DATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_method` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Method (LAST_CONTACT_METHOD)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `last_contact_method` SET TAGS ('dbx_value_regex' = 'email|phone|in_person|online');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `legal_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Type (ENTITY_TYPE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `legal_entity_type` SET TAGS ('dbx_value_regex' = 'individual|company');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `liquid_capital_amount` SET TAGS ('dbx_business_glossary_term' = 'Liquid Capital Amount (LIQ_CAPITAL)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `liquid_capital_amount` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `liquid_capital_amount` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `liquid_capital_currency` SET TAGS ('dbx_business_glossary_term' = 'Liquid Capital Currency (LIQ_CAPITAL_CURR)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_business_glossary_term' = 'Prospect Full Legal Name (NAME)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `net_worth_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Worth Amount (NET_WORTH)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `net_worth_amount` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `net_worth_amount` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `net_worth_currency` SET TAGS ('dbx_business_glossary_term' = 'Net Worth Currency (NET_WORTH_CURR)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Prospect Notes (NOTES)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `pipeline_stage` SET TAGS ('dbx_business_glossary_term' = 'Pipeline Stage (STAGE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `pipeline_stage` SET TAGS ('dbx_value_regex' = 'lead|discovery|application|approval|contract|onboarding');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code (ZIP)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_status` SET TAGS ('dbx_business_glossary_term' = 'Prospect Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `source_channel` SET TAGS ('dbx_business_glossary_term' = 'Source Channel');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'State');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `state` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `territory_preference` SET TAGS ('dbx_business_glossary_term' = 'Territory Preference');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_status` SET TAGS ('dbx_business_glossary_term' = 'Prospect Status (STATUS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `prospect_status` SET TAGS ('dbx_value_regex' = 'new|qualified|disqualified|in_progress|won|lost');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `source_channel` SET TAGS ('dbx_business_glossary_term' = 'Prospect Source Channel (SRC_CHAN)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `source_channel` SET TAGS ('dbx_value_regex' = 'referral|trade_show|digital_lead|broker');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `source_detail` SET TAGS ('dbx_business_glossary_term' = 'Source Detail (SRC_DETAIL)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'State/Province (STATE)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `state` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `state` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `territory_preference` SET TAGS ('dbx_business_glossary_term' = 'Territory Preference (TERRITORY_PREF)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Record Updated By (UPDATED_BY)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp (UPDATED_TS)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`prospect` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Record Created By (CREATED_BY)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` SET TAGS ('dbx_subdomain' = 'partner_management');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `area_representative_id` SET TAGS ('dbx_business_glossary_term' = 'Area Representative ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `area_representative_status` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Status');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `area_representative_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|terminated|pending');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `average_unit_volume_target` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume Target');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `base_salary_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Salary Amount');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `base_salary_amount` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `base_salary_amount` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `commission_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compensation_type` SET TAGS ('dbx_business_glossary_term' = 'Compensation Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compensation_type` SET TAGS ('dbx_value_regex' = 'salary|commission|salary_plus_commission|bonus');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compensation_type` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compensation_type` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|under_review');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Email Address');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_business_glossary_term' = 'Full Name');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Email Address');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `external_reference_number` SET TAGS ('dbx_business_glossary_term' = 'External Reference Number');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `fee_structure_description` SET TAGS ('dbx_business_glossary_term' = 'Fee Structure Description');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Full Name (First and Last)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `full_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `last_compliance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Compliance Review Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `market_segment` SET TAGS ('dbx_business_glossary_term' = 'Market Segment');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `market_segment` SET TAGS ('dbx_value_regex' = 'urban|suburban|rural|airport|high_traffic');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `number_of_franchisees_managed` SET TAGS ('dbx_business_glossary_term' = 'Number of Franchisees Managed');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `performance_score` SET TAGS ('dbx_business_glossary_term' = 'Performance Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `primary_contact_method` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Phone Number');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `primary_contact_method` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Method');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `primary_contact_method` SET TAGS ('dbx_value_regex' = 'email|phone|sms');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `region_code` SET TAGS ('dbx_business_glossary_term' = 'Region Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `role_type` SET TAGS ('dbx_business_glossary_term' = 'Role Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `royalty_split_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Split Percent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `role_type` SET TAGS ('dbx_business_glossary_term' = 'Area Representative Role Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `role_type` SET TAGS ('dbx_value_regex' = 'area_representative|area_developer|sub_franchisor');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `royalty_fee_cap_amount` SET TAGS ('dbx_business_glossary_term' = 'Royalty Fee Cap Amount');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `royalty_split_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Split Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `training_completed_flag` SET TAGS ('dbx_business_glossary_term' = 'Training Completed Flag');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `updated_by_user` SET TAGS ('dbx_business_glossary_term' = 'Updated By User');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`area_representative` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` SET TAGS ('dbx_subdomain' = 'compliance_support');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` SET TAGS ('dbx_subdomain' = 'growth_execution');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_visit_id` SET TAGS ('dbx_business_glossary_term' = 'Support Visit ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Consultant Employee ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Field Business Consultant ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Field Business Consultant ID');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `action_items` SET TAGS ('dbx_business_glossary_term' = 'Action Items');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Store ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Store ID');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `action_items` SET TAGS ('dbx_business_glossary_term' = 'Visit Action Items');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Flag');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `compliance_score` SET TAGS ('dbx_business_glossary_term' = 'Compliance Score');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Required');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `is_training_visit` SET TAGS ('dbx_business_glossary_term' = 'Is Training Visit');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (ISO 3166‑1 Alpha‑3)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `equipment_inspected_flag` SET TAGS ('dbx_business_glossary_term' = 'Equipment Inspected Flag');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `equipment_issue_count` SET TAGS ('dbx_business_glossary_term' = 'Equipment Issue Count');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `expense_amount` SET TAGS ('dbx_business_glossary_term' = 'Visit Expense Amount');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `expense_category` SET TAGS ('dbx_business_glossary_term' = 'Expense Category');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `expense_category` SET TAGS ('dbx_value_regex' = 'travel|lodging|meals|supplies|other');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow‑Up Required Flag');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `is_training_visit` SET TAGS ('dbx_business_glossary_term' = 'Training Visit Indicator');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Visit Notes');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Geographic Region');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `sales_impact_estimate` SET TAGS ('dbx_business_glossary_term' = 'Estimated Sales Impact');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `satisfaction_rating` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Satisfaction Rating');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State or Province');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_visit_status` SET TAGS ('dbx_business_glossary_term' = 'Support Visit Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `topics_covered` SET TAGS ('dbx_business_glossary_term' = 'Topics Covered');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Visit Duration Minutes');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_number` SET TAGS ('dbx_business_glossary_term' = 'Visit Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Visit Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_business_glossary_term' = 'Visit Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `support_visit_status` SET TAGS ('dbx_value_regex' = 'scheduled|completed|cancelled|postponed|in_progress');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `topics_covered` SET TAGS ('dbx_business_glossary_term' = 'Visit Topics Covered');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `training_topic` SET TAGS ('dbx_business_glossary_term' = 'Training Topic');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Visit Duration (Minutes)');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_number` SET TAGS ('dbx_business_glossary_term' = 'Support Visit Number');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Support Visit Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_business_glossary_term' = 'Support Visit Type');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_value_regex' = 'scheduled|unannounced|follow_up|opening_support');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`support_visit` ALTER COLUMN `waste_percentage` SET TAGS ('dbx_business_glossary_term' = 'Food Waste Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` SET TAGS ('dbx_subdomain' = 'financial_reporting');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `marketing_fund_contribution_id` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fund Contribution ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `calculation_basis` SET TAGS ('dbx_business_glossary_term' = 'Calculation Basis');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_amount` SET TAGS ('dbx_business_glossary_term' = 'Contribution Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_number` SET TAGS ('dbx_business_glossary_term' = 'Contribution Number');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_period_end` SET TAGS ('dbx_business_glossary_term' = 'Contribution Period End');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_period_start` SET TAGS ('dbx_business_glossary_term' = 'Contribution Period Start');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Contribution Rate Pct');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `contribution_status` SET TAGS ('dbx_business_glossary_term' = 'Contribution Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Due Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `gross_sales_basis_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Sales Basis Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `is_paid` SET TAGS ('dbx_business_glossary_term' = 'Is Paid');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` SET TAGS ('dbx_subdomain' = 'compliance_operations');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `marketing_fund_contribution_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for franchise_marketing_fund_contribution');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`marketing_fund_contribution` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` SET TAGS ('dbx_subdomain' = 'agreement_lifecycle');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` SET TAGS ('dbx_subdomain' = 'growth_execution');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` SET TAGS ('dbx_association_edges' = 'franchise.franchisee,realestate.landlord');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Lease Agreement ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `landlord_id` SET TAGS ('dbx_business_glossary_term' = 'Landlord ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Unit ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `base_rent_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Rent Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `cam_charge_amount` SET TAGS ('dbx_business_glossary_term' = 'CAM Charge Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_agreement_code` SET TAGS ('dbx_business_glossary_term' = 'Lease Agreement Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Leaseagreement - Lease Id');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Leaseagreement - Franchisee Id');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `landlord_id` SET TAGS ('dbx_business_glossary_term' = 'Leaseagreement - Landlord Id');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `base_rent_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Rent');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `base_rent_amount` SET TAGS ('dbx_financial' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_end_date` SET TAGS ('dbx_business_glossary_term' = 'Lease End Date');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_end_date` SET TAGS ('dbx_temporal' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_start_date` SET TAGS ('dbx_business_glossary_term' = 'Lease Start Date');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_status` SET TAGS ('dbx_business_glossary_term' = 'Lease Status');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_term_months` SET TAGS ('dbx_business_glossary_term' = 'Lease Term Months');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_start_date` SET TAGS ('dbx_temporal' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_term_months` SET TAGS ('dbx_business_glossary_term' = 'Lease Term');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_term_months` SET TAGS ('dbx_temporal' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_type` SET TAGS ('dbx_business_glossary_term' = 'Lease Type');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `percentage_rent_rate` SET TAGS ('dbx_business_glossary_term' = 'Percentage Rent Rate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `renewal_option_count` SET TAGS ('dbx_business_glossary_term' = 'Renewal Option Count');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `renewal_option_term_months` SET TAGS ('dbx_business_glossary_term' = 'Renewal Option Term Months');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `rent_escalation_rate` SET TAGS ('dbx_business_glossary_term' = 'Rent Escalation Rate');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `security_deposit_amount` SET TAGS ('dbx_business_glossary_term' = 'Security Deposit Amount');
-ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `lease_type` SET TAGS ('dbx_classification' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `rent_escalation_rate` SET TAGS ('dbx_business_glossary_term' = 'Escalation Rate');
+ALTER TABLE `vibe_restaurants_v1`.`franchise`.`lease_agreement` ALTER COLUMN `rent_escalation_rate` SET TAGS ('dbx_financial' = 'true');

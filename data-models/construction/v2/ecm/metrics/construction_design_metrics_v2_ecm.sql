@@ -1,611 +1,68 @@
--- Metric views for domain: design | Business: Construction | Version: 2 | Generated on: 2026-06-28 00:14:33
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_bim_model`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks BIM model register health, ISO 19650 compliance, and model quality metrics. Enables BIM management to monitor model maturity, clash status, and information delivery performance."
-  source: "`vibe_construction_v1`.`design`.`bim_model`"
-  dimensions:
-    - name: "model_status"
-      expr: model_status
-      comment: "Current status of the BIM model (in development, issued, superseded, archived)."
-    - name: "model_type"
-      expr: model_type
-      comment: "Type of BIM model (architectural, structural, MEP, federated, etc.) for category analysis."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline of the model for workload attribution."
-    - name: "lod_classification"
-      expr: lod_classification
-      comment: "Level of Development (LOD) classification of the model, measuring information maturity."
-    - name: "iso_19650_compliance_flag"
-      expr: iso_19650_compliance_flag
-      comment: "Whether the model complies with ISO 19650 BIM information management standards."
-    - name: "clash_detection_status"
-      expr: clash_detection_status
-      comment: "Current clash detection status of the model for coordination quality monitoring."
-    - name: "lifecycle_stage"
-      expr: lifecycle_stage
-      comment: "Project lifecycle stage of the model (design, construction, as-built, operations)."
-    - name: "issue_date_month"
-      expr: DATE_TRUNC('MONTH', issue_date)
-      comment: "Month the model was issued for trend analysis of BIM delivery velocity."
-  measures:
-    - name: "total_bim_models"
-      expr: COUNT(1)
-      comment: "Total number of BIM models in the register. Baseline measure of BIM programme scope."
-    - name: "iso_19650_compliant_models"
-      expr: COUNT(CASE WHEN iso_19650_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of BIM models compliant with ISO 19650. Measures BIM information management governance."
-    - name: "iso_19650_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN iso_19650_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of BIM models meeting ISO 19650 compliance. A BIM governance KPI for asset information delivery."
-    - name: "total_file_size_mb"
-      expr: SUM(CAST(file_size_mb AS DOUBLE))
-      comment: "Total file size of all BIM models in MB. Informs BIM infrastructure and storage planning."
-    - name: "avg_file_size_mb"
-      expr: AVG(CAST(file_size_mb AS DOUBLE))
-      comment: "Average BIM model file size in MB. Benchmarks model complexity and performance requirements."
-    - name: "avg_origin_elevation_m"
-      expr: AVG(CAST(origin_elevation_m AS DOUBLE))
-      comment: "Average model origin elevation in metres. Used for spatial coordination and model federation quality checks."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_change_impact`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Measures the financial and schedule impact of design changes, enabling leadership to quantify change exposure, prioritise mitigation actions, and manage contract variation risk."
-  source: "`vibe_construction_v1`.`design`.`change_impact`"
-  dimensions:
-    - name: "change_impact_status"
-      expr: change_impact_status
-      comment: "Current status of the change impact assessment (open, mitigated, closed)."
-    - name: "impact_category"
-      expr: impact_category
-      comment: "Category of impact (cost, schedule, scope, quality) for multi-dimensional change analysis."
-    - name: "impact_severity"
-      expr: impact_severity
-      comment: "Severity of the impact (critical, major, minor) for prioritisation."
-    - name: "impact_type"
-      expr: impact_type
-      comment: "Type of impact for root cause and trend analysis."
-    - name: "affected_discipline"
-      expr: affected_discipline
-      comment: "Engineering discipline affected by the change, for workload and risk attribution."
-    - name: "disposition"
-      expr: disposition
-      comment: "Disposition of the impact assessment (accepted, rejected, under review)."
-    - name: "assessed_date_month"
-      expr: DATE_TRUNC('MONTH', assessed_date)
-      comment: "Month the impact was assessed for trend analysis of change exposure over time."
-  measures:
-    - name: "total_change_impacts"
-      expr: COUNT(1)
-      comment: "Total number of change impact assessments. Measures the volume of design change exposure."
-    - name: "total_cost_impact"
-      expr: SUM(CAST(cost_impact AS DOUBLE))
-      comment: "Total cost impact across all change impact assessments. Key input for contract variation and contingency management."
-    - name: "total_cost_impact_amount"
-      expr: SUM(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Total cost impact amount from change assessments. Measures aggregate financial exposure from design changes."
-    - name: "avg_cost_impact_amount"
-      expr: AVG(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Average cost impact per change assessment. Benchmarks the financial weight of individual design changes."
-    - name: "critical_severity_impacts"
-      expr: COUNT(CASE WHEN impact_severity = 'Critical' THEN 1 END)
-      comment: "Number of critical severity change impacts. A priority escalation metric for project leadership."
-    - name: "open_change_impacts"
-      expr: COUNT(CASE WHEN change_impact_status = 'Open' THEN 1 END)
-      comment: "Number of unresolved change impacts. Open impacts represent unmitigated project risk."
-$$;
+-- Metric views for domain: design | Business: Construction | Version: 2 | Generated on: 2026-07-10 12:14:04
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_change_notice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Monitors design change notices for volume, cost and schedule impact, and approval cycle performance. Critical for change control governance and contract variation management."
+  comment: "Tracks design change notices across projects — volume, cost impact, and schedule impact to support change control governance and project cost management decisions."
   source: "`vibe_construction_v1`.`design`.`change_notice`"
   dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the change notice belongs to, enabling per-project change analysis."
     - name: "change_notice_status"
       expr: change_notice_status
-      comment: "Lifecycle status of the change notice (draft, issued, approved, rejected) for pipeline tracking."
+      comment: "Current workflow status of the change notice (e.g. Draft, Approved, Rejected) for pipeline analysis."
     - name: "change_notice_type"
       expr: change_notice_type
-      comment: "Category of change (design error, client request, regulatory, etc.) to identify root causes."
+      comment: "Category of change (e.g. Design, Scope, Regulatory) to identify root causes of change."
     - name: "discipline"
       expr: discipline
-      comment: "Engineering discipline originating the change, for workload and impact attribution."
+      comment: "Engineering discipline originating the change notice (e.g. Civil, Structural, MEP)."
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the change notice to focus management attention on critical changes."
     - name: "cost_impact_flag"
       expr: cost_impact_flag
-      comment: "Whether the change notice carries a cost impact, for financial exposure segmentation."
+      comment: "Boolean flag indicating whether the change notice carries a cost impact."
     - name: "schedule_impact_flag"
       expr: schedule_impact_flag
-      comment: "Whether the change notice carries a schedule impact, for delay risk segmentation."
-    - name: "client_approval_required_flag"
-      expr: client_approval_required_flag
-      comment: "Whether client approval is required, to track governance compliance."
+      comment: "Boolean flag indicating whether the change notice carries a schedule impact."
     - name: "date_raised_month"
       expr: DATE_TRUNC('MONTH', date_raised)
-      comment: "Month the change notice was raised, for trend and velocity analysis."
+      comment: "Month the change notice was raised, for trend analysis over time."
     - name: "originating_cause"
       expr: originating_cause
-      comment: "Root cause category of the change, enabling systemic issue identification."
+      comment: "Root cause category of the change (e.g. Client Request, Design Error, Regulatory) for Pareto analysis."
   measures:
     - name: "total_change_notices"
       expr: COUNT(1)
-      comment: "Total number of design change notices. High volumes indicate design instability or scope creep."
-    - name: "approved_change_notices"
-      expr: COUNT(CASE WHEN change_notice_status = 'Approved' THEN 1 END)
-      comment: "Number of approved change notices, representing confirmed design changes entering implementation."
-    - name: "rejected_change_notices"
-      expr: COUNT(CASE WHEN change_notice_status = 'Rejected' THEN 1 END)
-      comment: "Number of rejected change notices. High rejection rates may indicate poor change quality or misaligned scope."
-    - name: "approval_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN change_notice_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of change notices approved. Informs change control effectiveness and client alignment."
+      comment: "Total number of change notices raised. Baseline volume KPI for change control governance."
     - name: "total_estimated_cost_impact"
       expr: SUM(CAST(estimated_cost_impact_amount AS DOUBLE))
-      comment: "Total estimated cost impact across all change notices. Key input for contract variation forecasting and contingency management."
+      comment: "Sum of estimated cost impacts across all change notices. Directly informs project budget exposure and contingency management."
     - name: "total_actual_cost_impact"
       expr: SUM(CAST(actual_cost_impact_amount AS DOUBLE))
-      comment: "Total actual cost impact from implemented change notices. Compared against estimates to assess change cost accuracy."
+      comment: "Sum of realized cost impacts from approved change notices. Measures actual budget deviation driven by design changes."
     - name: "avg_estimated_cost_impact"
       expr: AVG(CAST(estimated_cost_impact_amount AS DOUBLE))
-      comment: "Average estimated cost impact per change notice. Benchmarks the financial weight of design changes."
-    - name: "cost_impacting_change_notices"
+      comment: "Average estimated cost impact per change notice. Helps benchmark change complexity and cost exposure per event."
+    - name: "cost_impact_change_notices"
       expr: COUNT(CASE WHEN cost_impact_flag = TRUE THEN 1 END)
-      comment: "Number of change notices with a cost impact. Drives contract change order pipeline sizing."
-    - name: "schedule_impacting_change_notices"
+      comment: "Number of change notices with a cost impact. Drives prioritization of change review resources."
+    - name: "schedule_impact_change_notices"
       expr: COUNT(CASE WHEN schedule_impact_flag = TRUE THEN 1 END)
-      comment: "Number of change notices with a schedule impact. Informs EOT claim exposure and programme risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_clash_detection_run`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks BIM clash detection performance across coordination runs, measuring clash volumes, resolution rates, and coordination quality. Critical for MEP and multi-discipline coordination governance."
-  source: "`vibe_construction_v1`.`design`.`clash_detection_run`"
-  dimensions:
-    - name: "run_status"
-      expr: run_status
-      comment: "Status of the clash detection run (completed, in progress, failed) for pipeline monitoring."
-    - name: "primary_discipline"
-      expr: primary_discipline
-      comment: "Primary discipline involved in the clash run for discipline-level coordination analysis."
-    - name: "secondary_discipline"
-      expr: secondary_discipline
-      comment: "Secondary discipline involved, enabling discipline-pair clash hotspot identification."
-    - name: "discipline_pair"
-      expr: discipline_pair
-      comment: "Combined discipline pair (e.g., structural-MEP) for coordination interface analysis."
-    - name: "building_zone"
-      expr: building_zone
-      comment: "Building zone where clashes were detected, for spatial hotspot analysis."
-    - name: "clash_free_certification_flag"
-      expr: clash_free_certification_flag
-      comment: "Whether the run achieved clash-free certification, a key milestone for construction readiness."
-    - name: "run_date_month"
-      expr: DATE_TRUNC('MONTH', run_date)
-      comment: "Month of the clash detection run for trend analysis of coordination progress."
-    - name: "software_platform"
-      expr: software_platform
-      comment: "BIM coordination software platform used, for tool performance benchmarking."
-  measures:
-    - name: "total_runs"
-      expr: COUNT(1)
-      comment: "Total number of clash detection runs. Measures BIM coordination activity intensity."
-    - name: "clash_free_certified_runs"
-      expr: COUNT(CASE WHEN clash_free_certification_flag = TRUE THEN 1 END)
-      comment: "Number of runs achieving clash-free certification. A key construction readiness milestone."
-    - name: "clash_free_certification_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN clash_free_certification_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of clash detection runs achieving clash-free certification. Measures BIM coordination maturity and construction readiness."
-    - name: "total_clash_tolerance_mm_avg"
-      expr: AVG(CAST(clash_tolerance_mm AS DOUBLE))
-      comment: "Average clash tolerance threshold across runs. Tighter tolerances indicate higher coordination quality standards."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_correspondence`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks project correspondence volume, response performance, and closure rates. Unresolved correspondence creates contractual risk; this view enables management to monitor communication governance."
-  source: "`vibe_construction_v1`.`design`.`correspondence`"
-  dimensions:
-    - name: "correspondence_status"
-      expr: correspondence_status
-      comment: "Current status of the correspondence (open, closed, pending response) for pipeline health."
-    - name: "correspondence_type"
-      expr: correspondence_type
-      comment: "Type of correspondence (letter, email, notice, instruction) for category analysis."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline associated with the correspondence."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the correspondence for escalation management."
-    - name: "response_required_flag"
-      expr: response_required_flag
-      comment: "Whether a formal response is required, for contractual obligation tracking."
-    - name: "confidential_flag"
-      expr: confidential_flag
-      comment: "Whether the correspondence is confidential, for access control monitoring."
-    - name: "correspondence_date_month"
-      expr: DATE_TRUNC('MONTH', correspondence_date)
-      comment: "Month of correspondence for volume trend analysis."
-  measures:
-    - name: "total_correspondence"
-      expr: COUNT(1)
-      comment: "Total number of correspondence items. Baseline measure of project communication volume."
-    - name: "open_correspondence"
-      expr: COUNT(CASE WHEN correspondence_status = 'Open' THEN 1 END)
-      comment: "Number of open correspondence items. Unresolved correspondence creates contractual and legal risk."
-    - name: "closed_correspondence"
-      expr: COUNT(CASE WHEN correspondence_status = 'Closed' THEN 1 END)
-      comment: "Number of closed correspondence items. Measures communication resolution throughput."
-    - name: "correspondence_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN correspondence_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of correspondence items closed. A contractual governance KPI — low rates indicate unresolved obligations."
-    - name: "response_required_items"
-      expr: COUNT(CASE WHEN response_required_flag = TRUE THEN 1 END)
-      comment: "Number of correspondence items requiring a formal response. Measures contractual response obligation volume."
-    - name: "overdue_response_items"
-      expr: COUNT(CASE WHEN response_required_flag = TRUE AND response_date IS NULL AND response_due_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of correspondence items where a response was required but not provided by the due date. A critical contractual risk KPI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_document_register`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Measures document register health, controlled document compliance, and deliverable status. Supports document control governance and ISO 19650 information management compliance."
-  source: "`vibe_construction_v1`.`design`.`document_register`"
-  dimensions:
-    - name: "document_register_status"
-      expr: document_register_status
-      comment: "Current status of the document (current, superseded, archived, under review) for register health."
-    - name: "document_type"
-      expr: document_type
-      comment: "Type of document (drawing, specification, report, calculation, etc.) for category analysis."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline of the document for workload attribution."
-    - name: "is_client_deliverable"
-      expr: is_client_deliverable
-      comment: "Whether the document is a contractual client deliverable."
-    - name: "is_controlled_document"
-      expr: is_controlled_document
-      comment: "Whether the document is under formal document control."
-    - name: "confidentiality_classification"
-      expr: confidentiality_classification
-      comment: "Confidentiality classification of the document for access control governance."
-    - name: "issue_date_month"
-      expr: DATE_TRUNC('MONTH', issue_date)
-      comment: "Month the document was issued for trend analysis of document delivery velocity."
-  measures:
-    - name: "total_documents"
-      expr: COUNT(1)
-      comment: "Total number of documents in the register. Baseline measure of project information scope."
-    - name: "controlled_documents"
-      expr: COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END)
-      comment: "Number of documents under formal document control. Measures information management compliance."
-    - name: "controlled_document_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of documents under formal document control. A document management governance KPI."
-    - name: "client_deliverable_documents"
-      expr: COUNT(CASE WHEN is_client_deliverable = TRUE THEN 1 END)
-      comment: "Number of documents that are contractual client deliverables. Tracks delivery obligation scope."
-    - name: "total_file_size_mb"
-      expr: SUM(CAST(file_size_mb AS DOUBLE))
-      comment: "Total file size of all registered documents in MB. Informs storage infrastructure planning."
-    - name: "avg_file_size_mb"
-      expr: AVG(CAST(file_size_mb AS DOUBLE))
-      comment: "Average document file size in MB. Benchmarks document complexity and storage efficiency."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_drawing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Measures drawing register health, revision velocity, and deliverable status. Supports design delivery governance and document control performance management."
-  source: "`vibe_construction_v1`.`design`.`drawing`"
-  dimensions:
-    - name: "drawing_status"
-      expr: drawing_status
-      comment: "Current status of the drawing (issued for construction, under review, superseded, etc.) for register health monitoring."
-    - name: "drawing_type"
-      expr: drawing_type
-      comment: "Type of drawing (plan, elevation, section, detail, etc.) for category analysis."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline of the drawing for workload and delivery attribution."
-    - name: "is_client_deliverable"
-      expr: is_client_deliverable
-      comment: "Whether the drawing is a contractual client deliverable, for delivery obligation tracking."
-    - name: "is_controlled_document"
-      expr: is_controlled_document
-      comment: "Whether the drawing is a controlled document under the document management system."
-    - name: "clash_detection_status"
-      expr: clash_detection_status
-      comment: "BIM clash detection status for the drawing, linking design quality to coordination."
-    - name: "issue_purpose"
-      expr: issue_purpose
-      comment: "Purpose of issue (for construction, for approval, for information, etc.) for delivery stage analysis."
-    - name: "revision_date_month"
-      expr: DATE_TRUNC('MONTH', revision_date)
-      comment: "Month of the latest revision for drawing activity trend analysis."
-  measures:
-    - name: "total_drawings"
-      expr: COUNT(1)
-      comment: "Total number of drawings in the register. Baseline measure of design deliverable scope."
-    - name: "client_deliverable_drawings"
-      expr: COUNT(CASE WHEN is_client_deliverable = TRUE THEN 1 END)
-      comment: "Number of drawings that are contractual client deliverables. Tracks delivery obligation fulfilment."
-    - name: "controlled_drawings"
-      expr: COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END)
-      comment: "Number of drawings under formal document control. Measures document management compliance."
-    - name: "controlled_document_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of drawings under formal document control. A document management governance KPI."
-    - name: "total_file_size_mb"
-      expr: SUM(CAST(file_size_mb AS DOUBLE))
-      comment: "Total file size of all drawings in MB. Informs storage infrastructure planning."
-    - name: "avg_file_size_mb"
-      expr: AVG(CAST(file_size_mb AS DOUBLE))
-      comment: "Average drawing file size in MB. Benchmarks drawing complexity and storage efficiency."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_handover_package`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Measures design handover package completeness, submission performance, and client acceptance rates. Directly informs project closeout readiness and contractual handover milestone achievement."
-  source: "`vibe_construction_v1`.`design`.`handover_package`"
-  dimensions:
-    - name: "package_status"
-      expr: package_status
-      comment: "Current status of the handover package (draft, submitted, accepted, rejected) for closeout pipeline tracking."
-    - name: "package_type"
-      expr: package_type
-      comment: "Type of handover package (as-built, O&M, commissioning, etc.) for category analysis."
-    - name: "client_acceptance_status"
-      expr: client_acceptance_status
-      comment: "Client acceptance decision on the package, for contractual obligation fulfilment tracking."
-    - name: "iso_19650_compliance_flag"
-      expr: iso_19650_compliance_flag
-      comment: "Whether the package complies with ISO 19650 BIM information management standards."
-    - name: "legal_hold_flag"
-      expr: legal_hold_flag
-      comment: "Whether the package is under legal hold, for risk and compliance monitoring."
-    - name: "planned_submission_month"
-      expr: DATE_TRUNC('MONTH', planned_submission_date)
-      comment: "Month the package was planned for submission, for schedule adherence analysis."
-  measures:
-    - name: "total_handover_packages"
-      expr: COUNT(1)
-      comment: "Total number of handover packages. Baseline measure of closeout deliverable scope."
-    - name: "client_accepted_packages"
-      expr: COUNT(CASE WHEN client_acceptance_status = 'Accepted' THEN 1 END)
-      comment: "Number of packages accepted by the client. Measures contractual handover milestone achievement."
-    - name: "client_acceptance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN client_acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of handover packages accepted by the client. A critical project closeout KPI — low rates delay final payment and project completion."
-    - name: "on_time_submission_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN submission_date <= planned_submission_date THEN 1 END) / NULLIF(COUNT(CASE WHEN submission_date IS NOT NULL AND planned_submission_date IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of handover packages submitted on or before the planned date. Measures closeout schedule adherence."
-    - name: "avg_completeness_pct"
-      expr: AVG(CAST(completeness_percentage AS DOUBLE))
-      comment: "Average completeness percentage across all handover packages. Measures overall closeout readiness."
-    - name: "iso_19650_compliant_packages"
-      expr: COUNT(CASE WHEN iso_19650_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of packages compliant with ISO 19650 BIM standards. Measures information management governance."
-    - name: "iso_19650_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN iso_19650_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of handover packages meeting ISO 19650 compliance. A BIM governance KPI for asset information delivery."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_interface_point`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks design interface points between project scopes, measuring resolution rates, cost and schedule impacts, and coordination performance. Critical for multi-contractor project interface management."
-  source: "`vibe_construction_v1`.`design`.`interface_point`"
-  dimensions:
-    - name: "interface_status"
-      expr: interface_status
-      comment: "Current status of the interface point (open, closed, in progress) for resolution pipeline tracking."
-    - name: "interface_type"
-      expr: interface_type
-      comment: "Type of interface (physical, functional, contractual) for category analysis."
-    - name: "interface_category"
-      expr: interface_category
-      comment: "Category of the interface for grouping and prioritisation."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline responsible for the interface, for workload attribution."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level of the interface point (high, medium, low) for prioritisation."
-    - name: "cost_impact_flag"
-      expr: cost_impact_flag
-      comment: "Whether the interface carries a cost impact, for financial exposure tracking."
-    - name: "clash_detection_status"
-      expr: clash_detection_status
-      comment: "BIM clash detection status for the interface, linking coordination to physical resolution."
-    - name: "planned_handover_month"
-      expr: DATE_TRUNC('MONTH', planned_handover_date)
-      comment: "Month the interface was planned for handover, for schedule adherence analysis."
-  measures:
-    - name: "total_interface_points"
-      expr: COUNT(1)
-      comment: "Total number of design interface points. High volumes on complex multi-contractor projects require dedicated management resources."
-    - name: "open_interface_points"
-      expr: COUNT(CASE WHEN interface_status = 'Open' THEN 1 END)
-      comment: "Number of unresolved interface points. Open interfaces are a leading indicator of construction coordination risk."
-    - name: "closed_interface_points"
-      expr: COUNT(CASE WHEN interface_status = 'Closed' THEN 1 END)
-      comment: "Number of resolved interface points. Measures interface management throughput."
-    - name: "interface_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN interface_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of interface points resolved. A critical multi-contractor coordination KPI — low rates indicate systemic interface management failures."
-    - name: "high_risk_open_interfaces"
-      expr: COUNT(CASE WHEN risk_level = 'High' AND interface_status = 'Open' THEN 1 END)
-      comment: "Number of high-risk interface points still open. A priority escalation metric for project leadership."
-    - name: "total_cost_impact_amount"
-      expr: SUM(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Total financial exposure from cost-impacting interface points. Informs contract variation and contingency management."
-    - name: "avg_cost_impact_amount"
-      expr: AVG(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Average cost impact per interface point. Benchmarks the financial weight of interface management."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_mep_coordination_zone`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Measures MEP coordination zone progress, clash resolution status, and spatial coordination performance. Enables management to track BIM coordination completion and construction readiness by zone."
-  source: "`vibe_construction_v1`.`design`.`mep_coordination_zone`"
-  dimensions:
-    - name: "coordination_status"
-      expr: coordination_status
-      comment: "Current coordination status of the MEP zone (not started, in progress, complete, signed off)."
-    - name: "clash_detection_status"
-      expr: clash_detection_status
-      comment: "BIM clash detection status for the zone, measuring coordination quality."
-    - name: "primary_discipline"
-      expr: primary_discipline
-      comment: "Primary MEP discipline responsible for the zone."
-    - name: "building_reference"
-      expr: building_reference
-      comment: "Building reference for spatial analysis of coordination progress."
-    - name: "level_reference"
-      expr: level_reference
-      comment: "Floor/level reference for spatial coordination analysis."
-    - name: "zone_complexity_rating"
-      expr: zone_complexity_rating
-      comment: "Complexity rating of the zone, for resource allocation and risk prioritisation."
-    - name: "planned_completion_month"
-      expr: DATE_TRUNC('MONTH', planned_completion_date)
-      comment: "Month the zone coordination was planned for completion, for schedule adherence analysis."
-  measures:
-    - name: "total_coordination_zones"
-      expr: COUNT(1)
-      comment: "Total number of MEP coordination zones. Baseline measure of BIM coordination scope."
-    - name: "completed_zones"
-      expr: COUNT(CASE WHEN coordination_status = 'Complete' THEN 1 END)
-      comment: "Number of MEP coordination zones with completed coordination. Measures construction readiness progress."
-    - name: "zone_completion_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN coordination_status = 'Complete' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of MEP coordination zones completed. A key BIM coordination KPI for construction readiness."
-    - name: "total_zone_area_sqm"
-      expr: SUM(CAST(zone_area_sqm AS DOUBLE))
-      comment: "Total floor area covered by MEP coordination zones in square metres. Measures coordination programme scope."
-    - name: "avg_ceiling_height_m"
-      expr: AVG(CAST(ceiling_height_m AS DOUBLE))
-      comment: "Average ceiling height across coordination zones. Informs MEP routing and clearance planning."
-    - name: "avg_available_clearance_m"
-      expr: AVG(CAST(available_clearance_m AS DOUBLE))
-      comment: "Average available clearance across MEP coordination zones. Low clearance values indicate high-risk coordination areas."
-    - name: "total_soffit_height_m_avg"
-      expr: AVG(CAST(soffit_height_m AS DOUBLE))
-      comment: "Average soffit height across zones. Used to assess MEP installation feasibility and coordination constraints."
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`design_package`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Overall package delivery health"
-  source: "`construction_ecm`.`design`.`package`"
-  dimensions:
-    - name: "package_status"
-      expr: package_status
-      comment: "Current status of the package"
-    - name: "discipline"
-      expr: discipline
-      comment: "Discipline associated with the package"
-    - name: "package_type"
-      expr: package_type
-      comment: "Type of package (e.g., mechanical, electrical)"
-    - name: "created_date"
-      expr: DATE_TRUNC('day', created_timestamp)
-      comment: "Date the package record was created"
-  measures:
-    - name: "total_packages"
-      expr: COUNT(1)
-      comment: "Total number of design packages"
-    - name: "average_completeness_pct"
-      expr: AVG(CAST(completeness_percentage AS DOUBLE))
-      comment: "Average completeness percentage across packages"
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`design_review`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Performance and quality metrics for design reviews"
-  source: "`construction_ecm`.`design`.`review`"
-  dimensions:
-    - name: "review_status"
-      expr: review_status
-      comment: "Current status of the review"
-    - name: "discipline"
-      expr: discipline
-      comment: "Discipline of the review"
-    - name: "review_type"
-      expr: review_type
-      comment: "Type of review (e.g., internal, client)"
-    - name: "review_date"
-      expr: DATE_TRUNC('day', review_date)
-      comment: "Date the review took place"
-  measures:
-    - name: "total_reviews"
-      expr: COUNT(1)
-      comment: "Total number of design reviews conducted"
-    - name: "average_review_duration_hours"
-      expr: AVG(CAST(duration_hours AS DOUBLE))
-      comment: "Average duration of reviews in hours"
-    - name: "clash_detection_count"
-      expr: SUM(CASE WHEN clash_detection_performed THEN 1 ELSE 0 END)
-      comment: "Number of reviews where clash detection was performed"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_drawing_revision`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks drawing revision activity, review cycle performance, and distribution compliance. High revision rates signal design instability; this view enables management to identify problem areas and drive design freeze."
-  source: "`vibe_construction_v1`.`design`.`revision`"
-  dimensions:
-    - name: "revision_status"
-      expr: revision_status
-      comment: "Current status of the drawing revision (issued, under review, superseded, etc.)."
-    - name: "revision_type"
-      expr: revision_type
-      comment: "Type of revision (minor, major, regulatory, client-driven) for root cause analysis."
-    - name: "revision_date_month"
-      expr: DATE_TRUNC('MONTH', revision_date)
-      comment: "Month of the revision for trend analysis of design change velocity."
-  measures:
-    - name: "total_revisions"
-      expr: COUNT(1)
-      comment: "Total number of drawing revisions. High volumes indicate design instability and rework costs."
+      comment: "Number of change notices with a schedule impact. Informs programme risk management and delay mitigation."
+    - name: "approved_change_notices"
+      expr: COUNT(CASE WHEN change_notice_status = 'Approved' THEN 1 END)
+      comment: "Count of approved change notices. Measures the volume of sanctioned scope changes affecting contract and budget."
+    - name: "rejected_change_notices"
+      expr: COUNT(CASE WHEN change_notice_status = 'Rejected' THEN 1 END)
+      comment: "Count of rejected change notices. High rejection rates may signal poor change quality or scope creep attempts."
+    - name: "cost_variance_vs_estimate"
+      expr: SUM(CAST(actual_cost_impact_amount AS DOUBLE) - CAST(estimated_cost_impact_amount AS DOUBLE))
+      comment: "Aggregate variance between actual and estimated cost impacts. Negative values indicate cost overruns vs. estimates, a key project controls KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_rfi`
@@ -613,52 +70,226 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks RFI (Request for Information) volume, response performance, and cost/schedule impact to support design coordination decisions and identify bottlenecks in the design clarification process."
+  comment: "Measures RFI (Request for Information) performance — volume, cost impact, and closure efficiency — to manage design information flow and contractual risk."
   source: "`vibe_construction_v1`.`design`.`rfi`"
   dimensions:
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering discipline (civil, structural, MEP, etc.) to identify which design areas generate the most RFIs."
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the RFI belongs to, enabling per-project RFI performance benchmarking."
     - name: "rfi_status"
       expr: rfi_status
-      comment: "Current lifecycle status of the RFI (open, closed, pending, etc.) for pipeline health monitoring."
+      comment: "Current status of the RFI (e.g. Open, Closed, Pending) for pipeline and backlog analysis."
+    - name: "discipline"
+      expr: discipline
+      comment: "Engineering discipline that raised the RFI, identifying which disciplines generate the most information gaps."
     - name: "priority"
       expr: priority
-      comment: "RFI priority level to focus management attention on critical items."
+      comment: "Priority level of the RFI to focus resolution effort on critical information needs."
     - name: "cost_impact_flag"
       expr: cost_impact_flag
-      comment: "Indicates whether the RFI carries a cost impact, enabling financial exposure analysis."
+      comment: "Boolean flag indicating whether the RFI has a cost impact, for financial risk triage."
     - name: "schedule_impact_flag"
       expr: schedule_impact_flag
-      comment: "Indicates whether the RFI carries a schedule impact, enabling delay risk analysis."
+      comment: "Boolean flag indicating whether the RFI has a schedule impact, for programme risk triage."
     - name: "date_raised_month"
       expr: DATE_TRUNC('MONTH', date_raised)
-      comment: "Month the RFI was raised, for trend analysis over time."
+      comment: "Month the RFI was raised, for trend and velocity analysis."
   measures:
     - name: "total_rfis"
       expr: COUNT(1)
-      comment: "Total number of RFIs raised. Baseline volume metric for design coordination workload."
+      comment: "Total number of RFIs raised. Baseline volume KPI for design information management."
     - name: "open_rfis"
       expr: COUNT(CASE WHEN rfi_status = 'Open' THEN 1 END)
-      comment: "Number of currently open RFIs. High open counts signal design coordination bottlenecks requiring management intervention."
+      comment: "Number of currently open RFIs. High open counts signal design information bottlenecks that can delay construction."
     - name: "closed_rfis"
       expr: COUNT(CASE WHEN rfi_status = 'Closed' THEN 1 END)
-      comment: "Number of closed RFIs, indicating resolution throughput."
+      comment: "Number of closed RFIs. Measures throughput of the RFI resolution process."
     - name: "rfi_closure_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN rfi_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of RFIs that have been closed. A low closure rate signals unresolved design queries that may block construction progress."
-    - name: "cost_impacting_rfis"
-      expr: COUNT(CASE WHEN cost_impact_flag = TRUE THEN 1 END)
-      comment: "Number of RFIs with a confirmed cost impact. Drives contract change order forecasting."
-    - name: "schedule_impacting_rfis"
-      expr: COUNT(CASE WHEN schedule_impact_flag = TRUE THEN 1 END)
-      comment: "Number of RFIs with a confirmed schedule impact. Directly informs delay risk and EOT claim exposure."
-    - name: "total_cost_impact_amount"
+      comment: "Percentage of RFIs that have been closed. A key design management KPI — low closure rates indicate unresolved design queries blocking construction."
+    - name: "total_cost_impact"
       expr: SUM(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Total financial exposure from RFIs with cost impacts. Used to size contingency and change order budgets."
+      comment: "Total cost impact value across all RFIs. Quantifies the financial exposure from unresolved or resolved design queries."
     - name: "avg_cost_impact_per_rfi"
       expr: AVG(CAST(cost_impact_amount AS DOUBLE))
-      comment: "Average cost impact per RFI. Helps benchmark the financial weight of design queries."
+      comment: "Average cost impact per RFI. Benchmarks the financial weight of individual design information gaps."
+    - name: "cost_impacting_rfis"
+      expr: COUNT(CASE WHEN cost_impact_flag = TRUE THEN 1 END)
+      comment: "Number of RFIs with a cost impact. Drives prioritization of RFI resolution to protect project budget."
+    - name: "schedule_impacting_rfis"
+      expr: COUNT(CASE WHEN schedule_impact_flag = TRUE THEN 1 END)
+      comment: "Number of RFIs with a schedule impact. Informs programme risk management and critical path protection."
+    - name: "distinct_projects_with_rfis"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with active RFIs. Measures breadth of design information risk across the portfolio."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_submittal`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks design submittal performance — approval rates, cost and schedule impacts, and review cycle efficiency — to manage contractor deliverable compliance."
+  source: "`vibe_construction_v1`.`design`.`design_submittal`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the submittal belongs to, for per-project submittal compliance tracking."
+    - name: "submittal_status"
+      expr: submittal_status
+      comment: "Current status of the submittal (e.g. Approved, Rejected, Under Review) for pipeline analysis."
+    - name: "submittal_type"
+      expr: submittal_type
+      comment: "Type of submittal (e.g. Shop Drawing, Material Sample, Method Statement) for category-level performance analysis."
+    - name: "discipline"
+      expr: discipline
+      comment: "Engineering discipline of the submittal, identifying which disciplines have the most review bottlenecks."
+    - name: "approval_disposition"
+      expr: approval_disposition
+      comment: "Reviewer disposition (e.g. Approved, Approved with Comments, Rejected) for quality analysis of first-pass approval rates."
+    - name: "cost_impact_flag"
+      expr: cost_impact_flag
+      comment: "Boolean flag indicating whether the submittal has a cost impact."
+    - name: "schedule_impact_flag"
+      expr: schedule_impact_flag
+      comment: "Boolean flag indicating whether the submittal has a schedule impact."
+    - name: "required_submission_month"
+      expr: DATE_TRUNC('MONTH', required_submission_date)
+      comment: "Month the submittal was contractually required, for on-time delivery trend analysis."
+  measures:
+    - name: "total_submittals"
+      expr: COUNT(1)
+      comment: "Total number of design submittals. Baseline volume KPI for submittal register management."
+    - name: "approved_submittals"
+      expr: COUNT(CASE WHEN submittal_status = 'Approved' THEN 1 END)
+      comment: "Number of approved submittals. Measures throughput of the design approval process."
+    - name: "rejected_submittals"
+      expr: COUNT(CASE WHEN submittal_status = 'Rejected' THEN 1 END)
+      comment: "Number of rejected submittals. High rejection rates indicate quality issues in contractor design deliverables."
+    - name: "first_pass_approval_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_disposition = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of submittals approved on first submission without comments or rejection. A key quality KPI — low rates drive rework cost and schedule delay."
+    - name: "total_estimated_cost_impact"
+      expr: SUM(CAST(estimated_cost_impact_amount AS DOUBLE))
+      comment: "Total estimated cost impact across submittals with cost implications. Quantifies financial exposure from submittal-driven changes."
+    - name: "cost_impacting_submittals"
+      expr: COUNT(CASE WHEN cost_impact_flag = TRUE THEN 1 END)
+      comment: "Number of submittals with a cost impact. Drives prioritization of review resources to protect project budget."
+    - name: "schedule_impacting_submittals"
+      expr: COUNT(CASE WHEN schedule_impact_flag = TRUE THEN 1 END)
+      comment: "Number of submittals with a schedule impact. Informs programme risk management."
+    - name: "on_time_submission_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_submission_date <= required_submission_date THEN 1 END) / NULLIF(COUNT(CASE WHEN actual_submission_date IS NOT NULL AND required_submission_date IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of submittals delivered on or before the contractually required date. Measures contractor schedule compliance for design deliverables."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_clash_detection_run`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors BIM clash detection performance — clash severity, resolution progress, and coordination quality — to manage design coordination risk and reduce rework."
+  source: "`vibe_construction_v1`.`design`.`clash_detection_run`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the clash detection run belongs to, for per-project BIM coordination performance."
+    - name: "run_status"
+      expr: run_status
+      comment: "Status of the clash detection run (e.g. Complete, In Progress) for pipeline monitoring."
+    - name: "discipline_pair"
+      expr: discipline_pair
+      comment: "Pair of disciplines compared in the clash run (e.g. Structural vs MEP) to identify highest-risk coordination interfaces."
+    - name: "primary_discipline"
+      expr: primary_discipline
+      comment: "Primary discipline in the clash detection run for discipline-level coordination analysis."
+    - name: "building_zone"
+      expr: building_zone
+      comment: "Building zone where clashes were detected, for spatial hotspot analysis."
+    - name: "baseline_run_flag"
+      expr: baseline_run_flag
+      comment: "Indicates whether this is a baseline clash detection run, for trend comparison against baseline."
+    - name: "run_date_month"
+      expr: DATE_TRUNC('MONTH', run_date)
+      comment: "Month of the clash detection run, for trend analysis of coordination progress over time."
+    - name: "clash_free_certification_flag"
+      expr: clash_free_certification_flag
+      comment: "Indicates whether the run achieved clash-free certification, a key BIM coordination milestone."
+  measures:
+    - name: "total_clash_runs"
+      expr: COUNT(1)
+      comment: "Total number of clash detection runs executed. Baseline volume KPI for BIM coordination activity."
+    - name: "clash_free_certified_runs"
+      expr: COUNT(CASE WHEN clash_free_certification_flag = TRUE THEN 1 END)
+      comment: "Number of runs achieving clash-free certification. Measures BIM coordination maturity and readiness for construction."
+    - name: "clash_free_certification_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN clash_free_certification_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of clash detection runs achieving clash-free certification. A strategic BIM KPI — low rates indicate unresolved coordination issues that will drive field rework."
+    - name: "avg_clash_tolerance_mm"
+      expr: AVG(CAST(clash_tolerance_mm AS DOUBLE))
+      comment: "Average clash tolerance threshold used across runs. Tighter tolerances indicate higher coordination quality standards being enforced."
+    - name: "total_clash_runs_with_certification"
+      expr: COUNT(CASE WHEN certification_date IS NOT NULL THEN 1 END)
+      comment: "Number of clash runs that have a formal certification date, indicating completed coordination sign-off."
+    - name: "distinct_projects_coordinated"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with active clash detection runs. Measures breadth of BIM coordination programme."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_drawing`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks drawing register health — volume, revision activity, and deliverable status — to manage design documentation compliance and information release."
+  source: "`vibe_construction_v1`.`design`.`drawing`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the drawing belongs to, for per-project drawing register analysis."
+    - name: "drawing_status"
+      expr: drawing_status
+      comment: "Current status of the drawing (e.g. Issued for Construction, Under Review, Superseded) for register health monitoring."
+    - name: "drawing_type"
+      expr: drawing_type
+      comment: "Type of drawing (e.g. General Arrangement, Detail, Schematic) for category-level analysis."
+    - name: "discipline"
+      expr: discipline
+      comment: "Engineering discipline of the drawing, for discipline-level deliverable tracking."
+    - name: "is_client_deliverable"
+      expr: is_client_deliverable
+      comment: "Indicates whether the drawing is a contractual client deliverable, for compliance tracking."
+    - name: "is_controlled_document"
+      expr: is_controlled_document
+      comment: "Indicates whether the drawing is under document control, for governance monitoring."
+    - name: "issue_purpose"
+      expr: issue_purpose
+      comment: "Purpose of issue (e.g. For Construction, For Review, For Approval) to track design maturity."
+    - name: "revision_date_month"
+      expr: DATE_TRUNC('MONTH', revision_date)
+      comment: "Month of the latest drawing revision, for design change velocity analysis."
+  measures:
+    - name: "total_drawings"
+      expr: COUNT(1)
+      comment: "Total number of drawings in the register. Baseline volume KPI for design documentation scope."
+    - name: "issued_for_construction_drawings"
+      expr: COUNT(CASE WHEN drawing_status = 'Issued for Construction' THEN 1 END)
+      comment: "Number of drawings issued for construction. Measures design completion progress and construction readiness."
+    - name: "client_deliverable_drawings"
+      expr: COUNT(CASE WHEN is_client_deliverable = TRUE THEN 1 END)
+      comment: "Number of drawings that are contractual client deliverables. Tracks compliance with contractual documentation obligations."
+    - name: "controlled_document_drawings"
+      expr: COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END)
+      comment: "Number of drawings under formal document control. Measures governance compliance of the drawing register."
+    - name: "avg_file_size_mb"
+      expr: AVG(CAST(file_size_mb AS DOUBLE))
+      comment: "Average drawing file size in MB. Informs storage infrastructure planning and BIM model management."
+    - name: "total_file_size_mb"
+      expr: SUM(CAST(file_size_mb AS DOUBLE))
+      comment: "Total storage consumed by drawings in MB. Drives infrastructure capacity planning for document management systems."
+    - name: "distinct_disciplines"
+      expr: COUNT(DISTINCT discipline)
+      comment: "Number of distinct engineering disciplines represented in the drawing register. Measures design scope breadth."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_value_engineering_proposal`
@@ -666,52 +297,108 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks value engineering proposal pipeline, estimated and realised savings, and client decision rates. Directly informs cost optimisation strategy and design innovation performance."
+  comment: "Measures value engineering performance — savings identified, approved, and realized — to quantify the financial return on design optimization efforts."
   source: "`vibe_construction_v1`.`design`.`value_engineering_proposal`"
   dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the VE proposal belongs to, for per-project value engineering performance."
     - name: "proposal_status"
       expr: proposal_status
-      comment: "Current status of the VE proposal (submitted, under review, approved, rejected, implemented) for pipeline tracking."
-    - name: "client_decision"
-      expr: client_decision
-      comment: "Client decision on the VE proposal (accepted, rejected, deferred) for decision analysis."
+      comment: "Current status of the VE proposal (e.g. Submitted, Approved, Rejected, Implemented) for pipeline analysis."
     - name: "originator_discipline"
       expr: originator_discipline
-      comment: "Engineering discipline originating the proposal, for innovation attribution."
+      comment: "Engineering discipline that originated the VE proposal, identifying which disciplines generate the most value."
+    - name: "client_decision"
+      expr: client_decision
+      comment: "Client decision on the VE proposal (e.g. Accepted, Rejected, Deferred) for client engagement analysis."
     - name: "implementation_status"
       expr: implementation_status
-      comment: "Implementation status of approved proposals, for savings realisation tracking."
+      comment: "Implementation status of approved VE proposals, tracking conversion from approval to realized savings."
     - name: "environmental_impact_flag"
       expr: environmental_impact_flag
-      comment: "Whether the proposal has an environmental impact, for sustainability alignment."
+      comment: "Indicates whether the VE proposal has an environmental impact, for sustainability-linked value analysis."
     - name: "safety_impact_flag"
       expr: safety_impact_flag
-      comment: "Whether the proposal has a safety impact, for HSE risk screening."
-    - name: "client_decision_month"
-      expr: DATE_TRUNC('MONTH', client_decision_date)
-      comment: "Month of client decision for trend analysis of VE pipeline throughput."
+      comment: "Indicates whether the VE proposal has a safety impact, for risk-adjusted value assessment."
+    - name: "proposal_month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+      comment: "Month the VE proposal was created, for trend analysis of value engineering activity."
   measures:
     - name: "total_ve_proposals"
       expr: COUNT(1)
-      comment: "Total number of value engineering proposals submitted. Measures design innovation activity."
+      comment: "Total number of value engineering proposals submitted. Baseline volume KPI for VE programme activity."
+    - name: "total_estimated_savings"
+      expr: SUM(CAST(estimated_cost_saving AS DOUBLE))
+      comment: "Total estimated cost savings across all VE proposals. Quantifies the potential financial value of the VE programme pipeline."
+    - name: "total_implemented_savings"
+      expr: SUM(CAST(implemented_saving_value AS DOUBLE))
+      comment: "Total realized cost savings from implemented VE proposals. Measures the actual financial return delivered by the VE programme — a direct P&L impact KPI."
+    - name: "avg_estimated_saving_per_proposal"
+      expr: AVG(CAST(estimated_cost_saving AS DOUBLE))
+      comment: "Average estimated saving per VE proposal. Benchmarks the quality and ambition of individual VE ideas."
+    - name: "savings_realization_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(implemented_saving_value AS DOUBLE)) / NULLIF(SUM(CAST(estimated_cost_saving AS DOUBLE)), 0), 2)
+      comment: "Percentage of estimated savings that have been realized through implementation. Measures VE programme execution effectiveness — low rates indicate approval-to-implementation conversion failures."
     - name: "client_accepted_proposals"
       expr: COUNT(CASE WHEN client_decision = 'Accepted' THEN 1 END)
-      comment: "Number of VE proposals accepted by the client. Measures VE programme effectiveness."
+      comment: "Number of VE proposals accepted by the client. Measures client engagement and receptiveness to design optimization."
     - name: "client_acceptance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN client_decision = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of VE proposals accepted by the client. A key design innovation KPI — high rates indicate strong client alignment and cost optimisation culture."
-    - name: "total_estimated_cost_saving"
-      expr: SUM(CAST(estimated_cost_saving AS DOUBLE))
-      comment: "Total estimated cost savings from all VE proposals. Measures the potential financial value of the VE programme."
-    - name: "total_implemented_saving_value"
-      expr: SUM(CAST(implemented_saving_value AS DOUBLE))
-      comment: "Total realised savings from implemented VE proposals. Measures actual financial benefit delivered to the project."
-    - name: "avg_estimated_cost_saving"
-      expr: AVG(CAST(estimated_cost_saving AS DOUBLE))
-      comment: "Average estimated saving per VE proposal. Benchmarks the financial impact of individual proposals."
-    - name: "saving_realisation_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(implemented_saving_value AS DOUBLE)) / NULLIF(SUM(CAST(estimated_cost_saving AS DOUBLE)), 0), 2)
-      comment: "Percentage of estimated VE savings actually realised through implementation. Measures VE programme delivery effectiveness — a critical cost optimisation KPI."
+      expr: ROUND(100.0 * COUNT(CASE WHEN client_decision = 'Accepted' THEN 1 END) / NULLIF(COUNT(CASE WHEN client_decision IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of decided VE proposals accepted by the client. A strategic KPI for client relationship and design quality management."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_handover_package`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks project handover package completeness and timeliness — critical for contractual close-out, DLP commencement, and client acceptance milestones."
+  source: "`vibe_construction_v1`.`design`.`handover_package`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the handover package belongs to, for per-project close-out performance."
+    - name: "package_status"
+      expr: package_status
+      comment: "Current status of the handover package (e.g. In Preparation, Submitted, Accepted) for close-out pipeline monitoring."
+    - name: "package_type"
+      expr: package_type
+      comment: "Type of handover package (e.g. As-Built, O&M, Commissioning) for category-level completeness analysis."
+    - name: "client_acceptance_status"
+      expr: client_acceptance_status
+      comment: "Client acceptance status of the handover package, measuring contractual close-out progress."
+    - name: "iso_19650_compliance_flag"
+      expr: iso_19650_compliance_flag
+      comment: "Indicates whether the package meets ISO 19650 information management standards."
+    - name: "legal_hold_flag"
+      expr: legal_hold_flag
+      comment: "Indicates whether the package is under legal hold, flagging packages with legal risk."
+    - name: "submission_month"
+      expr: DATE_TRUNC('MONTH', submission_date)
+      comment: "Month the handover package was submitted, for close-out velocity trend analysis."
+  measures:
+    - name: "total_handover_packages"
+      expr: COUNT(1)
+      comment: "Total number of handover packages. Baseline volume KPI for project close-out scope."
+    - name: "client_accepted_packages"
+      expr: COUNT(CASE WHEN client_acceptance_status = 'Accepted' THEN 1 END)
+      comment: "Number of handover packages formally accepted by the client. Measures contractual close-out progress and DLP commencement readiness."
+    - name: "client_acceptance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN client_acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of handover packages accepted by the client. A key project close-out KPI — low rates delay final payment and DLP start."
+    - name: "avg_completeness_pct"
+      expr: AVG(CAST(completeness_percentage AS DOUBLE))
+      comment: "Average completeness percentage across handover packages. Measures overall readiness of the handover programme for client submission."
+    - name: "iso_compliant_packages"
+      expr: COUNT(CASE WHEN iso_19650_compliance_flag = TRUE THEN 1 END)
+      comment: "Number of handover packages meeting ISO 19650 information management standards. Measures BIM/information governance compliance."
+    - name: "on_time_submission_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN submission_date <= planned_submission_date THEN 1 END) / NULLIF(COUNT(CASE WHEN submission_date IS NOT NULL AND planned_submission_date IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of handover packages submitted on or before the planned date. Measures close-out schedule compliance."
+    - name: "packages_on_legal_hold"
+      expr: COUNT(CASE WHEN legal_hold_flag = TRUE THEN 1 END)
+      comment: "Number of handover packages under legal hold. Flags legal risk exposure in the close-out programme."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_workflow_approval`
@@ -719,53 +406,141 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Measures design document approval workflow performance including SLA compliance, escalation rates, and cycle time efficiency. Enables management to identify approval bottlenecks and governance failures."
+  comment: "Measures design workflow approval performance — SLA compliance, escalation rates, and cycle time — to manage design governance efficiency and bottleneck identification."
   source: "`vibe_construction_v1`.`design`.`workflow_approval`"
   dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the workflow approval belongs to, for per-project governance performance."
     - name: "workflow_status"
       expr: workflow_status
-      comment: "Current status of the approval workflow (pending, approved, rejected, escalated) for pipeline health."
+      comment: "Current status of the workflow approval (e.g. Pending, Approved, Rejected, Escalated) for pipeline analysis."
     - name: "workflow_type"
       expr: workflow_type
-      comment: "Type of approval workflow (drawing review, submittal approval, change notice, etc.) for category analysis."
+      comment: "Type of approval workflow (e.g. Drawing Review, Submittal Approval, Change Notice) for category-level SLA analysis."
     - name: "overall_outcome"
       expr: overall_outcome
-      comment: "Final outcome of the workflow (approved, rejected, withdrawn) for decision quality analysis."
+      comment: "Final outcome of the workflow (e.g. Approved, Rejected, Withdrawn) for quality analysis."
     - name: "escalation_flag"
       expr: escalation_flag
-      comment: "Whether the workflow was escalated, for governance and bottleneck identification."
+      comment: "Indicates whether the workflow was escalated, for bottleneck and governance risk analysis."
     - name: "sla_compliance_flag"
       expr: sla_compliance_flag
-      comment: "Whether the workflow was completed within SLA targets. Key governance KPI."
+      comment: "Indicates whether the workflow was completed within SLA, for service level performance tracking."
     - name: "approval_authority_level"
       expr: approval_authority_level
-      comment: "Level of approval authority required, for governance tier analysis."
-    - name: "regulatory_requirement_flag"
-      expr: regulatory_requirement_flag
-      comment: "Whether the workflow is driven by a regulatory requirement, for compliance tracking."
-    - name: "due_date_month"
-      expr: DATE_TRUNC('MONTH', due_date)
-      comment: "Month the workflow was due for completion, for SLA trend analysis."
+      comment: "Authority level required for approval, for delegation of authority compliance analysis."
+    - name: "initiated_month"
+      expr: DATE_TRUNC('MONTH', initiated_date)
+      comment: "Month the workflow was initiated, for approval cycle trend analysis."
   measures:
-    - name: "total_workflows"
+    - name: "total_workflow_approvals"
       expr: COUNT(1)
-      comment: "Total number of approval workflows initiated. Baseline measure of design governance workload."
-    - name: "sla_compliant_workflows"
+      comment: "Total number of design workflow approvals. Baseline volume KPI for design governance activity."
+    - name: "sla_compliant_approvals"
       expr: COUNT(CASE WHEN sla_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of workflows completed within SLA. Measures approval process efficiency."
+      comment: "Number of workflow approvals completed within SLA. Measures design governance efficiency."
     - name: "sla_compliance_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN sla_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of approval workflows completed within SLA targets. A critical design governance KPI — low rates indicate approval bottlenecks that delay design delivery."
-    - name: "escalated_workflows"
+      comment: "Percentage of workflow approvals completed within SLA. A key design management KPI — low SLA compliance delays design release and construction start."
+    - name: "escalated_approvals"
       expr: COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END)
-      comment: "Number of workflows that required escalation. High escalation rates signal approval authority gaps or resource constraints."
+      comment: "Number of workflow approvals that required escalation. High escalation rates indicate approval bottlenecks or authority delegation gaps."
     - name: "escalation_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of workflows escalated. A governance health KPI — high rates indicate systemic approval process failures."
+      comment: "Percentage of workflow approvals that were escalated. Measures governance friction and management overhead in the design approval process."
     - name: "avg_sla_actual_hours"
       expr: AVG(CAST(sla_actual_hours AS DOUBLE))
-      comment: "Average actual hours taken to complete approval workflows. Benchmarks approval cycle time performance."
-    - name: "total_sla_actual_hours"
-      expr: SUM(CAST(sla_actual_hours AS DOUBLE))
-      comment: "Total hours consumed by approval workflows. Informs resource capacity planning for design review teams."
+      comment: "Average actual hours taken to complete workflow approvals. Benchmarks approval cycle time against SLA targets."
+    - name: "approved_workflows"
+      expr: COUNT(CASE WHEN overall_outcome = 'Approved' THEN 1 END)
+      comment: "Number of workflows with an approved outcome. Measures design approval throughput."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_change_impact`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Quantifies the financial impact of design changes at the asset and project level — enabling cost exposure analysis and change control prioritization."
+  source: "`vibe_construction_v1`.`design`.`change_impact`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the change impact belongs to, for per-project cost exposure analysis."
+    - name: "change_notice_id"
+      expr: change_notice_id
+      comment: "Change notice driving the impact, for traceability from cost impact back to the originating design change."
+    - name: "asset_id"
+      expr: asset_id
+      comment: "Asset affected by the design change, for asset-level cost impact analysis."
+  measures:
+    - name: "total_change_impacts"
+      expr: COUNT(1)
+      comment: "Total number of change impact records. Measures the breadth of design change consequences across assets and projects."
+    - name: "total_cost_impact"
+      expr: SUM(CAST(cost_impact_amount AS DOUBLE))
+      comment: "Total financial cost impact from design changes. A direct project cost control KPI — drives contingency management and change order valuation."
+    - name: "avg_cost_impact_per_change"
+      expr: AVG(CAST(cost_impact_amount AS DOUBLE))
+      comment: "Average cost impact per change impact record. Benchmarks the financial weight of individual design change consequences."
+    - name: "distinct_projects_impacted"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with recorded change impacts. Measures portfolio-wide exposure to design change costs."
+    - name: "distinct_change_notices_with_impact"
+      expr: COUNT(DISTINCT change_notice_id)
+      comment: "Number of distinct change notices that have generated cost impacts. Measures the proportion of changes with financial consequences."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`design_document_register`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks document register health — controlled document compliance, client deliverable status, and review cycle performance — for ISO 19650 and contractual documentation governance."
+  source: "`vibe_construction_v1`.`design`.`document_register`"
+  dimensions:
+    - name: "project_id"
+      expr: construction_project_id
+      comment: "Construction project the document belongs to, for per-project document register analysis."
+    - name: "document_register_status"
+      expr: document_register_status
+      comment: "Current status of the document (e.g. Issued, Under Review, Superseded) for register health monitoring."
+    - name: "document_type"
+      expr: document_type
+      comment: "Type of document (e.g. Drawing, Specification, Report) for category-level register analysis."
+    - name: "discipline"
+      expr: discipline
+      comment: "Engineering discipline of the document, for discipline-level documentation compliance tracking."
+    - name: "is_client_deliverable"
+      expr: is_client_deliverable
+      comment: "Indicates whether the document is a contractual client deliverable, for compliance tracking."
+    - name: "is_controlled_document"
+      expr: is_controlled_document
+      comment: "Indicates whether the document is under formal document control, for governance monitoring."
+    - name: "issue_date_month"
+      expr: DATE_TRUNC('MONTH', issue_date)
+      comment: "Month the document was issued, for documentation release velocity trend analysis."
+  measures:
+    - name: "total_documents"
+      expr: COUNT(1)
+      comment: "Total number of documents in the register. Baseline volume KPI for design documentation scope."
+    - name: "controlled_documents"
+      expr: COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END)
+      comment: "Number of documents under formal document control. Measures governance compliance of the document register."
+    - name: "controlled_document_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_controlled_document = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of documents under formal document control. A governance KPI — low rates indicate document management compliance risk."
+    - name: "client_deliverable_documents"
+      expr: COUNT(CASE WHEN is_client_deliverable = TRUE THEN 1 END)
+      comment: "Number of documents that are contractual client deliverables. Tracks compliance with contractual documentation obligations."
+    - name: "total_file_size_mb"
+      expr: SUM(CAST(file_size_mb AS DOUBLE))
+      comment: "Total storage consumed by registered documents in MB. Drives infrastructure capacity planning for document management systems."
+    - name: "avg_file_size_mb"
+      expr: AVG(CAST(file_size_mb AS DOUBLE))
+      comment: "Average document file size in MB. Informs storage and BIM infrastructure planning."
+    - name: "distinct_disciplines"
+      expr: COUNT(DISTINCT discipline)
+      comment: "Number of distinct engineering disciplines represented in the document register. Measures design scope breadth."
 $$;

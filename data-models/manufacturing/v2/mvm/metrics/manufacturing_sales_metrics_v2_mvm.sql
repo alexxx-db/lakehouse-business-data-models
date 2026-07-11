@@ -1,66 +1,86 @@
--- Metric views for domain: sales | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:49:07
+-- Metric views for domain: sales | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:39:56
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Opportunity business metrics"
+  comment: "Strategic sales opportunity performance metrics tracking pipeline health, conversion rates, win rates, and revenue forecasting accuracy across stages, regions, and product lines."
   source: "`vibe_manufacturing_v1`.`sales`.`opportunity`"
   dimensions:
-    - name: "Close Date"
-      expr: close_date
-    - name: "Closed Date"
-      expr: closed_date
-    - name: "Competitor Name"
-      expr: competitor_name
-    - name: "Country Code"
-      expr: country_code
-    - name: "Created Date"
-      expr: created_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Delivery Installation Status"
-      expr: delivery_installation_status
-    - name: "Description"
-      expr: description
-    - name: "Fiscal Quarter"
-      expr: fiscal_quarter
-    - name: "Fiscal Year"
-      expr: fiscal_year
-    - name: "Forecast Category"
+    - name: "opportunity_stage"
+      expr: stage
+      comment: "Current sales stage of the opportunity (e.g., Prospecting, Qualification, Proposal, Negotiation, Closed Won/Lost)"
+    - name: "opportunity_type"
+      expr: opportunity_type
+      comment: "Type classification of the opportunity (e.g., New Business, Upsell, Renewal, Cross-sell)"
+    - name: "forecast_category"
       expr: forecast_category
-    - name: "Has Open Activity"
-      expr: has_open_activity
-    - name: "Industry Segment"
+      comment: "Revenue forecast category (e.g., Pipeline, Best Case, Commit, Closed)"
+    - name: "region"
+      expr: region
+      comment: "Geographic sales region for the opportunity"
+    - name: "product_line"
+      expr: product_line
+      comment: "Product line associated with the opportunity"
+    - name: "industry_segment"
       expr: industry_segment
-    - name: "Is Closed"
+      comment: "Target customer industry segment"
+    - name: "lead_source"
+      expr: lead_source
+      comment: "Original source of the sales lead (e.g., Web, Referral, Trade Show, Partner)"
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for opportunity close date"
+    - name: "fiscal_quarter"
+      expr: fiscal_quarter
+      comment: "Fiscal quarter for opportunity close date"
+    - name: "is_won"
+      expr: is_won
+      comment: "Boolean flag indicating whether the opportunity was won"
+    - name: "is_closed"
       expr: is_closed
-    - name: "Is Private"
-      expr: is_private
+      comment: "Boolean flag indicating whether the opportunity is closed (won or lost)"
+    - name: "loss_reason"
+      expr: loss_reason
+      comment: "Reason for opportunity loss (null if won or still open)"
+    - name: "close_date_month"
+      expr: DATE_TRUNC('MONTH', close_date)
+      comment: "Month of expected close date for time-series analysis"
   measures:
-    - name: "Row Count"
+    - name: "total_opportunity_count"
       expr: COUNT(1)
-    - name: "Distinct Opportunity"
-      expr: COUNT(DISTINCT opportunity_id)
-    - name: "Total Amount"
-      expr: SUM(amount)
-    - name: "Average Amount"
-      expr: AVG(amount)
-    - name: "Total Discount Percent"
-      expr: SUM(discount_percent)
-    - name: "Average Discount Percent"
-      expr: AVG(discount_percent)
-    - name: "Total Expected Revenue"
-      expr: SUM(expected_revenue)
-    - name: "Average Expected Revenue"
-      expr: AVG(expected_revenue)
-    - name: "Total Probability Percent"
-      expr: SUM(probability_percent)
-    - name: "Average Probability Percent"
-      expr: AVG(probability_percent)
+      comment: "Total number of sales opportunities in the pipeline"
+    - name: "total_pipeline_value"
+      expr: SUM(CAST(amount AS DOUBLE))
+      comment: "Total dollar value of all opportunities in the pipeline"
+    - name: "total_expected_revenue"
+      expr: SUM(CAST(expected_revenue AS DOUBLE))
+      comment: "Total probability-weighted expected revenue across all opportunities"
+    - name: "won_opportunity_count"
+      expr: COUNT(CASE WHEN is_won = TRUE THEN 1 END)
+      comment: "Number of opportunities that were won"
+    - name: "won_opportunity_value"
+      expr: SUM(CASE WHEN is_won = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
+      comment: "Total dollar value of won opportunities"
+    - name: "closed_opportunity_count"
+      expr: COUNT(CASE WHEN is_closed = TRUE THEN 1 END)
+      comment: "Number of opportunities that are closed (won or lost)"
+    - name: "win_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_won = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN is_closed = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of closed opportunities that were won (key conversion metric)"
+    - name: "avg_opportunity_value"
+      expr: AVG(CAST(amount AS DOUBLE))
+      comment: "Average dollar value per opportunity"
+    - name: "avg_sales_cycle_days"
+      expr: AVG(CAST(sales_cycle_days AS DOUBLE))
+      comment: "Average number of days from opportunity creation to close"
+    - name: "avg_win_probability"
+      expr: AVG(CAST(probability_percent AS DOUBLE))
+      comment: "Average win probability percentage across all opportunities"
+    - name: "unique_accounts"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of unique customer accounts with opportunities"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_order_intake`
@@ -68,232 +88,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Order Intake business metrics"
+  comment: "Order intake and booking metrics tracking revenue recognition, order velocity, credit approval efficiency, and handoff performance for manufacturing order management."
   source: "`vibe_manufacturing_v1`.`sales`.`order_intake`"
   dimensions:
-    - name: "Booking Recognition Date"
-      expr: booking_recognition_date
-    - name: "Booking Recognized Flag"
-      expr: booking_recognized_flag
-    - name: "Committed Delivery Date"
-      expr: committed_delivery_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Credit Approval Date"
-      expr: credit_approval_date
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Po Date"
-      expr: customer_po_date
-    - name: "Customer Po Number"
-      expr: customer_po_number
-    - name: "Delivery Location"
-      expr: delivery_location
-    - name: "Fiscal Quarter"
-      expr: fiscal_quarter
-    - name: "Fiscal Year"
+    - name: "order_type"
+      expr: order_type
+      comment: "Type of order (e.g., Standard, Custom, Service, Spare Parts)"
+    - name: "product_line"
+      expr: product_line
+      comment: "Product line for the order"
+    - name: "industry_segment"
+      expr: industry_segment
+      comment: "Customer industry segment"
+    - name: "fiscal_year"
       expr: fiscal_year
-    - name: "Handoff Date"
-      expr: handoff_date
-    - name: "Handoff Status"
+      comment: "Fiscal year of order intake"
+    - name: "fiscal_quarter"
+      expr: fiscal_quarter
+      comment: "Fiscal quarter of order intake"
+    - name: "credit_check_status"
+      expr: credit_check_status
+      comment: "Status of credit approval process (e.g., Approved, Pending, Rejected)"
+    - name: "handoff_status"
       expr: handoff_status
-    - name: "Incoterms"
-      expr: incoterms
-    - name: "Industry Segment"
-      expr: industry_segment
-    - name: "Intake Date"
-      expr: intake_date
+      comment: "Status of handoff to operations/fulfillment"
+    - name: "booking_recognized_flag"
+      expr: booking_recognized_flag
+      comment: "Boolean flag indicating whether booking has been recognized for revenue purposes"
+    - name: "order_priority"
+      expr: order_priority
+      comment: "Priority level of the order (e.g., Standard, Expedited, Rush)"
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms negotiated for the order"
+    - name: "intake_month"
+      expr: DATE_TRUNC('MONTH', intake_date)
+      comment: "Month of order intake for time-series analysis"
   measures:
-    - name: "Row Count"
+    - name: "total_order_count"
       expr: COUNT(1)
-    - name: "Distinct Order Intake"
-      expr: COUNT(DISTINCT order_intake_id)
-    - name: "Total Credit Check Status"
-      expr: SUM(credit_check_status)
-    - name: "Average Credit Check Status"
-      expr: AVG(credit_check_status)
-    - name: "Total Exchange Rate"
-      expr: SUM(exchange_rate)
-    - name: "Average Exchange Rate"
-      expr: AVG(exchange_rate)
-    - name: "Total Intake Amount"
-      expr: SUM(intake_amount)
-    - name: "Average Intake Amount"
-      expr: AVG(intake_amount)
-    - name: "Total Order Value"
-      expr: SUM(order_value)
-    - name: "Average Order Value"
-      expr: AVG(order_value)
-    - name: "Total Order Value Base Currency"
-      expr: SUM(order_value_base_currency)
-    - name: "Average Order Value Base Currency"
-      expr: AVG(order_value_base_currency)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Payment Terms Days"
-      expr: SUM(payment_terms_days)
-    - name: "Average Payment Terms Days"
-      expr: AVG(payment_terms_days)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_price_book`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Price Book business metrics"
-  source: "`vibe_manufacturing_v1`.`sales`.`price_book`"
-  dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approval Required"
-      expr: approval_required
-    - name: "Country Code"
-      expr: country_code
-    - name: "Created Date"
-      expr: created_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Segment"
-      expr: customer_segment
-    - name: "Discount Policy"
-      expr: discount_policy
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Industry Segment"
-      expr: industry_segment
-    - name: "Is Active"
-      expr: is_active
-    - name: "Is Standard"
-      expr: is_standard
-    - name: "Last Modified Date"
-      expr: last_modified_date
-    - name: "Notes"
-      expr: notes
-    - name: "Product Line"
-      expr: product_line
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Price Book"
-      expr: COUNT(DISTINCT price_book_id)
-    - name: "Total Code"
-      expr: SUM(code)
-    - name: "Average Code"
-      expr: AVG(code)
-    - name: "Total Description"
-      expr: SUM(description)
-    - name: "Average Description"
-      expr: AVG(description)
-    - name: "Total Name"
-      expr: SUM(name)
-    - name: "Average Name"
-      expr: AVG(name)
-    - name: "Total Price Book Status"
-      expr: SUM(price_book_status)
-    - name: "Average Price Book Status"
-      expr: AVG(price_book_status)
-    - name: "Total Price Book Type"
-      expr: SUM(price_book_type)
-    - name: "Average Price Book Type"
-      expr: AVG(price_book_type)
-    - name: "Total Pricing Strategy"
-      expr: SUM(pricing_strategy)
-    - name: "Average Pricing Strategy"
-      expr: AVG(pricing_strategy)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_price_book_entry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Price Book Entry business metrics"
-  source: "`vibe_manufacturing_v1`.`sales`.`price_book_entry`"
-  dimensions:
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Approved Date"
-      expr: approved_date
-    - name: "Created Date"
-      expr: created_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Segment"
-      expr: customer_segment
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Geography Code"
-      expr: geography_code
-    - name: "Is Active"
-      expr: is_active
-    - name: "Last Modified Date"
-      expr: last_modified_date
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Market Segment"
-      expr: market_segment
-    - name: "Pricing Method"
-      expr: pricing_method
-    - name: "Product Family"
-      expr: product_family
-    - name: "Product Line"
-      expr: product_line
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Price Book Entry"
-      expr: COUNT(DISTINCT price_book_entry_id)
-    - name: "Total Cost Price"
-      expr: SUM(cost_price)
-    - name: "Average Cost Price"
-      expr: AVG(cost_price)
-    - name: "Total Description"
-      expr: SUM(description)
-    - name: "Average Description"
-      expr: AVG(description)
-    - name: "Total List Price"
-      expr: SUM(list_price)
-    - name: "Average List Price"
-      expr: AVG(list_price)
-    - name: "Total Maximum Discount Percent"
-      expr: SUM(maximum_discount_percent)
-    - name: "Average Maximum Discount Percent"
-      expr: AVG(maximum_discount_percent)
-    - name: "Total Minimum Order Quantity"
-      expr: SUM(minimum_order_quantity)
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(minimum_order_quantity)
-    - name: "Total Minimum Price"
-      expr: SUM(minimum_price)
-    - name: "Average Minimum Price"
-      expr: AVG(minimum_price)
-    - name: "Total Name"
-      expr: SUM(name)
-    - name: "Average Name"
-      expr: AVG(name)
-    - name: "Total Price Type"
-      expr: SUM(price_type)
-    - name: "Average Price Type"
-      expr: AVG(price_type)
-    - name: "Total Unit Price"
-      expr: SUM(unit_price)
-    - name: "Average Unit Price"
-      expr: AVG(unit_price)
-    - name: "Total Use Standard Price"
-      expr: SUM(use_standard_price)
-    - name: "Average Use Standard Price"
-      expr: AVG(use_standard_price)
+      comment: "Total number of orders received"
+    - name: "total_order_value"
+      expr: SUM(CAST(order_value AS DOUBLE))
+      comment: "Total dollar value of all orders in local currency"
+    - name: "total_order_value_base"
+      expr: SUM(CAST(order_value_base_currency AS DOUBLE))
+      comment: "Total dollar value of all orders in base currency for consolidated reporting"
+    - name: "recognized_booking_value"
+      expr: SUM(CASE WHEN booking_recognized_flag = TRUE THEN CAST(order_value_base_currency AS DOUBLE) ELSE 0 END)
+      comment: "Total value of orders where booking has been recognized for revenue"
+    - name: "avg_order_value"
+      expr: AVG(CAST(order_value AS DOUBLE))
+      comment: "Average order value across all orders"
+    - name: "booking_recognition_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN booking_recognized_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of orders with recognized bookings (revenue recognition efficiency)"
+    - name: "credit_approval_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN credit_check_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of orders that passed credit approval (credit risk metric)"
+    - name: "avg_credit_approval_days"
+      expr: AVG(DATEDIFF(credit_approval_date, intake_date))
+      comment: "Average number of days from order intake to credit approval"
+    - name: "avg_handoff_days"
+      expr: AVG(DATEDIFF(handoff_date, intake_date))
+      comment: "Average number of days from order intake to operations handoff (order processing efficiency)"
+    - name: "avg_delivery_lead_time_days"
+      expr: AVG(DATEDIFF(committed_delivery_date, intake_date))
+      comment: "Average committed delivery lead time in days from order intake"
+    - name: "unique_customers"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of unique customers placing orders"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_quote`
@@ -301,86 +165,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Quote business metrics"
+  comment: "Quote performance metrics tracking quote-to-order conversion, pricing effectiveness, discount management, and sales cycle velocity for manufacturing sales."
   source: "`vibe_manufacturing_v1`.`sales`.`quote`"
   dimensions:
-    - name: "Accepted Date"
-      expr: accepted_date
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Competitor Name"
-      expr: competitor_name
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Delivery Lead Time Days"
-      expr: delivery_lead_time_days
-    - name: "Incoterm"
-      expr: incoterm
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Name"
-      expr: name
-    - name: "Non Standard Discount Flag"
-      expr: non_standard_discount_flag
-    - name: "Notes"
-      expr: notes
-    - name: "Presented Date"
-      expr: presented_date
-    - name: "Quote Date"
-      expr: quote_date
-    - name: "Quote Number"
-      expr: quote_number
-    - name: "Quote Status"
+    - name: "quote_status"
       expr: quote_status
+      comment: "Current status of the quote (e.g., Draft, Submitted, Accepted, Rejected, Expired)"
+    - name: "quote_type"
+      expr: quote_type
+      comment: "Type of quote (e.g., Standard, Custom, Renewal, Amendment)"
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status for the quote (e.g., Approved, Pending, Rejected)"
+    - name: "non_standard_discount_flag"
+      expr: non_standard_discount_flag
+      comment: "Boolean flag indicating whether non-standard discounts were applied"
+    - name: "rejection_reason"
+      expr: rejection_reason
+      comment: "Reason for quote rejection (null if not rejected)"
+    - name: "quote_month"
+      expr: DATE_TRUNC('MONTH', quote_date)
+      comment: "Month of quote creation for time-series analysis"
   measures:
-    - name: "Row Count"
+    - name: "total_quote_count"
       expr: COUNT(1)
-    - name: "Distinct Quote"
-      expr: COUNT(DISTINCT quote_id)
-    - name: "Total Configuration Summary"
-      expr: SUM(configuration_summary)
-    - name: "Average Configuration Summary"
-      expr: AVG(configuration_summary)
-    - name: "Total Discount Amount"
-      expr: SUM(discount_amount)
-    - name: "Average Discount Amount"
-      expr: AVG(discount_amount)
-    - name: "Total Discount Percent"
-      expr: SUM(discount_percent)
-    - name: "Average Discount Percent"
-      expr: AVG(discount_percent)
-    - name: "Total Discount Percentage"
-      expr: SUM(discount_percentage)
-    - name: "Average Discount Percentage"
-      expr: AVG(discount_percentage)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Shipping Handling Amount"
-      expr: SUM(shipping_handling_amount)
-    - name: "Average Shipping Handling Amount"
-      expr: AVG(shipping_handling_amount)
-    - name: "Total Subtotal Amount"
-      expr: SUM(subtotal_amount)
-    - name: "Average Subtotal Amount"
-      expr: AVG(subtotal_amount)
-    - name: "Total Tax Amount"
-      expr: SUM(tax_amount)
-    - name: "Average Tax Amount"
-      expr: AVG(tax_amount)
-    - name: "Total Total Amount"
-      expr: SUM(total_amount)
-    - name: "Average Total Amount"
-      expr: AVG(total_amount)
-    - name: "Total Win Probability Percentage"
-      expr: SUM(win_probability_percentage)
-    - name: "Average Win Probability Percentage"
-      expr: AVG(win_probability_percentage)
+      comment: "Total number of quotes generated"
+    - name: "total_quote_value"
+      expr: SUM(CAST(total_amount AS DOUBLE))
+      comment: "Total dollar value of all quotes including tax and shipping"
+    - name: "total_subtotal_value"
+      expr: SUM(CAST(subtotal_amount AS DOUBLE))
+      comment: "Total subtotal value of all quotes before tax and shipping"
+    - name: "accepted_quote_count"
+      expr: COUNT(CASE WHEN quote_status = 'Accepted' THEN 1 END)
+      comment: "Number of quotes that were accepted by customers"
+    - name: "accepted_quote_value"
+      expr: SUM(CASE WHEN quote_status = 'Accepted' THEN CAST(total_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total dollar value of accepted quotes"
+    - name: "rejected_quote_count"
+      expr: COUNT(CASE WHEN quote_status = 'Rejected' THEN 1 END)
+      comment: "Number of quotes that were rejected by customers"
+    - name: "quote_acceptance_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN quote_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(CASE WHEN quote_status IN ('Accepted', 'Rejected', 'Expired') THEN 1 END), 0), 2)
+      comment: "Percentage of finalized quotes that were accepted (key conversion metric)"
+    - name: "avg_quote_value"
+      expr: AVG(CAST(total_amount AS DOUBLE))
+      comment: "Average dollar value per quote"
+    - name: "avg_discount_percentage"
+      expr: AVG(CAST(discount_percentage AS DOUBLE))
+      comment: "Average discount percentage applied across all quotes"
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total dollar amount of discounts given across all quotes"
+    - name: "non_standard_discount_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN non_standard_discount_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of quotes requiring non-standard discount approval (pricing discipline metric)"
+    - name: "avg_win_probability"
+      expr: AVG(CAST(win_probability_percentage AS DOUBLE))
+      comment: "Average win probability percentage across all quotes"
+    - name: "avg_quote_to_acceptance_days"
+      expr: AVG(DATEDIFF(accepted_date, quote_date))
+      comment: "Average number of days from quote creation to customer acceptance"
+    - name: "unique_customers"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of unique customers receiving quotes"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_quote_line`
@@ -388,94 +236,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Quote Line business metrics"
+  comment: "Quote line-level metrics tracking product mix, margin performance, pricing effectiveness, and configuration complexity for detailed sales analysis."
   source: "`vibe_manufacturing_v1`.`sales`.`quote_line`"
   dimensions:
-    - name: "Approval Level"
-      expr: approval_level
-    - name: "Committed Delivery Date"
-      expr: committed_delivery_date
-    - name: "Created Date"
-      expr: created_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Is Bundle Parent"
-      expr: is_bundle_parent
-    - name: "Is Optional"
-      expr: is_optional
-    - name: "Last Modified Date"
-      expr: last_modified_date
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Line Number"
-      expr: line_number
-    - name: "Line Status"
+    - name: "line_status"
       expr: line_status
-    - name: "Line Type"
+      comment: "Status of the quote line item (e.g., Active, Cancelled, Substituted)"
+    - name: "line_type"
       expr: line_type
-    - name: "Manufacturer Part Number"
-      expr: manufacturer_part_number
-    - name: "Notes"
-      expr: notes
-    - name: "Product Family"
+      comment: "Type of line item (e.g., Product, Service, Discount, Shipping)"
+    - name: "product_family"
       expr: product_family
-    - name: "Requested Delivery Date"
-      expr: requested_delivery_date
+      comment: "Product family for the line item"
+    - name: "is_bundle_parent"
+      expr: is_bundle_parent
+      comment: "Boolean flag indicating whether this line is a parent of a product bundle"
+    - name: "is_optional"
+      expr: is_optional
+      comment: "Boolean flag indicating whether this line item is optional"
+    - name: "approval_level"
+      expr: approval_level
+      comment: "Required approval level for this line item (e.g., Standard, Manager, Director)"
   measures:
-    - name: "Row Count"
+    - name: "total_line_count"
       expr: COUNT(1)
-    - name: "Distinct Quote Line"
-      expr: COUNT(DISTINCT quote_line_id)
-    - name: "Total Commission Percent"
-      expr: SUM(commission_percent)
-    - name: "Average Commission Percent"
-      expr: AVG(commission_percent)
-    - name: "Total Configuration Summary"
-      expr: SUM(configuration_summary)
-    - name: "Average Configuration Summary"
-      expr: AVG(configuration_summary)
-    - name: "Total Cost Amount"
-      expr: SUM(cost_amount)
-    - name: "Average Cost Amount"
-      expr: AVG(cost_amount)
-    - name: "Total Discount Amount"
-      expr: SUM(discount_amount)
-    - name: "Average Discount Amount"
-      expr: AVG(discount_amount)
-    - name: "Total Discount Percent"
-      expr: SUM(discount_percent)
-    - name: "Average Discount Percent"
-      expr: AVG(discount_percent)
-    - name: "Total Line Amount"
-      expr: SUM(line_amount)
-    - name: "Average Line Amount"
-      expr: AVG(line_amount)
-    - name: "Total List Price"
-      expr: SUM(list_price)
-    - name: "Average List Price"
-      expr: AVG(list_price)
-    - name: "Total Margin Amount"
-      expr: SUM(margin_amount)
-    - name: "Average Margin Amount"
-      expr: AVG(margin_amount)
-    - name: "Total Margin Percent"
-      expr: SUM(margin_percent)
-    - name: "Average Margin Percent"
-      expr: AVG(margin_percent)
-    - name: "Total Quantity"
-      expr: SUM(quantity)
-    - name: "Average Quantity"
-      expr: AVG(quantity)
-    - name: "Total Subtotal Amount"
-      expr: SUM(subtotal_amount)
-    - name: "Average Subtotal Amount"
-      expr: AVG(subtotal_amount)
-    - name: "Total Tax Amount"
-      expr: SUM(tax_amount)
-    - name: "Average Tax Amount"
-      expr: AVG(tax_amount)
+      comment: "Total number of quote line items"
+    - name: "total_line_value"
+      expr: SUM(CAST(total_amount AS DOUBLE))
+      comment: "Total dollar value of all quote line items"
+    - name: "total_subtotal_value"
+      expr: SUM(CAST(subtotal_amount AS DOUBLE))
+      comment: "Total subtotal value before tax"
+    - name: "total_cost_amount"
+      expr: SUM(CAST(cost_amount AS DOUBLE))
+      comment: "Total cost of goods for all quote line items"
+    - name: "total_margin_amount"
+      expr: SUM(CAST(margin_amount AS DOUBLE))
+      comment: "Total gross margin dollars across all quote line items"
+    - name: "avg_margin_percent"
+      expr: AVG(CAST(margin_percent AS DOUBLE))
+      comment: "Average gross margin percentage across all quote line items"
+    - name: "blended_margin_percent"
+      expr: ROUND(100.0 * SUM(CAST(margin_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
+      comment: "Blended gross margin percentage across all line items (key profitability metric)"
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total dollar amount of discounts applied at line level"
+    - name: "avg_discount_percent"
+      expr: AVG(CAST(discount_percent AS DOUBLE))
+      comment: "Average discount percentage applied at line level"
+    - name: "avg_unit_price"
+      expr: AVG(CAST(unit_price AS DOUBLE))
+      comment: "Average unit price across all line items"
+    - name: "total_quantity"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity of units quoted across all line items"
+    - name: "avg_quantity_per_line"
+      expr: AVG(CAST(quantity AS DOUBLE))
+      comment: "Average quantity per quote line item"
+    - name: "avg_commission_percent"
+      expr: AVG(CAST(commission_percent AS DOUBLE))
+      comment: "Average commission percentage for sales reps across line items"
+    - name: "unique_products"
+      expr: COUNT(DISTINCT primary_quote_sku_master_id)
+      comment: "Number of unique products quoted"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_rep`
@@ -483,139 +307,136 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Rep business metrics"
+  comment: "Sales representative performance metrics tracking quota attainment, pipeline health, account coverage, and rep productivity for sales force management."
   source: "`vibe_manufacturing_v1`.`sales`.`rep`"
   dimensions:
-    - name: "Active Account Count"
-      expr: active_account_count
-    - name: "Active Opportunity Count"
-      expr: active_opportunity_count
-    - name: "Certification List"
-      expr: certification_list
-    - name: "Code"
-      expr: code
-    - name: "Commission Plan Code"
-      expr: commission_plan_code
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Crm User Code"
-      expr: crm_user_code
-    - name: "Customer Segment"
+    - name: "rep_status"
+      expr: rep_status
+      comment: "Current employment status of the sales rep (e.g., Active, On Leave, Terminated)"
+    - name: "sales_role"
+      expr: sales_role
+      comment: "Role of the sales representative (e.g., Account Executive, Inside Sales, Sales Engineer)"
+    - name: "sales_channel"
+      expr: sales_channel
+      comment: "Primary sales channel for the rep (e.g., Direct, Partner, Online)"
+    - name: "customer_segment"
       expr: customer_segment
-    - name: "Email"
-      expr: email
-    - name: "Email Address"
-      expr: email_address
-    - name: "Full Name"
-      expr: full_name
-    - name: "Hire Date"
-      expr: hire_date
-    - name: "Industry Vertical Focus"
-      expr: industry_vertical_focus
-    - name: "Is Active"
-      expr: is_active
-    - name: "Is Key Account Manager"
+      comment: "Customer segment focus for the rep (e.g., Enterprise, Mid-Market, SMB)"
+    - name: "product_line_specialization"
+      expr: product_line_specialization
+      comment: "Product line specialization of the rep"
+    - name: "sales_office_location"
+      expr: sales_office_location
+      comment: "Office location of the sales rep"
+    - name: "is_key_account_manager"
       expr: is_key_account_manager
-    - name: "Language Proficiency"
-      expr: language_proficiency
+      comment: "Boolean flag indicating whether the rep manages key accounts"
+    - name: "performance_rating"
+      expr: performance_rating
+      comment: "Most recent performance rating for the rep"
+    - name: "industry_vertical_focus"
+      expr: industry_vertical_focus
+      comment: "Industry vertical focus for the rep"
   measures:
-    - name: "Row Count"
+    - name: "total_rep_count"
       expr: COUNT(1)
-    - name: "Distinct Rep"
-      expr: COUNT(DISTINCT rep_id)
-    - name: "Total Annual Quota Amount"
-      expr: SUM(annual_quota_amount)
-    - name: "Average Annual Quota Amount"
-      expr: AVG(annual_quota_amount)
-    - name: "Total Book Of Business Value"
-      expr: SUM(book_of_business_value)
-    - name: "Average Book Of Business Value"
-      expr: AVG(book_of_business_value)
-    - name: "Total Travel Percentage"
-      expr: SUM(travel_percentage)
-    - name: "Average Travel Percentage"
-      expr: AVG(travel_percentage)
+      comment: "Total number of sales representatives"
+    - name: "active_rep_count"
+      expr: COUNT(CASE WHEN rep_status = 'Active' THEN 1 END)
+      comment: "Number of active sales representatives"
+    - name: "total_annual_quota"
+      expr: SUM(CAST(annual_quota_amount AS DOUBLE))
+      comment: "Total annual quota amount across all sales reps"
+    - name: "avg_annual_quota"
+      expr: AVG(CAST(annual_quota_amount AS DOUBLE))
+      comment: "Average annual quota per sales rep"
+    - name: "total_book_of_business"
+      expr: SUM(CAST(book_of_business_value AS DOUBLE))
+      comment: "Total book of business value managed by all reps"
+    - name: "avg_book_of_business"
+      expr: AVG(CAST(book_of_business_value AS DOUBLE))
+      comment: "Average book of business value per rep"
+    - name: "avg_active_accounts"
+      expr: AVG(CAST(active_account_count AS DOUBLE))
+      comment: "Average number of active accounts per rep"
+    - name: "avg_active_opportunities"
+      expr: AVG(CAST(active_opportunity_count AS DOUBLE))
+      comment: "Average number of active opportunities per rep"
+    - name: "avg_years_experience"
+      expr: AVG(CAST(years_of_experience AS DOUBLE))
+      comment: "Average years of sales experience across all reps"
+    - name: "avg_tenure_days"
+      expr: AVG(DATEDIFF(COALESCE(termination_date, CURRENT_DATE()), hire_date))
+      comment: "Average tenure in days for all reps (current and former)"
+    - name: "key_account_manager_count"
+      expr: COUNT(CASE WHEN is_key_account_manager = TRUE THEN 1 END)
+      comment: "Number of reps designated as key account managers"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_sales_contract`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_contract`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sales Contract business metrics"
+  comment: "Sales contract performance metrics tracking contract value, SLA compliance, renewal rates, and contract lifecycle management for manufacturing sales agreements."
   source: "`vibe_manufacturing_v1`.`sales`.`sales_contract`"
   dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Auto Renewal Flag"
-      expr: auto_renewal_flag
-    - name: "Compliance Certifications Required"
-      expr: compliance_certifications_required
-    - name: "Confidentiality Clause"
-      expr: confidentiality_clause
-    - name: "Contract Number"
-      expr: contract_number
-    - name: "Contract Status"
+    - name: "contract_status"
       expr: contract_status
-    - name: "Contract Type"
+      comment: "Current status of the sales contract (e.g., Draft, Active, Expired, Terminated)"
+    - name: "contract_type"
       expr: contract_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Signatory Name"
-      expr: customer_signatory_name
-    - name: "Delivery Location"
-      expr: delivery_location
-    - name: "Delivery Schedule"
-      expr: delivery_schedule
-    - name: "Dispute Resolution Method"
-      expr: dispute_resolution_method
-    - name: "Document Url"
-      expr: document_url
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "End Date"
-      expr: end_date
+      comment: "Type of sales contract (e.g., Master Agreement, Purchase Order, Service Agreement)"
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms specified in the contract"
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method for the contract (e.g., Wire Transfer, Credit Card, Letter of Credit)"
+    - name: "incoterms"
+      expr: incoterms
+      comment: "International commercial terms for the contract (e.g., FOB, CIF, DDP)"
+    - name: "governing_law"
+      expr: governing_law
+      comment: "Jurisdiction governing the contract"
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Year the contract became effective"
+    - name: "expiration_year"
+      expr: YEAR(expiration_date)
+      comment: "Year the contract expires"
   measures:
-    - name: "Row Count"
+    - name: "total_contract_count"
       expr: COUNT(1)
-    - name: "Distinct Sales Contract"
-      expr: COUNT(DISTINCT sales_contract_id)
-    - name: "Total Liability Cap Amount"
-      expr: SUM(liability_cap_amount)
-    - name: "Average Liability Cap Amount"
-      expr: AVG(liability_cap_amount)
-    - name: "Total Net Contract Value"
-      expr: SUM(net_contract_value)
-    - name: "Average Net Contract Value"
-      expr: AVG(net_contract_value)
-    - name: "Total Payment Method"
-      expr: SUM(payment_method)
-    - name: "Average Payment Method"
-      expr: AVG(payment_method)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Sla Uptime Percentage"
-      expr: SUM(sla_uptime_percentage)
-    - name: "Average Sla Uptime Percentage"
-      expr: AVG(sla_uptime_percentage)
-    - name: "Total Tax Amount"
-      expr: SUM(tax_amount)
-    - name: "Average Tax Amount"
-      expr: AVG(tax_amount)
-    - name: "Total Total Contract Value"
-      expr: SUM(total_contract_value)
-    - name: "Average Total Contract Value"
-      expr: AVG(total_contract_value)
-    - name: "Total Value Amount"
-      expr: SUM(value_amount)
-    - name: "Average Value Amount"
-      expr: AVG(value_amount)
-    - name: "Total Value Currency"
-      expr: SUM(value_currency)
-    - name: "Average Value Currency"
-      expr: AVG(value_currency)
+      comment: "Total number of sales contracts"
+    - name: "active_contract_count"
+      expr: COUNT(CASE WHEN contract_status = 'Active' THEN 1 END)
+      comment: "Number of currently active contracts"
+    - name: "total_contract_value"
+      expr: SUM(CAST(value_amount AS DOUBLE))
+      comment: "Total dollar value of all sales contracts"
+    - name: "total_net_contract_value"
+      expr: SUM(CAST(net_contract_value AS DOUBLE))
+      comment: "Total net contract value after adjustments"
+    - name: "active_contract_value"
+      expr: SUM(CASE WHEN contract_status = 'Active' THEN CAST(value_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total dollar value of active contracts (key revenue pipeline metric)"
+    - name: "avg_contract_value"
+      expr: AVG(CAST(value_amount AS DOUBLE))
+      comment: "Average dollar value per contract"
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount across all contracts"
+    - name: "avg_contract_duration_days"
+      expr: AVG(DATEDIFF(expiration_date, effective_date))
+      comment: "Average contract duration in days from effective to expiration date"
+    - name: "avg_sla_uptime_percentage"
+      expr: AVG(CAST(sla_uptime_percentage AS DOUBLE))
+      comment: "Average SLA uptime percentage commitment across all contracts"
+    - name: "avg_liability_cap"
+      expr: AVG(CAST(liability_cap_amount AS DOUBLE))
+      comment: "Average liability cap amount across contracts"
+    - name: "unique_customers"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of unique customers with sales contracts"
 $$;

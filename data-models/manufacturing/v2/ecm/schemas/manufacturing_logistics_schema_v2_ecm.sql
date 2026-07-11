@@ -1,5 +1,5 @@
--- Schema for Domain: logistics | Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:33
+-- Schema for Domain: logistics | Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:59:01
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`logistics` COMMENT 'Inbound and outbound logistics domain managing shipment planning, carrier selection, LTL/FTL routing, freight cost, customs documentation, TMS execution, delivery tracking, route optimization, and distribution network management. Coordinates material flow from suppliers to plants and finished goods from plants to customers.';
@@ -16,16 +16,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` (
     `node_id` BIGINT COMMENT 'Foreign key linking to logistics.node. Business justification: Replace raw origin address fields with a foreign key to node, enabling reuse of node master data.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Profitability reporting per shipment requires linking each shipment to its profit_center for margin analysis.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Project Delivery Tracking report requires each shipment to be assigned to its project for status and cost aggregation.',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Required for shipment manifest and product traceability; enables recall, compliance, and cost allocation reports linking each shipment to the shipped SKU.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: INBOUND_SHIPMENT_REPORT requires linking each shipment to its originating supplier for performance tracking and inbound logistics KPI reporting.',
-    `plan_id` BIGINT COMMENT 'Foreign key linking to supply.plan. Business justification: Shipment creation is driven by an approved supply plan; linking enables the Supply Plan to Shipment execution traceability report.',
+    `supply_plan_id` BIGINT COMMENT 'Foreign key linking to supply.plan. Business justification: Shipment creation is driven by an approved supply plan; linking enables the Supply Plan to Shipment execution traceability report.',
     `actual_delivery_timestamp` TIMESTAMP COMMENT 'Actual date and time when the shipment was delivered to the destination location.',
     `actual_pickup_timestamp` TIMESTAMP COMMENT 'Actual date and time when the carrier picked up the shipment from the origin location.',
     `bol_number` STRING COMMENT 'Bill of Lading number serving as the legal document and receipt for the shipment. Issued by the carrier.',
     `commercial_invoice_number` STRING COMMENT 'Invoice number associated with the shipment for customs and billing purposes.',
     `consolidation_group_code` STRING COMMENT 'Identifier for the consolidation group used in load planning. Multiple shipments with the same consolidation group may be combined into a single load.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shipment record was first created in the system.',
-    `customs_declaration_number` DECIMAL(18,2) COMMENT 'Reference number for the customs declaration document required for cross-border shipments. Used for import/export compliance.',
+    `customs_declaration_number` STRING COMMENT 'Reference number for the customs declaration document required for cross-border shipments. Used for import/export compliance.',
     `destination_address_line1` STRING COMMENT 'First line of the street address for the destination location.',
     `destination_city` STRING COMMENT 'City name of the destination location.',
     `destination_country_code` STRING COMMENT 'Three-letter ISO country code for the destination location (e.g., USA, DEU, CHN).. Valid values are `^[A-Z]{3}$`',
@@ -34,14 +33,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` (
     `destination_postal_code` STRING COMMENT 'Postal or ZIP code of the destination location.',
     `destination_state_province` STRING COMMENT 'State or province of the destination location.',
     `direction` STRING COMMENT 'Indicates whether the shipment is inbound (supplier to plant) or outbound (plant to customer or distribution center).. Valid values are `inbound|outbound`',
-    `freight_class` DECIMAL(18,2) COMMENT 'Freight class assigned to the shipment based on density, stowability, handling, and liability. Used for LTL pricing. Valid classes range from 50 to 500.',
+    `freight_class` STRING COMMENT 'Freight class assigned to the shipment based on density, stowability, handling, and liability. Used for LTL pricing. Valid classes range from 50 to 500.. Valid values are `^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$`',
     `freight_cost_amount` DECIMAL(18,2) COMMENT 'Total freight cost for the shipment in the specified currency. Includes base transportation charges but may exclude accessorial fees.',
-    `freight_cost_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO currency code for the freight cost amount (e.g., USD, EUR, CNY).',
+    `freight_cost_currency_code` STRING COMMENT 'Three-letter ISO currency code for the freight cost amount (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
     `hazmat_class` STRING COMMENT 'UN hazard class for hazardous materials in the shipment (e.g., Class 3 Flammable Liquids, Class 8 Corrosives). Populated only if hazmat_flag is true.',
     `hazmat_flag` BOOLEAN COMMENT 'Indicates whether the shipment contains hazardous materials requiring special handling, documentation, and compliance with safety regulations.',
     `incoterm_code` STRING COMMENT 'INCOTERMS code defining the responsibilities, costs, and risks between buyer and seller for international shipments (e.g., EXW, FOB, CIF, DDP). [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `insurance_value_amount` DECIMAL(18,2) COMMENT 'Declared value of the shipment for insurance purposes. Used to determine coverage limits and premiums.',
-    `insurance_value_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO currency code for the insurance value amount.',
+    `insurance_value_currency_code` STRING COMMENT 'Three-letter ISO currency code for the insurance value amount.. Valid values are `^[A-Z]{3}$`',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the shipment record was last updated in the system.',
     `pro_number` STRING COMMENT 'Progressive number assigned by the carrier to track the shipment. Used for LTL and FTL shipments.',
     `scheduled_delivery_date` DATE COMMENT 'Planned date when the shipment is scheduled to be delivered to the destination location.',
@@ -67,7 +66,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` (
     `destination_location_node_id` BIGINT COMMENT 'FK to logistics.logistics_node',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Leg Handling Accountability records the employee operating the vehicle or equipment for each leg, required for safety incident investigations.',
     `origin_location_logistics_node_id` BIGINT COMMENT 'FK to logistics.logistics_node',
-    `origin_location_node_id` BIGINT COMMENT '',
     `primary_shipment_node_id` BIGINT COMMENT 'Identifier of the departure location for this leg. May reference a warehouse, plant, distribution center, cross-dock facility, or transshipment hub.',
     `shipment_id` BIGINT COMMENT 'Reference to the parent shipment that this leg belongs to. Links this transport segment to the overall shipment journey.',
     `tertiary_shipment_transfer_point_location_node_id` BIGINT COMMENT 'FK to logistics.logistics_node',
@@ -90,7 +88,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` (
     `leg_distance_km` DECIMAL(18,2) COMMENT 'Total distance traveled for this leg measured in kilometers. Used for route optimization, cost calculation, and carbon footprint analysis.',
     `leg_distance_miles` DECIMAL(18,2) COMMENT 'Total distance traveled for this leg measured in miles. Provided for regions using imperial measurement systems.',
     `leg_freight_cost` DECIMAL(18,2) COMMENT 'Total freight cost charged by the carrier for this specific leg. Supports leg-level cost allocation and profitability analysis.',
-    `leg_freight_cost_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the leg freight cost (e.g., USD, EUR, CNY).',
+    `leg_freight_cost_currency` STRING COMMENT 'Three-letter ISO 4217 currency code for the leg freight cost (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
     `leg_sequence_number` STRING COMMENT 'Sequential order of this leg within the parent shipment journey. Indicates the position in the multi-leg routing plan (1 for first leg, 2 for second, etc.).',
     `leg_status` STRING COMMENT 'Current operational status of this transport leg in its lifecycle. Tracks progression from planning through execution to completion. [ENUM-REF-CANDIDATE: planned|scheduled|in_transit|arrived|completed|cancelled|delayed — 7 candidates stripped; promote to reference product]',
     `load_type` STRING COMMENT 'Classification of shipment load configuration. FTL (Full Truckload) indicates dedicated vehicle, LTL (Less Than Truckload) indicates shared capacity with other shipments.. Valid values are `FTL|LTL|parcel|container|bulk`',
@@ -119,6 +117,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` (
     `node_id` BIGINT COMMENT 'Reference to the facility, warehouse, or site where goods will be picked up by the carrier.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Freight Order Creation process for a manufacturing project needs a FK to the project to allocate freight costs to the project budget.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Freight order is created to transport goods for a specific PO; needed for cost allocation and PO fulfillment tracking.',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Freight order processing must ensure order‑level regulatory reporting (e.g., export controls), so each order references the governing regulatory requirement.',
     `shipment_id` BIGINT COMMENT 'Reference to the shipment(s) associated with this freight order. Links the freight order to the physical shipment being transported.',
     `transport_route_id` BIGINT COMMENT 'Reference to the planned transportation route for this freight order. Links to route optimization and network planning data.',
     `accessorial_charges_amount` DECIMAL(18,2) COMMENT 'Total amount of accessorial charges applied to this freight order. Accessorials include additional services such as liftgate, inside delivery, residential delivery, detention, fuel surcharge, and other non-standard services.',
@@ -133,10 +132,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` (
     `delivery_window_end` TIMESTAMP COMMENT 'Latest date and time when the carrier must deliver the goods. Defines the end of the acceptable delivery time window and may be tied to Service Level Agreement (SLA) commitments.',
     `delivery_window_start` TIMESTAMP COMMENT 'Earliest date and time when the carrier may deliver the goods. Defines the beginning of the acceptable delivery time window.',
     `equipment_type` STRING COMMENT 'Type of transportation equipment required for this freight order. Dry Van for standard enclosed trailer, Refrigerated for temperature-controlled, Flatbed for oversized or open cargo, Tanker for liquid bulk, Container for intermodal shipping, Box Truck for local delivery.. Valid values are `Dry Van|Refrigerated|Flatbed|Tanker|Container|Box Truck`',
-    `freight_order_number` DECIMAL(18,2) COMMENT 'Business-facing unique identifier for the freight order, typically generated by the Transportation Management System (TMS) or SAP TM module. Used for external communication with carriers and internal tracking.',
-    `freight_order_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the freight order. Draft indicates order is being prepared, Tendered means sent to carrier, Accepted means carrier confirmed, Rejected means carrier declined, In Transit means shipment is moving, Delivered means goods received, Cancelled means order voided, Closed means order completed and invoiced. [ENUM-REF-CANDIDATE: Draft|Tendered|Accepted|Rejected|In Transit|Delivered|Cancelled|Closed — 8 candidates stripped; promote to reference product]',
+    `freight_order_number` STRING COMMENT 'Business-facing unique identifier for the freight order, typically generated by the Transportation Management System (TMS) or SAP TM module. Used for external communication with carriers and internal tracking.',
+    `freight_order_status` STRING COMMENT 'Current lifecycle status of the freight order. Draft indicates order is being prepared, Tendered means sent to carrier, Accepted means carrier confirmed, Rejected means carrier declined, In Transit means shipment is moving, Delivered means goods received, Cancelled means order voided, Closed means order completed and invoiced. [ENUM-REF-CANDIDATE: Draft|Tendered|Accepted|Rejected|In Transit|Delivered|Cancelled|Closed — 8 candidates stripped; promote to reference product]',
     `freight_rate_amount` DECIMAL(18,2) COMMENT 'Agreed base freight rate amount for transporting the goods, excluding accessorial charges and taxes. Represents the core transportation cost negotiated with the carrier.',
-    `freight_rate_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the freight rate amount (e.g., USD, EUR, CNY).',
+    `freight_rate_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the freight rate amount (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
     `hazmat_indicator` BOOLEAN COMMENT 'Boolean flag indicating whether this freight order contains hazardous materials requiring special handling, documentation, and compliance with transportation safety regulations.',
     `incoterm_code` STRING COMMENT 'Three-letter Incoterms code defining the responsibilities, costs, and risks between buyer and seller for international shipments. Examples: EXW (Ex Works), FOB (Free On Board), CIF (Cost Insurance and Freight), DDP (Delivered Duty Paid). [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `modified_by_user` STRING COMMENT 'User ID or name of the person or system that last modified this freight order record. Audit field for change accountability.',
@@ -147,7 +146,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` (
     `pickup_window_start` TIMESTAMP COMMENT 'Earliest date and time when the carrier may pick up the goods. Defines the beginning of the acceptable pickup time window.',
     `priority_level` STRING COMMENT 'Priority classification for this freight order. Standard for normal service, Expedited for faster-than-normal, Rush for urgent same-day or next-day, Critical for emergency shipments requiring immediate attention.. Valid values are `Standard|Expedited|Rush|Critical`',
     `pro_number` STRING COMMENT 'Carrier-assigned Progressive Rotating Order number used to track the shipment through the carriers network. Commonly used in LTL freight for tracking and proof of delivery.',
-    `sap_tm_freight_order_reference` DECIMAL(18,2) COMMENT 'Reference identifier from SAP Transportation Management (TM) module linking this freight order to the source system record. Used for traceability and reconciliation with the operational TMS.',
+    `sap_tm_freight_order_reference` STRING COMMENT 'Reference identifier from SAP Transportation Management (TM) module linking this freight order to the source system record. Used for traceability and reconciliation with the operational TMS.',
     `service_type` STRING COMMENT 'Type of freight service contracted for this order. LTL (Less Than Truckload) for partial loads, FTL (Full Truckload) for dedicated truck capacity, Intermodal for multi-mode transport, Parcel for small package, Air Freight for expedited air transport, Ocean Freight for maritime shipping.. Valid values are `LTL|FTL|Intermodal|Parcel|Air Freight|Ocean Freight`',
     `special_instructions` STRING COMMENT 'Free-text field containing special handling instructions, delivery requirements, or other important notes for the carrier. May include temperature requirements, fragile handling, appointment requirements, or site-specific access instructions.',
     `temperature_controlled_indicator` BOOLEAN COMMENT 'Boolean flag indicating whether this freight order requires temperature-controlled transportation (refrigerated or heated).',
@@ -164,10 +163,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` (
     `delivery_note_id` BIGINT COMMENT 'Unique identifier for the delivery note. Primary key for this entity.',
     `carrier_id` BIGINT COMMENT 'Transportation carrier or logistics service provider handling the shipment.',
-    `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: Delivery Note must record the specific component being issued/received to reconcile inventory and support quality traceability.',
     `customer_account_id` BIGINT COMMENT 'Ship-to party for outbound deliveries. The customer receiving the goods.',
     `order_header_id` BIGINT COMMENT 'Reference to the originating sales order for outbound deliveries. Links delivery execution to customer order.',
-    `plant_data_id` BIGINT COMMENT 'Manufacturing plant or distribution center handling the delivery. For inbound: receiving plant. For outbound: shipping plant.',
     `address_id` BIGINT COMMENT 'Destination address for outbound deliveries. Links to customer site or delivery location.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the originating purchase order for inbound deliveries. Links goods receipt to procurement.',
     `shipment_id` BIGINT COMMENT 'Reference to the consolidated shipment if this delivery is part of a multi-delivery shipment.',
@@ -179,14 +176,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` (
     `actual_delivery_date` DATE COMMENT 'Actual date when goods were delivered to the destination or received at the plant.',
     `bill_of_lading_number` STRING COMMENT 'Bill of lading number issued by the carrier as a receipt and contract for transportation.. Valid values are `^[A-Z0-9]{8,20}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the delivery note record was first created in the system.',
-    `customs_declaration_number` DECIMAL(18,2) COMMENT 'Customs declaration or entry number for international shipments requiring customs clearance.',
+    `customs_declaration_number` STRING COMMENT 'Customs declaration or entry number for international shipments requiring customs clearance.. Valid values are `^[A-Z0-9]{10,20}$`',
     `delivery_direction` STRING COMMENT 'Discriminator indicating whether this is an inbound delivery (goods receipt from supplier) or outbound delivery (shipment to customer).. Valid values are `inbound|outbound`',
     `delivery_note_number` STRING COMMENT 'Externally-known business identifier for the delivery note. Used for tracking and reference across systems and with external parties.. Valid values are `^[A-Z0-9]{8,20}$`',
     `delivery_priority` STRING COMMENT 'Priority level assigned to the delivery for warehouse and transportation planning.. Valid values are `low|normal|high|urgent|critical`',
     `delivery_status` STRING COMMENT 'Current lifecycle status of the delivery note in the warehouse and logistics execution workflow. [ENUM-REF-CANDIDATE: draft|planned|picking|packed|shipped|in_transit|delivered|cancelled — 8 candidates stripped; promote to reference product]',
     `export_control_classification` STRING COMMENT 'Export control classification for goods subject to export regulations and licensing requirements.. Valid values are `^[A-Z0-9]{4,10}$`',
     `freight_cost_amount` DECIMAL(18,2) COMMENT 'Total freight or transportation cost for the delivery.',
-    `freight_cost_currency` DECIMAL(18,2) COMMENT 'Currency code for freight cost amount. ISO 4217 three-letter currency code.',
+    `freight_cost_currency` STRING COMMENT 'Currency code for freight cost amount. ISO 4217 three-letter currency code.. Valid values are `^[A-Z]{3}$`',
     `goods_issue_date` DATE COMMENT 'Date when goods were physically issued from inventory for outbound deliveries. Triggers inventory reduction.',
     `goods_issue_status` STRING COMMENT 'Status of goods issue posting for outbound deliveries. Indicates whether inventory has been reduced.. Valid values are `pending|posted|reversed|blocked`',
     `goods_receipt_date` DATE COMMENT 'Date when goods were physically received into inventory for inbound deliveries. Triggers inventory increase.',
@@ -220,6 +217,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` (
     `carrier_id` BIGINT COMMENT 'Reference to the logistics carrier or freight forwarder responsible for transporting the inbound delivery.',
     `employee_id` BIGINT COMMENT 'Reference to the MRP controller responsible for planning and monitoring this inbound delivery.',
     `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Inbound delivery process creates an inspection lot; linking enables the Inbound Delivery Inspection Summary to pull lot results.',
+    `asset_plant_id` BIGINT COMMENT 'Reference to the manufacturing plant or facility receiving the inbound delivery.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the purchase order that triggered this inbound delivery.',
     `replenishment_proposal_id` BIGINT COMMENT 'Foreign key linking to supply.replenishment_proposal. Business justification: Inbound deliveries are the physical receipt of goods proposed in a replenishment proposal; needed for the Proposal‑to‑Receipt tracking report.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Associates inbound delivery with received SKU; essential for goods receipt, quality inspection, and stock update processes.',
@@ -239,7 +237,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` (
     `delivery_variance_quantity` DECIMAL(18,2) COMMENT 'Difference between quantity ordered and quantity received (positive for over-delivery, negative for under-delivery).',
     `expected_delivery_date` DATE COMMENT 'Planned date when the inbound delivery is expected to arrive at the receiving plant.',
     `freight_cost_amount` DECIMAL(18,2) COMMENT 'Total freight or transportation cost associated with this inbound delivery.',
-    `freight_cost_currency` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the freight cost amount.',
+    `freight_cost_currency` STRING COMMENT 'ISO 4217 three-letter currency code for the freight cost amount.. Valid values are `^[A-Z]{3}$`',
     `goods_receipt_date` DATE COMMENT 'Date when the goods receipt transaction was posted in the system, confirming inventory receipt.',
     `goods_receipt_posted_by` STRING COMMENT 'User ID or name of the warehouse operator who posted the goods receipt transaction.',
     `goods_receipt_status` STRING COMMENT 'Status indicating whether goods have been physically received and posted to inventory.. Valid values are `not_received|partial|complete|over_delivery`',
@@ -279,17 +277,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` (
     `consignee_state_province` STRING COMMENT 'State or province code for the consignee destination.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this BOL record was first created in the system.',
     `declared_value_amount` DECIMAL(18,2) COMMENT 'Monetary value of the cargo declared by the shipper for liability and insurance purposes.',
-    `declared_value_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO currency code for the declared value amount.',
+    `declared_value_currency` STRING COMMENT 'Three-letter ISO currency code for the declared value amount.. Valid values are `^[A-Z]{3}$`',
     `expected_delivery_date` DATE COMMENT 'Planned or estimated date when the cargo is expected to be delivered to the consignee.',
     `freight_charge_amount` DECIMAL(18,2) COMMENT 'Total freight transportation charges for this shipment.',
-    `freight_charge_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO currency code for the freight charge amount.',
-    `freight_class` DECIMAL(18,2) COMMENT 'NMFC freight class code (50-500) used to determine LTL shipping rates based on density, handling, stowability, and liability.',
-    `freight_terms` DECIMAL(18,2) COMMENT 'Payment terms indicating who is responsible for freight charges (prepaid by shipper, collect from consignee, or third party).',
+    `freight_charge_currency` STRING COMMENT 'Three-letter ISO currency code for the freight charge amount.. Valid values are `^[A-Z]{3}$`',
+    `freight_class` STRING COMMENT 'NMFC freight class code (50-500) used to determine LTL shipping rates based on density, handling, stowability, and liability.. Valid values are `^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$`',
+    `freight_terms` STRING COMMENT 'Payment terms indicating who is responsible for freight charges (prepaid by shipper, collect from consignee, or third party).. Valid values are `prepaid|collect|third_party`',
     `handling_unit_count` STRING COMMENT 'Total number of handling units (pallets, crates, boxes, drums) in the shipment.',
     `handling_unit_type` STRING COMMENT 'Type of packaging or handling unit used for the cargo.. Valid values are `pallet|crate|box|drum|container|bundle`',
     `hazmat_flag` BOOLEAN COMMENT 'Indicates whether the shipment contains hazardous materials requiring special handling and documentation.',
     `hazmat_un_number` STRING COMMENT 'Four-digit UN number identifying the hazardous material classification (e.g., UN1203 for gasoline).. Valid values are `^UN[0-9]{4}$`',
-    `issue_date` TIMESTAMP COMMENT 'Date when the bill of lading was issued by the carrier acknowledging receipt of cargo.',
+    `issue_date` DATE COMMENT 'Date when the bill of lading was issued by the carrier acknowledging receipt of cargo.',
     `issue_timestamp` TIMESTAMP COMMENT 'Precise date and time when the BOL was issued by the carrier. Principal business event timestamp.',
     `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this BOL record was last modified in the system.',
     `pickup_date` DATE COMMENT 'Scheduled or actual date when the carrier picked up the cargo from the shipper.',
@@ -310,6 +308,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` (
     `carrier_id` BIGINT COMMENT 'Unique identifier for the transportation carrier. Primary key for the carrier master record.',
+    `cost_center_id` BIGINT COMMENT 'add column finance_cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id - carrier costs must be allocated to cost centers for freight accounting',
     `api_endpoint_url` STRING COMMENT 'Base URL for the carriers API integration for real-time rate quotes, shipment booking, and tracking. Used for TMS connectivity.',
     `carrier_status` STRING COMMENT 'Current operational status of the carrier in the approved carrier network. Controls whether carrier can be selected for new shipments.. Valid values are `active|inactive|suspended|pending_approval|terminated|blacklisted`',
     `carrier_type` STRING COMMENT 'Classification of the carrier based on primary mode of transportation. Determines applicable regulations and service capabilities.. Valid values are `trucking|rail|ocean|air|parcel|freight_forwarder`',
@@ -339,7 +338,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` (
     `mc_number` STRING COMMENT 'Motor Carrier operating authority number issued by FMCSA for carriers transporting regulated commodities for hire in interstate commerce.. Valid values are `^MC-[0-9]{6,7}$`',
     `carrier_name` STRING COMMENT 'The full legal name of the transportation carrier or freight forwarder as registered with regulatory authorities.',
     `on_time_delivery_percentage` DECIMAL(18,2) COMMENT 'Percentage of shipments delivered within the committed delivery window. Key performance indicator for carrier performance management.',
-    `payment_terms` DECIMAL(18,2) COMMENT 'Standard payment terms negotiated with the carrier. Defines invoice payment due date relative to shipment delivery or invoice date.',
+    `payment_terms` STRING COMMENT 'Standard payment terms negotiated with the carrier. Defines invoice payment due date relative to shipment delivery or invoice date.. Valid values are `net_30|net_45|net_60|net_90|prepaid|cod`',
     `preferred_lanes` STRING COMMENT 'Geographic lanes or routes where the carrier has preferred capacity, competitive rates, or specialized expertise. Comma-separated origin-destination pairs.',
     `primary_contact_email` STRING COMMENT 'Email address of the primary carrier contact for shipment coordination, claims, and operational communication.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `primary_contact_name` STRING COMMENT 'Full name of the primary business contact at the carrier for operational coordination and issue resolution.',
@@ -351,7 +350,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` (
     `service_mode` STRING COMMENT 'Primary service mode offered by the carrier. LTL (Less Than Truckload), FTL (Full Truckload), or other specialized services.. Valid values are `ltl|ftl|parcel|intermodal|expedited|bulk`',
     `tax_number` STRING COMMENT 'Government-issued tax identification number for the carrier. Used for tax reporting and compliance. Format varies by jurisdiction.',
     `temperature_controlled_flag` BOOLEAN COMMENT 'Indicates whether the carrier provides temperature-controlled (refrigerated or heated) transportation services. True if capable.',
-    `tms_integration_status` DECIMAL(18,2) COMMENT 'Current status of the carriers integration with the enterprise TMS. Determines availability for automated shipment tendering and tracking.',
+    `tms_integration_status` STRING COMMENT 'Current status of the carriers integration with the enterprise TMS. Determines availability for automated shipment tendering and tracking.. Valid values are `integrated|pending|not_integrated|failed`',
     `tracking_url_template` STRING COMMENT 'URL template for shipment tracking on the carriers website. Placeholder tokens replaced with tracking number for customer self-service.',
     `vendor_code` STRING COMMENT 'Internal vendor identifier for the carrier in the ERP system. Used for purchase order creation and invoice matching.',
     CONSTRAINT pk_carrier PRIMARY KEY(`carrier_id`)
@@ -366,7 +365,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` (
     `approval_date` DATE COMMENT 'Date when the contract received internal approval from Manufacturing management.',
     `approved_by_name` STRING COMMENT 'Name of the Manufacturing executive or manager who approved this contract.',
     `auto_renewal_flag` BOOLEAN COMMENT 'Indicates whether the contract automatically renews upon expiry if not terminated.',
-    `base_rate_type` DECIMAL(18,2) COMMENT 'Primary rate basis used in this contract for freight charges. CWT (hundredweight).',
+    `base_rate_type` STRING COMMENT 'Primary rate basis used in this contract for freight charges. CWT (hundredweight).. Valid values are `per_cwt|per_mile|per_shipment|per_pallet|flat_rate|weight_break`',
     `carrier_contact_email` STRING COMMENT 'Primary email address for the carrier contact.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `carrier_contact_name` STRING COMMENT 'Primary contact name at the carrier organization for this contract.',
     `carrier_contact_phone` STRING COMMENT 'Primary phone number for the carrier contact.. Valid values are `^+?[0-9]{10,15}$`',
@@ -382,7 +381,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` (
     `effective_date` DATE COMMENT 'Date when the contract terms become binding and rates become applicable.',
     `expiry_date` DATE COMMENT 'Date when the contract terms cease to be binding. Nullable for open-ended contracts.',
     `fuel_index_source` STRING COMMENT 'External fuel price index used as the basis for fuel surcharge calculation, e.g., DOE National Diesel Average.',
-    `fuel_surcharge_method` DECIMAL(18,2) COMMENT 'Method by which fuel surcharges are calculated and applied to shipments under this contract.',
+    `fuel_surcharge_method` STRING COMMENT 'Method by which fuel surcharges are calculated and applied to shipments under this contract.. Valid values are `percentage_of_base|fixed_per_mile|tiered_schedule|index_linked|none`',
     `geographic_coverage` STRING COMMENT 'Geographic scope of the contract, e.g., North America, USA domestic, specific state/province list.',
     `insurance_coverage_required_flag` BOOLEAN COMMENT 'Indicates whether the carrier is required to maintain specific cargo insurance coverage under this contract.',
     `insurance_minimum_coverage_amount` DECIMAL(18,2) COMMENT 'Minimum cargo insurance coverage amount required from the carrier.',
@@ -392,10 +391,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` (
     `negotiation_date` DATE COMMENT 'Date when the contract terms were finalized and agreed upon by both parties.',
     `notes` STRING COMMENT 'Free-text notes capturing additional contract terms, special conditions, or operational instructions.',
     `on_time_delivery_target_pct` DECIMAL(18,2) COMMENT 'Contractual target percentage for on-time delivery performance, used for SLA compliance measurement.',
-    `payment_terms` DECIMAL(18,2) COMMENT 'Payment terms agreed with the carrier, e.g., net_30, net_45, net_60.',
+    `payment_terms` STRING COMMENT 'Payment terms agreed with the carrier, e.g., net_30, net_45, net_60.. Valid values are `^(net_[0-9]{1,3}|due_on_receipt|prepaid|cod)$`',
     `penalty_clause_description` STRING COMMENT 'Description of penalties applicable for service failures, late deliveries, or volume shortfalls.',
-    `rate_adjustment_trigger` DECIMAL(18,2) COMMENT 'Conditions or events that trigger a rate adjustment, e.g., fuel price change exceeding 10%, volume variance exceeding 20%.',
-    `rate_review_frequency` DECIMAL(18,2) COMMENT 'Frequency at which contract rates are reviewed and potentially adjusted.',
+    `rate_adjustment_trigger` STRING COMMENT 'Conditions or events that trigger a rate adjustment, e.g., fuel price change exceeding 10%, volume variance exceeding 20%.',
+    `rate_review_frequency` STRING COMMENT 'Frequency at which contract rates are reviewed and potentially adjusted.. Valid values are `monthly|quarterly|semi_annual|annual|on_demand|none`',
     `renewal_notice_days` STRING COMMENT 'Number of days advance notice required to prevent auto-renewal or to initiate renewal negotiation.',
     `service_level_standard` STRING COMMENT 'Guaranteed service level commitment, e.g., next-day delivery, 2-day delivery, standard ground.',
     `service_mode` STRING COMMENT 'Primary transportation mode covered by this contract. LTL (Less Than Truckload), FTL (Full Truckload).. Valid values are `LTL|FTL|parcel|intermodal|air_freight|ocean_freight`',
@@ -406,10 +405,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` (
 ) COMMENT 'Negotiated rate and service agreement between Manufacturing and a carrier, serving as the single source of truth (SSOT) for ALL carrier pricing within the logistics domain — including contract rates, spot rates, and benchmark rates. Captures contract-level terms (effective/expiry dates, volume commitments, service level guarantees, penalty clauses, payment terms) and granular lane-level rate records (per cwt, per mile, per shipment, per pallet by origin-destination zone/postal code range, freight class, weight break, and service level). Includes fuel surcharge schedules, accessorial charge tables, rate basis (weight break/flat/distance), rate currency, rate effective date ranges, rate source classification (contract/spot/benchmark), minimum volume thresholds, and rate validity periods. Used by TMS for automated carrier selection, freight cost calculation, spot rate benchmarking, and freight invoice audit. No other entity in this domain stores rate data.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` (
-    `freight_rate_id` DECIMAL(18,2) COMMENT 'Unique identifier for the freight rate record. Primary key.',
+    `freight_rate_id` BIGINT COMMENT 'Unique identifier for the freight rate record. Primary key.',
     `carrier_id` BIGINT COMMENT 'Identifier of the transportation carrier offering this rate.',
     `lane_id` BIGINT COMMENT 'Identifier of the transportation lane (origin-destination pair) for which this rate applies.',
-    `accessorial_charges_applicable` DECIMAL(18,2) COMMENT 'Indicates whether additional accessorial charges (liftgate, inside delivery, residential delivery, etc.) may apply to shipments using this rate.',
+    `accessorial_charges_applicable` BOOLEAN COMMENT 'Indicates whether additional accessorial charges (liftgate, inside delivery, residential delivery, etc.) may apply to shipments using this rate.',
     `base_rate` DECIMAL(18,2) COMMENT 'Base freight rate amount per unit as defined by rate_basis, before surcharges and adjustments.',
     `contract_number` STRING COMMENT 'Reference number of the carrier contract under which this rate is negotiated, if applicable.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code in which the rate is denominated (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
@@ -421,7 +420,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` (
     `effective_end_date` DATE COMMENT 'Date on which this freight rate expires and is no longer valid for new shipments. Null indicates open-ended validity.',
     `effective_start_date` DATE COMMENT 'Date from which this freight rate becomes effective and can be used for shipment cost calculation.',
     `equipment_type` STRING COMMENT 'Type of transportation equipment required for this rate (e.g., dry van, refrigerated, flatbed, container size).',
-    `freight_class` DECIMAL(18,2) COMMENT 'National Motor Freight Classification (NMFC) freight class code (e.g., 50, 55, 60, 65, 70, 77.5, 85, 92.5, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500) determining rate based on density, handling, stowability, and liability.',
+    `freight_class` STRING COMMENT 'National Motor Freight Classification (NMFC) freight class code (e.g., 50, 55, 60, 65, 70, 77.5, 85, 92.5, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500) determining rate based on density, handling, stowability, and liability.',
     `fuel_surcharge_percentage` DECIMAL(18,2) COMMENT 'Fuel surcharge percentage applied to the base rate to account for fuel cost fluctuations.',
     `hazmat_eligible` BOOLEAN COMMENT 'Indicates whether this rate is applicable to shipments containing hazardous materials.',
     `maximum_charge` DECIMAL(18,2) COMMENT 'Maximum charge cap for a shipment under this rate, if applicable.',
@@ -430,14 +429,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` (
     `origin_postal_code_range_end` STRING COMMENT 'Ending postal code of the origin range for which this rate applies.',
     `origin_postal_code_range_start` STRING COMMENT 'Starting postal code of the origin range for which this rate applies.',
     `origin_zone_code` STRING COMMENT 'Geographic zone or postal code range identifier for the shipment origin covered by this rate.',
-    `rate_basis` DECIMAL(18,2) COMMENT 'Basis on which the rate is calculated: per hundredweight (cwt), per mile, per shipment, per pallet, per unit, or flat rate.',
-    `rate_code` DECIMAL(18,2) COMMENT 'Business identifier or code for this freight rate, used for external reference and carrier communication.',
+    `rate_basis` STRING COMMENT 'Basis on which the rate is calculated: per hundredweight (cwt), per mile, per shipment, per pallet, per unit, or flat rate.. Valid values are `per_cwt|per_mile|per_shipment|per_pallet|per_unit|flat`',
+    `rate_code` STRING COMMENT 'Business identifier or code for this freight rate, used for external reference and carrier communication.',
     `rate_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this freight rate record was first created in the system.',
     `rate_last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this freight rate record was last modified in the system.',
-    `rate_published_date` TIMESTAMP COMMENT 'Date on which this rate was published or made available by the carrier.',
-    `rate_source_system` DECIMAL(18,2) COMMENT 'Name of the source system or Transportation Management System (TMS) from which this rate was loaded or synchronized.',
-    `rate_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the freight rate record.',
-    `rate_type` DECIMAL(18,2) COMMENT 'Classification of the rate source: contract (negotiated agreement), spot (market rate), benchmark (industry standard), or tariff (published rate).',
+    `rate_published_date` DATE COMMENT 'Date on which this rate was published or made available by the carrier.',
+    `rate_source_system` STRING COMMENT 'Name of the source system or Transportation Management System (TMS) from which this rate was loaded or synchronized.',
+    `rate_status` STRING COMMENT 'Current lifecycle status of the freight rate record.. Valid values are `active|inactive|pending|expired`',
+    `rate_type` STRING COMMENT 'Classification of the rate source: contract (negotiated agreement), spot (market rate), benchmark (industry standard), or tariff (published rate).. Valid values are `contract|spot|benchmark|tariff`',
     `service_level` STRING COMMENT 'Service level or speed tier offered by the carrier for this rate (standard, expedited, express, economy).. Valid values are `standard|expedited|express|economy`',
     `transit_time_days` STRING COMMENT 'Expected transit time in days for shipments using this rate and service level.',
     `transportation_mode` STRING COMMENT 'Mode of transportation for this rate: Less Than Truckload (LTL), Full Truckload (FTL), parcel, air freight, ocean freight, rail, or intermodal. [ENUM-REF-CANDIDATE: LTL|FTL|parcel|air|ocean|rail|intermodal — 7 candidates stripped; promote to reference product]',
@@ -452,6 +451,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` (
     `carrier_contract_id` BIGINT COMMENT 'Reference to the carrier contract governing rates, terms, and service levels for this shipment.',
     `carrier_id` BIGINT COMMENT 'Identifier of the transportation carrier who issued this freight invoice and provided the transportation service.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Freight invoices must be charged to a cost center for internal cost accounting and budgeting.',
+    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Needed for generating customer‑facing freight invoices and finance reconciliation linking invoice to the customer account.',
     `node_id` BIGINT COMMENT 'Identifier of the shipment destination location (customer site, plant, warehouse, or distribution center).',
     `employee_id` BIGINT COMMENT 'Identifier of the user or system that performed the freight audit on this invoice.',
     `freight_order_id` BIGINT COMMENT 'Reference to the freight order that authorized this shipment. Used for three-way match validation (freight order vs BOL vs invoice).',
@@ -468,12 +468,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` (
     `bol_number` STRING COMMENT 'Bill of Lading number associated with this freight invoice. Used for three-way match validation and shipment traceability.. Valid values are `^[A-Z0-9-]{6,25}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this freight invoice record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts on this invoice (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
-    `customs_declaration_number` DECIMAL(18,2) COMMENT 'Customs declaration or entry number for international shipments. Required for cross-border freight audit and compliance.',
+    `customs_declaration_number` STRING COMMENT 'Customs declaration or entry number for international shipments. Required for cross-border freight audit and compliance.',
     `customs_duties` DECIMAL(18,2) COMMENT 'Customs duties and import/export fees charged for cross-border shipments. Applicable for international freight.',
     `delivery_date` DATE COMMENT 'Date the carrier delivered the shipment to the destination location.',
     `disputed_amount` DECIMAL(18,2) COMMENT 'Amount under dispute due to billing errors, service failures, or contract rate discrepancies. Subject to carrier negotiation and resolution.',
     `distance_km` DECIMAL(18,2) COMMENT 'Total distance traveled for this shipment in kilometers. Used for mileage-based rate validation and route optimization analysis.',
-    `freight_class` DECIMAL(18,2) COMMENT 'National Motor Freight Classification (NMFC) freight class assigned to the shipment. Determines LTL pricing based on density, handling, stowability, and liability.',
+    `freight_class` STRING COMMENT 'National Motor Freight Classification (NMFC) freight class assigned to the shipment. Determines LTL pricing based on density, handling, stowability, and liability.. Valid values are `^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$`',
     `fuel_surcharge` DECIMAL(18,2) COMMENT 'Variable fuel surcharge applied by carrier based on current fuel prices and agreed fuel surcharge schedule.',
     `incoterms` STRING COMMENT 'International Commercial Terms (Incoterms) defining the division of costs and responsibilities between buyer and seller for international shipments. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `invoice_date` DATE COMMENT 'Date the freight invoice was issued by the carrier. Principal business event timestamp for this transaction.',
@@ -481,11 +481,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` (
     `invoiced_amount` DECIMAL(18,2) COMMENT 'Total amount invoiced by the carrier, including line haul, fuel surcharge, accessorials, customs duties, and taxes. Gross invoice total.',
     `line_haul_charge` DECIMAL(18,2) COMMENT 'Base transportation charge for moving freight from origin to destination, excluding fuel surcharges and accessorial fees.',
     `notes` STRING COMMENT 'Free-text notes or comments related to this freight invoice, including special handling instructions, dispute details, or audit findings.',
-    `payment_date` TIMESTAMP COMMENT 'Date payment was issued to the carrier. Null if invoice is not yet paid.',
-    `payment_due_date` TIMESTAMP COMMENT 'Date by which payment is due to the carrier per agreed payment terms.',
-    `payment_method` DECIMAL(18,2) COMMENT 'Method used to pay the carrier for this freight invoice (wire transfer, ACH, check, credit card, or prepaid account).',
-    `payment_reference_number` DECIMAL(18,2) COMMENT 'Payment transaction reference number or check number used for payment reconciliation and audit trail.',
-    `payment_status` DECIMAL(18,2) COMMENT 'Current payment lifecycle status of the freight invoice. Tracks progression from receipt through approval, dispute, and payment.',
+    `payment_date` DATE COMMENT 'Date payment was issued to the carrier. Null if invoice is not yet paid.',
+    `payment_due_date` DATE COMMENT 'Date by which payment is due to the carrier per agreed payment terms.',
+    `payment_method` STRING COMMENT 'Method used to pay the carrier for this freight invoice (wire transfer, ACH, check, credit card, or prepaid account).. Valid values are `wire_transfer|ach|check|credit_card|prepaid`',
+    `payment_reference_number` STRING COMMENT 'Payment transaction reference number or check number used for payment reconciliation and audit trail.',
+    `payment_status` STRING COMMENT 'Current payment lifecycle status of the freight invoice. Tracks progression from receipt through approval, dispute, and payment.. Valid values are `pending|approved|paid|disputed|rejected|cancelled`',
     `pickup_date` DATE COMMENT 'Date the carrier picked up the shipment from the origin location.',
     `service_type` STRING COMMENT 'Type of transportation service provided: Less Than Truckload (LTL), Full Truckload (FTL), parcel, intermodal, air freight, ocean freight, or rail. [ENUM-REF-CANDIDATE: LTL|FTL|parcel|intermodal|air|ocean|rail — 7 candidates stripped; promote to reference product]',
     `tax_amount` DECIMAL(18,2) COMMENT 'Total tax amount applied to the freight invoice (VAT, GST, sales tax) per applicable tax jurisdiction.',
@@ -503,7 +503,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` (
     `carrier_id` BIGINT COMMENT 'FK to logistics.carrier',
     `alternate_carrier_codes` STRING COMMENT 'Comma-separated list of alternate carrier codes that can be used for this route if the preferred carrier is unavailable or for load balancing.',
     `carbon_emission_factor_kg_per_km` DECIMAL(18,2) COMMENT 'Average carbon dioxide equivalent emissions per kilometer for this route, used for sustainability reporting and carbon footprint calculation.',
-    `cost_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the standard freight cost.',
+    `cost_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the standard freight cost.. Valid values are `^[A-Z]{3}$`',
     `cost_per_km` DECIMAL(18,2) COMMENT 'Average freight cost per kilometer for this route, used for variable cost modeling and route comparison.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this transport route record was first created in the system.',
     `customs_clearance_required` BOOLEAN COMMENT 'Indicates whether customs clearance is required for this route (typically true for cross-border international routes).',
@@ -514,7 +514,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` (
     `effective_from_date` DATE COMMENT 'Date from which this route configuration becomes effective, used for contract lifecycle management and rate validity.',
     `effective_to_date` DATE COMMENT 'Date until which this route configuration is valid. Null indicates an open-ended route with no expiration.',
     `equipment_type` STRING COMMENT 'Type of transportation equipment required for this route (e.g., dry van, refrigerated, flatbed, tanker, 20ft container, 40ft container).',
-    `fuel_surcharge_applicable` DECIMAL(18,2) COMMENT 'Indicates whether a fuel surcharge is applicable to shipments on this route, based on carrier contract terms.',
+    `fuel_surcharge_applicable` BOOLEAN COMMENT 'Indicates whether a fuel surcharge is applicable to shipments on this route, based on carrier contract terms.',
     `hazmat_approved` BOOLEAN COMMENT 'Indicates whether this route is approved for transporting hazardous materials, based on carrier certification and regulatory compliance.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this transport route record was last updated, used for change tracking and audit trail.',
     `last_review_date` DATE COMMENT 'Date when this route was last reviewed for performance, cost, and optimization opportunities.',
@@ -545,7 +545,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`node` (
     `node_id` BIGINT COMMENT 'Unique identifier for the logistics node. Primary key for the logistics node master record.',
-    `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Control system assigned to a specific warehouse node for automated material handling, needed for system health reporting.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Node operating costs are allocated to a cost center; remove denormalized cost_center_code.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Node Management assigns a responsible employee to each logistics node, used in operational dashboards and incident response.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: PROCUREMENT_MASTER_PLAN records a primary supplier per node to drive sourcing decisions and allocation of purchase orders.',
@@ -655,9 +654,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration
     `country_of_origin` STRING COMMENT 'ISO 3166-1 alpha-3 country code representing the country where the goods were manufactured or produced.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the customs declaration record was first created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the declared value.. Valid values are `^[A-Z]{3}$`',
-    `declaration_number` DECIMAL(18,2) COMMENT 'Official customs declaration number issued by customs authority. Externally-known unique identifier for this declaration.',
-    `declaration_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the customs declaration in the clearance workflow. [ENUM-REF-CANDIDATE: draft|submitted|under_review|cleared|held|rejected|released — 7 candidates stripped; promote to reference product]',
-    `declaration_type` DECIMAL(18,2) COMMENT 'Type of customs declaration indicating the nature of cross-border movement.',
+    `declaration_number` STRING COMMENT 'Official customs declaration number issued by customs authority. Externally-known unique identifier for this declaration.',
+    `declaration_status` STRING COMMENT 'Current lifecycle status of the customs declaration in the clearance workflow. [ENUM-REF-CANDIDATE: draft|submitted|under_review|cleared|held|rejected|released — 7 candidates stripped; promote to reference product]',
+    `declaration_type` STRING COMMENT 'Type of customs declaration indicating the nature of cross-border movement.. Valid values are `import|export|transit|re-export|temporary_admission|inward_processing`',
     `declared_value` DECIMAL(18,2) COMMENT 'Total declared customs value of the goods in the specified currency.',
     `denied_party_screening_result` STRING COMMENT 'Outcome of screening against denied parties lists, sanctioned entities, and restricted party databases.. Valid values are `cleared|flagged|blocked|pending`',
     `dual_use_classification` STRING COMMENT 'Classification determination for goods that have both civilian and military applications.',
@@ -707,7 +706,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` (
     `estimated_delivery_date` DATE COMMENT 'The estimated date when the load is expected to arrive at the destination facility, calculated from planned departure and transit time.',
     `estimated_freight_cost` DECIMAL(18,2) COMMENT 'The estimated total freight cost for this load plan based on carrier rates, distance, weight, and service level. Used for cost planning and budget tracking.',
     `estimated_transit_time_hours` STRING COMMENT 'The estimated total transit time from origin to destination in hours, used for delivery promise calculation and customer communication.',
-    `freight_cost_currency_code` DECIMAL(18,2) COMMENT 'The three-letter ISO 4217 currency code for the estimated freight cost, supporting multi-currency logistics operations.',
+    `freight_cost_currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code for the estimated freight cost, supporting multi-currency logistics operations.. Valid values are `^[A-Z]{3}$`',
     `hazmat_class` STRING COMMENT 'The UN hazard class code for hazardous materials in this load, used for regulatory compliance and carrier certification requirements.. Valid values are `^[1-9](.[1-9])?$`',
     `incoterms_code` STRING COMMENT 'The Incoterms code defining the division of costs and responsibilities between buyer and seller for international shipments in this load. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this load plan record was last modified, used for audit trail and data currency tracking.',
@@ -797,12 +796,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_dec
     `consignee_address` STRING COMMENT 'Full address of the consignee receiving the dangerous goods.',
     `consignee_name` STRING COMMENT 'Legal name of the organization or individual receiving the dangerous goods.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this dangerous goods declaration record was first created in the system.',
-    `declaration_approved_by` DECIMAL(18,2) COMMENT 'Name or identifier of the authorized person who approved the dangerous goods declaration for shipment.',
+    `declaration_approved_by` STRING COMMENT 'Name or identifier of the authorized person who approved the dangerous goods declaration for shipment.',
     `declaration_approved_timestamp` TIMESTAMP COMMENT 'Date and time when the dangerous goods declaration was approved.',
-    `declaration_number` DECIMAL(18,2) COMMENT 'Unique externally-known dangerous goods declaration number issued for regulatory tracking and compliance.',
-    `declaration_prepared_by` DECIMAL(18,2) COMMENT 'Name or identifier of the person who prepared the dangerous goods declaration.',
+    `declaration_number` STRING COMMENT 'Unique externally-known dangerous goods declaration number issued for regulatory tracking and compliance.',
+    `declaration_prepared_by` STRING COMMENT 'Name or identifier of the person who prepared the dangerous goods declaration.',
     `declaration_prepared_timestamp` TIMESTAMP COMMENT 'Date and time when the dangerous goods declaration was prepared.',
-    `declaration_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the dangerous goods declaration.',
+    `declaration_status` STRING COMMENT 'Current lifecycle status of the dangerous goods declaration.. Valid values are `draft|submitted|approved|rejected|expired|cancelled`',
     `emergency_contact_name` STRING COMMENT 'Name of the person or organization to contact in case of emergency during transport of dangerous goods.',
     `emergency_contact_phone` STRING COMMENT '24-hour emergency response telephone number for incidents involving the dangerous goods.',
     `excepted_quantity_flag` BOOLEAN COMMENT 'Indicates whether the dangerous goods qualify for excepted quantity provisions allowing further regulatory relief.',
@@ -836,25 +835,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_dec
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` (
     `freight_claim_id` BIGINT COMMENT 'Unique identifier for the freight claim record. Primary key.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Freight Claim processing assigns an adjuster employee, needed for claim tracking, accountability, and cost analysis.',
     `carrier_id` BIGINT COMMENT 'Identifier of the transportation carrier against whom the claim is filed.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Freight claim settlements need cost center allocation for expense reconciliation.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Enables claim processing to attribute liability and settlements to the correct customer account.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Freight Claim processing assigns an adjuster employee, needed for claim tracking, accountability, and cost analysis.',
-    `freight_filed_by_employee_id` BIGINT COMMENT '',
-    `freight_invoice_id` BIGINT COMMENT '',
     `order_header_id` BIGINT COMMENT 'Foreign key linking to order.order_header. Business justification: Freight claim processing references the original sales order to determine liability, compensation, and financial impact.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Freight Claim settlement process allocates claim amounts to the responsible project for financial reconciliation.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Freight claim is filed against a shipment generated for a PO; linking enables claim processing and PO cost variance reporting.',
     `shipment_id` BIGINT COMMENT 'Reference to the shipment record associated with this freight claim.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Connects freight damage claims to the affected SKU; enables claim analysis, warranty cost tracking, and root‑cause reporting.',
-    `approved_amount` DECIMAL(18,2) COMMENT '',
     `assigned_adjuster_email` STRING COMMENT 'Email address of the carrier claims adjuster handling this claim.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `assigned_adjuster_name` STRING COMMENT 'Name of the claims adjuster or handler assigned by the carrier to review and process this claim.',
     `bol_number` STRING COMMENT 'Bill of Lading number that serves as the contract of carriage and receipt for the goods. Critical document reference for claim substantiation.. Valid values are `^[A-Z0-9-]{6,20}$`',
     `carrier_response_date` DATE COMMENT 'Date when the carrier formally acknowledged or responded to the freight claim. Used to track carrier compliance with response time requirements.',
-    `claim_description` STRING COMMENT '',
     `claim_number` STRING COMMENT 'Externally-known unique claim reference number assigned by the claimant or carrier for tracking and correspondence.. Valid values are `^CLM-[0-9]{8,12}$`',
-    `claim_reason_code` STRING COMMENT '',
     `claim_status` STRING COMMENT 'Current lifecycle state of the freight claim in the resolution workflow. [ENUM-REF-CANDIDATE: filed|acknowledged|under_review|pending_documentation|settled|denied|escalated|withdrawn — 8 candidates stripped; promote to reference product]',
     `claim_type` STRING COMMENT 'Classification of the freight claim based on the nature of the incident: loss (goods missing), damage (goods harmed), shortage (quantity discrepancy), delay (late delivery), concealed damage (damage discovered after delivery), or refused shipment.. Valid values are `loss|damage|shortage|delay|concealed_damage|refused_shipment`',
     `claimant_contact_name` STRING COMMENT 'Name of the individual contact person representing the claimant organization for this claim.',
@@ -864,17 +858,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` (
     `claimed_amount` DECIMAL(18,2) COMMENT 'Total monetary value claimed by the shipper for loss, damage, shortage, or delay, including product value, freight charges, and consequential damages where applicable.',
     `claimed_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the claimed amount.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this freight claim record was first created in the system.',
-    `currency_code` STRING COMMENT '',
-    `damaged_quantity` DECIMAL(18,2) COMMENT '',
     `declared_value` DECIMAL(18,2) COMMENT 'Value of the goods declared on the Bill of Lading (BOL) at the time of shipment. Establishes the maximum carrier liability under Carmack Amendment.',
     `denial_reason_code` STRING COMMENT 'Standardized code indicating the reason for claim denial (e.g., insufficient documentation, pre-existing damage, act of God, shipper packaging fault).. Valid values are `^[A-Z0-9]{2,6}$`',
     `denial_reason_description` STRING COMMENT 'Detailed explanation provided by the carrier for denying the freight claim.',
     `discovery_date` DATE COMMENT 'Date when the claimant first discovered the loss, damage, or shortage. May differ from incident date for concealed damage claims.',
     `escalation_level` STRING COMMENT 'Current escalation tier of the claim if it has moved beyond standard resolution process.. Valid values are `none|supervisor|manager|legal|arbitration`',
-    `filed_date` TIMESTAMP COMMENT '',
     `filing_date` DATE COMMENT 'Date when the freight claim was formally filed with the carrier. Critical for statute of limitations tracking (typically 9 months under Carmack Amendment).',
     `filing_timestamp` TIMESTAMP COMMENT 'Precise date and time when the freight claim was submitted, used for audit trail and SLA (Service Level Agreement) tracking.',
-    `freight_class` DECIMAL(18,2) COMMENT 'National Motor Freight Classification (NMFC) class of the goods, used to determine liability limits and freight rates.',
+    `freight_class` STRING COMMENT 'National Motor Freight Classification (NMFC) class of the goods, used to determine liability limits and freight rates.. Valid values are `^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$`',
     `incident_date` DATE COMMENT 'Date when the loss, damage, shortage, or delay incident occurred or was discovered.',
     `inspection_report_number` STRING COMMENT 'Reference number of the third-party or carrier inspection report documenting the damage or loss.. Valid values are `^[A-Z0-9-]{6,20}$`',
     `insurance_company_name` STRING COMMENT 'Name of the insurance company involved in subrogation or cargo insurance coverage for this claim.',
@@ -882,13 +873,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` (
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this freight claim record was last modified, used for audit trail and change tracking.',
     `liability_limit_amount` DECIMAL(18,2) COMMENT 'Maximum amount the carrier is liable for under the terms of the Bill of Lading (BOL) and applicable regulations. May be based on declared value, weight, or tariff provisions.',
     `notes` STRING COMMENT 'Free-text field for additional comments, correspondence summary, or internal notes related to the claim lifecycle and resolution.',
-    `payment_date` TIMESTAMP COMMENT 'Date when the settlement payment was received by the claimant.',
+    `payment_date` DATE COMMENT 'Date when the settlement payment was received by the claimant.',
     `pro_number` STRING COMMENT 'Carrier-assigned progressive or tracking number for the shipment, used for tracing and claim correlation.. Valid values are `^[A-Z0-9-]{6,15}$`',
     `product_description` STRING COMMENT 'Description of the goods that were lost, damaged, or delayed, including material type, SKU (Stock Keeping Unit), and quantity.',
-    `resolution_date` TIMESTAMP COMMENT '',
-    `resolution_notes` STRING COMMENT '',
-    `root_cause` STRING COMMENT '',
-    `settled_amount` DECIMAL(18,2) COMMENT '',
     `settlement_amount` DECIMAL(18,2) COMMENT 'Final agreed-upon monetary amount paid to resolve the claim. Populated when claim status reaches settled.',
     `settlement_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the settlement amount.. Valid values are `^[A-Z]{3}$`',
     `settlement_date` DATE COMMENT 'Date when the claim was officially settled and payment terms agreed upon.',
@@ -901,10 +888,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` (
     `trade_compliance_record_id` BIGINT COMMENT 'Unique identifier for the trade compliance record. Primary key for this entity.',
     `customs_broker_id` BIGINT COMMENT 'Identifier of the customs broker or freight forwarder involved in the compliance process. Links to partner or vendor master data.',
+    `employee_id` BIGINT COMMENT 'Identifier of the compliance officer or trade compliance specialist who performed or reviewed the screening. Links to employee or user master data.',
     `shipment_id` BIGINT COMMENT 'Reference to the shipment or delivery that underwent compliance screening. Links this compliance record to the specific shipment being evaluated.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Links trade compliance checks to specific SKUs for embargo, dual‑use, and licensing decisions; supports compliance audit reports.',
-    `employee_id` BIGINT COMMENT 'Identifier of the compliance officer or trade compliance specialist who performed or reviewed the screening. Links to employee or user master data.',
-    `trade_reviewed_by_employee_id` BIGINT COMMENT '',
     `applicable_regulations` STRING COMMENT 'Comma-separated list of applicable export control regulations governing this shipment. May include EAR, ITAR, EU Dual-Use Regulation, OFAC sanctions, or other jurisdiction-specific rules.',
     `audit_trail` STRING COMMENT 'Comprehensive audit trail capturing all actions, decisions, and system interactions related to this compliance check. Supports regulatory audit and internal compliance reviews.',
     `check_date` DATE COMMENT 'Date when the trade compliance check was performed. Principal business event timestamp for the screening activity.',
@@ -913,28 +899,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_re
     `check_type` STRING COMMENT 'Type of trade compliance check performed. Categorizes the nature of the screening activity conducted on the shipment.. Valid values are `export_license|denied_party_screening|embargo_check|dual_use_classification|sanctions_screening|restricted_entity_list`',
     `compliance_check_number` STRING COMMENT 'Business identifier for the trade compliance check. Externally-known reference number used for tracking and audit purposes.. Valid values are `^TCC-[0-9]{8,12}$`',
     `compliance_officer_name` STRING COMMENT 'Name of the compliance officer responsible for this trade compliance check. Provides accountability and audit trail.',
-    `compliance_status` STRING COMMENT '',
-    `country_of_origin` STRING COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT '',
     `denied_party_list_name` STRING COMMENT 'Name of the denied party or restricted entity list where a match was found. Examples include OFAC SDN, BIS Entity List, EU Consolidated List.',
     `denied_party_match_flag` BOOLEAN COMMENT 'Indicates whether the end user, consignee, or any party in the transaction matched a denied party list or restricted entity list.',
-    `denied_party_screening_result` STRING COMMENT '',
-    `destination_country` STRING COMMENT '',
     `destination_country_code` STRING COMMENT 'ISO 3166-1 alpha-3 code for the destination country of the shipment. Critical for determining applicable export control restrictions and embargo status.. Valid values are `^[A-Z]{3}$`',
     `documentation_complete_flag` BOOLEAN COMMENT 'Indicates whether all required export control documentation, licenses, and certificates have been obtained and are complete.',
-    `dual_use_classification` STRING COMMENT '',
     `dual_use_flag` BOOLEAN COMMENT 'Indicates whether the goods are classified as dual-use items that have both civilian and military applications, requiring special export controls.',
     `eccn` STRING COMMENT 'Export Control Classification Number assigned to the goods. Alphanumeric code used to classify items for export control purposes under EAR.. Valid values are `^[0-9][A-Z][0-9]{3}(.[a-z])?$`',
-    `embargo_check_result` STRING COMMENT '',
     `embargo_flag` BOOLEAN COMMENT 'Indicates whether the destination country or end user is subject to a trade embargo or comprehensive sanctions program.',
     `end_user_name` STRING COMMENT 'Name of the ultimate end user or consignee of the goods. Subject to denied party screening and restricted entity checks.',
     `end_user_type` STRING COMMENT 'Classification of the end user entity type. Certain user types may trigger additional scrutiny or licensing requirements.. Valid values are `government|military|commercial|academic|individual|ngo`',
     `escalation_date` DATE COMMENT 'Date when the compliance issue was escalated for higher-level review or decision-making.',
     `escalation_required_flag` BOOLEAN COMMENT 'Indicates whether the compliance issue requires escalation to senior management, legal counsel, or external trade compliance advisors.',
-    `export_license_number` STRING COMMENT '',
-    `export_license_required_flag` BOOLEAN COMMENT '',
-    `hold_flag` BOOLEAN COMMENT '',
-    `hs_code` STRING COMMENT '',
     `license_expiration_date` DATE COMMENT 'Date when the export license expires. Shipments must be completed before this date to remain compliant.',
     `license_number` STRING COMMENT 'Official license number issued by the export control authority. Unique identifier for the export authorization granted.',
     `license_required_flag` BOOLEAN COMMENT 'Indicates whether an export license is required for this shipment based on the compliance screening results.',
@@ -942,20 +917,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_re
     `military_end_use_flag` BOOLEAN COMMENT 'Indicates whether the goods are intended for military end use, which may trigger additional licensing requirements or restrictions.',
     `record_created_by` STRING COMMENT 'User ID or system identifier of the person or process that created this compliance record. Provides accountability for data entry.',
     `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this trade compliance record was first created in the system. Audit field for data lineage and compliance tracking.',
-    `record_number` STRING COMMENT '',
     `record_updated_by` STRING COMMENT 'User ID or system identifier of the person or process that last updated this compliance record. Tracks modification responsibility.',
     `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this trade compliance record was last modified. Tracks changes for audit and compliance purposes.',
     `resolution_date` DATE COMMENT 'Date when the compliance check was resolved and a final clearance or blocking decision was made.',
     `resolution_notes` STRING COMMENT 'Detailed notes documenting the resolution of flagged issues, manual review findings, or justification for clearance decisions. Critical for audit trail and regulatory compliance.',
-    `review_date` TIMESTAMP COMMENT '',
     `risk_level` STRING COMMENT 'Categorical risk level classification based on the screening results. Used to prioritize manual review and escalation.. Valid values are `low|medium|high|critical`',
     `risk_score` DECIMAL(18,2) COMMENT 'Numerical risk score assigned by the screening system indicating the level of compliance risk. Higher scores indicate greater risk requiring manual review.',
-    `sanctioned_country_flag` BOOLEAN COMMENT '',
     `schedule_b_number` STRING COMMENT '10-digit Schedule B classification number for export statistics. Used by U.S. Census Bureau for tracking exports.. Valid values are `^[0-9]{10}$`',
-    `screening_date` TIMESTAMP COMMENT '',
     `screening_result` STRING COMMENT 'Outcome of the compliance screening process. Indicates whether the shipment passed, failed, or requires additional review or licensing.. Valid values are `cleared|flagged|blocked|requires_license|manual_review_required`',
     `screening_system` STRING COMMENT 'Name or identifier of the automated screening system or tool used to perform the compliance check. Examples include TMS, customs broker system, or dedicated trade compliance software.',
-    `screening_type` STRING COMMENT '',
     CONSTRAINT pk_trade_compliance_record PRIMARY KEY(`trade_compliance_record_id`)
 ) COMMENT 'Record of trade compliance checks and export control screening performed on a shipment or delivery, capturing compliance check type (export license, denied party screening, embargo check, dual-use classification), check date, screening result (cleared/flagged/blocked), export control classification number (ECCN), applicable regulations (EAR, ITAR, EU Dual-Use), license type and number, compliance officer ID, and resolution notes. Supports regulatory compliance with export control authorities.';
 
@@ -963,58 +933,27 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certificati
     `carrier_certification_id` BIGINT COMMENT 'Primary key for the carrier_certification association',
     `carrier_id` BIGINT COMMENT 'Foreign key linking to carrier',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to regulatory requirement',
-    `audit_date` TIMESTAMP COMMENT '',
-    `audit_score` DECIMAL(18,2) COMMENT '',
-    `certificate_number` STRING COMMENT 'certificate number',
-    `certification_name` STRING COMMENT '',
-    `certification_number` STRING COMMENT '',
-    `certification_scope` STRING COMMENT '',
     `certification_status` STRING COMMENT 'Current status of the carriers certification for the regulatory requirement (e.g., compliant, pending, expired)',
-    `certification_type` STRING COMMENT '',
-    `certifying_body` STRING COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT '',
-    `document_url` STRING COMMENT '',
     `effective_date` DATE COMMENT 'Date when the certification became effective for the carrier',
-    `expiry_date` DATE COMMENT '',
-    `issue_date` TIMESTAMP COMMENT '',
-    `issued_date` TIMESTAMP COMMENT '',
-    `issuing_authority` STRING COMMENT '',
-    `issuing_body` BOOLEAN COMMENT '',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
-    `notes` STRING COMMENT '',
-    `renewal_due_date` TIMESTAMP COMMENT '',
-    `renewal_required_flag` BOOLEAN COMMENT '',
-    `scope_description` STRING COMMENT '',
-    `verification_date` TIMESTAMP COMMENT '',
-    `verified_flag` BOOLEAN COMMENT '',
     CONSTRAINT pk_carrier_certification PRIMARY KEY(`carrier_certification_id`)
 ) COMMENT 'Association representing the certification compliance of a transportation carrier to a specific regulatory requirement. Captures the carriers certification status and effective date for each requirement.. Existence Justification: Each transportation carrier must maintain compliance with multiple regulatory requirements (e.g., safety, emissions, insurance). Conversely, each regulatory requirement applies to many carriers. The business records the certification status and effective date for every carrier‑requirement pair, creating a managed many‑to‑many relationship.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` (
     `customs_broker_id` BIGINT COMMENT 'Primary key for customs_broker',
     `parent_customs_broker_id` BIGINT COMMENT 'Self-referencing FK on customs_broker (parent_customs_broker_id)',
-    `supplier_id` BIGINT COMMENT '',
     `address_line1` STRING COMMENT 'First line of the brokers street address.',
     `address_line2` STRING COMMENT 'Second line of the brokers street address, if applicable.',
     `average_clearance_time_days` STRING COMMENT 'Average number of days the broker takes to clear shipments.',
-    `bond_amount` DECIMAL(18,2) COMMENT '',
-    `bond_expiry_date` TIMESTAMP COMMENT '',
-    `broker_license_number` STRING COMMENT '',
-    `broker_name` STRING COMMENT '',
-    `broker_status` STRING COMMENT '',
     `broker_type` STRING COMMENT 'Classification of the brokers service offering.',
     `city` STRING COMMENT 'City of the brokers primary location.',
     `classification` STRING COMMENT 'Business classification based on operational scope.',
     `compliance_certifications` STRING COMMENT 'Comma‑separated list of compliance certifications held by the broker (e.g., AEO, ISO 28000).',
     `country_code` STRING COMMENT 'Three‑letter ISO country code of the brokers primary location.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the broker record was first created.',
-    `customs_authority` STRING COMMENT '',
     `default_currency` STRING COMMENT 'Primary currency used for billing the broker.',
-    `edi_capability_flag` BOOLEAN COMMENT '',
     `effective_from` DATE COMMENT 'Date when the brokers agreement or registration becomes effective.',
     `effective_until` DATE COMMENT 'Date when the brokers agreement or registration expires, if applicable.',
     `is_preferred` BOOLEAN COMMENT 'Indicates whether the broker is a preferred partner for the company.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `license_expiry_date` DATE COMMENT 'Expiration date of the customs brokerage license.',
     `license_number` STRING COMMENT 'Regulatory license number authorizing customs brokerage activities.',
     `customs_broker_name` STRING COMMENT 'Legal name of the customs broker organization.',
@@ -1025,7 +964,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` (
     `primary_contact_phone` STRING COMMENT 'Phone number of the primary contact person.',
     `rating_date` DATE COMMENT 'Date when the most recent rating was recorded.',
     `rating_score` DECIMAL(18,2) COMMENT 'Average performance rating (0.00‑5.00) assigned by internal quality team.',
-    `service_countries` STRING COMMENT '',
     `service_modes` STRING COMMENT 'Transportation modes the broker supports.',
     `service_regions` STRING COMMENT 'Geographic regions where the broker provides services.',
     `state_province` STRING COMMENT 'State or province of the brokers primary location.',
@@ -1038,16 +976,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`lane` (
     `lane_id` BIGINT COMMENT 'Primary key for lane',
-    `node_id` BIGINT COMMENT 'FK to logistics.node',
-    `destination_location_node_id` BIGINT COMMENT 'Identifier of the destination location.',
-    `destination_node_id` BIGINT COMMENT '',
+    `node_id` BIGINT COMMENT 'Identifier of the destination location.',
+    `destination_node_id` BIGINT COMMENT 'FK to logistics.node',
     `lane_node_id` BIGINT COMMENT 'Identifier of the origin location (plant, warehouse, or port).',
     `origin_location_node_id` BIGINT COMMENT 'FK to logistics.node',
-    `origin_node_id` BIGINT COMMENT '',
-    `carrier_id` BIGINT COMMENT '',
     `return_lane_id` BIGINT COMMENT 'Self-referencing FK on lane (return_lane_id)',
-    `annual_volume` DECIMAL(18,2) COMMENT '',
-    `average_cost_per_shipment` DECIMAL(18,2) COMMENT '',
     `average_load_factor_percent` DECIMAL(18,2) COMMENT 'Average load factor as a percentage of capacity.',
     `average_transit_time_hours` DECIMAL(18,2) COMMENT 'Typical transit time for the lane in hours.',
     `capacity_tons` DECIMAL(18,2) COMMENT 'Maximum weight capacity that can be moved on the lane per shipment.',
@@ -1059,12 +992,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`lane` (
     `currency_code` STRING COMMENT 'ISO 4217 currency code for cost fields.',
     `customs_documentation_required` BOOLEAN COMMENT 'Indicates whether customs documentation is required for the lane.',
     `lane_description` STRING COMMENT 'Free‑form description of the lane, including any special notes.',
-    `destination_country_code` STRING COMMENT '',
-    `destination_region` STRING COMMENT '',
     `distance_km` DECIMAL(18,2) COMMENT 'Total distance of the lane in kilometres.',
     `effective_from` DATE COMMENT 'Date from which the lane definition becomes effective.',
     `effective_until` DATE COMMENT 'Date after which the lane definition is no longer valid (null if open‑ended).',
-    `hazmat_allowed_flag` BOOLEAN COMMENT '',
     `lane_group` STRING COMMENT 'Logical grouping of lanes for reporting (e.g., EastCoastGroup).',
     `lane_status` STRING COMMENT 'Current operational status of the lane.',
     `lane_type` STRING COMMENT 'Whether the lane is domestic or crosses international borders.',
@@ -1072,14 +1002,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`logistics`.`lane` (
     `max_weight_kg` DECIMAL(18,2) COMMENT 'Maximum individual load weight allowed on the lane.',
     `mode_of_transport` STRING COMMENT 'Primary mode of transport for the lane.',
     `lane_name` STRING COMMENT 'Human‑readable name of the lane (e.g., Chicago → Dallas).',
-    `on_time_performance_pct` DECIMAL(18,2) COMMENT '',
-    `origin_country_code` STRING COMMENT '',
-    `origin_region` STRING COMMENT '',
     `priority` STRING COMMENT 'Priority ranking used for routing optimization (higher = more preferred).',
     `region` STRING COMMENT 'Geographic region grouping for the lane (e.g., Midwest).',
-    `standard_transit_time_days` DECIMAL(18,2) COMMENT '',
-    `temperature_controlled_flag` BOOLEAN COMMENT '',
-    `transport_mode` STRING COMMENT '',
     `updated_by` STRING COMMENT 'User identifier who last updated the lane record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the lane record.',
     `usage_count` BIGINT COMMENT 'Cumulative count of shipments that have traversed this lane.',
@@ -1096,7 +1020,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `f
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_node_id` FOREIGN KEY (`node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_destination_location_node_id` FOREIGN KEY (`destination_location_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_origin_location_logistics_node_id` FOREIGN KEY (`origin_location_logistics_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_origin_location_node_id` FOREIGN KEY (`origin_location_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_primary_shipment_node_id` FOREIGN KEY (`primary_shipment_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ADD CONSTRAINT `fk_logistics_shipment_leg_tertiary_shipment_transfer_point_location_node_id` FOREIGN KEY (`tertiary_shipment_transfer_point_location_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
@@ -1132,19 +1055,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ADD CONST
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ADD CONSTRAINT `fk_logistics_delivery_appointment_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ADD CONSTRAINT `fk_logistics_dangerous_goods_declaration_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ADD CONSTRAINT `fk_logistics_freight_claim_carrier_id` FOREIGN KEY (`carrier_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`carrier`(`carrier_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ADD CONSTRAINT `fk_logistics_freight_claim_freight_invoice_id` FOREIGN KEY (`freight_invoice_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`freight_invoice`(`freight_invoice_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ADD CONSTRAINT `fk_logistics_freight_claim_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ADD CONSTRAINT `fk_logistics_trade_compliance_record_customs_broker_id` FOREIGN KEY (`customs_broker_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`customs_broker`(`customs_broker_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ADD CONSTRAINT `fk_logistics_trade_compliance_record_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ADD CONSTRAINT `fk_logistics_carrier_certification_carrier_id` FOREIGN KEY (`carrier_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`carrier`(`carrier_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ADD CONSTRAINT `fk_logistics_customs_broker_parent_customs_broker_id` FOREIGN KEY (`parent_customs_broker_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`customs_broker`(`customs_broker_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_node_id` FOREIGN KEY (`node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_destination_location_node_id` FOREIGN KEY (`destination_location_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_destination_node_id` FOREIGN KEY (`destination_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_lane_node_id` FOREIGN KEY (`lane_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_origin_location_node_id` FOREIGN KEY (`origin_location_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_origin_node_id` FOREIGN KEY (`origin_node_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`node`(`node_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_carrier_id` FOREIGN KEY (`carrier_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`carrier`(`carrier_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ADD CONSTRAINT `fk_logistics_lane_return_lane_id` FOREIGN KEY (`return_lane_id`) REFERENCES `vibe_manufacturing_v1`.`logistics`.`lane`(`lane_id`);
 
 -- ========= TAGS =========
@@ -1164,9 +1083,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `order_h
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Node Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `actual_delivery_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Delivery Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `actual_pickup_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Pickup Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `bol_number` SET TAGS ('dbx_business_glossary_term' = 'Bill of Lading (BOL) Number');
@@ -1177,16 +1095,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `customs
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Destination Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_city` SET TAGS ('dbx_business_glossary_term' = 'Destination City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_location_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destination_postal_code` SET TAGS ('dbx_pii_address' = 'true');
@@ -1194,15 +1108,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `destina
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `direction` SET TAGS ('dbx_business_glossary_term' = 'Shipment Direction');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `direction` SET TAGS ('dbx_value_regex' = 'inbound|outbound');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_class` SET TAGS ('dbx_business_glossary_term' = 'National Motor Freight Classification (NMFC) Freight Class');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_class` SET TAGS ('dbx_value_regex' = '^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `freight_cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `hazmat_class` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Materials Class');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `hazmat_flag` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Materials (HAZMAT) Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `incoterm_code` SET TAGS ('dbx_business_glossary_term' = 'International Commercial Terms (INCOTERMS) Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `insurance_value_amount` SET TAGS ('dbx_business_glossary_term' = 'Insurance Value Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `insurance_value_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `insurance_value_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Insurance Value Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `insurance_value_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `pro_number` SET TAGS ('dbx_business_glossary_term' = 'Progressive Number (PRO)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment` ALTER COLUMN `scheduled_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Delivery Date');
@@ -1261,6 +1178,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_distance_miles` SET TAGS ('dbx_business_glossary_term' = 'Leg Distance in Miles');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_freight_cost` SET TAGS ('dbx_business_glossary_term' = 'Leg Freight Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_freight_cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Leg Freight Cost Currency');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_freight_cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Leg Sequence Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `leg_status` SET TAGS ('dbx_business_glossary_term' = 'Leg Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `load_type` SET TAGS ('dbx_business_glossary_term' = 'Load Type (Full Truckload / Less Than Truckload)');
@@ -1281,7 +1199,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `tra
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `vehicle_type` SET TAGS ('dbx_business_glossary_term' = 'Vehicle Type');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_leg` ALTER COLUMN `vehicle_type` SET TAGS ('dbx_value_regex' = 'truck|container|railcar|aircraft|vessel|van');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` SET TAGS ('dbx_subdomain' = 'shipment_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` SET TAGS ('dbx_subdomain' = 'freight_management');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `freight_order_id` SET TAGS ('dbx_business_glossary_term' = 'Freight Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
@@ -1292,6 +1210,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `or
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Pickup Location ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `transport_route_id` SET TAGS ('dbx_business_glossary_term' = 'Route ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `accessorial_charges_amount` SET TAGS ('dbx_business_glossary_term' = 'Accessorial Charges Amount');
@@ -1312,6 +1231,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `fr
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `freight_order_status` SET TAGS ('dbx_business_glossary_term' = 'Freight Order Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `freight_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Freight Rate Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `freight_rate_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Freight Rate Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `freight_rate_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `hazmat_indicator` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Material (HAZMAT) Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `incoterm_code` SET TAGS ('dbx_business_glossary_term' = 'International Commercial Terms (Incoterms) Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_order` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
@@ -1340,14 +1260,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` SET TAGS ('dbx_d
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` SET TAGS ('dbx_subdomain' = 'shipment_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `delivery_note_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Note ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `order_header_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `plant_data_id` SET TAGS ('dbx_business_glossary_term' = 'Plant ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Address ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `address_id` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
@@ -1360,6 +1277,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `bi
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `bill_of_lading_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `customs_declaration_number` SET TAGS ('dbx_business_glossary_term' = 'Customs Declaration Number');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `customs_declaration_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{10,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `delivery_direction` SET TAGS ('dbx_business_glossary_term' = 'Delivery Direction');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `delivery_direction` SET TAGS ('dbx_value_regex' = 'inbound|outbound');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `delivery_note_number` SET TAGS ('dbx_business_glossary_term' = 'Delivery Note Number');
@@ -1371,6 +1289,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `ex
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `freight_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `freight_cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Currency');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `freight_cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `goods_issue_date` SET TAGS ('dbx_business_glossary_term' = 'Goods Issue (GI) Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `goods_issue_status` SET TAGS ('dbx_business_glossary_term' = 'Goods Issue (GI) Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_note` ALTER COLUMN `goods_issue_status` SET TAGS ('dbx_value_regex' = 'pending|posted|reversed|blocked');
@@ -1414,6 +1333,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `replenishment_proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Replenishment Proposal Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
@@ -1438,6 +1358,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `expected_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Delivery Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `freight_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `freight_cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Currency');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `freight_cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `goods_receipt_date` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `goods_receipt_posted_by` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) Posted By');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`inbound_delivery` ALTER COLUMN `goods_receipt_status` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) Status');
@@ -1477,16 +1398,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Consignee Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_city` SET TAGS ('dbx_business_glossary_term' = 'Consignee City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_country_code` SET TAGS ('dbx_business_glossary_term' = 'Consignee Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_name` SET TAGS ('dbx_business_glossary_term' = 'Consignee Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Consignee Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `consignee_postal_code` SET TAGS ('dbx_pii_address' = 'true');
@@ -1496,11 +1413,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `declared_value_amount` SET TAGS ('dbx_business_glossary_term' = 'Declared Value Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `declared_value_currency` SET TAGS ('dbx_business_glossary_term' = 'Declared Value Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `declared_value_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `expected_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Delivery Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_charge_amount` SET TAGS ('dbx_business_glossary_term' = 'Freight Charge Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_charge_currency` SET TAGS ('dbx_business_glossary_term' = 'Freight Charge Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_charge_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_class` SET TAGS ('dbx_business_glossary_term' = 'National Motor Freight Classification (NMFC) Freight Class');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_class` SET TAGS ('dbx_value_regex' = '^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_terms` SET TAGS ('dbx_business_glossary_term' = 'Freight Terms');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `freight_terms` SET TAGS ('dbx_value_regex' = 'prepaid|collect|third_party');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `handling_unit_count` SET TAGS ('dbx_business_glossary_term' = 'Handling Unit Count');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `handling_unit_type` SET TAGS ('dbx_business_glossary_term' = 'Handling Unit Type');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `handling_unit_type` SET TAGS ('dbx_value_regex' = 'pallet|crate|box|drum|container|bundle');
@@ -1515,16 +1436,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Shipper Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_city` SET TAGS ('dbx_business_glossary_term' = 'Shipper City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_country_code` SET TAGS ('dbx_business_glossary_term' = 'Shipper Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_name` SET TAGS ('dbx_business_glossary_term' = 'Shipper Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Shipper Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `shipper_postal_code` SET TAGS ('dbx_pii_address' = 'true');
@@ -1539,7 +1456,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `t
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `weight_unit` SET TAGS ('dbx_business_glossary_term' = 'Weight Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`bill_of_lading` ALTER COLUMN `weight_unit` SET TAGS ('dbx_value_regex' = 'LBS|KG|TON|MT');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `api_endpoint_url` SET TAGS ('dbx_business_glossary_term' = 'Application Programming Interface (API) Endpoint URL');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `carrier_status` SET TAGS ('dbx_business_glossary_term' = 'Carrier Status');
@@ -1565,8 +1482,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `hazmat_c
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_address` SET TAGS ('dbx_business_glossary_term' = 'Headquarters Address');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_city` SET TAGS ('dbx_business_glossary_term' = 'Headquarters City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_country_code` SET TAGS ('dbx_business_glossary_term' = 'Headquarters Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `headquarters_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1585,27 +1500,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `last_mod
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `mc_number` SET TAGS ('dbx_business_glossary_term' = 'Motor Carrier (MC) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `mc_number` SET TAGS ('dbx_value_regex' = '^MC-[0-9]{6,7}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `carrier_name` SET TAGS ('dbx_business_glossary_term' = 'Carrier Legal Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `carrier_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `carrier_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `on_time_delivery_percentage` SET TAGS ('dbx_business_glossary_term' = 'On-Time Delivery (OTD) Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = 'net_30|net_45|net_60|net_90|prepaid|cod');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `preferred_lanes` SET TAGS ('dbx_business_glossary_term' = 'Preferred Lanes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `safety_rating` SET TAGS ('dbx_business_glossary_term' = 'Safety Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `safety_rating` SET TAGS ('dbx_value_regex' = 'satisfactory|conditional|unsatisfactory|not_rated');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `safety_score` SET TAGS ('dbx_business_glossary_term' = 'Safety Score');
@@ -1618,10 +1526,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `tax_numb
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `tax_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `temperature_controlled_flag` SET TAGS ('dbx_business_glossary_term' = 'Temperature Controlled Capability Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `tms_integration_status` SET TAGS ('dbx_business_glossary_term' = 'Transportation Management System (TMS) Integration Status');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `tms_integration_status` SET TAGS ('dbx_value_regex' = 'integrated|pending|not_integrated|failed');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `tracking_url_template` SET TAGS ('dbx_business_glossary_term' = 'Tracking URL Template');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier` ALTER COLUMN `vendor_code` SET TAGS ('dbx_business_glossary_term' = 'Vendor Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Contract Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Owner Employee Id (Foreign Key)');
@@ -1631,27 +1540,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `accessorial_charges_included_flag` SET TAGS ('dbx_business_glossary_term' = 'Accessorial Charges Included Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_business_glossary_term' = 'Approved By Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto Renewal Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `base_rate_type` SET TAGS ('dbx_business_glossary_term' = 'Base Rate Type');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `base_rate_type` SET TAGS ('dbx_value_regex' = 'per_cwt|per_mile|per_shipment|per_pallet|flat_rate|weight_break');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Carrier Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Carrier Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Carrier Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9]{10,15}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `carrier_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `contract_document_url` SET TAGS ('dbx_business_glossary_term' = 'Contract Document Uniform Resource Locator (URL)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `contract_document_url` SET TAGS ('dbx_value_regex' = '^https?://.*$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
@@ -1669,26 +1571,22 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `fuel_index_source` SET TAGS ('dbx_business_glossary_term' = 'Fuel Index Source');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `fuel_surcharge_method` SET TAGS ('dbx_business_glossary_term' = 'Fuel Surcharge Method');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `fuel_surcharge_method` SET TAGS ('dbx_value_regex' = 'percentage_of_base|fixed_per_mile|tiered_schedule|index_linked|none');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `geographic_coverage` SET TAGS ('dbx_business_glossary_term' = 'Geographic Coverage');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `insurance_coverage_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Insurance Coverage Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `insurance_minimum_coverage_amount` SET TAGS ('dbx_business_glossary_term' = 'Insurance Minimum Coverage Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_mask_non_prod' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_pii_type' = 'person_name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_mask_in_non_prod' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_by_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `minimum_volume_commitment` SET TAGS ('dbx_business_glossary_term' = 'Minimum Volume Commitment');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `negotiation_date` SET TAGS ('dbx_business_glossary_term' = 'Negotiation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `on_time_delivery_target_pct` SET TAGS ('dbx_business_glossary_term' = 'On-Time Delivery Target Percentage (Pct)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = '^(net_[0-9]{1,3}|due_on_receipt|prepaid|cod)$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `penalty_clause_description` SET TAGS ('dbx_business_glossary_term' = 'Penalty Clause Description');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `rate_adjustment_trigger` SET TAGS ('dbx_business_glossary_term' = 'Rate Adjustment Trigger');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `rate_review_frequency` SET TAGS ('dbx_business_glossary_term' = 'Rate Review Frequency');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `rate_review_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi_annual|annual|on_demand|none');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `renewal_notice_days` SET TAGS ('dbx_business_glossary_term' = 'Renewal Notice Days');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `service_level_standard` SET TAGS ('dbx_business_glossary_term' = 'Service Level Standard');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `service_mode` SET TAGS ('dbx_business_glossary_term' = 'Service Mode');
@@ -1698,7 +1596,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `volume_commitment_unit` SET TAGS ('dbx_business_glossary_term' = 'Volume Commitment Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_contract` ALTER COLUMN `volume_commitment_unit` SET TAGS ('dbx_value_regex' = 'shipments|pallets|weight_kg|weight_lbs|revenue_usd');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` SET TAGS ('dbx_subdomain' = 'freight_management');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `freight_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Freight Rate ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `lane_id` SET TAGS ('dbx_business_glossary_term' = 'Lane ID');
@@ -1733,13 +1631,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `ori
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `origin_postal_code_range_start` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `origin_zone_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Zone Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_basis` SET TAGS ('dbx_business_glossary_term' = 'Rate Basis');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_basis` SET TAGS ('dbx_value_regex' = 'per_cwt|per_mile|per_shipment|per_pallet|per_unit|flat');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Rate Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Rate Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_published_date` SET TAGS ('dbx_business_glossary_term' = 'Rate Published Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_source_system` SET TAGS ('dbx_business_glossary_term' = 'Rate Source System');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Status');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|expired');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Type');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `rate_type` SET TAGS ('dbx_value_regex' = 'contract|spot|benchmark|tariff');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `service_level` SET TAGS ('dbx_business_glossary_term' = 'Service Level');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `service_level` SET TAGS ('dbx_value_regex' = 'standard|expedited|express|economy');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `transit_time_days` SET TAGS ('dbx_business_glossary_term' = 'Transit Time (Days)');
@@ -1748,11 +1649,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `vol
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `weight_break_max_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight Break Maximum (kg)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_rate` ALTER COLUMN `weight_break_min_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight Break Minimum (kg)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` SET TAGS ('dbx_subdomain' = 'freight_management');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `freight_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Freight Invoice ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `carrier_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Contract ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1779,6 +1681,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `disputed_amount` SET TAGS ('dbx_business_glossary_term' = 'Disputed Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `distance_km` SET TAGS ('dbx_business_glossary_term' = 'Distance (Kilometers)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `freight_class` SET TAGS ('dbx_business_glossary_term' = 'Freight Class');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `freight_class` SET TAGS ('dbx_value_regex' = '^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `fuel_surcharge` SET TAGS ('dbx_business_glossary_term' = 'Fuel Surcharge');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `incoterms` SET TAGS ('dbx_business_glossary_term' = 'Incoterms');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `invoice_date` SET TAGS ('dbx_business_glossary_term' = 'Invoice Date');
@@ -1790,8 +1693,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_due_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'wire_transfer|ach|check|credit_card|prepaid');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Payment Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_value_regex' = 'pending|approved|paid|disputed|rejected|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `pickup_date` SET TAGS ('dbx_business_glossary_term' = 'Pickup Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `service_type` SET TAGS ('dbx_business_glossary_term' = 'Transportation Service Type');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
@@ -1803,13 +1708,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Shipment Volume (Cubic Meters)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_invoice` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Shipment Weight (Kilograms)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` SET TAGS ('dbx_subdomain' = 'network_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `transport_route_id` SET TAGS ('dbx_business_glossary_term' = 'Transport Route ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Preferred Carrier Id');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `carrier_id` SET TAGS ('dbx_internal' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `alternate_carrier_codes` SET TAGS ('dbx_business_glossary_term' = 'Alternate Carrier Codes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `carbon_emission_factor_kg_per_km` SET TAGS ('dbx_business_glossary_term' = 'Carbon Emission Factor (Kilograms per Kilometer)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `cost_per_km` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Kilometer');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `cost_per_km` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1819,8 +1725,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `destination_location_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `destination_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `destination_location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `distance_km` SET TAGS ('dbx_business_glossary_term' = 'Distance (Kilometers)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `effective_to_date` SET TAGS ('dbx_business_glossary_term' = 'Effective To Date');
@@ -1841,16 +1745,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `origin_location_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `origin_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `origin_location_name` SET TAGS ('dbx_business_glossary_term' = 'Origin Location Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `origin_location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `origin_location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `primary_transport_mode` SET TAGS ('dbx_business_glossary_term' = 'Primary Transport Mode');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `primary_transport_mode` SET TAGS ('dbx_value_regex' = 'road|rail|air|ocean|inland_waterway|pipeline');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_capacity_constraint` SET TAGS ('dbx_business_glossary_term' = 'Route Capacity Constraint');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_code` SET TAGS ('dbx_business_glossary_term' = 'Route Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_name` SET TAGS ('dbx_business_glossary_term' = 'Route Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_notes` SET TAGS ('dbx_business_glossary_term' = 'Route Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_status` SET TAGS ('dbx_business_glossary_term' = 'Route Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `route_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|seasonal|under_review|deprecated');
@@ -1867,9 +1767,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `standard_transit_time_days` SET TAGS ('dbx_business_glossary_term' = 'Standard Transit Time (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`transport_route` ALTER COLUMN `temperature_controlled` SET TAGS ('dbx_business_glossary_term' = 'Temperature Controlled');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` SET TAGS ('dbx_subdomain' = 'network_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Logistics Node ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1879,11 +1778,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `site_id` SE
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `carrier_access_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Carrier Access Restrictions');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
@@ -1894,18 +1791,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_ema
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1927,8 +1818,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `longitude` 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `max_vehicle_length_m` SET TAGS ('dbx_business_glossary_term' = 'Maximum Vehicle Length in Meters');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `max_vehicle_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Maximum Vehicle Weight in Kilograms');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `node_name` SET TAGS ('dbx_business_glossary_term' = 'Node Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `node_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `node_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `network_tier` SET TAGS ('dbx_business_glossary_term' = 'Network Tier');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `network_tier` SET TAGS ('dbx_value_regex' = 'tier_1_hub|tier_2_regional|tier_3_local|tier_4_last_mile');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`node` ALTER COLUMN `node_status` SET TAGS ('dbx_business_glossary_term' = 'Node Status');
@@ -1978,8 +1867,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_latitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_latitude` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_location_name` SET TAGS ('dbx_business_glossary_term' = 'Event Location Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_longitude` SET TAGS ('dbx_business_glossary_term' = 'Event Longitude');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `event_longitude` SET TAGS ('dbx_pii_address' = 'true');
@@ -2001,8 +1888,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `recipient_name` SET TAGS ('dbx_business_glossary_term' = 'Recipient Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `recipient_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `recipient_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `recipient_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `recipient_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `seal_number` SET TAGS ('dbx_business_glossary_term' = 'Seal Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `signature_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Signature Obtained Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`shipment_tracking_event` ALTER COLUMN `signature_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Signature Required Flag');
@@ -2026,12 +1911,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `compliance_screening_outcome` SET TAGS ('dbx_value_regex' = 'cleared|flagged|blocked|escalated');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_business_glossary_term' = 'Consignee Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignor_name` SET TAGS ('dbx_business_glossary_term' = 'Consignor Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignor_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignor_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `consignor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `country_of_destination` SET TAGS ('dbx_business_glossary_term' = 'Country of Destination');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `country_of_destination` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `country_of_export` SET TAGS ('dbx_business_glossary_term' = 'Country of Export');
@@ -2044,6 +1925,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `declaration_number` SET TAGS ('dbx_business_glossary_term' = 'Customs Declaration Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `declaration_status` SET TAGS ('dbx_business_glossary_term' = 'Declaration Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `declaration_type` SET TAGS ('dbx_business_glossary_term' = 'Declaration Type');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `declaration_type` SET TAGS ('dbx_value_regex' = 'import|export|transit|re-export|temporary_admission|inward_processing');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `declared_value` SET TAGS ('dbx_business_glossary_term' = 'Declared Value');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `denied_party_screening_result` SET TAGS ('dbx_business_glossary_term' = 'Denied Party Screening Result');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_declaration` ALTER COLUMN `denied_party_screening_result` SET TAGS ('dbx_value_regex' = 'cleared|flagged|blocked|pending');
@@ -2103,6 +1985,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `estima
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `estimated_freight_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `estimated_transit_time_hours` SET TAGS ('dbx_business_glossary_term' = 'Estimated Transit Time in Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `freight_cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Freight Cost Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `freight_cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `hazmat_class` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Materials (HAZMAT) Class');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `hazmat_class` SET TAGS ('dbx_value_regex' = '^[1-9](.[1-9])?$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`load_plan` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'International Commercial Terms (Incoterms) Code');
@@ -2174,13 +2057,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_name` SET TAGS ('dbx_business_glossary_term' = 'Driver Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_phone_number` SET TAGS ('dbx_business_glossary_term' = 'Driver Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_phone_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_phone_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `driver_phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `dwell_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Dwell Time in Minutes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `facility_location_code` SET TAGS ('dbx_business_glossary_term' = 'Facility Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`delivery_appointment` ALTER COLUMN `facility_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
@@ -2217,11 +2096,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` AL
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_address` SET TAGS ('dbx_business_glossary_term' = 'Consignee Address');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_business_glossary_term' = 'Consignee Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `consignee_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_approved_by` SET TAGS ('dbx_business_glossary_term' = 'Declaration Approved By');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_approved_by` SET TAGS ('dbx_restricted' = 'true');
@@ -2233,15 +2108,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` AL
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_prepared_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_prepared_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Declaration Prepared Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_status` SET TAGS ('dbx_business_glossary_term' = 'Declaration Status');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `declaration_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|expired|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `excepted_quantity_flag` SET TAGS ('dbx_business_glossary_term' = 'Excepted Quantity Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Declaration Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `flash_point_celsius` SET TAGS ('dbx_business_glossary_term' = 'Flash Point (Celsius)');
@@ -2260,42 +2132,32 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` AL
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `packing_group` SET TAGS ('dbx_business_glossary_term' = 'Packing Group');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `packing_group` SET TAGS ('dbx_value_regex' = 'I|II|III');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `proper_shipping_name` SET TAGS ('dbx_business_glossary_term' = 'Proper Shipping Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `proper_shipping_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `proper_shipping_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Remarks');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_address` SET TAGS ('dbx_business_glossary_term' = 'Shipper Address');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_certification_date` SET TAGS ('dbx_business_glossary_term' = 'Shipper Certification Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_certification_signature` SET TAGS ('dbx_business_glossary_term' = 'Shipper Certification Signature');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_certification_signature` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_certification_signature` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_certification_statement` SET TAGS ('dbx_business_glossary_term' = 'Shipper Certification Statement');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_name` SET TAGS ('dbx_business_glossary_term' = 'Shipper Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `shipper_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `special_provisions` SET TAGS ('dbx_business_glossary_term' = 'Special Provisions');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `subsidiary_hazard_class` SET TAGS ('dbx_business_glossary_term' = 'Subsidiary Hazard Class');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `technical_name` SET TAGS ('dbx_business_glossary_term' = 'Technical Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `technical_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `technical_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `transport_mode` SET TAGS ('dbx_business_glossary_term' = 'Transport Mode');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `transport_mode` SET TAGS ('dbx_value_regex' = 'air|ocean|road|rail|multimodal');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `un_number` SET TAGS ('dbx_business_glossary_term' = 'United Nations (UN) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`dangerous_goods_declaration` ALTER COLUMN `un_number` SET TAGS ('dbx_value_regex' = '^UN[0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` SET TAGS ('dbx_subdomain' = 'freight_management');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `freight_claim_id` SET TAGS ('dbx_business_glossary_term' = 'Freight Claim ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Adjuster Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `freight_filed_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `freight_filed_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier ID');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `order_header_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
@@ -2305,11 +2167,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `as
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_name` SET TAGS ('dbx_business_glossary_term' = 'Assigned Adjuster Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `assigned_adjuster_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `bol_number` SET TAGS ('dbx_business_glossary_term' = 'Bill of Lading (BOL) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `bol_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `carrier_response_date` SET TAGS ('dbx_business_glossary_term' = 'Carrier Response Date');
@@ -2321,24 +2179,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `cl
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Claimant Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_business_glossary_term' = 'Claimant Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_name` SET TAGS ('dbx_business_glossary_term' = 'Claimant Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_phone` SET TAGS ('dbx_business_glossary_term' = 'Claimant Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimant_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimed_amount` SET TAGS ('dbx_business_glossary_term' = 'Claimed Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimed_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Claimed Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `claimed_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2353,12 +2203,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `es
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `filing_date` SET TAGS ('dbx_business_glossary_term' = 'Filing Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `filing_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Filing Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `freight_class` SET TAGS ('dbx_business_glossary_term' = 'Freight Class');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `freight_class` SET TAGS ('dbx_value_regex' = '^(50|55|60|65|70|77.5|85|92.5|100|110|125|150|175|200|250|300|400|500)$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `incident_date` SET TAGS ('dbx_business_glossary_term' = 'Incident Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `inspection_report_number` SET TAGS ('dbx_business_glossary_term' = 'Inspection Report Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `inspection_report_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_company_name` SET TAGS ('dbx_business_glossary_term' = 'Insurance Company Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_company_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_company_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Policy Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`freight_claim` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_confidential' = 'true');
@@ -2380,13 +2229,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` SET TA
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` SET TAGS ('dbx_subdomain' = 'trade_compliance');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `trade_compliance_record_id` SET TAGS ('dbx_business_glossary_term' = 'Trade Compliance Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `customs_broker_id` SET TAGS ('dbx_business_glossary_term' = 'Customs Broker ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer ID');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `trade_reviewed_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `trade_reviewed_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `applicable_regulations` SET TAGS ('dbx_business_glossary_term' = 'Applicable Regulations');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `audit_trail` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `check_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Check Date');
@@ -2397,11 +2244,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `compliance_check_number` SET TAGS ('dbx_business_glossary_term' = 'Compliance Check Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `compliance_check_number` SET TAGS ('dbx_value_regex' = '^TCC-[0-9]{8,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `compliance_officer_name` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `compliance_officer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `compliance_officer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `denied_party_list_name` SET TAGS ('dbx_business_glossary_term' = 'Denied Party List Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `denied_party_list_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `denied_party_list_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `denied_party_match_flag` SET TAGS ('dbx_business_glossary_term' = 'Denied Party Match Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2412,13 +2255,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `embargo_flag` SET TAGS ('dbx_business_glossary_term' = 'Embargo Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_name` SET TAGS ('dbx_business_glossary_term' = 'End User Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_type` SET TAGS ('dbx_business_glossary_term' = 'End User Type');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `end_user_type` SET TAGS ('dbx_value_regex' = 'government|military|commercial|academic|individual|ngo');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `escalation_date` SET TAGS ('dbx_business_glossary_term' = 'Escalation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `escalation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Required Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `export_license_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `license_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'License Expiration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `license_number` SET TAGS ('dbx_business_glossary_term' = 'Export License Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `license_required_flag` SET TAGS ('dbx_business_glossary_term' = 'License Required Flag');
@@ -2439,12 +2279,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `screening_result` SET TAGS ('dbx_value_regex' = 'cleared|flagged|blocked|requires_license|manual_review_required');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`trade_compliance_record` ALTER COLUMN `screening_system` SET TAGS ('dbx_business_glossary_term' = 'Screening System');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` SET TAGS ('dbx_subdomain' = 'carrier_management');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` SET TAGS ('dbx_association_edges' = 'logistics.carrier,compliance.regulatory_requirement');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `carrier_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Certification - Carrier Certification Id');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Certification - Carrier Id');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Certification - Regulatory Requirement Id');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`carrier_certification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Effective Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` SET TAGS ('dbx_data_type' = 'master_data');
@@ -2455,14 +2294,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `average_clearance_time_days` SET TAGS ('dbx_business_glossary_term' = 'Average Clearance Time Days');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `broker_license_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `broker_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `broker_type` SET TAGS ('dbx_business_glossary_term' = 'Broker Type');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
@@ -2480,8 +2315,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `license_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `license_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `customs_broker_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `customs_broker_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `customs_broker_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
@@ -2489,18 +2322,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `rating_date` SET TAGS ('dbx_business_glossary_term' = 'Rating Date');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `rating_score` SET TAGS ('dbx_business_glossary_term' = 'Rating Score');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `service_modes` SET TAGS ('dbx_business_glossary_term' = 'Service Modes');
@@ -2512,18 +2339,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Id Number');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `trading_name` SET TAGS ('dbx_business_glossary_term' = 'Trading Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `trading_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `trading_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`customs_broker` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` SET TAGS ('dbx_subdomain' = 'network_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` SET TAGS ('dbx_subdomain' = 'carrier_network');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `lane_id` SET TAGS ('dbx_business_glossary_term' = 'Lane Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Id');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `node_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `destination_location_node_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Node Id');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Node Id');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `destination_node_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Location Id');
+ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `destination_node_id` SET TAGS ('dbx_internal' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `lane_node_id` SET TAGS ('dbx_business_glossary_term' = 'Node Id');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `origin_location_node_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Location Node Id');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `origin_location_node_id` SET TAGS ('dbx_internal' = 'true');
@@ -2550,8 +2373,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `last_used_t
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `max_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Max Weight Kg');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `mode_of_transport` SET TAGS ('dbx_business_glossary_term' = 'Mode Of Transport');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `lane_name` SET TAGS ('dbx_business_glossary_term' = 'Lane Name');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `lane_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `lane_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Lane Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
 ALTER TABLE `vibe_manufacturing_v1`.`logistics`.`lane` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');

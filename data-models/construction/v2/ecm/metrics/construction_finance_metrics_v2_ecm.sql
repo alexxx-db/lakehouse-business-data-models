@@ -1,71 +1,121 @@
--- Metric views for domain: finance | Business: Construction | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: finance | Business: Construction | Version: 2 | Generated on: 2026-07-10 12:14:04
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_cash_flow_forecast`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_accounts_receivable_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Cash flow forecast metrics — tracks projected inflows, outflows, net cash position, working capital gaps, and peak funding requirements to support treasury management and project financing decisions."
-  source: "`vibe_construction_v1`.`finance`.`cash_flow_forecast`"
+  comment: "Accounts receivable invoice KPIs tracking outstanding balances, collection performance, dispute rates, and revenue recognition for construction project billing."
+  source: "`vibe_construction_v1`.`finance`.`invoice`"
   dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for cash flow analysis."
-    - name: "forecast_type"
-      expr: forecast_type
-      comment: "Type of cash flow forecast (e.g., base case, optimistic, pessimistic) for scenario analysis."
-    - name: "forecast_status"
-      expr: forecast_status
-      comment: "Status of the forecast (e.g., approved, draft, superseded) for filtering active forecasts."
-    - name: "forecast_granularity"
-      expr: forecast_granularity
-      comment: "Time granularity of the forecast (e.g., weekly, monthly, quarterly) for planning horizon analysis."
-    - name: "forecast_period_start_date"
-      expr: forecast_period_start_date
-      comment: "Start of the forecast period for time-series cash flow trending."
-    - name: "forecast_period_end_date"
-      expr: forecast_period_end_date
-      comment: "End of the forecast period for time-series cash flow trending."
+    - name: "invoice_status"
+      expr: invoice_status
+      comment: "Current status of the invoice (e.g., Open, Paid, Disputed, Written-Off) for pipeline segmentation."
+    - name: "invoice_type"
+      expr: invoice_type
+      comment: "Type of invoice (e.g., Progress, Milestone, Final) to segment billing patterns."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of forecast amounts for multi-currency treasury analysis."
-    - name: "s_curve_profile_indicator"
-      expr: s_curve_profile_indicator
-      comment: "S-curve profile indicator — used to classify cash flow shape for project lifecycle analysis."
+      comment: "Transaction currency for multi-currency receivables reporting."
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Indicates whether the invoice is under dispute, enabling dispute rate analysis."
+    - name: "invoice_date_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Month of invoice issuance for trend analysis."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Contractual payment terms (e.g., Net 30, Net 60) for DSO benchmarking."
   measures:
-    - name: "total_forecasted_inflow"
-      expr: SUM(CAST(forecasted_inflow_amount AS DOUBLE))
-      comment: "Sum of forecasted cash inflows — total expected receipts from clients and other sources."
-    - name: "total_forecasted_outflow"
-      expr: SUM(CAST(forecasted_outflow_amount AS DOUBLE))
-      comment: "Sum of forecasted cash outflows — total expected payments to vendors, labor, and subcontractors."
-    - name: "total_net_cash_flow"
-      expr: SUM(CAST(net_cash_flow_amount AS DOUBLE))
-      comment: "Sum of net cash flow (inflows minus outflows) — primary treasury metric for liquidity management."
-    - name: "total_working_capital_gap"
-      expr: SUM(CAST(working_capital_gap AS DOUBLE))
-      comment: "Sum of working capital gaps — measures funding shortfalls requiring financing or credit facility drawdown."
-    - name: "total_peak_funding_requirement"
-      expr: SUM(CAST(peak_funding_requirement AS DOUBLE))
-      comment: "Sum of peak funding requirements — used to size credit facilities and bonding capacity."
-    - name: "total_subcontractor_payment_outflow"
-      expr: SUM(CAST(subcontractor_payment_amount AS DOUBLE))
-      comment: "Sum of forecasted subcontractor payment outflows — largest single cash outflow category on most projects."
-    - name: "total_payroll_outflow"
-      expr: SUM(CAST(payroll_amount AS DOUBLE))
-      comment: "Sum of forecasted payroll outflows — tracks labor cash commitment for workforce planning."
-    - name: "total_material_procurement_outflow"
-      expr: SUM(CAST(material_procurement_amount AS DOUBLE))
-      comment: "Sum of forecasted material procurement outflows — tracks supply chain cash commitment."
-    - name: "total_retention_release_inflow"
-      expr: SUM(CAST(retention_release_amount AS DOUBLE))
-      comment: "Sum of forecasted retention release inflows — tracks deferred cash expected from client retention releases."
-    - name: "avg_variance_to_prior_forecast"
-      expr: AVG(CAST(variance_to_prior_forecast AS DOUBLE))
-      comment: "Average variance between current and prior forecast — measures forecast accuracy and revision frequency."
-    - name: "avg_credit_facility_utilization_pct"
-      expr: AVG(CAST(credit_facility_utilization AS DOUBLE))
-      comment: "Average credit facility utilization percentage — measures financing headroom and liquidity risk."
+    - name: "total_gross_receivable"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross amount billed across all invoices. Core revenue pipeline indicator for CFO reporting."
+    - name: "total_retention_withheld"
+      expr: SUM(CAST(retention_amount AS DOUBLE))
+      comment: "Total retention amounts withheld by clients. Tracks cash tied up in retention pending project completion."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax billed across invoices. Required for tax compliance reporting."
+    - name: "invoice_count"
+      expr: COUNT(1)
+      comment: "Total number of invoices issued. Baseline volume metric for billing throughput analysis."
+    - name: "disputed_invoice_count"
+      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
+      comment: "Number of invoices currently under dispute. Drives dispute resolution prioritization."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_payment_application`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Payment application KPIs for progress billing, certification rates, retention management, and subcontractor payment performance in construction projects."
+  source: "`vibe_construction_v1`.`finance`.`payment_application`"
+  dimensions:
+    - name: "application_status"
+      expr: application_status
+      comment: "Current status of the payment application (e.g., Submitted, Certified, Paid) for pipeline tracking."
+    - name: "payment_type"
+      expr: payment_type
+      comment: "Type of payment application (e.g., Progress, Final, Milestone) for billing pattern analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Transaction currency for multi-currency payment application reporting."
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Indicates whether the payment application is under dispute."
+    - name: "lien_waiver_received"
+      expr: lien_waiver_received
+      comment: "Indicates whether a lien waiver has been received, critical for payment release compliance."
+    - name: "billing_period_start_month"
+      expr: DATE_TRUNC('MONTH', billing_period_start_date)
+      comment: "Billing period start month for trend analysis of payment application volumes."
+    - name: "submission_month"
+      expr: DATE_TRUNC('MONTH', submission_date)
+      comment: "Month of application submission for billing cycle analysis."
+  measures:
+    - name: "total_amount_claimed"
+      expr: SUM(CAST(amount_claimed_current AS DOUBLE))
+      comment: "Total amount claimed in current period across all payment applications. Measures billing throughput."
+    - name: "total_amount_certified"
+      expr: SUM(CAST(amount_certified_current AS DOUBLE))
+      comment: "Total amount certified by the engineer/client. Measures approved billing value."
+    - name: "total_net_amount_due"
+      expr: SUM(CAST(net_amount_due AS DOUBLE))
+      comment: "Total net amount due after deductions. Primary cash flow input for treasury forecasting."
+    - name: "total_retention_withheld"
+      expr: SUM(CAST(retention_withheld_current AS DOUBLE))
+      comment: "Total retention withheld in current period. Tracks cash tied up in retention."
+    - name: "total_retention_released"
+      expr: SUM(CAST(retention_released_current AS DOUBLE))
+      comment: "Total retention released in current period. Signals project completion milestones."
+    - name: "total_liquidated_damages_deducted"
+      expr: SUM(CAST(liquidated_damages_deducted AS DOUBLE))
+      comment: "Total liquidated damages deducted from payment applications. Key schedule performance consequence metric."
+    - name: "total_work_completed_to_date"
+      expr: SUM(CAST(work_completed_to_date AS DOUBLE))
+      comment: "Cumulative work completed value across all applications. Tracks overall project billing progress."
+    - name: "total_back_charges_applied"
+      expr: SUM(CAST(back_charges_applied AS DOUBLE))
+      comment: "Total back charges applied against payment applications. Measures cost recovery from subcontractors."
+    - name: "payment_application_count"
+      expr: COUNT(1)
+      comment: "Total number of payment applications submitted. Baseline billing activity volume metric."
+    - name: "avg_percent_complete_certified"
+      expr: AVG(CAST(percent_complete_certified AS DOUBLE))
+      comment: "Average certified completion percentage across applications. Tracks project progress as recognized by client."
+    - name: "avg_certification_gap_pct"
+      expr: AVG(CAST(percent_complete_claimed AS DOUBLE) - CAST(percent_complete_certified AS DOUBLE))
+      comment: "Average gap between claimed and certified completion percentage. Identifies systematic under-certification risk."
+    - name: "avg_retention_percentage"
+      expr: AVG(CAST(retention_percentage AS DOUBLE))
+      comment: "Average retention rate applied. Benchmarks contractual retention terms across projects."
+    - name: "disputed_application_count"
+      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
+      comment: "Number of payment applications under dispute. Drives dispute resolution prioritization."
+    - name: "lien_waiver_pending_count"
+      expr: COUNT(CASE WHEN lien_waiver_received = FALSE THEN 1 END)
+      comment: "Number of applications where lien waiver has not been received. Compliance risk indicator for payment release."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_commitment`
@@ -73,704 +123,52 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Commitment metrics — tracks committed costs by type, vendor, and project to manage cost exposure, budget consumption, and procurement liability before invoices are received."
+  comment: "Financial commitment (encumbrance) KPIs tracking committed costs, budget utilization, and vendor obligation management across construction projects."
   source: "`vibe_construction_v1`.`finance`.`commitment`"
   dimensions:
-    - name: "project_id"
-      expr: project_id
-      comment: "Foreign key to the construction project — primary grouping for commitment analysis."
     - name: "commitment_type"
       expr: commitment_type
-      comment: "Type of commitment (e.g., purchase order, subcontract, rental) for cost category analysis."
+      comment: "Type of commitment (e.g., Purchase Order, Subcontract, Work Order) for cost category analysis."
     - name: "commitment_status"
       expr: commitment_status
-      comment: "Current status of the commitment (e.g., active, closed, cancelled) for filtering live commitments."
+      comment: "Current status of the commitment (e.g., Active, Closed, Cancelled) for pipeline management."
     - name: "commitment_category"
       expr: commitment_category
-      comment: "High-level category of the commitment for cost breakdown analysis."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the commitment for annual cost exposure reporting."
+      comment: "Business category of the commitment (e.g., Labor, Material, Equipment) for cost breakdown."
     - name: "currency_code"
       expr: currency_code
-      comment: "Commitment currency for multi-currency cost exposure analysis."
+      comment: "Transaction currency for multi-currency commitment reporting."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the commitment for annual budget control reporting."
     - name: "is_retention"
       expr: is_retention
-      comment: "Indicates whether the commitment includes retention — used to track retention liability."
-    - name: "cost_center_code"
-      expr: cost_center_code
-      comment: "Cost center associated with the commitment for organizational cost allocation."
+      comment: "Indicates whether the commitment includes a retention component."
+    - name: "source_document_type"
+      expr: source_document_type
+      comment: "Type of source document originating the commitment (e.g., PO, Contract) for audit traceability."
+    - name: "effective_from_month"
+      expr: DATE_TRUNC('MONTH', effective_from)
+      comment: "Month the commitment became effective for trend analysis."
   measures:
     - name: "total_amount_committed"
       expr: SUM(CAST(amount_committed AS DOUBLE))
-      comment: "Sum of committed amounts — total cost exposure from active commitments before invoicing."
+      comment: "Total financial commitments (encumbrances) outstanding. Core budget control metric for project cost management."
     - name: "total_retention_percentage_avg"
       expr: AVG(CAST(retention_percentage AS DOUBLE))
-      comment: "Average retention percentage across commitments — measures retention policy application consistency."
+      comment: "Average retention percentage across commitments. Benchmarks subcontractor retention terms."
     - name: "commitment_count"
       expr: COUNT(1)
-      comment: "Count of commitment records — measures procurement activity volume and contract management workload."
-    - name: "active_commitment_total"
-      expr: SUM(CASE WHEN commitment_status = 'ACTIVE' THEN amount_committed ELSE 0 END)
-      comment: "Sum of active commitment amounts — measures live cost exposure requiring cash outflow management."
-    - name: "cancelled_commitment_total"
-      expr: SUM(CASE WHEN commitment_status = 'CANCELLED' THEN amount_committed ELSE 0 END)
-      comment: "Sum of cancelled commitment amounts — measures scope reduction and procurement savings from cancellations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_earned_value_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Earned Value Management (EVM) performance metrics — tracks CPI, SPI, cost variance, schedule variance, and forecast accuracy to give executives a real-time view of project cost and schedule health."
-  source: "`vibe_construction_v1`.`finance`.`earned_value_record`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for EVM analysis."
-    - name: "data_date"
-      expr: data_date
-      comment: "The status date of the EVM record — used for time-series trending of performance indices."
-    - name: "record_status"
-      expr: record_status
-      comment: "Lifecycle status of the EVM record (e.g., approved, draft) for filtering active records."
-    - name: "eac_calculation_method"
-      expr: eac_calculation_method
-      comment: "Method used to calculate EAC (e.g., CPI-based, ETC-based) — affects forecast interpretation."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of EVM monetary values."
-    - name: "reporting_period_start_date"
-      expr: reporting_period_start_date
-      comment: "Start of the reporting period for period-over-period EVM trending."
-    - name: "reporting_period_end_date"
-      expr: reporting_period_end_date
-      comment: "End of the reporting period for period-over-period EVM trending."
-    - name: "forecast_confidence_level"
-      expr: forecast_confidence_level
-      comment: "Confidence level assigned to the EAC forecast — used to risk-weight financial outlooks."
-  measures:
-    - name: "total_budget_at_completion"
-      expr: SUM(CAST(bac_budget_at_completion AS DOUBLE))
-      comment: "Sum of BAC across all WBS elements — total authorized budget for the project scope."
-    - name: "total_earned_value"
-      expr: SUM(CAST(bcwp_earned_value AS DOUBLE))
-      comment: "Sum of BCWP (Earned Value) — measures the budgeted value of work actually performed."
-    - name: "total_planned_value"
-      expr: SUM(CAST(bcws_planned_value AS DOUBLE))
-      comment: "Sum of BCWS (Planned Value) — measures the budgeted value of work scheduled to be done."
-    - name: "total_actual_cost"
-      expr: SUM(CAST(acwp_actual_cost AS DOUBLE))
-      comment: "Sum of ACWP (Actual Cost of Work Performed) — total spend incurred for completed work."
-    - name: "total_cost_variance"
-      expr: SUM(CAST(cost_variance AS DOUBLE))
-      comment: "Sum of cost variance (EV minus AC) — negative values indicate cost overrun."
-    - name: "total_schedule_variance"
-      expr: SUM(CAST(schedule_variance AS DOUBLE))
-      comment: "Sum of schedule variance (EV minus PV) — negative values indicate schedule slippage."
-    - name: "total_estimate_at_completion"
-      expr: SUM(CAST(eac_estimate_at_completion AS DOUBLE))
-      comment: "Sum of EAC — the current best estimate of total project cost at completion."
-    - name: "total_estimate_to_complete"
-      expr: SUM(CAST(etc_estimate_to_complete AS DOUBLE))
-      comment: "Sum of ETC — remaining cost needed to complete the project scope."
-    - name: "total_variance_at_completion"
-      expr: SUM(CAST(vac_variance_at_completion AS DOUBLE))
-      comment: "Sum of VAC (BAC minus EAC) — negative values signal projected cost overrun at completion."
-    - name: "avg_cost_performance_index"
-      expr: AVG(CAST(cost_performance_index AS DOUBLE))
-      comment: "Average CPI across records — CPI below 1.0 signals cost inefficiency; used in executive dashboards."
-    - name: "avg_schedule_performance_index"
-      expr: AVG(CAST(schedule_performance_index AS DOUBLE))
-      comment: "Average SPI across records — SPI below 1.0 signals schedule slippage; key steering metric."
-    - name: "avg_percent_complete"
-      expr: AVG(CAST(percent_complete AS DOUBLE))
-      comment: "Average physical percent complete — measures overall project progress against plan."
-    - name: "avg_tcpi"
-      expr: AVG(CAST(tcpi_to_complete_performance_index AS DOUBLE))
-      comment: "Average TCPI — values above 1.0 indicate the remaining work must be done more efficiently than historical performance, signaling recovery risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_budget_revision`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Budget revision metrics — tracks the frequency, magnitude, and drivers of budget changes to assess project cost control discipline and change order impact on financial performance."
-  source: "`vibe_construction_v1`.`finance`.`finance_budget_revision`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for budget revision analysis."
-    - name: "revision_type"
-      expr: revision_type
-      comment: "Type of budget revision (e.g., change order, scope change, contingency draw) for root cause analysis."
-    - name: "revision_status"
-      expr: revision_status
-      comment: "Current status of the revision (e.g., approved, pending, rejected) for filtering approved changes."
-    - name: "revision_reason_code"
-      expr: revision_reason_code
-      comment: "Coded reason for the budget revision — used to identify systemic cost drivers."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of revision amounts for multi-currency project analysis."
-    - name: "effective_date"
-      expr: effective_date
-      comment: "Date the revision became effective — used for time-series budget change trending."
-    - name: "client_approval_required"
-      expr: client_approval_required
-      comment: "Indicates whether client approval was required — used to track contractual change management compliance."
-  measures:
-    - name: "total_revision_amount"
-      expr: SUM(CAST(revision_amount AS DOUBLE))
-      comment: "Sum of budget revision amounts — total budget growth from all approved changes."
-    - name: "total_original_budget"
-      expr: SUM(CAST(original_budget_amount AS DOUBLE))
-      comment: "Sum of original budget amounts at time of revision — baseline for measuring revision magnitude."
-    - name: "total_revised_budget"
-      expr: SUM(CAST(revised_budget_amount AS DOUBLE))
-      comment: "Sum of revised budget amounts — post-revision budget authority."
-    - name: "total_labor_cost_revision"
-      expr: SUM(CAST(labor_cost_revision AS DOUBLE))
-      comment: "Sum of labor cost revisions — measures labor cost growth from scope changes and productivity variances."
-    - name: "total_material_cost_revision"
-      expr: SUM(CAST(material_cost_revision AS DOUBLE))
-      comment: "Sum of material cost revisions — measures material cost growth from price escalation and scope changes."
-    - name: "total_subcontractor_cost_revision"
-      expr: SUM(CAST(subcontractor_cost_revision AS DOUBLE))
-      comment: "Sum of subcontractor cost revisions — measures subcontract cost growth from change orders."
-    - name: "total_contingency_revision"
-      expr: SUM(CAST(contingency_revision AS DOUBLE))
-      comment: "Sum of contingency revisions — tracks contingency consumption and replenishment over project life."
-    - name: "revision_count"
-      expr: COUNT(1)
-      comment: "Count of budget revisions — measures change management frequency and project cost control discipline."
-    - name: "avg_revision_magnitude_pct"
-      expr: AVG(ROUND(100.0 * revision_amount / NULLIF(original_budget_amount, 0), 2))
-      comment: "Average revision magnitude as a percentage of original budget — measures typical budget change size for benchmarking."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_retention_ledger`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Retention ledger metrics — tracks retention withheld, released, and outstanding balances across projects and contracts to manage deferred cash and DLP obligations."
-  source: "`vibe_construction_v1`.`finance`.`finance_retention_ledger`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for retention analysis."
-    - name: "retention_type"
-      expr: retention_type
-      comment: "Type of retention (e.g., performance, defects liability) for retention category analysis."
-    - name: "retention_status"
-      expr: retention_status
-      comment: "Current status of the retention balance (e.g., held, partially released, fully released)."
-    - name: "retention_release_type"
-      expr: retention_release_type
-      comment: "Type of retention release (e.g., practical completion, DLP expiry) for release trigger analysis."
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Indicates whether the retention is under dispute — used to isolate at-risk retention balances."
-    - name: "retention_bond_indicator"
-      expr: retention_bond_indicator
-      comment: "Indicates whether a retention bond has been substituted for cash retention — affects cash flow."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the retention transaction for annual retention reporting."
-    - name: "posting_date"
-      expr: posting_date
-      comment: "GL posting date of the retention transaction for period-over-period trending."
-  measures:
-    - name: "total_retention_withheld"
-      expr: SUM(CAST(retention_withheld_amount AS DOUBLE))
-      comment: "Sum of retention amounts withheld — total deferred cash held from client payments."
-    - name: "total_retention_released"
-      expr: SUM(CAST(retention_release_amount AS DOUBLE))
-      comment: "Sum of retention amounts released — measures cash returned to contractors upon milestone achievement."
-    - name: "total_cumulative_retention_balance"
-      expr: SUM(CAST(cumulative_retention_balance AS DOUBLE))
-      comment: "Sum of cumulative retention balances — total outstanding retention liability on the balance sheet."
-    - name: "total_gross_invoice_amount"
-      expr: SUM(CAST(gross_invoice_amount AS DOUBLE))
-      comment: "Sum of gross invoice amounts associated with retention transactions — provides billing context for retention rates."
-    - name: "avg_retention_percentage"
-      expr: AVG(CAST(retention_percentage AS DOUBLE))
-      comment: "Average retention percentage across ledger entries — measures retention rate policy application."
-    - name: "disputed_retention_total"
-      expr: SUM(CASE WHEN dispute_flag = TRUE THEN cumulative_retention_balance ELSE 0 END)
-      comment: "Sum of retention balances under dispute — measures at-risk retention requiring resolution."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_financial_guarantee`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Financial guarantee and bond metrics — tracks face value, premium costs, claim exposure, and bonding capacity utilization to manage contingent liabilities and surety risk."
-  source: "`vibe_construction_v1`.`finance`.`financial_guarantee`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for guarantee exposure analysis."
-    - name: "guarantee_type"
-      expr: guarantee_type
-      comment: "Type of financial guarantee (e.g., performance bond, advance payment guarantee, retention bond) for liability categorization."
-    - name: "guarantee_status"
-      expr: guarantee_status
-      comment: "Current status of the guarantee (e.g., active, expired, called, released) for filtering live exposures."
-    - name: "issuer_type"
-      expr: issuer_type
-      comment: "Type of guarantee issuer (e.g., bank, surety, insurance company) for counterparty risk analysis."
-    - name: "beneficiary_type"
-      expr: beneficiary_type
-      comment: "Type of beneficiary (e.g., client, government, lender) for guarantee obligation analysis."
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Indicates whether the guarantee is compliant with contractual requirements — used for compliance monitoring."
-    - name: "effective_date"
-      expr: effective_date
-      comment: "Date the guarantee became effective — used for guarantee lifecycle tracking."
-    - name: "expiry_date"
-      expr: expiry_date
-      comment: "Expiry date of the guarantee — used to identify guarantees requiring renewal or release."
-  measures:
-    - name: "total_face_value"
-      expr: SUM(CAST(face_value_amount AS DOUBLE))
-      comment: "Sum of guarantee face values — total contingent liability exposure from financial guarantees."
-    - name: "total_risk_exposure"
-      expr: SUM(CAST(risk_exposure_amount AS DOUBLE))
-      comment: "Sum of risk exposure amounts — measures the financial risk if guarantees are called."
-    - name: "total_premium_amount"
-      expr: SUM(CAST(premium_amount AS DOUBLE))
-      comment: "Sum of guarantee premium amounts — total cost of maintaining financial guarantees."
-    - name: "total_claim_amount"
-      expr: SUM(CAST(claim_amount AS DOUBLE))
-      comment: "Sum of amounts claimed against guarantees — measures realized guarantee losses."
-    - name: "total_bonding_capacity_impact"
-      expr: SUM(CAST(bonding_capacity_impact_amount AS DOUBLE))
-      comment: "Sum of bonding capacity impact amounts — measures how guarantees consume available bonding capacity."
-    - name: "guarantee_count"
-      expr: COUNT(1)
-      comment: "Count of financial guarantees — measures guarantee portfolio size and administrative workload."
-    - name: "avg_premium_rate_pct"
-      expr: AVG(CAST(premium_rate_percent AS DOUBLE))
-      comment: "Average premium rate percentage — measures cost of guarantee financing relative to face value."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_accounts_receivable_invoice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Accounts receivable invoice metrics — tracks outstanding receivables, collection performance, dispute exposure, and retention to manage client credit risk and cash flow."
-  source: "`vibe_construction_v1`.`finance`.`invoice`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for AR analysis."
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current status of the invoice (e.g., open, paid, disputed, written-off) for AR aging analysis."
-    - name: "invoice_type"
-      expr: invoice_type
-      comment: "Type of invoice (e.g., progress, milestone, final) for revenue category analysis."
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Indicates whether the invoice is under dispute — used to isolate disputed AR exposure."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Invoice currency for multi-currency AR analysis."
-    - name: "invoice_date"
-      expr: invoice_date
-      comment: "Date the invoice was issued — used for time-series AR trending."
-    - name: "due_date"
-      expr: due_date
-      comment: "Invoice due date — used for overdue analysis and payment terms compliance."
-  measures:
-    - name: "total_gross_invoiced"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Sum of gross invoice amounts — total revenue billed to clients."
-    - name: "total_retention_withheld"
-      expr: SUM(CAST(retention_amount AS DOUBLE))
-      comment: "Sum of retention amounts withheld by clients — tracks deferred cash tied up in retention."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Sum of tax amounts on invoices — required for tax reporting and compliance."
-    - name: "dispute_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of invoices under dispute — measures billing quality and client relationship health."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_invoice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Accounts payable invoice metrics — tracks vendor invoice volumes, amounts, approval cycle times, dispute rates, and payment status to manage payables efficiency and vendor relationships."
-  source: "`vibe_construction_v1`.`finance`.`invoice`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for AP analysis."
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current status of the vendor invoice (e.g., approved, pending, disputed, paid) for AP aging analysis."
-    - name: "invoice_type"
-      expr: invoice_type
-      comment: "Type of vendor invoice (e.g., standard, credit note, advance) for payables category analysis."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval workflow status — used to identify invoices pending approval and at risk of late payment."
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Indicates whether the invoice is under dispute — used to isolate disputed payables."
-    - name: "hold_flag"
-      expr: hold_flag
-      comment: "Indicates whether the invoice is on payment hold — used to manage cash flow timing."
-    - name: "three_way_match_status"
-      expr: three_way_match_status
-      comment: "Status of PO/GR/invoice three-way match — measures procurement compliance and invoice quality."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the invoice for annual AP reporting."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the invoice for monthly AP reporting."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (e.g., EFT, cheque, wire) for payment channel analysis."
-  measures:
-    - name: "total_gross_invoice_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Sum of gross vendor invoice amounts — total payables liability incurred."
-    - name: "total_net_payable_amount"
-      expr: SUM(CAST(net_payable_amount AS DOUBLE))
-      comment: "Sum of net payable amounts after discounts and retention — actual cash outflow obligation."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Sum of tax amounts on vendor invoices — required for tax compliance and reporting."
-    - name: "total_retention_withheld"
-      expr: SUM(CAST(retention_amount AS DOUBLE))
-      comment: "Sum of retention withheld from vendor invoices — tracks subcontractor retention liability."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Sum of early payment discounts captured — measures procurement savings from payment terms optimization."
-    - name: "invoice_count"
-      expr: COUNT(1)
-      comment: "Count of vendor invoices — measures AP transaction volume and processing workload."
-    - name: "disputed_invoice_count"
-      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
-      comment: "Count of disputed invoices — measures vendor invoice quality and dispute resolution workload."
-    - name: "three_way_match_pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN three_way_match_status = 'MATCHED' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of invoices passing three-way match — measures procurement compliance and invoice processing efficiency."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_job_cost_transaction`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Job cost transaction metrics — tracks actual cost incurred by category, project, and period to support cost control, variance analysis, and billing decisions."
-  source: "`vibe_construction_v1`.`finance`.`job_cost_transaction`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary cost grouping dimension."
-    - name: "cost_category"
-      expr: cost_category
-      comment: "High-level cost category (e.g., labor, material, equipment, subcontract) for cost breakdown analysis."
-    - name: "cost_code"
-      expr: cost_code
-      comment: "WBS-aligned cost code for granular cost tracking and budget comparison."
-    - name: "transaction_status"
-      expr: transaction_status
-      comment: "Status of the cost transaction (e.g., posted, reversed, pending) for filtering valid actuals."
-    - name: "posting_date"
-      expr: posting_date
-      comment: "GL posting date — used for period-over-period cost trending."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the transaction for financial reporting alignment."
-    - name: "billable_flag"
-      expr: billable_flag
-      comment: "Indicates whether the cost is billable to the client — used to separate recoverable vs. non-recoverable costs."
-    - name: "billed_flag"
-      expr: billed_flag
-      comment: "Indicates whether the cost has already been billed — used to track unbilled cost exposure."
-    - name: "reversal_flag"
-      expr: reversal_flag
-      comment: "Flags reversed transactions — used to exclude corrections from actuals reporting."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency for multi-currency project cost analysis."
-  measures:
-    - name: "total_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Sum of total job cost transactions — primary actual cost metric for project cost control."
-    - name: "total_base_currency_cost"
-      expr: SUM(CAST(base_currency_cost AS DOUBLE))
-      comment: "Sum of costs in base (functional) currency — used for consolidated financial reporting across multi-currency projects."
-    - name: "total_quantity"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Sum of quantities transacted — used to compute unit cost rates and productivity benchmarks."
-    - name: "avg_unit_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost per transaction — used to benchmark against standard rates and identify cost anomalies."
-    - name: "transaction_count"
-      expr: COUNT(1)
-      comment: "Count of job cost transactions — used to assess transaction volume and identify periods of high cost activity."
-    - name: "billable_cost_total"
-      expr: SUM(CASE WHEN billable_flag = TRUE THEN total_cost ELSE 0 END)
-      comment: "Sum of billable costs — measures recoverable cost exposure and supports progress billing calculations."
-    - name: "unbilled_cost_total"
-      expr: SUM(CASE WHEN billable_flag = TRUE AND billed_flag = FALSE THEN total_cost ELSE 0 END)
-      comment: "Sum of billable but not yet billed costs — tracks revenue leakage risk and billing backlog."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_journal_entry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "General ledger journal entry metrics — tracks posting volumes, debit/credit balances, intercompany activity, and revenue recognition entries to support financial close quality and audit readiness."
-  source: "`vibe_construction_v1`.`finance`.`journal_entry`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for project-level GL analysis."
-    - name: "entry_status"
-      expr: entry_status
-      comment: "Status of the journal entry (e.g., posted, reversed, draft) for filtering valid GL entries."
-    - name: "document_type"
-      expr: document_type
-      comment: "Type of journal entry document (e.g., vendor invoice, customer invoice, manual entry) for GL analysis."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the journal entry for annual financial reporting."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the journal entry for monthly financial close analysis."
-    - name: "intercompany_indicator"
-      expr: intercompany_indicator
-      comment: "Indicates intercompany transactions — used to identify and eliminate intercompany balances in consolidation."
-    - name: "reversal_indicator"
-      expr: reversal_indicator
-      comment: "Indicates reversed entries — used to exclude reversals from net balance calculations."
-    - name: "revenue_recognition_method"
-      expr: revenue_recognition_method
-      comment: "Revenue recognition method applied on the entry — used for POC vs. completed contract analysis."
-    - name: "posting_date"
-      expr: posting_date
-      comment: "GL posting date — used for period-over-period financial trending."
-  measures:
-    - name: "total_debit_amount"
-      expr: SUM(CAST(debit_amount AS DOUBLE))
-      comment: "Sum of debit amounts posted — measures total debit activity in the GL for the period."
-    - name: "total_credit_amount"
-      expr: SUM(CAST(credit_amount AS DOUBLE))
-      comment: "Sum of credit amounts posted — measures total credit activity in the GL for the period."
-    - name: "total_local_currency_debit"
-      expr: SUM(CAST(local_currency_debit_amount AS DOUBLE))
-      comment: "Sum of debit amounts in local currency — used for statutory reporting in local GAAP."
-    - name: "total_local_currency_credit"
-      expr: SUM(CAST(local_currency_credit_amount AS DOUBLE))
-      comment: "Sum of credit amounts in local currency — used for statutory reporting in local GAAP."
-    - name: "journal_entry_count"
-      expr: COUNT(1)
-      comment: "Count of journal entries — measures GL posting volume and financial close workload."
-    - name: "reversal_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Count of reversed journal entries — measures error correction frequency and GL quality."
-    - name: "intercompany_entry_count"
-      expr: COUNT(CASE WHEN intercompany_indicator = TRUE THEN 1 END)
-      comment: "Count of intercompany journal entries — measures intercompany transaction volume requiring elimination in consolidation."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_payment_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Payment execution metrics — tracks payment amounts, timing, advance payments, and reconciliation status to manage cash outflow, vendor payment compliance, and working capital."
-  source: "`vibe_construction_v1`.`finance`.`payment_record`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for payment analysis."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Current status of the payment (e.g., cleared, pending, rejected) for cash management."
-    - name: "payment_type"
-      expr: payment_type
-      comment: "Type of payment (e.g., progress, advance, retention release, final) for cash flow categorization."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (e.g., EFT, wire, cheque) for payment channel analysis."
-    - name: "payment_date"
-      expr: payment_date
-      comment: "Date payment was executed — used for cash flow timing analysis."
-    - name: "advance_payment_flag"
-      expr: advance_payment_flag
-      comment: "Indicates advance payments — used to track advance payment exposure and recovery."
-    - name: "partial_payment_flag"
-      expr: partial_payment_flag
-      comment: "Indicates partial payments — used to identify underpayment patterns."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Bank reconciliation status — used to identify unreconciled payments and cash book discrepancies."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Payment currency for multi-currency cash flow analysis."
-  measures:
-    - name: "total_payment_amount"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Sum of all payment amounts — total cash outflow for the period."
-    - name: "total_net_payment_amount"
-      expr: SUM(CAST(net_payment_amount AS DOUBLE))
-      comment: "Sum of net payment amounts after deductions — actual cash disbursed to vendors."
-    - name: "total_functional_currency_amount"
-      expr: SUM(CAST(functional_currency_amount AS DOUBLE))
-      comment: "Sum of payments in functional currency — used for consolidated cash flow reporting."
-    - name: "total_retention_released"
-      expr: SUM(CAST(retention_amount AS DOUBLE))
-      comment: "Sum of retention amounts released in payments — tracks retention cash outflow timing."
-    - name: "total_withholding_tax"
-      expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
-      comment: "Sum of withholding tax deducted from payments — required for tax compliance reporting."
-    - name: "total_bank_charges"
-      expr: SUM(CAST(bank_charges AS DOUBLE))
-      comment: "Sum of bank charges incurred on payments — measures transaction cost of payment processing."
-    - name: "total_discount_captured"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Sum of early payment discounts captured — measures savings from proactive payment management."
-    - name: "advance_payment_total"
-      expr: SUM(CASE WHEN advance_payment_flag = TRUE THEN payment_amount ELSE 0 END)
-      comment: "Sum of advance payments made — tracks advance payment exposure requiring recovery through future invoices."
-    - name: "payment_count"
-      expr: COUNT(1)
-      comment: "Count of payment transactions — measures payment processing volume and operational workload."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_profit_center`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Profit center performance metrics — tracks revenue, EBIT, EBITDA, gross margin, and budget utilization at the profit center level to support divisional P&L management and capital allocation decisions."
-  source: "`vibe_construction_v1`.`finance`.`profit_center`"
-  dimensions:
-    - name: "profit_center_type"
-      expr: profit_center_type
-      comment: "Type of profit center (e.g., project, division, region) for organizational P&L segmentation."
-    - name: "profit_center_category"
-      expr: profit_center_category
-      comment: "Category of the profit center for financial reporting hierarchy analysis."
-    - name: "profit_center_status"
-      expr: profit_center_status
-      comment: "Current status of the profit center (e.g., active, closed) for filtering active entities."
-    - name: "region"
-      expr: region
-      comment: "Geographic region of the profit center — used for regional P&L analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Reporting currency of the profit center for multi-currency P&L analysis."
-    - name: "is_consolidated"
-      expr: is_consolidated
-      comment: "Indicates whether the profit center is included in group consolidation."
-    - name: "financial_reporting_standard"
-      expr: financial_reporting_standard
-      comment: "Accounting standard applied (e.g., IFRS, US GAAP) for compliance reporting."
-  measures:
-    - name: "total_revenue"
-      expr: SUM(CAST(revenue AS DOUBLE))
-      comment: "Sum of revenue across profit centers — top-line financial performance metric."
-    - name: "total_cost_of_goods_sold"
-      expr: SUM(CAST(cost_of_goods_sold AS DOUBLE))
-      comment: "Sum of cost of goods sold — measures direct cost of revenue for gross margin analysis."
-    - name: "total_ebit"
-      expr: SUM(CAST(ebit AS DOUBLE))
-      comment: "Sum of EBIT (Earnings Before Interest and Tax) — primary operating profitability metric."
-    - name: "total_ebitda"
-      expr: SUM(CAST(ebitda AS DOUBLE))
-      comment: "Sum of EBITDA — measures operating cash generation before financing and non-cash charges."
-    - name: "total_actual_profit"
-      expr: SUM(CAST(actual_profit AS DOUBLE))
-      comment: "Sum of actual profit — bottom-line profitability metric for profit center performance evaluation."
-    - name: "total_budget_amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Sum of budgeted amounts — baseline for profit center budget vs. actual variance analysis."
-    - name: "avg_profit_margin_pct"
-      expr: AVG(CAST(profit_margin_percent AS DOUBLE))
-      comment: "Average profit margin percentage across profit centers — measures overall portfolio profitability."
-    - name: "avg_tax_rate_pct"
-      expr: AVG(CAST(tax_rate_percent AS DOUBLE))
-      comment: "Average effective tax rate across profit centers — used for tax planning and after-tax return analysis."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_progress_billing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Progress billing metrics — tracks amounts billed, received, outstanding, and retention across billing periods to manage cash flow and client payment performance."
-  source: "`vibe_construction_v1`.`finance`.`progress_billing`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for billing analysis."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Current payment status of the billing record (e.g., paid, outstanding, disputed)."
-    - name: "billing_period_start_date"
-      expr: billing_period_start_date
-      comment: "Start of the billing period for time-series revenue and cash flow trending."
-    - name: "billing_period_end_date"
-      expr: billing_period_end_date
-      comment: "End of the billing period for time-series revenue and cash flow trending."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of billing amounts for multi-currency project analysis."
-    - name: "payment_certificate_type"
-      expr: payment_certificate_type
-      comment: "Type of payment certificate (e.g., interim, final, milestone) for billing category analysis."
-    - name: "aging_bucket"
-      expr: aging_bucket
-      comment: "Aging classification of outstanding balances (e.g., 0-30, 31-60, 61-90 days) for receivables management."
-  measures:
-    - name: "total_gross_amount_due"
-      expr: SUM(CAST(gross_amount_due AS DOUBLE))
-      comment: "Sum of gross amounts due across all billing records — total revenue claimed from clients."
-    - name: "total_net_amount_due"
-      expr: SUM(CAST(net_amount_due AS DOUBLE))
-      comment: "Sum of net amounts due after retention and deductions — actual cash expected from clients."
-    - name: "total_amount_received"
-      expr: SUM(CAST(amount_received AS DOUBLE))
-      comment: "Sum of amounts actually received from clients — measures cash collection performance."
-    - name: "total_outstanding_balance"
-      expr: SUM(CAST(outstanding_balance AS DOUBLE))
-      comment: "Sum of outstanding receivable balances — key metric for working capital and cash flow management."
-    - name: "total_retention_amount"
-      expr: SUM(CAST(retention_amount AS DOUBLE))
-      comment: "Sum of retention withheld by clients — tracks deferred cash tied up in retention."
-    - name: "total_current_period_claim"
-      expr: SUM(CAST(current_period_claim AS DOUBLE))
-      comment: "Sum of current period billing claims — measures revenue generation velocity in the period."
-    - name: "total_work_completed_to_date"
-      expr: SUM(CAST(work_completed_to_date AS DOUBLE))
-      comment: "Sum of cumulative work completed to date — tracks earned revenue against contract value."
-    - name: "total_materials_stored_on_site"
-      expr: SUM(CAST(materials_stored_on_site AS DOUBLE))
-      comment: "Sum of materials stored on site included in billing — tracks stored material billing exposure."
-    - name: "avg_percentage_complete"
-      expr: AVG(CAST(percentage_complete AS DOUBLE))
-      comment: "Average percentage complete across billing records — measures overall project progress for revenue recognition."
-    - name: "collection_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(amount_received AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount_due AS DOUBLE)), 0), 2)
-      comment: "Percentage of billed amounts collected — measures client payment compliance and cash collection efficiency."
+      comment: "Total number of active commitments. Measures procurement and contracting activity volume."
+    - name: "confidential_commitment_count"
+      expr: COUNT(CASE WHEN is_confidential = TRUE THEN 1 END)
+      comment: "Number of confidential commitments. Governance and access control indicator for sensitive contracts."
+    - name: "avg_committed_amount"
+      expr: AVG(CAST(amount_committed AS DOUBLE))
+      comment: "Average commitment value. Identifies typical contract size for benchmarking and risk assessment."
+    - name: "retention_commitment_count"
+      expr: COUNT(CASE WHEN is_retention = TRUE THEN 1 END)
+      comment: "Number of commitments with retention. Tracks retention exposure across the project portfolio."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_project_budget`
@@ -778,67 +176,274 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic budget health metrics for construction projects — tracks original vs. current approved budget, variance, contingency consumption, and forecast-at-completion to steer cost control decisions."
+  comment: "Project budget KPIs tracking budget utilization, variance, forecast accuracy, and cost control performance across construction projects."
   source: "`vibe_construction_v1`.`finance`.`project_budget`"
   dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for budget analysis."
     - name: "budget_type"
       expr: budget_type
-      comment: "Type of budget (e.g., original, revised, supplemental) for segmenting budget views."
+      comment: "Type of budget (e.g., Original, Revised, Contingency) for budget version analysis."
     - name: "budget_status"
       expr: budget_status
-      comment: "Current lifecycle status of the budget record (e.g., approved, draft, closed)."
+      comment: "Current status of the budget (e.g., Approved, Draft, Superseded) for active budget filtering."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency in which budget amounts are denominated."
+      comment: "Budget currency for multi-currency project portfolio reporting."
     - name: "is_baseline_budget"
       expr: is_baseline_budget
-      comment: "Flag indicating whether this record represents the approved baseline budget."
+      comment: "Indicates whether this is the approved baseline budget for EVM and variance analysis."
     - name: "funding_source"
       expr: funding_source
-      comment: "Source of project funding (e.g., equity, debt, client advance) for financial planning."
-    - name: "budget_period_start_date"
-      expr: budget_period_start_date
-      comment: "Start of the budget period for time-series trending."
-    - name: "budget_period_end_date"
-      expr: budget_period_end_date
-      comment: "End of the budget period for time-series trending."
+      comment: "Source of project funding (e.g., Client, JV, Internal) for funding mix analysis."
+    - name: "budget_period_start_month"
+      expr: DATE_TRUNC('MONTH', budget_period_start_date)
+      comment: "Budget period start month for temporal budget analysis."
+    - name: "budget_unit_of_measure"
+      expr: budget_unit_of_measure
+      comment: "Unit of measure for budgeted quantities (e.g., m3, tonnes, hours) for productivity analysis."
   measures:
     - name: "total_original_budget"
       expr: SUM(CAST(original_budget_amount AS DOUBLE))
-      comment: "Sum of original approved budget amounts — baseline for all variance analysis."
+      comment: "Total original approved budget. Baseline for all variance and change order impact analysis."
     - name: "total_current_approved_budget"
       expr: SUM(CAST(current_approved_budget AS DOUBLE))
-      comment: "Sum of current approved budget including all change orders — reflects live budget authority."
+      comment: "Total current approved budget including all approved changes. Reflects live budget authority."
     - name: "total_actual_cost"
       expr: SUM(CAST(actual_cost_amount AS DOUBLE))
-      comment: "Sum of actual costs incurred to date — key input for cost performance monitoring."
+      comment: "Total actual costs incurred against budget. Primary cost performance indicator."
     - name: "total_committed_cost"
       expr: SUM(CAST(committed_cost_amount AS DOUBLE))
-      comment: "Sum of committed costs (POs, subcontracts) not yet invoiced — critical for cash exposure."
-    - name: "total_forecast_at_completion"
-      expr: SUM(CAST(forecast_at_completion AS DOUBLE))
-      comment: "Sum of forecast-at-completion amounts — primary EAC indicator for project financial outlook."
+      comment: "Total committed costs (encumbrances) against budget. Measures future cash obligations."
     - name: "total_budget_variance"
       expr: SUM(CAST(budget_variance_amount AS DOUBLE))
-      comment: "Sum of budget variance (approved budget minus actual cost) — negative values signal cost overrun."
+      comment: "Total budget variance (budget minus actual). Negative values signal cost overrun requiring management action."
     - name: "total_contingency_reserve"
       expr: SUM(CAST(contingency_reserve_amount AS DOUBLE))
-      comment: "Sum of contingency reserves held — tracks risk buffer consumption across projects."
+      comment: "Total contingency reserve available. Tracks risk buffer remaining for project cost management."
     - name: "total_management_reserve"
       expr: SUM(CAST(management_reserve_amount AS DOUBLE))
-      comment: "Sum of management reserves — tracks discretionary buffer available to project leadership."
+      comment: "Total management reserve held. Measures discretionary budget buffer at project level."
+    - name: "total_forecast_at_completion"
+      expr: SUM(CAST(forecast_at_completion AS DOUBLE))
+      comment: "Total forecast cost at completion. Key EAC input for project financial close-out planning."
     - name: "total_approved_change_order_amount"
       expr: SUM(CAST(approved_change_order_amount AS DOUBLE))
-      comment: "Sum of approved change order amounts — measures scope growth impact on budget."
-    - name: "avg_budget_utilization_pct"
-      expr: AVG(ROUND(100.0 * actual_cost_amount / NULLIF(current_approved_budget, 0), 2))
-      comment: "Average budget utilization percentage across budget records — flags projects burning budget faster than planned."
-    - name: "budget_record_count"
+      comment: "Total approved change order value added to budget. Measures scope growth impact on project cost."
+    - name: "budget_line_count"
       expr: COUNT(1)
-      comment: "Count of active budget records — used to assess budget structure complexity."
+      comment: "Total number of budget line items. Measures budget granularity and WBS decomposition depth."
+    - name: "avg_unit_rate"
+      expr: AVG(CAST(unit_rate AS DOUBLE))
+      comment: "Average unit rate across budget lines. Benchmarks productivity assumptions in the budget."
+    - name: "total_budgeted_quantity"
+      expr: SUM(CAST(budgeted_quantity AS DOUBLE))
+      comment: "Total budgeted quantity across all budget lines. Supports productivity and quantity variance analysis."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_earned_value_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Earned Value Management (EVM) KPIs tracking schedule and cost performance indices, variance at completion, and forecast accuracy for construction project control."
+  source: "`vibe_construction_v1`.`finance`.`earned_value_record`"
+  dimensions:
+    - name: "record_status"
+      expr: record_status
+      comment: "Status of the EVM record (e.g., Approved, Draft) for data quality filtering."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of EVM values for multi-currency project portfolio analysis."
+    - name: "eac_calculation_method"
+      expr: eac_calculation_method
+      comment: "Method used to calculate EAC (e.g., CPI-based, Bottom-up) for forecast methodology analysis."
+    - name: "forecast_confidence_level"
+      expr: forecast_confidence_level
+      comment: "Confidence level assigned to the EAC forecast for risk-adjusted reporting."
+    - name: "data_date_month"
+      expr: DATE_TRUNC('MONTH', data_date)
+      comment: "Data date month for EVM trend analysis over time."
+    - name: "reporting_period_end_month"
+      expr: DATE_TRUNC('MONTH', reporting_period_end_date)
+      comment: "Reporting period end month for period-over-period EVM comparison."
+  measures:
+    - name: "total_budget_at_completion"
+      expr: SUM(CAST(bac_budget_at_completion AS DOUBLE))
+      comment: "Total Budget at Completion (BAC) across all WBS elements. Baseline for EVM variance calculations."
+    - name: "total_earned_value"
+      expr: SUM(CAST(bcwp_earned_value AS DOUBLE))
+      comment: "Total Budgeted Cost of Work Performed (BCWP/EV). Measures value of work actually accomplished."
+    - name: "total_planned_value"
+      expr: SUM(CAST(bcws_planned_value AS DOUBLE))
+      comment: "Total Budgeted Cost of Work Scheduled (BCWS/PV). Measures planned work value at data date."
+    - name: "total_actual_cost"
+      expr: SUM(CAST(acwp_actual_cost AS DOUBLE))
+      comment: "Total Actual Cost of Work Performed (ACWP/AC). Measures actual spend against earned value."
+    - name: "total_cost_variance"
+      expr: SUM(CAST(cost_variance AS DOUBLE))
+      comment: "Total Cost Variance (EV - AC). Negative values indicate cost overrun requiring corrective action."
+    - name: "total_schedule_variance"
+      expr: SUM(CAST(schedule_variance AS DOUBLE))
+      comment: "Total Schedule Variance (EV - PV). Negative values indicate schedule slippage."
+    - name: "total_eac"
+      expr: SUM(CAST(eac_estimate_at_completion AS DOUBLE))
+      comment: "Total Estimate at Completion (EAC). Primary project cost forecast for executive reporting."
+    - name: "total_etc"
+      expr: SUM(CAST(etc_estimate_to_complete AS DOUBLE))
+      comment: "Total Estimate to Complete (ETC). Measures remaining cost to finish the project."
+    - name: "total_vac"
+      expr: SUM(CAST(vac_variance_at_completion AS DOUBLE))
+      comment: "Total Variance at Completion (BAC - EAC). Negative values signal projected final cost overrun."
+    - name: "avg_cost_performance_index"
+      expr: AVG(CAST(cost_performance_index AS DOUBLE))
+      comment: "Average CPI (EV/AC) across WBS elements. CPI < 1.0 signals cost inefficiency requiring management intervention."
+    - name: "avg_schedule_performance_index"
+      expr: AVG(CAST(schedule_performance_index AS DOUBLE))
+      comment: "Average SPI (EV/PV) across WBS elements. SPI < 1.0 signals schedule underperformance."
+    - name: "avg_tcpi"
+      expr: AVG(CAST(tcpi_to_complete_performance_index AS DOUBLE))
+      comment: "Average To-Complete Performance Index. Values > 1.0 indicate increasingly difficult cost recovery targets."
+    - name: "avg_percent_complete"
+      expr: AVG(CAST(percent_complete AS DOUBLE))
+      comment: "Average physical percent complete across WBS elements. Overall project progress indicator."
+    - name: "avg_percent_spent"
+      expr: AVG(CAST(percent_spent AS DOUBLE))
+      comment: "Average percent of budget spent. Compared against percent complete to identify cost efficiency gaps."
+    - name: "evm_record_count"
+      expr: COUNT(1)
+      comment: "Total number of EVM records. Measures WBS coverage of earned value reporting."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_retention_ledger`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Retention ledger KPIs tracking retention withheld, released, and outstanding balances across construction contracts and billing periods."
+  source: "`vibe_construction_v1`.`finance`.`finance_retention_ledger`"
+  dimensions:
+    - name: "retention_type"
+      expr: retention_type
+      comment: "Type of retention (e.g., Performance, Defects Liability) for retention category analysis."
+    - name: "retention_status"
+      expr: retention_status
+      comment: "Current status of the retention (e.g., Held, Released, Disputed) for cash flow planning."
+    - name: "retention_release_type"
+      expr: retention_release_type
+      comment: "Type of retention release trigger (e.g., Practical Completion, DLP Expiry) for milestone tracking."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of retention amounts for multi-currency reporting."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual retention balance reporting."
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Indicates whether the retention is under dispute."
+    - name: "retention_bond_indicator"
+      expr: retention_bond_indicator
+      comment: "Indicates whether a retention bond has been provided in lieu of cash retention."
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month of retention posting for trend analysis."
+  measures:
+    - name: "total_retention_withheld"
+      expr: SUM(CAST(retention_withheld_amount AS DOUBLE))
+      comment: "Total retention withheld from payments. Measures cash tied up in retention across all contracts."
+    - name: "total_retention_released"
+      expr: SUM(CAST(retention_release_amount AS DOUBLE))
+      comment: "Total retention released to date. Tracks cash returned to subcontractors/clients upon milestone achievement."
+    - name: "total_cumulative_retention_balance"
+      expr: SUM(CAST(cumulative_retention_balance AS DOUBLE))
+      comment: "Total cumulative retention balance outstanding. Primary retention exposure metric for treasury management."
+    - name: "total_gross_invoice_amount"
+      expr: SUM(CAST(gross_invoice_amount AS DOUBLE))
+      comment: "Total gross invoice value against which retention is applied. Provides context for retention rate analysis."
+    - name: "avg_retention_percentage"
+      expr: AVG(CAST(retention_percentage AS DOUBLE))
+      comment: "Average retention rate applied across ledger entries. Benchmarks contractual retention terms."
+    - name: "retention_ledger_count"
+      expr: COUNT(1)
+      comment: "Total number of retention ledger entries. Measures retention transaction volume."
+    - name: "disputed_retention_count"
+      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
+      comment: "Number of retention entries under dispute. Signals retention recovery risk."
+    - name: "retention_bond_count"
+      expr: COUNT(CASE WHEN retention_bond_indicator = TRUE THEN 1 END)
+      comment: "Number of entries where retention bond is in place. Tracks non-cash retention arrangements."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_cash_flow_forecast`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Cash flow forecast KPIs tracking projected inflows, outflows, net cash position, working capital gaps, and peak funding requirements for construction project treasury management."
+  source: "`vibe_construction_v1`.`finance`.`cash_flow_forecast`"
+  dimensions:
+    - name: "forecast_type"
+      expr: forecast_type
+      comment: "Type of cash flow forecast (e.g., Weekly, Monthly, Quarterly) for granularity analysis."
+    - name: "forecast_status"
+      expr: forecast_status
+      comment: "Status of the forecast (e.g., Draft, Approved, Superseded) for active forecast filtering."
+    - name: "forecast_granularity"
+      expr: forecast_granularity
+      comment: "Time granularity of the forecast (e.g., Weekly, Monthly) for reporting period alignment."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Forecast currency for multi-currency treasury reporting."
+    - name: "s_curve_profile_indicator"
+      expr: s_curve_profile_indicator
+      comment: "S-curve profile type for cash flow shape analysis and project phase identification."
+    - name: "forecast_period_start_month"
+      expr: DATE_TRUNC('MONTH', forecast_period_start_date)
+      comment: "Forecast period start month for temporal cash flow trend analysis."
+    - name: "forecast_date_month"
+      expr: DATE_TRUNC('MONTH', forecast_date)
+      comment: "Month the forecast was prepared for version tracking and accuracy measurement."
+  measures:
+    - name: "total_forecasted_inflow"
+      expr: SUM(CAST(forecasted_inflow_amount AS DOUBLE))
+      comment: "Total projected cash inflows. Primary revenue collection forecast for treasury planning."
+    - name: "total_forecasted_outflow"
+      expr: SUM(CAST(forecasted_outflow_amount AS DOUBLE))
+      comment: "Total projected cash outflows. Measures total payment obligations for liquidity management."
+    - name: "total_net_cash_flow"
+      expr: SUM(CAST(net_cash_flow_amount AS DOUBLE))
+      comment: "Total net cash flow (inflows minus outflows). Core liquidity indicator for project finance decisions."
+    - name: "total_working_capital_gap"
+      expr: SUM(CAST(working_capital_gap AS DOUBLE))
+      comment: "Total working capital gap across forecasts. Identifies financing needs for project execution."
+    - name: "total_peak_funding_requirement"
+      expr: SUM(CAST(peak_funding_requirement AS DOUBLE))
+      comment: "Total peak funding requirement. Drives credit facility sizing and bonding capacity decisions."
+    - name: "total_payroll_amount"
+      expr: SUM(CAST(payroll_amount AS DOUBLE))
+      comment: "Total forecasted payroll outflows. Largest single cost category for workforce-intensive construction projects."
+    - name: "total_subcontractor_payment_amount"
+      expr: SUM(CAST(subcontractor_payment_amount AS DOUBLE))
+      comment: "Total forecasted subcontractor payments. Tracks supply chain payment obligations."
+    - name: "total_material_procurement_amount"
+      expr: SUM(CAST(material_procurement_amount AS DOUBLE))
+      comment: "Total forecasted material procurement spend. Supports procurement planning and cash flow timing."
+    - name: "total_retention_release_amount"
+      expr: SUM(CAST(retention_release_amount AS DOUBLE))
+      comment: "Total forecasted retention releases. Tracks expected cash inflows from retention recovery."
+    - name: "avg_variance_to_prior_forecast"
+      expr: AVG(CAST(variance_to_prior_forecast AS DOUBLE))
+      comment: "Average variance between current and prior forecast versions. Measures forecast accuracy and stability."
+    - name: "avg_variance_percentage"
+      expr: AVG(CAST(variance_percentage AS DOUBLE))
+      comment: "Average percentage variance from prior forecast. Signals forecast reliability for treasury decisions."
+    - name: "avg_credit_facility_utilization"
+      expr: AVG(CAST(credit_facility_utilization AS DOUBLE))
+      comment: "Average credit facility utilization rate. Monitors proximity to credit limits for financial risk management."
+    - name: "avg_bonding_capacity_utilization"
+      expr: AVG(CAST(bonding_capacity_utilization AS DOUBLE))
+      comment: "Average bonding capacity utilization. Tracks available bonding headroom for new project bids."
+    - name: "forecast_count"
+      expr: COUNT(1)
+      comment: "Total number of cash flow forecast records. Measures forecasting activity and coverage."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_revenue_recognition_entry`
@@ -846,65 +451,470 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Revenue recognition metrics — tracks recognized revenue, deferred revenue, unbilled revenue, and gross profit percentage to support accurate P&L reporting and IFRS 15 / ASC 606 compliance."
+  comment: "Revenue recognition KPIs tracking recognized revenue, deferred revenue, gross profit, and completion percentage under IFRS 15 / ASC 606 for construction contracts."
   source: "`vibe_construction_v1`.`finance`.`revenue_recognition_entry`"
   dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Foreign key to the construction project — primary grouping for revenue analysis."
     - name: "recognition_method"
       expr: recognition_method
-      comment: "Revenue recognition method applied (e.g., percentage-of-completion, completed contract) for accounting policy analysis."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the recognition entry for annual P&L reporting."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the recognition entry for monthly P&L reporting."
+      comment: "Revenue recognition method (e.g., Percentage of Completion, Completed Contract) for accounting policy analysis."
     - name: "revenue_recognition_status"
       expr: revenue_recognition_status
-      comment: "Status of the recognition entry (e.g., posted, draft, reversed) for filtering valid entries."
-    - name: "recognition_date"
-      expr: recognition_date
-      comment: "Date revenue was recognized — used for time-series revenue trending."
+      comment: "Status of the recognition entry (e.g., Posted, Reversed, Pending) for period-end close management."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual revenue reporting and year-over-year comparison."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period for monthly revenue reporting and period-end close analysis."
+    - name: "contract_currency_code"
+      expr: contract_currency_code
+      comment: "Contract currency for multi-currency revenue reporting."
     - name: "prior_period_adjustment_flag"
       expr: prior_period_adjustment_flag
-      comment: "Flags prior period adjustments — used to isolate restatements from current period revenue."
-    - name: "auditor_reviewed_flag"
-      expr: auditor_reviewed_flag
-      comment: "Indicates auditor review completion — used for financial close quality control."
+      comment: "Indicates prior period adjustments for audit and restatement tracking."
+    - name: "recognition_date_month"
+      expr: DATE_TRUNC('MONTH', recognition_date)
+      comment: "Month of revenue recognition for trend analysis."
   measures:
     - name: "total_revenue_recognized_in_period"
       expr: SUM(CAST(revenue_recognized_in_period AS DOUBLE))
-      comment: "Sum of revenue recognized in the current period — primary P&L revenue metric."
+      comment: "Total revenue recognized in the current period. Primary top-line P&L metric for construction reporting."
     - name: "total_revenue_recognized_to_date"
       expr: SUM(CAST(revenue_recognized_to_date AS DOUBLE))
-      comment: "Sum of cumulative revenue recognized to date — measures total earned revenue against contract value."
+      comment: "Cumulative revenue recognized to date. Tracks total revenue earned against contract value."
     - name: "total_contract_value"
       expr: SUM(CAST(contract_value AS DOUBLE))
-      comment: "Sum of contract values — total revenue backlog and performance obligation measure."
+      comment: "Total contract value across all recognition entries. Measures total revenue backlog and pipeline."
     - name: "total_deferred_revenue"
       expr: SUM(CAST(deferred_revenue AS DOUBLE))
-      comment: "Sum of deferred revenue (billed but not yet earned) — balance sheet liability metric."
+      comment: "Total deferred revenue (billed but not yet earned). Balance sheet liability indicator for financial reporting."
     - name: "total_unbilled_revenue"
       expr: SUM(CAST(unbilled_revenue AS DOUBLE))
-      comment: "Sum of unbilled revenue (earned but not yet invoiced) — measures billing lag and working capital impact."
-    - name: "total_cumulative_costs_incurred"
-      expr: SUM(CAST(cumulative_costs_incurred AS DOUBLE))
-      comment: "Sum of cumulative costs incurred — used to compute cost-to-cost percentage of completion."
-    - name: "total_estimated_total_costs"
-      expr: SUM(CAST(estimated_total_costs AS DOUBLE))
-      comment: "Sum of estimated total costs at completion — denominator for POC calculation and EAC analysis."
+      comment: "Total unbilled revenue (earned but not yet invoiced). Measures revenue recognition ahead of billing."
     - name: "total_gross_profit_to_date"
       expr: SUM(CAST(gross_profit_to_date AS DOUBLE))
-      comment: "Sum of gross profit recognized to date — key profitability metric for project P&L."
+      comment: "Total gross profit recognized to date. Core profitability metric for project portfolio management."
+    - name: "total_estimated_gross_profit_at_completion"
+      expr: SUM(CAST(estimated_gross_profit_at_completion AS DOUBLE))
+      comment: "Total estimated gross profit at project completion. Forward-looking profitability indicator for executive review."
     - name: "total_loss_provision"
       expr: SUM(CAST(loss_provision AS DOUBLE))
-      comment: "Sum of loss provisions on onerous contracts — measures anticipated project losses requiring immediate recognition."
-    - name: "avg_gross_profit_pct"
-      expr: AVG(CAST(gross_profit_percentage AS DOUBLE))
-      comment: "Average gross profit percentage across recognition entries — measures project margin performance."
+      comment: "Total loss provisions on onerous contracts. Critical risk indicator requiring immediate management action."
+    - name: "total_cumulative_costs_incurred"
+      expr: SUM(CAST(cumulative_costs_incurred AS DOUBLE))
+      comment: "Total cumulative costs incurred across contracts. Input for cost-to-cost percentage of completion calculation."
+    - name: "total_estimated_total_costs"
+      expr: SUM(CAST(estimated_total_costs AS DOUBLE))
+      comment: "Total estimated costs at completion. Denominator for percentage of completion and EAC analysis."
     - name: "avg_completion_percentage"
       expr: AVG(CAST(completion_percentage AS DOUBLE))
-      comment: "Average percentage of completion across projects — measures overall portfolio progress for revenue forecasting."
+      comment: "Average completion percentage across contracts. Portfolio-level progress indicator for executive reporting."
+    - name: "avg_gross_profit_percentage"
+      expr: AVG(CAST(gross_profit_percentage AS DOUBLE))
+      comment: "Average gross profit margin percentage. Key profitability benchmark for project portfolio steering."
+    - name: "total_change_order_value_included"
+      expr: SUM(CAST(change_order_value_included AS DOUBLE))
+      comment: "Total change order value included in recognized revenue. Measures scope growth impact on revenue."
+    - name: "recognition_entry_count"
+      expr: COUNT(1)
+      comment: "Total number of revenue recognition entries. Measures period-end close activity volume."
+    - name: "prior_period_adjustment_count"
+      expr: COUNT(CASE WHEN prior_period_adjustment_flag = TRUE THEN 1 END)
+      comment: "Number of prior period adjustments. Audit quality indicator — high counts signal revenue recognition issues."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_invoice`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Accounts payable invoice KPIs tracking payable volumes, approval cycle times, dispute rates, and three-way match compliance for construction procurement."
+  source: "`vibe_construction_v1`.`finance`.`invoice`"
+  dimensions:
+    - name: "invoice_status"
+      expr: invoice_status
+      comment: "Current status of the AP invoice (e.g., Pending, Approved, Paid, Disputed) for payables pipeline management."
+    - name: "invoice_type"
+      expr: invoice_type
+      comment: "Type of AP invoice (e.g., Standard, Credit Note, Advance) for payables categorization."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the invoice for workflow bottleneck analysis."
+    - name: "three_way_match_status"
+      expr: three_way_match_status
+      comment: "Three-way match status (PO/GR/Invoice) for procurement compliance monitoring."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Invoice currency for multi-currency payables reporting."
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Indicates whether the invoice is under dispute."
+    - name: "hold_flag"
+      expr: hold_flag
+      comment: "Indicates whether the invoice is on payment hold."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual payables reporting."
+    - name: "invoice_date_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Month of invoice receipt for payables trend analysis."
+  measures:
+    - name: "total_gross_payable"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross amount of AP invoices. Measures total vendor payment obligations."
+    - name: "total_net_payable"
+      expr: SUM(CAST(net_payable_amount AS DOUBLE))
+      comment: "Total net payable amount after discounts and retention. Actual cash outflow obligation."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax on AP invoices. Required for VAT/GST compliance reporting."
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total early payment discounts captured. Measures working capital optimization from prompt payment."
+    - name: "total_retention_amount"
+      expr: SUM(CAST(retention_amount AS DOUBLE))
+      comment: "Total retention withheld from vendor invoices. Tracks subcontractor retention obligations."
+    - name: "invoice_count"
+      expr: COUNT(1)
+      comment: "Total number of AP invoices processed. Baseline payables throughput metric."
+    - name: "disputed_invoice_count"
+      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
+      comment: "Number of disputed AP invoices. Signals vendor relationship issues and payment delays."
+    - name: "held_invoice_count"
+      expr: COUNT(CASE WHEN hold_flag = TRUE THEN 1 END)
+      comment: "Number of invoices on payment hold. Identifies blocked payments requiring resolution."
+    - name: "avg_invoice_amount"
+      expr: AVG(CAST(gross_amount AS DOUBLE))
+      comment: "Average AP invoice value. Benchmarks typical vendor transaction size for process efficiency analysis."
+    - name: "avg_retention_percentage"
+      expr: AVG(CAST(retention_percentage AS DOUBLE))
+      comment: "Average retention rate applied to vendor invoices. Benchmarks subcontractor retention terms."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_job_cost_transaction`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Job cost transaction KPIs tracking actual cost postings, cost category breakdown, billability, and cost recovery across construction project WBS elements."
+  source: "`vibe_construction_v1`.`finance`.`job_cost_transaction`"
+  dimensions:
+    - name: "cost_category"
+      expr: cost_category
+      comment: "Cost category (e.g., Labor, Material, Equipment, Subcontract) for cost breakdown analysis."
+    - name: "transaction_status"
+      expr: transaction_status
+      comment: "Status of the cost transaction (e.g., Posted, Reversed, Pending) for data quality filtering."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the transaction for workflow compliance monitoring."
+    - name: "billable_flag"
+      expr: billable_flag
+      comment: "Indicates whether the cost is billable to the client. Drives revenue recovery analysis."
+    - name: "billed_flag"
+      expr: billed_flag
+      comment: "Indicates whether the cost has been billed. Identifies unbilled cost exposure."
+    - name: "reversal_flag"
+      expr: reversal_flag
+      comment: "Indicates whether the transaction is a reversal. Monitors correction activity volume."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Transaction currency for multi-currency cost reporting."
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month of cost posting for trend analysis and period-end cost reporting."
+    - name: "unit_of_measure"
+      expr: unit_of_measure
+      comment: "Unit of measure for quantity-based cost analysis (e.g., hours, m3, tonnes)."
+  measures:
+    - name: "total_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total job cost posted across all transactions. Primary actual cost metric for project cost control."
+    - name: "total_base_currency_cost"
+      expr: SUM(CAST(base_currency_cost AS DOUBLE))
+      comment: "Total cost in base/functional currency. Enables consistent cross-project cost comparison."
+    - name: "total_quantity"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity of resources consumed. Supports productivity and unit rate analysis."
+    - name: "avg_unit_cost"
+      expr: AVG(CAST(unit_cost AS DOUBLE))
+      comment: "Average unit cost across transactions. Benchmarks resource productivity and cost efficiency."
+    - name: "transaction_count"
+      expr: COUNT(1)
+      comment: "Total number of cost transactions. Measures cost posting activity volume."
+    - name: "billable_cost_total"
+      expr: SUM(CASE WHEN billable_flag = TRUE THEN total_cost ELSE 0 END)
+      comment: "Total billable cost. Measures revenue-recoverable cost for billing and margin analysis."
+    - name: "unbilled_cost_total"
+      expr: SUM(CASE WHEN billable_flag = TRUE AND billed_flag = FALSE THEN total_cost ELSE 0 END)
+      comment: "Total billable but not yet billed cost. Identifies revenue recognition lag and unbilled exposure."
+    - name: "reversal_transaction_count"
+      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
+      comment: "Number of reversal transactions. High reversal rates signal data quality or approval process issues."
+    - name: "avg_exchange_rate"
+      expr: AVG(CAST(exchange_rate AS DOUBLE))
+      comment: "Average exchange rate applied to transactions. Monitors FX exposure in multi-currency projects."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_payment_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Payment record KPIs tracking actual cash disbursements, payment performance, withholding tax, and bank reconciliation status for construction project treasury."
+  source: "`vibe_construction_v1`.`finance`.`payment_record`"
+  dimensions:
+    - name: "payment_status"
+      expr: payment_status
+      comment: "Current status of the payment (e.g., Cleared, Pending, Rejected) for cash management."
+    - name: "payment_type"
+      expr: payment_type
+      comment: "Type of payment (e.g., Regular, Advance, Retention Release) for payment category analysis."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method (e.g., EFT, Cheque, SWIFT) for payment channel analysis."
+    - name: "payment_channel"
+      expr: payment_channel
+      comment: "Payment channel (e.g., Online Banking, Manual) for process efficiency analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Payment currency for multi-currency cash management reporting."
+    - name: "clearing_status"
+      expr: clearing_status
+      comment: "Bank clearing status for reconciliation monitoring."
+    - name: "reconciliation_status"
+      expr: reconciliation_status
+      comment: "Reconciliation status for bank statement matching compliance."
+    - name: "advance_payment_flag"
+      expr: advance_payment_flag
+      comment: "Indicates advance payments for working capital and cash flow analysis."
+    - name: "payment_date_month"
+      expr: DATE_TRUNC('MONTH', payment_date)
+      comment: "Month of payment for cash disbursement trend analysis."
+  measures:
+    - name: "total_payment_amount"
+      expr: SUM(CAST(payment_amount AS DOUBLE))
+      comment: "Total cash disbursed. Primary cash outflow metric for treasury and liquidity management."
+    - name: "total_net_payment_amount"
+      expr: SUM(CAST(net_payment_amount AS DOUBLE))
+      comment: "Total net payment after discounts and charges. Actual cash outflow for bank reconciliation."
+    - name: "total_functional_currency_amount"
+      expr: SUM(CAST(functional_currency_amount AS DOUBLE))
+      comment: "Total payments in functional currency. Enables consistent cross-currency cash flow reporting."
+    - name: "total_withholding_tax"
+      expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
+      comment: "Total withholding tax deducted from payments. Required for tax compliance and vendor reporting."
+    - name: "total_discount_captured"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total early payment discounts captured. Measures working capital optimization from prompt payment."
+    - name: "total_bank_charges"
+      expr: SUM(CAST(bank_charges AS DOUBLE))
+      comment: "Total bank charges incurred. Monitors transaction cost efficiency across payment channels."
+    - name: "total_retention_amount"
+      expr: SUM(CAST(retention_amount AS DOUBLE))
+      comment: "Total retention deducted from payments. Tracks retention cash flow impact."
+    - name: "payment_count"
+      expr: COUNT(1)
+      comment: "Total number of payment records. Baseline payment throughput metric."
+    - name: "advance_payment_count"
+      expr: COUNT(CASE WHEN advance_payment_flag = TRUE THEN 1 END)
+      comment: "Number of advance payments made. Tracks working capital deployed as advances to vendors."
+    - name: "partial_payment_count"
+      expr: COUNT(CASE WHEN partial_payment_flag = TRUE THEN 1 END)
+      comment: "Number of partial payments. Identifies payment disputes or cash flow constraints."
+    - name: "avg_exchange_rate"
+      expr: AVG(CAST(exchange_rate AS DOUBLE))
+      comment: "Average exchange rate applied to payments. Monitors FX cost in multi-currency payment runs."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_budget_revision`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Budget revision KPIs tracking scope of budget changes, cost category revisions, change order impacts, and approval cycle performance for construction project cost control."
+  source: "`vibe_construction_v1`.`finance`.`finance_budget_revision`"
+  dimensions:
+    - name: "revision_status"
+      expr: revision_status
+      comment: "Status of the budget revision (e.g., Approved, Pending, Rejected) for approval pipeline management."
+    - name: "revision_type"
+      expr: revision_type
+      comment: "Type of budget revision (e.g., Scope Change, Contingency Draw, Error Correction) for root cause analysis."
+    - name: "revision_reason_code"
+      expr: revision_reason_code
+      comment: "Reason code for the revision for trend analysis of budget change drivers."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the revision for multi-currency budget reporting."
+    - name: "client_approval_required"
+      expr: client_approval_required
+      comment: "Indicates whether client approval is required for the revision. Tracks contractual change control compliance."
+    - name: "approved_date_month"
+      expr: DATE_TRUNC('MONTH', approved_date)
+      comment: "Month of revision approval for trend analysis of budget change frequency."
+    - name: "approval_authority_level"
+      expr: approval_authority_level
+      comment: "Authority level required to approve the revision for delegation of authority compliance."
+  measures:
+    - name: "total_revision_amount"
+      expr: SUM(CAST(revision_amount AS DOUBLE))
+      comment: "Total budget revision amount. Measures cumulative scope and cost growth across the project."
+    - name: "total_original_budget"
+      expr: SUM(CAST(original_budget_amount AS DOUBLE))
+      comment: "Total original budget before revisions. Baseline for measuring budget growth."
+    - name: "total_revised_budget"
+      expr: SUM(CAST(revised_budget_amount AS DOUBLE))
+      comment: "Total revised budget after all approved changes. Current budget authority for cost control."
+    - name: "total_labor_cost_revision"
+      expr: SUM(CAST(labor_cost_revision AS DOUBLE))
+      comment: "Total labor cost revisions. Identifies workforce cost growth as a driver of budget overruns."
+    - name: "total_material_cost_revision"
+      expr: SUM(CAST(material_cost_revision AS DOUBLE))
+      comment: "Total material cost revisions. Tracks material price escalation impact on project budget."
+    - name: "total_subcontractor_cost_revision"
+      expr: SUM(CAST(subcontractor_cost_revision AS DOUBLE))
+      comment: "Total subcontractor cost revisions. Measures supply chain cost growth impact."
+    - name: "total_equipment_cost_revision"
+      expr: SUM(CAST(equipment_cost_revision AS DOUBLE))
+      comment: "Total equipment cost revisions. Tracks plant and equipment cost growth."
+    - name: "total_contingency_revision"
+      expr: SUM(CAST(contingency_revision AS DOUBLE))
+      comment: "Total contingency draw-downs or additions. Monitors risk reserve consumption rate."
+    - name: "total_impact_on_contract_value"
+      expr: SUM(CAST(impact_on_contract_value AS DOUBLE))
+      comment: "Total impact of revisions on contract value. Measures revenue-side implications of budget changes."
+    - name: "budget_revision_count"
+      expr: COUNT(1)
+      comment: "Total number of budget revisions. High frequency signals poor initial estimating or scope instability."
+    - name: "client_approval_required_count"
+      expr: COUNT(CASE WHEN client_approval_required = TRUE THEN 1 END)
+      comment: "Number of revisions requiring client approval. Tracks contractual change control workload."
+    - name: "avg_evm_cpi_impact"
+      expr: AVG(CAST(evm_cpi_impact AS DOUBLE))
+      comment: "Average CPI impact of budget revisions. Measures how budget changes affect cost performance indices."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_progress_billing`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Progress billing KPIs tracking billing completeness, payment performance, retention management, and outstanding balances for construction contract administration."
+  source: "`vibe_construction_v1`.`finance`.`progress_billing`"
+  dimensions:
+    - name: "payment_status"
+      expr: payment_status
+      comment: "Current payment status (e.g., Submitted, Certified, Paid, Overdue) for billing pipeline management."
+    - name: "payment_certificate_type"
+      expr: payment_certificate_type
+      comment: "Type of payment certificate (e.g., Interim, Final, Milestone) for billing category analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Billing currency for multi-currency contract reporting."
+    - name: "aging_bucket"
+      expr: aging_bucket
+      comment: "Aging classification for overdue billing analysis."
+    - name: "billing_period_start_month"
+      expr: DATE_TRUNC('MONTH', billing_period_start_date)
+      comment: "Billing period start month for trend analysis of billing activity."
+    - name: "invoice_date_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Invoice date month for billing cycle analysis."
+  measures:
+    - name: "total_current_period_claim"
+      expr: SUM(CAST(current_period_claim AS DOUBLE))
+      comment: "Total amount claimed in the current billing period. Measures billing throughput for the period."
+    - name: "total_work_completed_to_date"
+      expr: SUM(CAST(work_completed_to_date AS DOUBLE))
+      comment: "Cumulative work completed value billed to date. Tracks overall project billing progress."
+    - name: "total_gross_amount_due"
+      expr: SUM(CAST(gross_amount_due AS DOUBLE))
+      comment: "Total gross amount due before deductions. Measures total billing value."
+    - name: "total_net_amount_due"
+      expr: SUM(CAST(net_amount_due AS DOUBLE))
+      comment: "Total net amount due after retention and deductions. Actual cash receivable from client."
+    - name: "total_outstanding_balance"
+      expr: SUM(CAST(outstanding_balance AS DOUBLE))
+      comment: "Total outstanding unpaid balance. Primary receivables exposure metric."
+    - name: "total_retention_amount"
+      expr: SUM(CAST(retention_amount AS DOUBLE))
+      comment: "Total retention withheld from progress billings. Tracks cash tied up in retention."
+    - name: "total_amount_received"
+      expr: SUM(CAST(amount_received AS DOUBLE))
+      comment: "Total cash received against progress billings. Measures collection effectiveness."
+    - name: "total_materials_stored_on_site"
+      expr: SUM(CAST(materials_stored_on_site AS DOUBLE))
+      comment: "Total value of materials stored on site included in billing. Tracks material-at-risk exposure."
+    - name: "avg_percentage_complete"
+      expr: AVG(CAST(percentage_complete AS DOUBLE))
+      comment: "Average project completion percentage across billing records. Portfolio progress indicator."
+    - name: "avg_retention_percentage"
+      expr: AVG(CAST(retention_percentage AS DOUBLE))
+      comment: "Average retention rate applied. Benchmarks contractual retention terms."
+    - name: "billing_record_count"
+      expr: COUNT(1)
+      comment: "Total number of progress billing records. Measures billing activity volume."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`finance_financial_guarantee`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Financial guarantee KPIs tracking bond/guarantee exposure, premium costs, compliance status, and bonding capacity utilization for construction contract risk management."
+  source: "`vibe_construction_v1`.`finance`.`financial_guarantee`"
+  dimensions:
+    - name: "guarantee_type"
+      expr: guarantee_type
+      comment: "Type of guarantee (e.g., Performance Bond, Advance Payment Bond, Retention Bond) for risk category analysis."
+    - name: "guarantee_status"
+      expr: guarantee_status
+      comment: "Current status of the guarantee (e.g., Active, Expired, Called) for exposure management."
+    - name: "issuer_type"
+      expr: issuer_type
+      comment: "Type of guarantee issuer (e.g., Bank, Insurance Company) for counterparty risk analysis."
+    - name: "beneficiary_type"
+      expr: beneficiary_type
+      comment: "Type of beneficiary (e.g., Client, Employer, Government) for guarantee obligation categorization."
+    - name: "call_type"
+      expr: call_type
+      comment: "Type of guarantee call (e.g., On-Demand, Conditional) for risk exposure assessment."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Guarantee currency for multi-currency exposure reporting."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Indicates whether the guarantee is compliant with contractual requirements."
+    - name: "issue_date_month"
+      expr: DATE_TRUNC('MONTH', issue_date)
+      comment: "Month of guarantee issuance for trend analysis."
+  measures:
+    - name: "total_face_value"
+      expr: SUM(CAST(face_value_amount AS DOUBLE))
+      comment: "Total face value of all financial guarantees. Primary bonding exposure metric for risk management."
+    - name: "total_risk_exposure"
+      expr: SUM(CAST(risk_exposure_amount AS DOUBLE))
+      comment: "Total risk exposure from guarantees. Measures maximum potential liability from guarantee calls."
+    - name: "total_premium_amount"
+      expr: SUM(CAST(premium_amount AS DOUBLE))
+      comment: "Total premium paid for guarantees. Measures cost of bonding as a project overhead component."
+    - name: "total_claim_amount"
+      expr: SUM(CAST(claim_amount AS DOUBLE))
+      comment: "Total amount claimed against guarantees. Critical risk indicator — guarantee calls signal project distress."
+    - name: "total_bonding_capacity_impact"
+      expr: SUM(CAST(bonding_capacity_impact_amount AS DOUBLE))
+      comment: "Total bonding capacity consumed by active guarantees. Monitors headroom for new project bids."
+    - name: "guarantee_count"
+      expr: COUNT(1)
+      comment: "Total number of financial guarantees. Measures bonding portfolio size."
+    - name: "non_compliant_guarantee_count"
+      expr: COUNT(CASE WHEN compliance_flag = FALSE THEN 1 END)
+      comment: "Number of non-compliant guarantees. Signals contractual default risk requiring immediate action."
+    - name: "avg_premium_rate"
+      expr: AVG(CAST(premium_rate_percent AS DOUBLE))
+      comment: "Average premium rate across guarantees. Benchmarks bonding cost efficiency."
+    - name: "collateral_required_count"
+      expr: COUNT(CASE WHEN collateral_required_flag = TRUE THEN 1 END)
+      comment: "Number of guarantees requiring collateral. Measures cash collateral tied up in bonding arrangements."
 $$;

@@ -1,456 +1,59 @@
--- Metric views for domain: finance | Business: Semiconductors | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: finance | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_amortization_schedule`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_asset_depreciation`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Intangible asset amortization KPIs tracking amortization charges, remaining balances, and net book values for capitalized R&D and IP assets. Used by Controllers and CFO to manage intangible asset lifecycle and P&L amortization impact."
-  source: "`vibe_semiconductors_v1`.`finance`.`amortization_schedule`"
+  comment: "Tracks depreciation expense, accumulated depreciation, and utilization across fixed assets. Supports capital planning, tax reporting, and asset lifecycle management decisions."
+  source: "`vibe_semiconductors_v1`.`finance`.`asset_depreciation`"
   dimensions:
-    - name: "amortization_method"
-      expr: amortization_method
-      comment: "Amortization method (e.g., Straight-Line, Units of Production) for accounting policy analysis."
-    - name: "schedule_type"
-      expr: schedule_type
-      comment: "Type of amortization schedule for asset category classification."
-    - name: "amortization_schedule_status"
-      expr: amortization_schedule_status
-      comment: "Status of the amortization schedule (e.g., Active, Completed, Suspended)."
-    - name: "period_year"
-      expr: period_year
-      comment: "Year of the amortization period for annual amortization trend analysis."
-    - name: "period_type"
-      expr: period_type
-      comment: "Period type (e.g., Monthly, Quarterly, Annual) for amortization frequency analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the amortization schedule for multi-currency analysis."
-  measures:
-    - name: "total_amortization_amount"
-      expr: SUM(CAST(amortization_amount AS DOUBLE))
-      comment: "Total amortization charged. Core P&L impact KPI for intangible asset expense management."
-    - name: "total_accumulated_amortization"
-      expr: SUM(CAST(accumulated_amortization AS DOUBLE))
-      comment: "Total accumulated amortization. Tracks cumulative intangible asset consumption on the balance sheet."
-    - name: "total_remaining_balance"
-      expr: SUM(CAST(remaining_balance AS DOUBLE))
-      comment: "Total remaining unamortized balance. Tracks future amortization obligations and intangible asset value."
-    - name: "total_net_book_value"
-      expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value of intangible assets after amortization. Key balance sheet metric."
-    - name: "avg_annual_amortization_amount"
-      expr: AVG(CAST(annual_amortization_amount AS DOUBLE))
-      comment: "Average annual amortization amount. Used for forward-looking P&L amortization forecasting."
-    - name: "amortization_schedule_count"
-      expr: COUNT(1)
-      comment: "Total active amortization schedules. Tracks intangible asset portfolio size."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_budget_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Granular budget line KPIs enabling FP&A to track planned vs. actual spend, variance analysis, and budget utilization by cost center, GL account, and fiscal period. Drives operational budget steering."
-  source: "`vibe_semiconductors_v1`.`finance`.`budget_line`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the budget line for annual budget tracking."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period (month/quarter) for intra-year budget monitoring."
-    - name: "budget_category"
-      expr: budget_category
-      comment: "Category of budget line (e.g., Labor, Materials, Overhead) for spend classification."
-    - name: "cost_element_type"
-      expr: cost_element_type
-      comment: "Cost element type for granular cost structure analysis."
-    - name: "budget_line_status"
-      expr: budget_line_status
-      comment: "Status of the budget line (e.g., Active, Frozen, Closed)."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the budget line for governance tracking."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the budget line for multi-currency analysis."
-  measures:
-    - name: "total_budget_amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Total budgeted amount across all lines. Primary KPI for budget envelope management."
-    - name: "total_planned_amount"
-      expr: SUM(CAST(planned_amount AS DOUBLE))
-      comment: "Total planned spend amount. Used to compare against actuals for variance analysis."
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total budget variance (planned vs. actual). Negative values signal overspend requiring intervention."
-    - name: "avg_variance_percent"
-      expr: AVG(CAST(variance_percent AS DOUBLE))
-      comment: "Average variance percentage across budget lines. Tracks overall budget discipline."
-    - name: "total_planned_quantity"
-      expr: SUM(CAST(planned_quantity AS DOUBLE))
-      comment: "Total planned quantity (e.g., wafer starts, headcount) for volume-based budget tracking."
-    - name: "frozen_budget_line_count"
-      expr: COUNT(CASE WHEN is_frozen = TRUE THEN 1 END)
-      comment: "Count of frozen budget lines. High freeze counts signal budget lock-down or cost control actions."
-    - name: "budget_line_count"
-      expr: COUNT(1)
-      comment: "Total number of budget lines. Used to assess budget granularity and coverage."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_budget_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Budget planning and variance metrics tracking planned vs actual spend, approval status, and budget utilization for financial control and resource allocation"
-  source: "`vibe_semiconductors_v1`.`finance`.`budget_plan`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the budget plan for annual planning cycle tracking"
-    - name: "budget_type"
-      expr: budget_type
-      comment: "Budget type (operating, capital, R&D) for budget category analysis"
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Budget approval status for planning cycle and governance tracking"
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Budget lifecycle status (draft, active, closed) for budget execution monitoring"
-    - name: "chips_act_funded"
-      expr: CASE WHEN chips_act_funding_indicator = TRUE THEN 'CHIPS Act Funded' ELSE 'Non-CHIPS' END
-      comment: "CHIPS Act funding indicator for government subsidy tracking and compliance"
-    - name: "planning_method"
-      expr: planning_method
-      comment: "Planning methodology (zero-based, incremental, driver-based) for process improvement"
-    - name: "plan_version"
-      expr: plan_version
-      comment: "Budget version for reforecast and revision tracking"
-  measures:
-    - name: "total_budget_plans"
-      expr: COUNT(1)
-      comment: "Total count of budget plans for planning complexity and governance tracking"
-    - name: "total_planned_amount_local"
-      expr: SUM(CAST(planned_amount_local AS DOUBLE))
-      comment: "Total planned amount in local currency for budget allocation and resource planning"
-    - name: "total_planned_amount_group"
-      expr: SUM(CAST(planned_amount_group AS DOUBLE))
-      comment: "Total planned amount in group currency for consolidated budget reporting"
-    - name: "total_budget_amount"
-      expr: SUM(CAST(total_budget_amount AS DOUBLE))
-      comment: "Total budget amount for overall budget size and resource commitment tracking"
-    - name: "avg_variance_to_prior_year_pct"
-      expr: AVG(CAST(variance_to_prior_year_percent AS DOUBLE))
-      comment: "Average year-over-year budget variance percentage for growth trend analysis"
-    - name: "total_variance_to_prior_year"
-      expr: SUM(CAST(variance_to_prior_year_amount AS DOUBLE))
-      comment: "Total variance to prior year for budget growth and strategic investment tracking"
-    - name: "distinct_cost_centers"
-      expr: COUNT(DISTINCT cost_center_id)
-      comment: "Number of distinct cost centers with budgets for organizational scope tracking"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_capex_request`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Capital expenditure request and approval metrics tracking capex pipeline, approval rates, and funding sources for capital planning and investment decisions"
-  source: "`vibe_semiconductors_v1`.`finance`.`capex_request`"
-  dimensions:
-    - name: "request_status"
-      expr: request_status
-      comment: "Request status (submitted, approved, rejected, cancelled) for capex pipeline tracking"
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status for governance and authorization tracking"
-    - name: "approval_stage"
-      expr: approval_stage
-      comment: "Current approval stage for multi-level authorization workflow tracking"
-    - name: "equipment_category"
-      expr: equipment_category
-      comment: "Equipment category (fab tool, test equipment, facility) for capital allocation by asset type"
-    - name: "technology_node"
-      expr: technology_node
-      comment: "Technology node for node-specific capital investment and capacity planning"
-    - name: "funding_source"
-      expr: funding_source
-      comment: "Funding source (internal, debt, equity, grant) for capital structure and financing analysis"
-    - name: "chips_act_eligible"
-      expr: CASE WHEN chips_act_funding_eligible = TRUE THEN 'CHIPS Act Eligible' ELSE 'Non-Eligible' END
-      comment: "CHIPS Act eligibility for government subsidy tracking and grant application"
-    - name: "risk_rating"
-      expr: risk_rating
-      comment: "Risk rating for capital investment risk assessment and portfolio management"
-    - name: "request_year"
-      expr: YEAR(request_date)
-      comment: "Year of request for annual capex demand and investment trend analysis"
-  measures:
-    - name: "total_capex_requests"
-      expr: COUNT(1)
-      comment: "Total count of capex requests for investment pipeline volume and demand tracking"
-    - name: "total_requested_amount"
-      expr: SUM(CAST(requested_amount AS DOUBLE))
-      comment: "Total requested capex amount for capital demand and budget planning"
-    - name: "total_approved_amount"
-      expr: SUM(CAST(approved_amount AS DOUBLE))
-      comment: "Total approved capex amount for authorized capital spending and commitment tracking"
-    - name: "total_budget_amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Total budget amount for capex budget allocation and financial planning"
-    - name: "avg_request_amount"
-      expr: AVG(CAST(request_amount AS DOUBLE))
-      comment: "Average capex request size for investment scale and project complexity analysis"
-    - name: "distinct_requestors"
-      expr: COUNT(DISTINCT capex_requestor_employee_id)
-      comment: "Number of distinct requestors for capex demand breadth and organizational engagement"
-    - name: "distinct_suppliers"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers for vendor concentration and sourcing strategy analysis"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_consolidation_entry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Consolidation entry KPIs tracking elimination amounts, consolidation adjustments, and intercompany eliminations. Used by Group Controllers and CFO to ensure accurate consolidated financial statements."
-  source: "`vibe_semiconductors_v1`.`finance`.`consolidation_entry`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the consolidation entry for annual consolidation analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly consolidation close monitoring."
-    - name: "entry_type"
-      expr: entry_type
-      comment: "Type of consolidation entry (e.g., Elimination, Reclassification, Adjustment) for close analysis."
-    - name: "consolidation_method"
-      expr: consolidation_method
-      comment: "Consolidation method applied (e.g., Full, Proportional, Equity) for accounting policy tracking."
-    - name: "consolidation_entry_status"
-      expr: consolidation_entry_status
-      comment: "Status of the consolidation entry for close completeness tracking."
-    - name: "elimination_flag"
-      expr: elimination_flag
-      comment: "Flag indicating whether the entry is an intercompany elimination."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the consolidation entry for multi-currency consolidation analysis."
-  measures:
-    - name: "total_amount_gross"
-      expr: SUM(CAST(amount_gross AS DOUBLE))
-      comment: "Total gross consolidation entry amount. Tracks the scale of consolidation adjustments."
-    - name: "total_amount_net"
-      expr: SUM(CAST(amount_net AS DOUBLE))
-      comment: "Total net consolidation entry amount. Core KPI for consolidated P&L and balance sheet accuracy."
-    - name: "total_amount_adjustment"
-      expr: SUM(CAST(amount_adjustment AS DOUBLE))
-      comment: "Total consolidation adjustment amounts. Tracks the magnitude of consolidation corrections."
-    - name: "elimination_entry_count"
-      expr: COUNT(CASE WHEN elimination_flag = TRUE THEN 1 END)
-      comment: "Count of intercompany elimination entries. Tracks consolidation elimination completeness."
-    - name: "reversal_entry_count"
-      expr: COUNT(CASE WHEN is_reversal = TRUE THEN 1 END)
-      comment: "Count of reversal consolidation entries. Tracks consolidation corrections and restatements."
-    - name: "consolidation_entry_count"
-      expr: COUNT(1)
-      comment: "Total consolidation entries. Used to assess consolidation close workload and complexity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_cost_allocation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Cost allocation and overhead distribution metrics tracking allocation methods, rates, and amounts for accurate product costing and profitability analysis"
-  source: "`vibe_semiconductors_v1`.`finance`.`cost_allocation`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for annual cost allocation trend analysis"
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly cost allocation tracking and close process"
-    - name: "allocation_method"
-      expr: allocation_method
-      comment: "Allocation method (direct, step-down, activity-based) for costing methodology tracking"
-    - name: "allocation_basis"
-      expr: allocation_basis
-      comment: "Allocation basis (headcount, square footage, usage) for driver-based costing analysis"
-    - name: "cost_allocation_status"
-      expr: cost_allocation_status
-      comment: "Allocation status for cost close and posting tracking"
-    - name: "reversal_flag"
-      expr: CASE WHEN reversal_indicator = TRUE THEN 'Reversal' ELSE 'Original' END
-      comment: "Reversal indicator for allocation correction and adjustment tracking"
-    - name: "allocation_month"
-      expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month of allocation for monthly cost distribution analysis"
-  measures:
-    - name: "total_allocations"
-      expr: COUNT(1)
-      comment: "Total count of cost allocations for allocation complexity and process efficiency tracking"
-    - name: "total_allocated_amount"
-      expr: SUM(CAST(allocated_amount AS DOUBLE))
-      comment: "Total allocated cost amount for overhead distribution and product costing"
-    - name: "avg_allocation_rate"
-      expr: AVG(CAST(allocation_rate AS DOUBLE))
-      comment: "Average allocation rate for cost driver efficiency and rate stability analysis"
-    - name: "avg_allocation_percentage"
-      expr: AVG(CAST(allocation_percentage AS DOUBLE))
-      comment: "Average allocation percentage for distribution pattern analysis"
-    - name: "total_allocation_base_quantity"
-      expr: SUM(CAST(allocation_base_quantity AS DOUBLE))
-      comment: "Total allocation base quantity for driver volume tracking and rate calculation"
-    - name: "distinct_sender_cost_centers"
-      expr: COUNT(DISTINCT source_cost_center_id)
-      comment: "Number of distinct source cost centers for overhead pool complexity tracking"
-    - name: "distinct_receiver_cost_centers"
-      expr: COUNT(DISTINCT target_cost_center_id)
-      comment: "Number of distinct target cost centers for allocation breadth and impact analysis"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_depreciation_run`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Depreciation run execution KPIs tracking total depreciation charges, accumulated depreciation, and run completion status by fiscal period. Used by Controllers and CFO to validate period-close depreciation accuracy."
-  source: "`vibe_semiconductors_v1`.`finance`.`depreciation_run`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the depreciation run for annual depreciation trend analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the depreciation run for monthly close monitoring."
-    - name: "depreciation_run_status"
-      expr: depreciation_run_status
-      comment: "Status of the depreciation run (e.g., Completed, Failed, In Progress) for close process governance."
-    - name: "run_type"
-      expr: run_type
-      comment: "Type of depreciation run (e.g., Planned, Unplanned, Reversal) for audit trail."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method used in the run for accounting policy consistency checks."
-    - name: "run_date"
-      expr: DATE_TRUNC('month', run_date)
-      comment: "Month of run execution for close cycle timing analysis."
+      comment: "Depreciation method applied (e.g., straight-line, declining balance) — used to compare cost profiles across asset classes."
+    - name: "depreciation_area"
+      expr: depreciation_area
+      comment: "Accounting area for depreciation (book, tax, IFRS) — critical for multi-GAAP reporting."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the depreciation posting — enables year-over-year trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period within the year — supports monthly close and period-end reporting."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval state of the depreciation record — filters for posted vs. pending entries."
+    - name: "asset_depreciation_status"
+      expr: asset_depreciation_status
+      comment: "Lifecycle status of the depreciation record — identifies active, reversed, or cancelled entries."
+    - name: "technology_node"
+      expr: technology_node
+      comment: "Technology node associated with the asset — enables depreciation analysis by process generation (e.g., 5nm, 7nm)."
+    - name: "posted_date_month"
+      expr: DATE_TRUNC('MONTH', posted_date)
+      comment: "Month of posting date — supports monthly depreciation trend dashboards."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the depreciation amounts — required for multi-currency consolidation."
   measures:
     - name: "total_depreciation_amount"
-      expr: SUM(CAST(total_depreciation_amount AS DOUBLE))
-      comment: "Total depreciation charged in the period. Core P&L impact KPI for period-close validation."
+      expr: SUM(CAST(depreciation_amount AS DOUBLE))
+      comment: "Total depreciation expense charged in the period. Core P&L cost metric for capital-intensive semiconductor fabs."
     - name: "total_accumulated_depreciation"
-      expr: SUM(CAST(total_accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation across all runs. Tracks cumulative asset aging on the balance sheet."
-    - name: "total_book_value"
-      expr: SUM(CAST(total_book_value AS DOUBLE))
-      comment: "Total net book value after depreciation. Key balance sheet metric for asset valuation."
-    - name: "total_net_depreciation_amount"
-      expr: SUM(CAST(net_depreciation_amount AS DOUBLE))
-      comment: "Net depreciation amount after adjustments. Used for accurate P&L impact assessment."
+      expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
+      comment: "Total accumulated depreciation across all assets. Indicates how much of the original asset value has been consumed — key for net book value analysis."
+    - name: "total_depreciation_adjustment"
+      expr: SUM(CAST(depreciation_adjustment_amount AS DOUBLE))
+      comment: "Sum of depreciation adjustments (true-ups, corrections). Large values signal asset revaluation events or accounting corrections requiring executive attention."
+    - name: "avg_utilization_factor"
+      expr: AVG(CAST(utilization_factor AS DOUBLE))
+      comment: "Average asset utilization factor across depreciation records. Low utilization on high-value fab equipment directly impacts cost-per-wafer and ROI."
     - name: "avg_depreciation_rate"
       expr: AVG(CAST(depreciation_rate AS DOUBLE))
-      comment: "Average depreciation rate applied across runs. Monitors policy consistency and rate changes."
-    - name: "depreciation_run_count"
+      comment: "Average depreciation rate applied. Monitors consistency of rate application across asset classes and depreciation areas."
+    - name: "depreciation_record_count"
       expr: COUNT(1)
-      comment: "Number of depreciation runs executed. Tracks close process completeness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_nre_agreement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "NRE (Non-Recurring Engineering) agreement financial KPIs tracking total NRE commitments, revenue recognition methods, and agreement status. Used by CFO and Finance to govern NRE revenue recognition and customer engineering investment recovery."
-  source: "`vibe_semiconductors_v1`.`finance`.`finance_nre_agreement`"
-  dimensions:
-    - name: "agreement_type"
-      expr: agreement_type
-      comment: "Type of NRE agreement (e.g., Design, Mask, Process) for NRE portfolio classification."
-    - name: "agreement_status"
-      expr: agreement_status
-      comment: "Status of the NRE agreement (e.g., Active, Completed, Terminated) for pipeline tracking."
-    - name: "finance_nre_agreement_status"
-      expr: finance_nre_agreement_status
-      comment: "Finance-specific status of the NRE agreement for revenue recognition governance."
-    - name: "revenue_recognition_method"
-      expr: revenue_recognition_method
-      comment: "Revenue recognition method (e.g., Milestone, Percentage of Completion) for ASC 606 compliance."
-    - name: "recovery_method"
-      expr: recovery_method
-      comment: "NRE recovery method (e.g., Upfront, Amortized over Units) for cash flow planning."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the NRE agreement for multi-currency revenue analysis."
-    - name: "agreement_date"
-      expr: DATE_TRUNC('quarter', agreement_date)
-      comment: "Quarter of agreement signing for NRE pipeline timing analysis."
-  measures:
-    - name: "total_nre_amount"
-      expr: SUM(CAST(total_nre_amount AS DOUBLE))
-      comment: "Total NRE agreement value. Core KPI for NRE revenue pipeline and engineering investment recovery."
-    - name: "active_nre_agreement_count"
-      expr: COUNT(CASE WHEN agreement_status = 'Active' THEN 1 END)
-      comment: "Count of active NRE agreements. Tracks current engineering engagement volume with customers."
-    - name: "nre_agreement_count"
-      expr: COUNT(1)
-      comment: "Total NRE agreements. Used to assess NRE business scale and customer engineering activity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_nre_milestone`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "NRE milestone billing and revenue recognition KPIs tracking milestone completion, billing status, and revenue recognized. Used by Finance and Revenue Accounting to ensure timely NRE billing and ASC 606 compliance."
-  source: "`vibe_semiconductors_v1`.`finance`.`finance_nre_milestone`"
-  dimensions:
-    - name: "milestone_type"
-      expr: milestone_type
-      comment: "Type of NRE milestone (e.g., Design Complete, Tapeout, Silicon Delivery) for billing trigger analysis."
-    - name: "finance_nre_milestone_status"
-      expr: finance_nre_milestone_status
-      comment: "Status of the milestone (e.g., Pending, Completed, Invoiced) for billing pipeline tracking."
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Invoice status of the milestone for AR and cash collection tracking."
-    - name: "billing_trigger_event"
-      expr: billing_trigger_event
-      comment: "Event that triggers billing (e.g., Tapeout Completion, First Silicon) for revenue recognition governance."
-    - name: "is_revenue_recognized"
-      expr: is_revenue_recognized
-      comment: "Flag indicating whether revenue has been recognized for the milestone."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the milestone for multi-currency NRE revenue analysis."
-    - name: "due_date"
-      expr: DATE_TRUNC('quarter', due_date)
-      comment: "Quarter of milestone due date for NRE billing schedule analysis."
-  measures:
-    - name: "total_milestone_amount"
-      expr: SUM(CAST(milestone_amount AS DOUBLE))
-      comment: "Total NRE milestone billing amount. Tracks NRE revenue pipeline by milestone stage."
-    - name: "total_amount_net"
-      expr: SUM(CAST(amount_net AS DOUBLE))
-      comment: "Total net milestone amount after adjustments. Used for net NRE revenue recognition tracking."
-    - name: "total_amount_tax"
-      expr: SUM(CAST(amount_tax AS DOUBLE))
-      comment: "Total tax on NRE milestones. Tracks tax obligations on engineering service revenue."
-    - name: "recognized_revenue_milestone_count"
-      expr: COUNT(CASE WHEN is_revenue_recognized = TRUE THEN 1 END)
-      comment: "Count of milestones with recognized revenue. Tracks ASC 606 revenue recognition completeness."
-    - name: "pending_billing_milestone_count"
-      expr: COUNT(CASE WHEN invoice_status = 'Pending' THEN 1 END)
-      comment: "Count of milestones pending invoicing. Tracks unbilled NRE revenue at risk of delay."
-    - name: "milestone_count"
-      expr: COUNT(1)
-      comment: "Total NRE milestones. Used to assess NRE billing schedule completeness."
+      comment: "Number of depreciation records in scope. Used as a denominator baseline for average calculations and audit completeness checks."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_fixed_asset`
@@ -458,114 +61,353 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Capital asset performance metrics tracking asset values, depreciation, utilization, and lifecycle for capital planning and asset management"
+  comment: "Provides a comprehensive view of the fixed asset register for semiconductor capital equipment. Supports capex ROI, impairment monitoring, net book value tracking, and maintenance cost governance."
   source: "`vibe_semiconductors_v1`.`finance`.`fixed_asset`"
   dimensions:
     - name: "asset_category"
       expr: asset_category
-      comment: "Asset category (equipment, building, infrastructure) for capital allocation analysis"
-    - name: "asset_class"
-      expr: asset_class
-      comment: "Asset class for detailed asset type segmentation and depreciation policy application"
-    - name: "asset_status"
-      expr: asset_status
-      comment: "Current asset status (active, disposed, impaired) for asset lifecycle tracking"
+      comment: "Category of the fixed asset (e.g., fab equipment, building, IT) — primary grouping for capital reporting."
+    - name: "asset_type"
+      expr: asset_type
+      comment: "Type classification of the asset — supports granular capex analysis by asset class."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method (straight-line, accelerated) for accounting policy compliance"
-    - name: "technology_node_segment"
-      expr: CASE WHEN technology_node_nm <= 7 THEN 'Advanced (≤7nm)' WHEN technology_node_nm <= 28 THEN 'Mainstream (8-28nm)' ELSE 'Mature (>28nm)' END
-      comment: "Technology node segment for semiconductor-specific capital efficiency analysis"
-    - name: "acquisition_year"
+      comment: "Depreciation method applied to the asset — used to compare cost profiles and policy compliance."
+    - name: "fixed_asset_status"
+      expr: fixed_asset_status
+      comment: "Lifecycle status of the asset (active, disposed, impaired) — filters for in-service vs. retired assets."
+    - name: "capitalized"
+      expr: capitalized
+      comment: "Whether the asset has been capitalized — distinguishes expensed vs. capitalized items for balance sheet accuracy."
+    - name: "impairment_indicator"
+      expr: impairment_indicator
+      comment: "Flag indicating the asset has been impaired — critical for financial statement accuracy and audit."
+    - name: "technology_node_nm"
+      expr: technology_node_nm
+      comment: "Technology node in nanometers associated with the asset — enables capex analysis by process generation."
+    - name: "acquisition_date_year"
       expr: YEAR(acquisition_date)
-      comment: "Year of asset acquisition for vintage analysis and capital spending trends"
-    - name: "impairment_flag"
-      expr: CASE WHEN impairment_indicator = TRUE THEN 'Impaired' ELSE 'Not Impaired' END
-      comment: "Asset impairment indicator for financial risk and asset quality monitoring"
-    - name: "grant_funded_flag"
-      expr: CASE WHEN grant_amount > 0 THEN 'Grant Funded' ELSE 'Non-Grant' END
-      comment: "Government grant funding indicator for CHIPS Act and subsidy tracking"
+      comment: "Year of asset acquisition — supports vintage analysis and capex wave tracking."
+    - name: "disposal_method"
+      expr: disposal_method
+      comment: "Method used to dispose of the asset (sale, scrap, transfer) — informs asset lifecycle and residual value management."
   measures:
-    - name: "total_assets"
-      expr: COUNT(1)
-      comment: "Total count of fixed assets for asset portfolio size and complexity tracking"
     - name: "total_acquisition_cost"
       expr: SUM(CAST(acquisition_cost AS DOUBLE))
-      comment: "Total acquisition cost for capital investment tracking and balance sheet valuation"
+      comment: "Total original acquisition cost of fixed assets. Primary capex investment metric for board-level capital allocation decisions."
     - name: "total_net_book_value"
       expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value for balance sheet reporting and asset value monitoring"
+      comment: "Total net book value (cost minus accumulated depreciation) of the asset base. Core balance sheet metric for semiconductor capital-intensive operations."
     - name: "total_accumulated_depreciation"
       expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation for asset aging analysis and replacement planning"
-    - name: "avg_utilization_pct"
-      expr: AVG(CAST(utilization_percentage AS DOUBLE))
-      comment: "Average asset utilization percentage for capacity planning and capital efficiency"
+      comment: "Total accumulated depreciation across all fixed assets. Measures how much of the capital base has been consumed."
     - name: "total_impairment_amount"
       expr: SUM(CAST(impairment_amount AS DOUBLE))
-      comment: "Total impairment charges for financial risk assessment and asset quality monitoring"
+      comment: "Total impairment charges recorded. Elevated impairment signals technology obsolescence or demand downturns requiring strategic response."
+    - name: "total_disposal_proceeds"
+      expr: SUM(CAST(disposal_proceeds AS DOUBLE))
+      comment: "Total proceeds from asset disposals. Tracks capital recovery from retired equipment — relevant for fab refresh and technology migration programs."
     - name: "total_grant_amount"
       expr: SUM(CAST(grant_amount AS DOUBLE))
-      comment: "Total government grant funding for CHIPS Act compliance and subsidy tracking"
-    - name: "avg_remaining_useful_life"
-      expr: AVG(CAST(remaining_useful_life_years AS DOUBLE))
-      comment: "Average remaining useful life in years for replacement planning and capital forecasting"
+      comment: "Total government grants (e.g., CHIPS Act) received against fixed assets. Critical for tracking subsidized capex and compliance with grant conditions."
+    - name: "avg_utilization_percentage"
+      expr: AVG(CAST(utilization_percentage AS DOUBLE))
+      comment: "Average utilization percentage of fixed assets. Low utilization on high-value fab tools directly drives up cost-per-wafer and reduces ROI."
+    - name: "total_depreciation_amount"
+      expr: SUM(CAST(depreciation_amount AS DOUBLE))
+      comment: "Total periodic depreciation expense across the asset register. Key P&L cost driver for semiconductor manufacturing."
+    - name: "total_depreciation_adjustment"
+      expr: SUM(CAST(depreciation_adjustment_amount AS DOUBLE))
+      comment: "Total depreciation adjustments applied. Large adjustments indicate revaluation events or policy changes requiring disclosure."
+    - name: "asset_count"
+      expr: COUNT(1)
+      comment: "Total number of fixed asset records. Baseline for average cost and utilization calculations; also used in audit completeness checks."
+    - name: "impaired_asset_count"
+      expr: COUNT(CASE WHEN impairment_indicator = TRUE THEN 1 END)
+      comment: "Number of assets flagged as impaired. Rising count signals technology obsolescence risk or demand deterioration in specific process nodes."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_intercompany_transaction`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_capex_request`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Intercompany transaction and transfer pricing metrics tracking cross-entity flows, pricing methods, and elimination amounts for consolidation and tax compliance"
-  source: "`vibe_semiconductors_v1`.`finance`.`intercompany_transaction`"
+  comment: "Tracks capital expenditure requests through the approval pipeline. Supports capex governance, budget vs. approved variance analysis, and CHIPS Act funding eligibility tracking."
+  source: "`vibe_semiconductors_v1`.`finance`.`capex_request`"
+  dimensions:
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Current approval status of the capex request — primary filter for pipeline vs. approved capex reporting."
+    - name: "approval_stage"
+      expr: approval_stage
+      comment: "Stage in the approval workflow — identifies bottlenecks in the capex approval process."
+    - name: "capex_request_status"
+      expr: capex_request_status
+      comment: "Lifecycle status of the request (draft, submitted, approved, rejected) — used for pipeline management."
+    - name: "equipment_category"
+      expr: equipment_category
+      comment: "Category of equipment being requested — enables capex analysis by asset class (lithography, etch, CVD, etc.)."
+    - name: "technology_node"
+      expr: technology_node
+      comment: "Technology node the capex investment targets — critical for node-level investment planning."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Source of funding (internal, CHIPS Act grant, debt) — required for capital structure and compliance reporting."
+    - name: "chips_act_funding_eligible"
+      expr: chips_act_funding_eligible
+      comment: "Whether the request qualifies for CHIPS Act funding — key filter for government subsidy tracking."
+    - name: "depreciation_method"
+      expr: depreciation_method
+      comment: "Planned depreciation method for the requested asset — used in financial modeling and tax planning."
+    - name: "risk_rating"
+      expr: risk_rating
+      comment: "Risk rating assigned to the capex request — supports risk-adjusted capital allocation decisions."
+    - name: "request_date_month"
+      expr: DATE_TRUNC('MONTH', request_date)
+      comment: "Month the request was submitted — enables capex pipeline trend analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the request amounts — required for multi-currency capex consolidation."
+  measures:
+    - name: "total_request_amount"
+      expr: SUM(CAST(request_amount AS DOUBLE))
+      comment: "Total value of all capex requests submitted. Primary metric for capex pipeline sizing and budget adequacy assessment."
+    - name: "total_approved_amount"
+      expr: SUM(CAST(approved_amount AS DOUBLE))
+      comment: "Total capex approved. Compared against budget to assess capital deployment pace and approval efficiency."
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budgeted capex across all requests. Baseline for budget vs. approved and budget vs. actual variance analysis."
+    - name: "avg_request_amount"
+      expr: AVG(CAST(request_amount AS DOUBLE))
+      comment: "Average capex request size. Tracks whether investment scale is shifting toward larger or smaller projects over time."
+    - name: "capex_request_count"
+      expr: COUNT(1)
+      comment: "Total number of capex requests. Used to assess investment activity volume and approval throughput."
+    - name: "chips_act_eligible_request_count"
+      expr: COUNT(CASE WHEN chips_act_funding_eligible = TRUE THEN 1 END)
+      comment: "Number of capex requests eligible for CHIPS Act funding. Tracks the scale of government-subsidized investment pipeline."
+    - name: "chips_act_eligible_amount"
+      expr: SUM(CASE WHEN chips_act_funding_eligible = TRUE THEN request_amount ELSE 0 END)
+      comment: "Total value of CHIPS Act-eligible capex requests. Quantifies the potential government subsidy benefit in the investment pipeline."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_budget_plan`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors budget planning performance including planned spend, variance to prior year, and CHIPS Act funding indicators. Supports annual planning, reforecast, and financial governance."
+  source: "`vibe_semiconductors_v1`.`finance`.`budget_plan`"
   dimensions:
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year for annual intercompany activity and transfer pricing analysis"
+      comment: "Fiscal year of the budget plan — primary time dimension for annual planning cycles."
+    - name: "budget_type"
+      expr: budget_type
+      comment: "Type of budget (original, revised, forecast) — distinguishes planning versions for variance analysis."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval state of the budget plan — filters for approved vs. draft budgets in reporting."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle status of the plan (active, closed, archived) — ensures only current plans are included in operational reporting."
+    - name: "planning_method"
+      expr: planning_method
+      comment: "Planning methodology used (top-down, bottom-up, zero-based) — supports planning process governance."
+    - name: "financial_reporting_standard"
+      expr: financial_reporting_standard
+      comment: "Accounting standard (GAAP, IFRS) under which the budget is prepared — required for multi-standard reporting."
+    - name: "chips_act_funding_indicator"
+      expr: chips_act_funding_indicator
+      comment: "Whether the budget plan includes CHIPS Act funding — critical for government subsidy compliance tracking."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the budget amounts — required for multi-currency consolidation."
+  measures:
+    - name: "total_planned_amount_local"
+      expr: SUM(CAST(planned_amount_local AS DOUBLE))
+      comment: "Total planned spend in local currency. Primary budget sizing metric for cost center and entity-level planning."
+    - name: "total_planned_amount_group"
+      expr: SUM(CAST(planned_amount_group AS DOUBLE))
+      comment: "Total planned spend in group reporting currency. Used for consolidated budget reporting across legal entities."
+    - name: "total_planned_quantity"
+      expr: SUM(CAST(planned_quantity AS DOUBLE))
+      comment: "Total planned quantity (wafers, units, headcount) across budget plans. Supports volume-based planning and capacity alignment."
+    - name: "total_variance_to_prior_year_amount"
+      expr: SUM(CAST(variance_to_prior_year_amount AS DOUBLE))
+      comment: "Total budget variance versus prior year in absolute terms. Key metric for year-over-year investment trend analysis presented to the board."
+    - name: "avg_variance_to_prior_year_percent"
+      expr: AVG(CAST(variance_to_prior_year_percent AS DOUBLE))
+      comment: "Average percentage variance to prior year budget. Indicates the magnitude of budget growth or reduction across the planning portfolio."
+    - name: "budget_plan_count"
+      expr: COUNT(1)
+      comment: "Number of budget plans in scope. Used to assess planning coverage and completeness across cost centers."
+    - name: "chips_act_budget_plan_count"
+      expr: COUNT(CASE WHEN chips_act_funding_indicator = TRUE THEN 1 END)
+      comment: "Number of budget plans with CHIPS Act funding. Tracks the breadth of government-subsidized investment planning."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_budget_line`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provides line-level budget execution analysis including planned vs. variance amounts. Supports cost center budget control, fiscal period close, and compliance-flagged spend monitoring."
+  source: "`vibe_semiconductors_v1`.`finance`.`budget_line`"
+  dimensions:
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the budget line — primary time dimension for annual budget reporting."
     - name: "fiscal_period"
       expr: fiscal_period
-      comment: "Fiscal period for monthly intercompany reconciliation and close tracking"
-    - name: "transaction_type"
-      expr: transaction_type
-      comment: "Transaction type (goods, services, royalty, financing) for intercompany flow classification"
-    - name: "transfer_pricing_method"
-      expr: transfer_pricing_method
-      comment: "Transfer pricing method (CUP, cost-plus, TNMM) for tax compliance and OECD alignment"
-    - name: "intercompany_transaction_status"
-      expr: intercompany_transaction_status
-      comment: "Transaction status for intercompany reconciliation and dispute tracking"
-    - name: "elimination_flag"
-      expr: CASE WHEN elimination_flag = TRUE THEN 'Elimination Required' ELSE 'No Elimination' END
-      comment: "Consolidation elimination indicator for group reporting and GAAP compliance"
-    - name: "regulatory_reporting_flag"
-      expr: CASE WHEN regulatory_reporting_flag = TRUE THEN 'Regulatory Reportable' ELSE 'Non-Reportable' END
-      comment: "Regulatory reporting requirement for tax authority and customs compliance"
-    - name: "transaction_month"
-      expr: DATE_TRUNC('MONTH', transaction_date)
-      comment: "Month of transaction for monthly intercompany volume and trend analysis"
+      comment: "Fiscal period of the budget line — supports monthly budget vs. actual close reporting."
+    - name: "budget_category"
+      expr: budget_category
+      comment: "Category of the budget line (capex, opex, R&D) — enables spend category analysis."
+    - name: "cost_element_type"
+      expr: cost_element_type
+      comment: "Type of cost element (labor, material, overhead) — supports cost structure analysis."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the budget line — filters for approved vs. pending lines in close reporting."
+    - name: "budget_line_status"
+      expr: budget_line_status
+      comment: "Lifecycle status of the budget line — identifies frozen, active, or cancelled lines."
+    - name: "is_frozen"
+      expr: is_frozen
+      comment: "Whether the budget line is frozen — frozen lines cannot be modified, indicating finalized budget periods."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Whether the budget line has a compliance requirement — used to track regulatory spend obligations."
+    - name: "allocation_method"
+      expr: allocation_method
+      comment: "Method used to allocate costs to this budget line — supports cost allocation governance."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the budget line amounts — required for multi-currency reporting."
   measures:
-    - name: "total_intercompany_transactions"
+    - name: "total_planned_amount"
+      expr: SUM(CAST(planned_amount AS DOUBLE))
+      comment: "Total planned budget amount across all lines. Primary metric for budget adequacy and cost center funding assessment."
+    - name: "total_variance_amount"
+      expr: SUM(CAST(variance_amount AS DOUBLE))
+      comment: "Total budget variance (planned vs. actual). Negative variance signals overspend requiring management intervention."
+    - name: "avg_variance_percent"
+      expr: AVG(CAST(variance_percent AS DOUBLE))
+      comment: "Average budget variance percentage. Tracks overall budget execution discipline across cost centers."
+    - name: "total_planned_quantity"
+      expr: SUM(CAST(planned_quantity AS DOUBLE))
+      comment: "Total planned quantity across budget lines. Supports volume-based budget analysis (wafers, headcount, units)."
+    - name: "budget_line_count"
       expr: COUNT(1)
-      comment: "Total count of intercompany transactions for cross-entity activity volume tracking"
-    - name: "total_transaction_amount"
-      expr: SUM(CAST(transaction_amount AS DOUBLE))
-      comment: "Total intercompany transaction amount for cross-border flow and tax base analysis"
-    - name: "total_gross_amount"
-      expr: SUM(CAST(amount_gross AS DOUBLE))
-      comment: "Total gross amount before tax for revenue recognition and pricing analysis"
-    - name: "total_net_amount"
-      expr: SUM(CAST(amount_net AS DOUBLE))
-      comment: "Total net amount after tax for cash flow and settlement tracking"
-    - name: "total_tax_amount"
-      expr: SUM(CAST(amount_tax AS DOUBLE))
-      comment: "Total tax amount for withholding tax and VAT compliance tracking"
-    - name: "avg_transfer_pricing_margin"
-      expr: AVG(CAST(transfer_pricing_margin AS DOUBLE))
-      comment: "Average transfer pricing margin for arm's length compliance and tax risk assessment"
-    - name: "distinct_target_entities"
-      expr: COUNT(DISTINCT target_legal_entity_id)
-      comment: "Number of distinct target legal entities for cross-entity relationship mapping"
+      comment: "Total number of budget lines. Used as a baseline for average calculations and budget completeness audits."
+    - name: "compliance_flagged_line_count"
+      expr: COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END)
+      comment: "Number of budget lines with compliance requirements. Tracks the volume of regulatory spend obligations in the budget."
+    - name: "frozen_line_count"
+      expr: COUNT(CASE WHEN is_frozen = TRUE THEN 1 END)
+      comment: "Number of frozen budget lines. Indicates the proportion of the budget that has been locked for the period."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_cost_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provides cost center master data analytics including budget sizing, hierarchy coverage, and active/inactive status. Supports cost center governance, controlling area management, and organizational cost structure analysis."
+  source: "`vibe_semiconductors_v1`.`finance`.`cost_center`"
+  dimensions:
+    - name: "cost_center_type"
+      expr: cost_center_type
+      comment: "Type of cost center (production, overhead, R&D, admin) — primary grouping for cost structure analysis."
+    - name: "cost_center_category"
+      expr: cost_center_category
+      comment: "Category classification of the cost center — supports granular cost reporting."
+    - name: "controlling_area"
+      expr: controlling_area
+      comment: "Controlling area the cost center belongs to — required for SAP-style management accounting segmentation."
+    - name: "cost_center_status"
+      expr: cost_center_status
+      comment: "Active/inactive status of the cost center — filters for operational vs. closed cost centers."
+    - name: "is_active"
+      expr: is_active
+      comment: "Boolean active flag — quick filter for active cost centers in operational reporting."
+    - name: "country_code"
+      expr: country_code
+      comment: "Country of the cost center — enables geographic cost analysis across global fab operations."
+    - name: "region_code"
+      expr: region_code
+      comment: "Regional grouping of the cost center — supports regional P&L and cost allocation analysis."
+    - name: "hierarchy_level"
+      expr: hierarchy_level
+      comment: "Level in the cost center hierarchy — used to filter for leaf-level vs. summary cost centers."
+    - name: "budget_year"
+      expr: budget_year
+      comment: "Budget year associated with the cost center — supports annual budget cycle analysis."
+  measures:
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budgeted spend across all cost centers. Primary metric for organizational cost planning and resource allocation."
+    - name: "cost_center_count"
+      expr: COUNT(1)
+      comment: "Total number of cost centers. Used to assess organizational complexity and controlling area coverage."
+    - name: "active_cost_center_count"
+      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
+      comment: "Number of active cost centers. Tracks the operational footprint of the controlling organization."
+    - name: "avg_budget_amount"
+      expr: AVG(CAST(budget_amount AS DOUBLE))
+      comment: "Average budget per cost center. Identifies cost centers that are significantly over- or under-resourced relative to peers."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_cost_allocation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Analyzes cost allocation execution including allocated amounts, allocation rates, and reversal activity. Supports overhead absorption governance, period-end close quality, and allocation method effectiveness."
+  source: "`vibe_semiconductors_v1`.`finance`.`cost_allocation`"
+  dimensions:
+    - name: "allocation_method"
+      expr: allocation_method
+      comment: "Method used to allocate costs (activity-based, headcount, square footage) — primary dimension for allocation policy analysis."
+    - name: "allocation_basis"
+      expr: allocation_basis
+      comment: "Basis for the allocation (labor hours, machine hours, revenue) — supports allocation driver analysis."
+    - name: "cost_allocation_status"
+      expr: cost_allocation_status
+      comment: "Status of the allocation record (posted, reversed, pending) — filters for completed vs. in-progress allocations."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the allocation — enables year-over-year overhead absorption trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the allocation — supports monthly close and period-end allocation completeness checks."
+    - name: "fiscal_quarter"
+      expr: fiscal_quarter
+      comment: "Fiscal quarter of the allocation — supports quarterly overhead absorption reporting."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Whether the allocation was reversed — high reversal rates signal allocation quality issues."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the allocation amounts — required for multi-currency overhead reporting."
+  measures:
+    - name: "total_allocated_amount"
+      expr: SUM(CAST(allocated_amount AS DOUBLE))
+      comment: "Total cost allocated across all records. Primary metric for overhead absorption completeness and cost distribution effectiveness."
+    - name: "avg_allocation_rate"
+      expr: AVG(CAST(allocation_rate AS DOUBLE))
+      comment: "Average allocation rate applied. Monitors rate consistency and identifies outliers that may indicate misallocation."
+    - name: "total_allocation_base_quantity"
+      expr: SUM(CAST(allocation_base_quantity AS DOUBLE))
+      comment: "Total allocation driver quantity (hours, units, etc.). Used to validate allocation base adequacy and driver accuracy."
+    - name: "allocation_record_count"
+      expr: COUNT(1)
+      comment: "Total number of allocation records. Baseline for allocation completeness and period-end close quality assessment."
+    - name: "reversal_count"
+      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
+      comment: "Number of reversed allocation records. High reversal counts indicate allocation quality issues requiring process improvement."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_journal_entry`
@@ -573,170 +415,155 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core financial transaction metrics tracking journal entry volumes, amounts, and posting patterns for financial close and audit analysis"
+  comment: "Monitors general ledger journal entry activity including posting volumes, amounts, tax, and reversal rates. Supports period-end close governance, audit readiness, and financial control effectiveness."
   source: "`vibe_semiconductors_v1`.`finance`.`journal_entry`"
   dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the journal entry for year-over-year financial analysis"
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly/quarterly financial close tracking"
-    - name: "entry_type"
-      expr: entry_type
-      comment: "Type of journal entry (standard, adjustment, accrual, reversal) for transaction classification"
     - name: "document_type"
       expr: document_type
-      comment: "Document type for source system traceability and audit trail"
+      comment: "Type of journal entry document (standard, accrual, reversal, intercompany) — primary classification for GL activity analysis."
     - name: "posting_status"
       expr: posting_status
-      comment: "Posting status (draft, posted, reversed) for financial close monitoring"
-    - name: "intercompany_flag"
-      expr: CASE WHEN intercompany_indicator = TRUE THEN 'Intercompany' ELSE 'Non-Intercompany' END
-      comment: "Intercompany transaction flag for consolidation and elimination tracking"
-    - name: "posting_month"
-      expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month of posting for monthly financial reporting and trend analysis"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency for multi-currency financial analysis"
-  measures:
-    - name: "total_journal_entries"
-      expr: COUNT(1)
-      comment: "Total count of journal entries for transaction volume monitoring and close efficiency"
-    - name: "total_debit_amount"
-      expr: SUM(CAST(total_debit AS DOUBLE))
-      comment: "Total debit amount for double-entry validation and financial statement preparation"
-    - name: "total_credit_amount"
-      expr: SUM(CAST(total_credit AS DOUBLE))
-      comment: "Total credit amount for double-entry validation and balance verification"
-    - name: "net_amount_sum"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Sum of net amounts for financial impact analysis and P&L tracking"
-    - name: "avg_entry_amount"
-      expr: AVG(CAST(net_amount AS DOUBLE))
-      comment: "Average journal entry amount for transaction size analysis and anomaly detection"
-    - name: "distinct_legal_entities"
-      expr: COUNT(DISTINCT legal_entity_id)
-      comment: "Number of distinct legal entities with journal activity for consolidation scope tracking"
-    - name: "reversal_entry_count"
-      expr: SUM(CASE WHEN reversal_indicator = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reversal entries for error correction tracking and process quality monitoring"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_profit_center`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Profit center performance metrics tracking budget vs actual, variance, and allocation for business unit profitability and accountability"
-  source: "`vibe_semiconductors_v1`.`finance`.`profit_center`"
-  dimensions:
-    - name: "profit_center_type"
-      expr: profit_center_type
-      comment: "Profit center type (product line, geography, customer segment) for organizational structure analysis"
-    - name: "profit_center_category"
-      expr: profit_center_category
-      comment: "Profit center category for business unit classification and reporting hierarchy"
-    - name: "profit_center_status"
-      expr: profit_center_status
-      comment: "Profit center status (active, inactive, closed) for organizational change tracking"
-    - name: "technology_node"
-      expr: technology_node
-      comment: "Technology node for semiconductor-specific profit center segmentation"
-    - name: "geographic_region"
-      expr: geographic_region
-      comment: "Geographic region for regional profitability and market performance analysis"
-    - name: "product_line"
-      expr: product_line
-      comment: "Product line for portfolio profitability and strategic investment decisions"
-    - name: "sox_compliant"
-      expr: CASE WHEN sox_compliant = TRUE THEN 'SOX Compliant' ELSE 'Non-SOX' END
-      comment: "SOX compliance indicator for internal control and audit scope tracking"
-    - name: "consolidated_flag"
-      expr: CASE WHEN is_consolidated = TRUE THEN 'Consolidated' ELSE 'Non-Consolidated' END
-      comment: "Consolidation indicator for group reporting and segment analysis"
-  measures:
-    - name: "total_profit_centers"
-      expr: COUNT(1)
-      comment: "Total count of profit centers for organizational complexity and span of control tracking"
-    - name: "total_budget_amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Total budget amount for resource allocation and financial planning"
-    - name: "total_actual_spend"
-      expr: SUM(CAST(actual_spend AS DOUBLE))
-      comment: "Total actual spend for budget execution and cost control monitoring"
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total budget variance for financial performance and accountability tracking"
-    - name: "avg_allocation_pct"
-      expr: AVG(CAST(allocation_percent AS DOUBLE))
-      comment: "Average allocation percentage for cost distribution and overhead assignment analysis"
-    - name: "distinct_legal_entities"
-      expr: COUNT(DISTINCT legal_entity_id)
-      comment: "Number of distinct legal entities for cross-entity profit center scope tracking"
-    - name: "active_profit_centers"
-      expr: SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of active profit centers for current organizational structure monitoring"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_rd_capitalization`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "R&D capitalization and amortization metrics tracking capitalized development costs, useful life, and asset creation for financial reporting and tax compliance"
-  source: "`vibe_semiconductors_v1`.`finance`.`rd_capitalization`"
-  dimensions:
+      comment: "Posting status of the journal entry (posted, parked, blocked) — critical for period-end close completeness."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year for annual R&D capitalization trend and policy compliance tracking"
-    - name: "capitalization_status"
-      expr: capitalization_status
-      comment: "Capitalization status (pending, approved, capitalized, expensed) for accounting treatment tracking"
-    - name: "rd_capitalization_status"
-      expr: rd_capitalization_status
-      comment: "R&D capitalization status for lifecycle and approval workflow tracking"
-    - name: "capitalized_asset_type"
-      expr: capitalized_asset_type
-      comment: "Asset type (software, IP core, process technology) for intangible asset classification"
+      comment: "Fiscal year of the journal entry — enables year-over-year GL activity trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the journal entry — supports monthly close volume and amount analysis."
+    - name: "debit_credit_indicator"
+      expr: debit_credit_indicator
+      comment: "Debit or credit indicator — used to validate balanced entry posting and detect anomalies."
+    - name: "intercompany_indicator"
+      expr: intercompany_indicator
+      comment: "Whether the entry is intercompany — used to isolate intercompany elimination candidates."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Whether the entry has been reversed — high reversal rates signal close quality issues."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the journal entry — required for multi-currency GL reporting."
+    - name: "posting_timestamp_month"
+      expr: DATE_TRUNC('MONTH', posting_timestamp)
+      comment: "Month of posting — supports monthly close volume trend analysis."
+  measures:
+    - name: "total_amount_base"
+      expr: SUM(CAST(amount_base AS DOUBLE))
+      comment: "Total journal entry amount in base currency. Primary GL volume metric for financial close monitoring."
+    - name: "total_amount_local"
+      expr: SUM(CAST(amount_local AS DOUBLE))
+      comment: "Total journal entry amount in local currency. Used for entity-level P&L and balance sheet reconciliation."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net amount after tax across all journal entries. Supports net P&L impact analysis."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount posted via journal entries. Supports tax provision reconciliation and indirect tax reporting."
+    - name: "journal_entry_count"
+      expr: COUNT(1)
+      comment: "Total number of journal entries. Baseline for close volume analysis and audit sampling frame sizing."
+    - name: "reversal_entry_count"
+      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
+      comment: "Number of reversed journal entries. High reversal rates indicate close quality issues or systematic posting errors."
+    - name: "intercompany_entry_count"
+      expr: COUNT(CASE WHEN intercompany_indicator = TRUE THEN 1 END)
+      comment: "Number of intercompany journal entries. Used to size the intercompany elimination workload and monitor intercompany balance exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_journal_entry_line`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provides line-level GL analysis for detailed cost and revenue attribution. Supports account-level reconciliation, cost center charge analysis, and audit trail completeness."
+  source: "`vibe_semiconductors_v1`.`finance`.`journal_entry_line`"
+  dimensions:
+    - name: "debit_credit_indicator"
+      expr: debit_credit_indicator
+      comment: "Debit or credit indicator at the line level — used to validate balanced posting and detect anomalies."
+    - name: "line_status"
+      expr: line_status
+      comment: "Status of the journal entry line (posted, cleared, open) — supports reconciliation and open item management."
+    - name: "functional_area"
+      expr: functional_area
+      comment: "Functional area (manufacturing, R&D, SG&A) — enables P&L analysis by business function."
+    - name: "tax_code"
+      expr: tax_code
+      comment: "Tax code applied to the line — supports indirect tax analysis and compliance reporting."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Whether the line has been reversed — used to identify correcting entries and assess close quality."
+    - name: "effective_date_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month of the effective date — supports monthly accrual and cost attribution analysis."
+    - name: "posting_date_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month of the posting date — used for period-end close completeness monitoring."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the line amounts — required for multi-currency GL line analysis."
+  measures:
+    - name: "total_amount_document_currency"
+      expr: SUM(CAST(amount_document_currency AS DOUBLE))
+      comment: "Total line amount in document currency. Primary metric for GL line-level financial analysis and account reconciliation."
+    - name: "total_amount_local_currency"
+      expr: SUM(CAST(amount_local_currency AS DOUBLE))
+      comment: "Total line amount in local currency. Used for entity-level cost attribution and P&L analysis."
+    - name: "journal_entry_line_count"
+      expr: COUNT(1)
+      comment: "Total number of journal entry lines. Baseline for audit sampling, reconciliation completeness, and close volume monitoring."
+    - name: "reversal_line_count"
+      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
+      comment: "Number of reversed journal entry lines. Elevated counts signal systematic posting errors or close quality issues."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_depreciation_run`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors depreciation run execution including total depreciation posted, accumulated balances, and run completion status. Supports period-end close governance and depreciation policy compliance."
+  source: "`vibe_semiconductors_v1`.`finance`.`depreciation_run`"
+  dimensions:
+    - name: "run_type"
+      expr: run_type
+      comment: "Type of depreciation run (planned, unplanned, test) — distinguishes production runs from test executions."
+    - name: "depreciation_run_status"
+      expr: depreciation_run_status
+      comment: "Status of the depreciation run (completed, failed, in-progress) — critical for period-end close monitoring."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method for amortization policy and useful life tracking"
-    - name: "technology_readiness_level"
-      expr: technology_readiness_level
-      comment: "Technology readiness level (TRL) for R&D stage and capitalization eligibility assessment"
-    - name: "external_audit_flag"
-      expr: CASE WHEN external_audit_flag = TRUE THEN 'External Audit Required' ELSE 'No External Audit' END
-      comment: "External audit requirement for financial statement audit and SOX compliance"
-    - name: "reversal_flag"
-      expr: CASE WHEN is_reversal = TRUE THEN 'Reversal' ELSE 'Original' END
-      comment: "Reversal indicator for capitalization correction and adjustment tracking"
-    - name: "capitalization_year"
-      expr: YEAR(capitalization_date)
-      comment: "Year of capitalization for annual R&D asset creation and investment tracking"
+      comment: "Depreciation method applied in the run — used to validate method consistency across periods."
+    - name: "schedule_frequency"
+      expr: schedule_frequency
+      comment: "Frequency of the depreciation schedule (monthly, quarterly) — supports run cadence governance."
+    - name: "is_manual_override"
+      expr: is_manual_override
+      comment: "Whether the run included manual overrides — manual overrides require additional audit scrutiny."
+    - name: "period_start_date_month"
+      expr: DATE_TRUNC('MONTH', period_start_date)
+      comment: "Month of the depreciation period start — enables monthly depreciation trend analysis."
   measures:
-    - name: "total_capitalization_events"
+    - name: "total_depreciation_amount"
+      expr: SUM(CAST(total_depreciation_amount AS DOUBLE))
+      comment: "Total depreciation amount posted across all runs. Primary metric for period depreciation expense monitoring."
+    - name: "total_accumulated_depreciation"
+      expr: SUM(CAST(total_accumulated_depreciation AS DOUBLE))
+      comment: "Total accumulated depreciation balance across all runs. Tracks the cumulative consumption of the fixed asset base."
+    - name: "total_book_value"
+      expr: SUM(CAST(total_book_value AS DOUBLE))
+      comment: "Total net book value of assets after depreciation runs. Key balance sheet metric for capital-intensive semiconductor operations."
+    - name: "total_tax_adjustment"
+      expr: SUM(CAST(depreciation_tax_adjustment AS DOUBLE))
+      comment: "Total tax depreciation adjustments across runs. Supports deferred tax calculation and tax provision accuracy."
+    - name: "avg_depreciation_rate"
+      expr: AVG(CAST(depreciation_rate AS DOUBLE))
+      comment: "Average depreciation rate applied across runs. Monitors rate consistency and identifies policy deviations."
+    - name: "depreciation_run_count"
       expr: COUNT(1)
-      comment: "Total count of R&D capitalization events for intangible asset creation volume tracking"
-    - name: "total_capitalized_amount"
-      expr: SUM(CAST(capitalized_amount AS DOUBLE))
-      comment: "Total capitalized R&D amount for balance sheet intangible asset value and investment tracking"
-    - name: "total_expensed_amount"
-      expr: SUM(CAST(expensed_amount AS DOUBLE))
-      comment: "Total expensed R&D amount for P&L impact and tax deduction tracking"
-    - name: "total_original_expense"
-      expr: SUM(CAST(original_expense_amount AS DOUBLE))
-      comment: "Total original expense amount for capitalization rate and policy compliance analysis"
-    - name: "avg_useful_life_years"
-      expr: AVG(CAST(useful_life_years AS DOUBLE))
-      comment: "Average useful life in years for amortization period and asset lifecycle planning"
-    - name: "distinct_projects"
-      expr: COUNT(DISTINCT project_id)
-      comment: "Number of distinct R&D projects with capitalization for innovation portfolio tracking"
-    - name: "distinct_cost_centers"
-      expr: COUNT(DISTINCT cost_center_id)
-      comment: "Number of distinct cost centers with R&D capitalization for organizational scope tracking"
+      comment: "Total number of depreciation runs. Used to verify run completeness for each period-end close."
+    - name: "manual_override_run_count"
+      expr: COUNT(CASE WHEN is_manual_override = TRUE THEN 1 END)
+      comment: "Number of runs with manual overrides. Elevated counts require audit justification and may signal control weaknesses."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_standard_cost`
@@ -744,164 +571,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Product standard cost and variance metrics tracking cost components, yield assumptions, and cost per die for profitability analysis and pricing decisions"
+  comment: "Tracks standard cost models for semiconductor products including wafer cost, die cost, and yield targets. Supports cost-per-wafer benchmarking, margin modeling, and technology node cost competitiveness analysis."
   source: "`vibe_semiconductors_v1`.`finance`.`standard_cost`"
   dimensions:
-    - name: "cost_type"
-      expr: cost_type
-      comment: "Cost type (material, labor, overhead, equipment) for cost structure analysis"
-    - name: "cost_category"
-      expr: cost_category
-      comment: "Cost category for detailed cost classification and driver analysis"
-    - name: "cost_status"
-      expr: cost_status
-      comment: "Cost status (active, frozen, expired) for cost version control and lifecycle tracking"
     - name: "technology_node"
       expr: technology_node
-      comment: "Technology node for node-specific cost analysis and pricing strategy"
-    - name: "product_family"
-      expr: product_family
-      comment: "Product family for portfolio-level cost and margin analysis"
+      comment: "Technology node of the standard cost model — primary dimension for node-level cost competitiveness analysis."
+    - name: "cost_type"
+      expr: cost_type
+      comment: "Type of standard cost (current, planned, target) — distinguishes cost versions for variance analysis."
+    - name: "cost_category"
+      expr: cost_category
+      comment: "Category of cost (wafer, packaging, test, overhead) — enables cost structure decomposition."
+    - name: "cost_status"
+      expr: cost_status
+      comment: "Status of the cost model (active, superseded, draft) — filters for current vs. historical cost standards."
+    - name: "is_active"
+      expr: is_active
+      comment: "Whether the cost model is currently active — primary filter for operational cost reporting."
+    - name: "cost_basis"
+      expr: cost_basis
+      comment: "Basis for cost calculation (actual, standard, target) — supports cost accounting method analysis."
     - name: "product_line"
       expr: product_line
-      comment: "Product line for business unit cost performance tracking"
-    - name: "cost_version"
-      expr: cost_version
-      comment: "Cost version for standard cost revision and reforecast tracking"
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year for annual cost trend and inflation analysis"
+      comment: "Product line associated with the standard cost — enables product-line margin analysis."
+    - name: "product_family"
+      expr: product_family
+      comment: "Product family of the standard cost — supports family-level cost benchmarking."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the cost amounts — required for multi-currency cost comparison."
+    - name: "effective_date_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month the standard cost became effective — supports cost trend analysis over time."
   measures:
-    - name: "total_cost_records"
-      expr: COUNT(1)
-      comment: "Total count of standard cost records for cost model complexity tracking"
-    - name: "total_material_cost"
-      expr: SUM(CAST(material_cost AS DOUBLE))
-      comment: "Total material cost for bill-of-material cost analysis and procurement efficiency"
-    - name: "total_labor_cost"
-      expr: SUM(CAST(labor_cost AS DOUBLE))
-      comment: "Total labor cost for workforce efficiency and productivity analysis"
-    - name: "total_overhead_cost"
-      expr: SUM(CAST(overhead_cost AS DOUBLE))
-      comment: "Total overhead cost for indirect cost management and absorption rate tracking"
-    - name: "avg_cost_per_good_die"
-      expr: AVG(CAST(cost_per_good_die AS DOUBLE))
-      comment: "Average cost per good die for semiconductor unit economics and pricing strategy"
-    - name: "avg_target_yield_pct"
-      expr: AVG(CAST(target_yield_percent AS DOUBLE))
-      comment: "Average target yield percentage for manufacturing efficiency and cost competitiveness"
     - name: "total_wafer_cost"
       expr: SUM(CAST(total_wafer_cost AS DOUBLE))
-      comment: "Total wafer cost for fab cost analysis and capacity utilization economics"
+      comment: "Total standard wafer cost across all cost models. Primary cost metric for fab economics and cost-per-wafer benchmarking."
+    - name: "avg_cost_per_good_die"
+      expr: AVG(CAST(cost_per_good_die AS DOUBLE))
+      comment: "Average cost per good die. Core profitability metric — directly drives product gross margin and pricing decisions."
+    - name: "avg_target_yield_percent"
+      expr: AVG(CAST(target_yield_percent AS DOUBLE))
+      comment: "Average target yield percentage across cost models. Low yield targets signal process maturity issues that inflate cost-per-die."
+    - name: "avg_material_cost_per_wafer"
+      expr: AVG(CAST(material_cost_per_wafer AS DOUBLE))
+      comment: "Average material cost per wafer. Tracks raw material cost efficiency — key input for supply chain cost reduction initiatives."
+    - name: "avg_equipment_depreciation_per_wafer"
+      expr: AVG(CAST(equipment_depreciation_per_wafer AS DOUBLE))
+      comment: "Average equipment depreciation allocated per wafer. Measures capital intensity of the manufacturing process — critical for node economics."
     - name: "avg_fab_overhead_rate"
       expr: AVG(CAST(fab_overhead_rate AS DOUBLE))
-      comment: "Average fab overhead rate for manufacturing cost structure and efficiency benchmarking"
-    - name: "distinct_products"
-      expr: COUNT(DISTINCT ic_catalog_id)
-      comment: "Number of distinct products with standard costs for portfolio breadth tracking"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_tax_provision`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tax provision KPIs tracking effective tax rates, deferred tax positions, and provision accuracy. Used by Tax Directors and CFO to manage tax risk, optimize tax positions, and ensure ASC 740 / IAS 12 compliance."
-  source: "`vibe_semiconductors_v1`.`finance`.`tax_provision`"
-  dimensions:
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the tax provision for annual effective tax rate analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for quarterly tax provision review and interim reporting."
-    - name: "tax_type"
-      expr: tax_type
-      comment: "Type of tax (e.g., Corporate Income Tax, Deferred Tax, Withholding) for tax category analysis."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Tax jurisdiction for multi-jurisdiction tax exposure analysis."
-    - name: "tax_provision_status"
-      expr: tax_provision_status
-      comment: "Status of the tax provision (e.g., Estimated, Final, Reversed) for close governance."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the tax provision for governance and audit readiness."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the provision for multi-currency tax analysis."
-  measures:
-    - name: "total_provision_amount"
-      expr: SUM(CAST(provision_amount AS DOUBLE))
-      comment: "Total tax provision amount. Core KPI for tax liability management and financial statement accuracy."
-    - name: "total_tax_expense_amount"
-      expr: SUM(CAST(tax_expense_amount AS DOUBLE))
-      comment: "Total current tax expense. Tracks cash tax obligation for treasury planning."
-    - name: "total_deferred_tax_asset"
-      expr: SUM(CAST(deferred_tax_asset_amount AS DOUBLE))
-      comment: "Total deferred tax asset. Tracks future tax benefit positions on the balance sheet."
-    - name: "total_deferred_tax_liability"
-      expr: SUM(CAST(deferred_tax_liability_amount AS DOUBLE))
-      comment: "Total deferred tax liability. Tracks future tax obligations requiring balance sheet management."
-    - name: "avg_effective_tax_rate"
-      expr: AVG(CAST(effective_tax_rate AS DOUBLE))
-      comment: "Average effective tax rate. Key executive KPI for tax efficiency and jurisdiction optimization."
-    - name: "total_tax_credit_carryforward"
-      expr: SUM(CAST(tax_credit_carryforward_amount AS DOUBLE))
-      comment: "Total tax credit carryforward amounts. Tracks unutilized tax credits for future tax planning."
-    - name: "total_pretax_income"
-      expr: SUM(CAST(pretax_income AS DOUBLE))
-      comment: "Total pre-tax income subject to provision. Used to validate effective tax rate calculations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_transfer_price`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Transfer pricing KPIs tracking intercompany pricing rates, margins, and OECD compliance. Used by Tax Directors and CFO to manage transfer pricing risk, ensure arm's length compliance, and optimize global tax positions."
-  source: "`vibe_semiconductors_v1`.`finance`.`transfer_price`"
-  dimensions:
-    - name: "transfer_price_type"
-      expr: transfer_price_type
-      comment: "Type of transfer price (e.g., Goods, Services, IP Royalty) for pricing category analysis."
-    - name: "price_method"
-      expr: price_method
-      comment: "Transfer pricing method (e.g., CUP, Cost Plus, TNMM) for OECD compliance tracking."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the transfer price for governance and audit readiness."
-    - name: "transfer_price_status"
-      expr: transfer_price_status
-      comment: "Current status of the transfer price record (e.g., Active, Expired, Under Review)."
-    - name: "product_category"
-      expr: product_category
-      comment: "Product category for transfer pricing analysis by product type."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the transfer price for multi-currency analysis."
-    - name: "effective_date"
-      expr: DATE_TRUNC('year', effective_date)
-      comment: "Year of transfer price effective date for annual pricing review cycle."
-  measures:
-    - name: "avg_effective_price_per_unit"
-      expr: AVG(CAST(effective_price_per_unit AS DOUBLE))
-      comment: "Average effective transfer price per unit. Core KPI for intercompany pricing benchmarking."
-    - name: "avg_margin_rate"
-      expr: AVG(CAST(margin_rate AS DOUBLE))
-      comment: "Average transfer pricing margin rate. Monitors arm's length margin compliance."
-    - name: "avg_markup_percent"
-      expr: AVG(CAST(markup_percent AS DOUBLE))
-      comment: "Average markup percentage applied. Tracks cost-plus pricing consistency across entities."
-    - name: "avg_tax_rate"
-      expr: AVG(CAST(tax_rate AS DOUBLE))
-      comment: "Average tax rate on transfer prices. Used for cross-jurisdiction tax burden analysis."
-    - name: "non_compliant_price_count"
-      expr: COUNT(CASE WHEN compliance_flag = FALSE THEN 1 END)
-      comment: "Count of transfer prices flagged as non-compliant. High counts signal transfer pricing audit risk."
-    - name: "transfer_price_record_count"
+      comment: "Average fab overhead rate. Tracks overhead absorption efficiency — high rates indicate underutilization of fab capacity."
+    - name: "avg_packaging_cost_per_die"
+      expr: AVG(CAST(packaging_cost_per_die AS DOUBLE))
+      comment: "Average packaging cost per die. Packaging is a significant cost component — tracks OSAT cost efficiency."
+    - name: "avg_mask_set_cost"
+      expr: AVG(CAST(mask_set_cost AS DOUBLE))
+      comment: "Average mask set cost amortized into standard cost. High mask costs at advanced nodes are a key NRE cost driver."
+    - name: "avg_labor_rate_per_hour"
+      expr: AVG(CAST(labor_rate_per_hour AS DOUBLE))
+      comment: "Average labor rate per hour in the standard cost model. Supports workforce cost benchmarking and fab location decisions."
+    - name: "standard_cost_model_count"
       expr: COUNT(1)
-      comment: "Total transfer price records. Tracks pricing coverage across intercompany flows."
+      comment: "Total number of standard cost models. Used to assess cost model coverage across products and technology nodes."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_wafer_cost_model`
@@ -909,50 +642,751 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Wafer cost model KPIs providing detailed fab economics analysis including cost per wafer, yield assumptions, and overhead rates by technology node and fab location. Used by CFO and Fab Finance to optimize wafer economics and set competitive pricing."
+  comment: "Provides detailed wafer cost model analytics by technology node and process flow. Supports cost-per-wafer benchmarking, fab economics analysis, and technology node investment decisions."
   source: "`vibe_semiconductors_v1`.`finance`.`wafer_cost_model`"
   dimensions:
     - name: "technology_node"
       expr: technology_node
-      comment: "Technology node for node-level wafer cost benchmarking."
-    - name: "process_node_nm"
-      expr: process_node_nm
-      comment: "Process node in nanometers for precise technology cost comparison."
-    - name: "fab_location"
-      expr: fab_location
-      comment: "Fab location for geographic cost comparison and fab efficiency analysis."
-    - name: "wafer_size_mm"
-      expr: wafer_size_mm
-      comment: "Wafer size (e.g., 200mm, 300mm) for wafer economics comparison."
+      comment: "Technology node of the wafer cost model — primary dimension for node-level cost competitiveness analysis."
+    - name: "model_code"
+      expr: model_code
+      comment: "Unique code identifying the cost model version — used to track model evolution over time."
     - name: "wafer_cost_model_status"
       expr: wafer_cost_model_status
-      comment: "Status of the cost model (e.g., Active, Draft, Archived) for version governance."
-    - name: "effective_date"
-      expr: DATE_TRUNC('quarter', effective_date)
-      comment: "Quarter of model effective date for cost trend analysis."
+      comment: "Status of the cost model (active, archived, draft) — filters for current vs. historical models."
+    - name: "fab_location"
+      expr: fab_location
+      comment: "Physical fab location of the cost model — enables cost comparison across fab sites."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the cost model amounts — required for multi-currency cost benchmarking."
+    - name: "effective_start_date_year"
+      expr: YEAR(effective_start_date)
+      comment: "Year the cost model became effective — supports annual cost trend analysis."
+    - name: "wafer_diameter_mm"
+      expr: wafer_diameter_mm
+      comment: "Wafer diameter in millimeters (200mm, 300mm) — critical dimension for cost-per-wafer comparison across fab generations."
   measures:
-    - name: "avg_cost_per_wafer_usd"
-      expr: AVG(CAST(cost_per_wafer_usd AS DOUBLE))
-      comment: "Average cost per wafer in USD. Primary fab economics KPI for pricing and profitability analysis."
-    - name: "avg_total_cost_per_wafer_usd"
+    - name: "avg_total_cost_per_wafer"
       expr: AVG(CAST(total_cost_per_wafer_usd AS DOUBLE))
-      comment: "Average total all-in cost per wafer. Used for comprehensive wafer economics benchmarking."
-    - name: "avg_silicon_wafer_cost_usd"
+      comment: "Average total cost per wafer in USD. The single most important fab economics metric — drives pricing, margin, and technology investment decisions."
+    - name: "avg_silicon_wafer_cost"
       expr: AVG(CAST(silicon_wafer_cost_usd AS DOUBLE))
-      comment: "Average silicon wafer substrate cost. Tracks raw material cost component of wafer economics."
-    - name: "avg_equipment_depreciation_usd_per_wafer"
+      comment: "Average silicon wafer substrate cost. Tracks raw material cost efficiency — key input for supply chain negotiations."
+    - name: "avg_equipment_depreciation_per_wafer"
       expr: AVG(CAST(equipment_depreciation_usd_per_wafer AS DOUBLE))
-      comment: "Average equipment depreciation per wafer. Tracks capital cost absorption in wafer cost structure."
+      comment: "Average equipment depreciation per wafer. Measures capital intensity — high values at advanced nodes drive investment justification analysis."
+    - name: "avg_labor_cost_per_wafer"
+      expr: AVG(CAST(labor_rate_usd_per_hour AS DOUBLE) * CAST(labor_hours_per_wafer AS DOUBLE))
+      comment: "Average labor cost per wafer (rate × hours). Tracks workforce cost efficiency across fab locations and technology nodes."
+    - name: "avg_chemicals_gases_cost_per_wafer"
+      expr: AVG(CAST(chemicals_gases_cost_usd_per_wafer AS DOUBLE))
+      comment: "Average chemicals and gases cost per wafer. Consumables are a significant variable cost — tracks process efficiency and supplier pricing."
     - name: "avg_fab_overhead_rate_percent"
       expr: AVG(CAST(fab_overhead_rate_percent AS DOUBLE))
-      comment: "Average fab overhead rate percentage. High overhead rates signal underutilization or inefficiency."
-    - name: "avg_yield_assumption_percent"
-      expr: AVG(CAST(yield_assumption_percent AS DOUBLE))
-      comment: "Average yield assumption used in cost models. Directly impacts cost per good die calculations."
-    - name: "avg_mask_set_cost_usd"
+      comment: "Average fab overhead rate percentage. High overhead rates signal underutilization — key metric for capacity management decisions."
+    - name: "avg_target_yield_percent"
+      expr: AVG(CAST(target_yield_percent AS DOUBLE))
+      comment: "Average target yield percentage in cost models. Yield is the primary lever for cost-per-good-die reduction at advanced nodes."
+    - name: "avg_mask_set_cost"
       expr: AVG(CAST(mask_set_cost_usd AS DOUBLE))
-      comment: "Average mask set cost in USD. Key NRE cost driver at advanced technology nodes."
+      comment: "Average mask set cost in USD. At advanced nodes, mask costs are a major NRE component — critical for technology node economics."
+    - name: "avg_mask_set_amortization_wafers"
+      expr: AVG(CAST(mask_set_amortization_wafers AS DOUBLE))
+      comment: "Average number of wafers over which mask set cost is amortized. Higher volumes reduce per-wafer NRE burden — key for volume commitment decisions."
     - name: "wafer_cost_model_count"
       expr: COUNT(1)
-      comment: "Total wafer cost models. Tracks cost model coverage across technology nodes and fabs."
+      comment: "Total number of wafer cost models. Used to assess cost model coverage across technology nodes and fab locations."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_transfer_price`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors intercompany transfer pricing including price levels, margins, and compliance status. Supports OECD transfer pricing documentation, tax authority audit readiness, and intercompany margin governance."
+  source: "`vibe_semiconductors_v1`.`finance`.`transfer_price`"
+  dimensions:
+    - name: "price_method"
+      expr: price_method
+      comment: "Transfer pricing method (CUP, cost-plus, TNMM, profit split) — primary dimension for OECD compliance analysis."
+    - name: "agreement_type"
+      expr: agreement_type
+      comment: "Type of transfer pricing agreement (product, service, IP license) — supports intercompany transaction classification."
+    - name: "transfer_price_type"
+      expr: transfer_price_type
+      comment: "Type of transfer price (standard, actual, negotiated) — distinguishes pricing approaches for compliance reporting."
+    - name: "transfer_price_status"
+      expr: transfer_price_status
+      comment: "Status of the transfer price (active, expired, under review) — filters for current vs. historical pricing."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the transfer price — identifies unapproved prices that may create tax risk."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Whether the transfer price is compliant with applicable regulations — critical for tax audit risk management."
+    - name: "is_taxable"
+      expr: is_taxable
+      comment: "Whether the transfer is subject to tax — used to identify taxable intercompany flows."
+    - name: "product_category"
+      expr: product_category
+      comment: "Product category covered by the transfer price — supports product-level intercompany pricing analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the transfer price — required for multi-currency intercompany analysis."
+    - name: "effective_from_year"
+      expr: YEAR(effective_from)
+      comment: "Year the transfer price became effective — supports annual pricing trend analysis."
+  measures:
+    - name: "avg_effective_price_per_unit"
+      expr: AVG(CAST(effective_price_per_unit AS DOUBLE))
+      comment: "Average effective transfer price per unit. Core metric for intercompany pricing benchmarking and arm's-length compliance."
+    - name: "avg_margin_rate"
+      expr: AVG(CAST(margin_rate AS DOUBLE))
+      comment: "Average margin rate applied in transfer pricing. Monitors arm's-length margin compliance — deviations trigger tax authority scrutiny."
+    - name: "avg_tax_rate"
+      expr: AVG(CAST(tax_rate AS DOUBLE))
+      comment: "Average tax rate applied to transfer prices. Supports effective tax rate analysis and tax planning."
+    - name: "total_price_amount"
+      expr: SUM(CAST(price_amount AS DOUBLE))
+      comment: "Total transfer price amount across all agreements. Quantifies the scale of intercompany transactions subject to transfer pricing rules."
+    - name: "transfer_price_count"
+      expr: COUNT(1)
+      comment: "Total number of transfer price records. Used to assess intercompany pricing coverage and documentation completeness."
+    - name: "non_compliant_price_count"
+      expr: COUNT(CASE WHEN compliance_flag = FALSE THEN 1 END)
+      comment: "Number of transfer prices flagged as non-compliant. Each non-compliant price represents a potential tax adjustment risk requiring immediate remediation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_tax_provision`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks income tax provisions including current and deferred tax balances, effective tax rates, and credit carryforwards. Supports ASC 740 / IAS 12 compliance, tax planning, and earnings quality analysis."
+  source: "`vibe_semiconductors_v1`.`finance`.`tax_provision`"
+  dimensions:
+    - name: "tax_type"
+      expr: tax_type
+      comment: "Type of tax (income, deferred, withholding) — primary classification for tax provision analysis."
+    - name: "jurisdiction_code"
+      expr: jurisdiction_code
+      comment: "Tax jurisdiction — enables jurisdiction-level effective tax rate analysis and Pillar Two compliance monitoring."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the tax provision — primary time dimension for annual tax reporting."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the provision — supports quarterly tax provision close monitoring."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the tax provision — filters for approved vs. pending provisions in financial reporting."
+    - name: "tax_provision_status"
+      expr: tax_provision_status
+      comment: "Lifecycle status of the provision (open, closed, reversed) — used for provision completeness monitoring."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Whether the provision has been reversed — tracks temporary difference reversals."
+    - name: "tax_rate_change_indicator"
+      expr: tax_rate_change_indicator
+      comment: "Whether a tax rate change affected this provision — flags provisions requiring remeasurement disclosure."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the provision amounts — required for multi-currency tax reporting."
+  measures:
+    - name: "total_tax_expense_amount"
+      expr: SUM(CAST(tax_expense_amount AS DOUBLE))
+      comment: "Total income tax expense. Primary P&L tax metric — directly impacts reported earnings and effective tax rate."
+    - name: "total_deferred_tax_asset"
+      expr: SUM(CAST(deferred_tax_asset_amount AS DOUBLE))
+      comment: "Total deferred tax asset balance. Tracks future tax benefits from temporary differences — key balance sheet metric for tax planning."
+    - name: "total_deferred_tax_liability"
+      expr: SUM(CAST(deferred_tax_liability_amount AS DOUBLE))
+      comment: "Total deferred tax liability balance. Represents future tax obligations — monitored for balance sheet risk and cash flow planning."
+    - name: "total_tax_base_amount"
+      expr: SUM(CAST(tax_base_amount AS DOUBLE))
+      comment: "Total taxable base amount across provisions. Used to validate effective tax rate calculations."
+    - name: "total_tax_credit_carryforward"
+      expr: SUM(CAST(tax_credit_carryforward_amount AS DOUBLE))
+      comment: "Total tax credit carryforward balance. Represents future tax savings — critical for tax planning and valuation allowance assessment."
+    - name: "total_tax_credit_used"
+      expr: SUM(CAST(tax_credit_used_amount AS DOUBLE))
+      comment: "Total tax credits utilized in the period. Tracks the consumption of tax credit assets — supports R&D credit and CHIPS Act incentive utilization analysis."
+    - name: "avg_effective_tax_rate"
+      expr: AVG(CAST(effective_tax_rate AS DOUBLE))
+      comment: "Average effective tax rate across provisions. Core metric for tax efficiency benchmarking and investor communications."
+    - name: "tax_provision_count"
+      expr: COUNT(1)
+      comment: "Total number of tax provision records. Used for provision completeness and audit coverage assessment."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_intercompany_transaction`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors intercompany transaction volumes, amounts, and elimination status. Supports consolidation close, intercompany reconciliation, and transfer pricing compliance."
+  source: "`vibe_semiconductors_v1`.`finance`.`intercompany_transaction`"
+  dimensions:
+    - name: "transaction_type"
+      expr: transaction_type
+      comment: "Type of intercompany transaction (product sale, service, IP royalty, loan) — primary classification for intercompany analysis."
+    - name: "intercompany_transaction_status"
+      expr: intercompany_transaction_status
+      comment: "Status of the transaction (posted, eliminated, pending) — critical for consolidation close completeness."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the transaction — enables year-over-year intercompany volume trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the transaction — supports monthly intercompany reconciliation."
+    - name: "elimination_flag"
+      expr: elimination_flag
+      comment: "Whether the transaction has been eliminated in consolidation — uneliminated intercompany transactions overstate consolidated revenue."
+    - name: "regulatory_reporting_flag"
+      expr: regulatory_reporting_flag
+      comment: "Whether the transaction requires regulatory reporting — identifies transactions subject to country-by-country reporting."
+    - name: "transfer_pricing_method"
+      expr: transfer_pricing_method
+      comment: "Transfer pricing method applied — supports OECD documentation and tax authority audit readiness."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the transaction — required for multi-currency intercompany analysis."
+    - name: "transaction_timestamp_month"
+      expr: DATE_TRUNC('MONTH', transaction_timestamp)
+      comment: "Month of the transaction — supports monthly intercompany volume trend analysis."
+  measures:
+    - name: "total_amount_gross"
+      expr: SUM(CAST(amount_gross AS DOUBLE))
+      comment: "Total gross intercompany transaction amount. Quantifies the scale of intercompany flows subject to elimination and transfer pricing rules."
+    - name: "total_amount_net"
+      expr: SUM(CAST(amount_net AS DOUBLE))
+      comment: "Total net intercompany transaction amount after tax. Used for net intercompany balance reconciliation."
+    - name: "total_amount_tax"
+      expr: SUM(CAST(amount_tax AS DOUBLE))
+      comment: "Total tax on intercompany transactions. Supports withholding tax and indirect tax compliance analysis."
+    - name: "avg_transfer_pricing_margin"
+      expr: AVG(CAST(transfer_pricing_margin AS DOUBLE))
+      comment: "Average transfer pricing margin applied. Monitors arm's-length margin compliance across intercompany transactions."
+    - name: "avg_transfer_pricing_rate"
+      expr: AVG(CAST(transfer_pricing_rate AS DOUBLE))
+      comment: "Average transfer pricing rate. Tracks rate consistency and identifies deviations from approved pricing policies."
+    - name: "intercompany_transaction_count"
+      expr: COUNT(1)
+      comment: "Total number of intercompany transactions. Baseline for reconciliation completeness and elimination workload sizing."
+    - name: "uneliminated_transaction_count"
+      expr: COUNT(CASE WHEN elimination_flag = FALSE THEN 1 END)
+      comment: "Number of intercompany transactions not yet eliminated. Uneliminated transactions overstate consolidated financials — requires immediate close action."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_consolidation_entry`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks consolidation journal entries including adjustment amounts and reversal activity. Supports group close governance, consolidation quality monitoring, and multi-entity financial reporting."
+  source: "`vibe_semiconductors_v1`.`finance`.`consolidation_entry`"
+  dimensions:
+    - name: "entry_type"
+      expr: entry_type
+      comment: "Type of consolidation entry (elimination, adjustment, currency translation) — primary classification for consolidation analysis."
+    - name: "consolidation_method"
+      expr: consolidation_method
+      comment: "Consolidation method applied (full, proportional, equity) — used to validate method consistency across entities."
+    - name: "consolidation_entry_status"
+      expr: consolidation_entry_status
+      comment: "Status of the consolidation entry (posted, reversed, pending) — critical for group close completeness monitoring."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the consolidation entry — primary time dimension for annual group reporting."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the entry — supports monthly group close monitoring."
+    - name: "is_reversal"
+      expr: is_reversal
+      comment: "Whether the entry is a reversal — tracks temporary consolidation adjustments."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the consolidation entry — required for multi-currency group reporting."
+    - name: "effective_date_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month of the effective date — supports monthly consolidation trend analysis."
+  measures:
+    - name: "total_amount_gross"
+      expr: SUM(CAST(amount_gross AS DOUBLE))
+      comment: "Total gross amount of consolidation entries. Quantifies the scale of consolidation adjustments in the group close."
+    - name: "total_amount_net"
+      expr: SUM(CAST(amount_net AS DOUBLE))
+      comment: "Total net consolidation entry amount. Primary metric for group P&L and balance sheet impact of consolidation adjustments."
+    - name: "total_amount_adjustment"
+      expr: SUM(CAST(amount_adjustment AS DOUBLE))
+      comment: "Total adjustment amount in consolidation entries. Large adjustments signal significant intercompany or currency translation impacts."
+    - name: "consolidation_entry_count"
+      expr: COUNT(1)
+      comment: "Total number of consolidation entries. Used to assess group close complexity and completeness."
+    - name: "reversal_entry_count"
+      expr: COUNT(CASE WHEN is_reversal = TRUE THEN 1 END)
+      comment: "Number of reversal consolidation entries. Tracks temporary adjustment activity in the group close process."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_nre_agreement`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks NRE (Non-Recurring Engineering) agreement financials including total NRE amounts, recovery methods, and CHIPS Act linkage. Supports NRE revenue recognition, customer contract governance, and R&D cost recovery analysis."
+  source: "`vibe_semiconductors_v1`.`finance`.`finance_nre_agreement`"
+  dimensions:
+    - name: "agreement_type"
+      expr: agreement_type
+      comment: "Type of NRE agreement (design, mask, process development) — primary classification for NRE revenue analysis."
+    - name: "finance_nre_agreement_status"
+      expr: finance_nre_agreement_status
+      comment: "Status of the NRE agreement (active, completed, terminated) — filters for active vs. closed agreements."
+    - name: "recovery_method"
+      expr: recovery_method
+      comment: "Method for recovering NRE costs (milestone, time-and-materials, fixed-fee) — supports revenue recognition method analysis."
+    - name: "revenue_recognition_method"
+      expr: revenue_recognition_method
+      comment: "Revenue recognition method applied (ASC 606 POC, milestone) — critical for financial reporting compliance."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the NRE agreement — required for multi-currency NRE revenue reporting."
+    - name: "region_code"
+      expr: region_code
+      comment: "Geographic region of the NRE agreement — supports regional NRE revenue analysis."
+    - name: "effective_from_year"
+      expr: YEAR(effective_from)
+      comment: "Year the NRE agreement became effective — supports annual NRE revenue trend analysis."
+  measures:
+    - name: "total_nre_amount"
+      expr: SUM(CAST(total_nre_amount AS DOUBLE))
+      comment: "Total NRE agreement value. Primary metric for NRE revenue pipeline and R&D cost recovery tracking."
+    - name: "avg_nre_amount"
+      expr: AVG(CAST(total_nre_amount AS DOUBLE))
+      comment: "Average NRE agreement value. Tracks deal size trends — increasing averages indicate movement toward larger, more complex design engagements."
+    - name: "nre_agreement_count"
+      expr: COUNT(1)
+      comment: "Total number of NRE agreements. Measures the breadth of customer design engagement activity."
+    - name: "active_nre_agreement_count"
+      expr: COUNT(CASE WHEN finance_nre_agreement_status = 'active' THEN 1 END)
+      comment: "Number of active NRE agreements. Tracks the current NRE revenue backlog and customer engagement pipeline."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_nre_milestone`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks NRE milestone billing and revenue recognition including milestone amounts, completion status, and revenue recognition timing. Supports ASC 606 compliance, cash flow forecasting, and NRE billing governance."
+  source: "`vibe_semiconductors_v1`.`finance`.`finance_nre_milestone`"
+  dimensions:
+    - name: "milestone_type"
+      expr: milestone_type
+      comment: "Type of NRE milestone (design complete, tapeout, silicon bring-up) — primary classification for milestone billing analysis."
+    - name: "finance_nre_milestone_status"
+      expr: finance_nre_milestone_status
+      comment: "Status of the milestone (pending, completed, invoiced) — critical for billing pipeline and revenue recognition monitoring."
+    - name: "invoice_status"
+      expr: invoice_status
+      comment: "Invoice status of the milestone (not invoiced, invoiced, paid) — supports cash collection tracking."
+    - name: "is_revenue_recognized"
+      expr: is_revenue_recognized
+      comment: "Whether revenue has been recognized for this milestone — critical for ASC 606 compliance monitoring."
+    - name: "revenue_recognition_method"
+      expr: revenue_recognition_method
+      comment: "Revenue recognition method applied — supports multi-method revenue analysis."
+    - name: "expense_type"
+      expr: expense_type
+      comment: "Type of expense associated with the milestone — supports cost-to-complete analysis."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Whether the milestone has a compliance requirement — tracks regulatory obligations in NRE billing."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the milestone amounts — required for multi-currency NRE reporting."
+    - name: "planned_completion_date_month"
+      expr: DATE_TRUNC('MONTH', planned_completion_date)
+      comment: "Month of planned completion — supports NRE billing schedule and cash flow forecasting."
+  measures:
+    - name: "total_amount_gross"
+      expr: SUM(CAST(amount_gross AS DOUBLE))
+      comment: "Total gross NRE milestone amount. Primary metric for NRE billing pipeline and revenue backlog quantification."
+    - name: "total_amount_net"
+      expr: SUM(CAST(amount_net AS DOUBLE))
+      comment: "Total net NRE milestone amount after tax. Used for net NRE revenue recognition and P&L impact analysis."
+    - name: "total_amount_tax"
+      expr: SUM(CAST(amount_tax AS DOUBLE))
+      comment: "Total tax on NRE milestones. Supports indirect tax compliance and cash flow planning."
+    - name: "milestone_count"
+      expr: COUNT(1)
+      comment: "Total number of NRE milestones. Used to assess billing schedule completeness and revenue recognition coverage."
+    - name: "recognized_milestone_count"
+      expr: COUNT(CASE WHEN is_revenue_recognized = TRUE THEN 1 END)
+      comment: "Number of milestones with revenue recognized. Tracks ASC 606 recognition completeness — unrecognized completed milestones represent deferred revenue risk."
+    - name: "unrecognized_milestone_amount"
+      expr: SUM(CASE WHEN is_revenue_recognized = FALSE THEN amount_net ELSE 0 END)
+      comment: "Total net amount of milestones where revenue has not yet been recognized. Quantifies the deferred revenue balance requiring recognition action."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_wbs_element`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks WBS (Work Breakdown Structure) element budget execution and cost performance. Supports project cost control, R&D capitalization eligibility, and capital expenditure governance."
+  source: "`vibe_semiconductors_v1`.`finance`.`wbs_element`"
+  dimensions:
+    - name: "wbs_element_type"
+      expr: wbs_element_type
+      comment: "Type of WBS element (project, phase, work package) — primary classification for project cost analysis."
+    - name: "wbs_element_status"
+      expr: wbs_element_status
+      comment: "Status of the WBS element (open, closed, technically complete) — filters for active vs. closed project elements."
+    - name: "project_phase"
+      expr: project_phase
+      comment: "Phase of the project (feasibility, development, production) — supports phase-gate cost analysis."
+    - name: "is_capital_expenditure"
+      expr: is_capital_expenditure
+      comment: "Whether the WBS element is a capex item — distinguishes capex from opex for balance sheet treatment."
+    - name: "r_and_d_capitalization_flag"
+      expr: r_and_d_capitalization_flag
+      comment: "Whether R&D costs on this WBS element are eligible for capitalization — critical for ASC 730 / IAS 38 compliance."
+    - name: "wbs_element_level"
+      expr: wbs_element_level
+      comment: "Hierarchy level of the WBS element — used to filter for summary vs. detail-level cost reporting."
+    - name: "financial_year"
+      expr: financial_year
+      comment: "Financial year of the WBS element — supports annual project cost analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the WBS element amounts — required for multi-currency project cost reporting."
+  measures:
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budgeted cost across WBS elements. Primary metric for project budget adequacy and cost control."
+    - name: "total_actual_cost"
+      expr: SUM(CAST(actual_cost AS DOUBLE))
+      comment: "Total actual cost incurred across WBS elements. Core project cost performance metric — compared against budget to identify overruns."
+    - name: "total_cost_variance"
+      expr: SUM(CAST(budget_amount AS DOUBLE) - CAST(actual_cost AS DOUBLE))
+      comment: "Total cost variance (budget minus actual) across WBS elements. Negative variance signals project cost overruns requiring management intervention."
+    - name: "wbs_element_count"
+      expr: COUNT(1)
+      comment: "Total number of WBS elements. Used to assess project structure complexity and cost control coverage."
+    - name: "capex_wbs_count"
+      expr: COUNT(CASE WHEN is_capital_expenditure = TRUE THEN 1 END)
+      comment: "Number of WBS elements classified as capex. Tracks the capital investment component of the project portfolio."
+    - name: "rd_capitalizable_wbs_count"
+      expr: COUNT(CASE WHEN r_and_d_capitalization_flag = TRUE THEN 1 END)
+      comment: "Number of WBS elements eligible for R&D capitalization. Tracks the scope of capitalizable development costs under ASC 730 / IAS 38."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_rd_capitalization`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks R&D capitalization events including capitalized amounts, amortization linkage, and audit status. Supports ASC 730 / IAS 38 compliance, IP asset creation tracking, and technology investment governance."
+  source: "`vibe_semiconductors_v1`.`finance`.`rd_capitalization`"
+  dimensions:
+    - name: "capitalized_asset_type"
+      expr: capitalized_asset_type
+      comment: "Type of capitalized R&D asset (software, IP core, process technology) — primary classification for R&D asset analysis."
+    - name: "rd_capitalization_status"
+      expr: rd_capitalization_status
+      comment: "Status of the capitalization event (active, reversed, amortizing) — filters for current vs. historical capitalizations."
+    - name: "depreciation_method"
+      expr: depreciation_method
+      comment: "Amortization method applied to the capitalized R&D asset — used to validate method consistency."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the capitalization event — supports annual R&D capitalization trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the capitalization — supports quarterly R&D capitalization reporting."
+    - name: "is_reversal"
+      expr: is_reversal
+      comment: "Whether the capitalization was reversed — tracks write-offs of previously capitalized R&D."
+    - name: "external_audit_flag"
+      expr: external_audit_flag
+      comment: "Whether the capitalization was subject to external audit — used to assess audit coverage of R&D assets."
+    - name: "technology_readiness_level"
+      expr: technology_readiness_level
+      comment: "TRL at time of capitalization — supports stage-gate analysis of when R&D transitions from expense to asset."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the capitalization amounts — required for multi-currency R&D asset reporting."
+  measures:
+    - name: "total_capitalized_amount"
+      expr: SUM(CAST(capitalized_amount AS DOUBLE))
+      comment: "Total R&D costs capitalized as intangible assets. Primary metric for R&D investment conversion to balance sheet assets — key for IP valuation."
+    - name: "total_original_expense_amount"
+      expr: SUM(CAST(original_expense_amount AS DOUBLE))
+      comment: "Total original R&D expense amount before capitalization. Used to calculate the capitalization rate (capitalized / total R&D spend)."
+    - name: "rd_capitalization_count"
+      expr: COUNT(1)
+      comment: "Total number of R&D capitalization events. Used to assess the breadth of R&D asset creation activity."
+    - name: "reversal_count"
+      expr: COUNT(CASE WHEN is_reversal = TRUE THEN 1 END)
+      comment: "Number of R&D capitalization reversals. Reversals indicate write-offs of previously capitalized R&D — signals technology project failures or impairment."
+    - name: "externally_audited_count"
+      expr: COUNT(CASE WHEN external_audit_flag = TRUE THEN 1 END)
+      comment: "Number of capitalizations subject to external audit. Tracks audit coverage of R&D assets — important for SOX and financial statement audit readiness."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_amortization_schedule`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors amortization schedules for intangible assets including period amounts, remaining balances, and accumulated amortization. Supports intangible asset lifecycle management and period-end close accuracy."
+  source: "`vibe_semiconductors_v1`.`finance`.`amortization_schedule`"
+  dimensions:
+    - name: "amortization_method"
+      expr: amortization_method
+      comment: "Amortization method applied (straight-line, units of production) — primary dimension for method consistency analysis."
+    - name: "schedule_type"
+      expr: schedule_type
+      comment: "Type of amortization schedule (book, tax, IFRS) — supports multi-GAAP amortization reporting."
+    - name: "schedule_status"
+      expr: schedule_status
+      comment: "Status of the schedule (active, completed, suspended) — filters for active vs. completed amortization."
+    - name: "depreciation_category"
+      expr: depreciation_category
+      comment: "Category of the asset being amortized — supports asset class-level amortization analysis."
+    - name: "period_type"
+      expr: period_type
+      comment: "Type of amortization period (monthly, quarterly, annual) — used to validate schedule cadence."
+    - name: "tax_effect_flag"
+      expr: tax_effect_flag
+      comment: "Whether the amortization has a tax effect — used to identify schedules requiring deferred tax calculation."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the amortization amounts — required for multi-currency intangible asset reporting."
+    - name: "effective_from_year"
+      expr: YEAR(effective_from)
+      comment: "Year the amortization schedule became effective — supports vintage analysis of intangible assets."
+  measures:
+    - name: "total_period_amount"
+      expr: SUM(CAST(period_amount AS DOUBLE))
+      comment: "Total periodic amortization amount. Primary P&L metric for intangible asset amortization expense."
+    - name: "total_accumulated_amortization"
+      expr: SUM(CAST(accumulated_amortization AS DOUBLE))
+      comment: "Total accumulated amortization across all schedules. Measures how much of the intangible asset base has been consumed."
+    - name: "total_remaining_balance"
+      expr: SUM(CAST(remaining_balance AS DOUBLE))
+      comment: "Total remaining unamortized balance. Represents the net book value of intangible assets — key balance sheet metric."
+    - name: "total_amount"
+      expr: SUM(CAST(total_amount AS DOUBLE))
+      comment: "Total original amortizable amount across all schedules. Used to calculate the amortization completion rate."
+    - name: "amortization_schedule_count"
+      expr: COUNT(1)
+      comment: "Total number of amortization schedules. Used to assess intangible asset coverage and schedule completeness."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_legal_entity`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provides legal entity master analytics including entity counts by type, jurisdiction, and compliance status. Supports group structure governance, regulatory compliance monitoring, and consolidation scope management."
+  source: "`vibe_semiconductors_v1`.`finance`.`legal_entity`"
+  dimensions:
+    - name: "entity_type"
+      expr: entity_type
+      comment: "Type of legal entity (subsidiary, branch, JV, holding) — primary classification for group structure analysis."
+    - name: "legal_entity_status"
+      expr: legal_entity_status
+      comment: "Status of the legal entity (active, dormant, in liquidation) — filters for operational vs. inactive entities."
+    - name: "country_of_incorporation"
+      expr: country_of_incorporation
+      comment: "Country where the entity is incorporated — primary geographic dimension for regulatory and tax analysis."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the entity — identifies entities with outstanding regulatory obligations."
+    - name: "is_public_company"
+      expr: is_public_company
+      comment: "Whether the entity is publicly listed — distinguishes listed vs. private entities for disclosure requirements."
+    - name: "reporting_currency"
+      expr: reporting_currency
+      comment: "Reporting currency of the entity — supports multi-currency consolidation analysis."
+    - name: "tax_status"
+      expr: tax_status
+      comment: "Tax status of the entity — used for tax planning and Pillar Two compliance analysis."
+    - name: "incorporation_date_year"
+      expr: YEAR(incorporation_date)
+      comment: "Year of incorporation — supports entity vintage analysis and group structure evolution tracking."
+  measures:
+    - name: "total_annual_revenue"
+      expr: SUM(CAST(annual_revenue AS DOUBLE))
+      comment: "Total annual revenue across legal entities. Supports group revenue sizing and Pillar Two revenue threshold compliance (EUR 750M threshold)."
+    - name: "avg_annual_revenue"
+      expr: AVG(CAST(annual_revenue AS DOUBLE))
+      comment: "Average annual revenue per legal entity. Used to identify material vs. immaterial entities for consolidation scope decisions."
+    - name: "legal_entity_count"
+      expr: COUNT(1)
+      comment: "Total number of legal entities. Measures group complexity — directly impacts consolidation effort and regulatory reporting burden."
+    - name: "active_entity_count"
+      expr: COUNT(CASE WHEN legal_entity_status = 'active' THEN 1 END)
+      comment: "Number of active legal entities. Tracks the operational footprint of the corporate group."
+    - name: "non_compliant_entity_count"
+      expr: COUNT(CASE WHEN compliance_status != 'compliant' THEN 1 END)
+      comment: "Number of entities with non-compliant status. Each non-compliant entity represents a regulatory risk requiring remediation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_profit_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors profit center financial performance including budget, actual spend, and variance. Supports P&L accountability, cost allocation governance, and technology node profitability analysis."
+  source: "`vibe_semiconductors_v1`.`finance`.`profit_center`"
+  dimensions:
+    - name: "profit_center_type"
+      expr: profit_center_type
+      comment: "Type of profit center (product line, geography, technology node) — primary classification for P&L analysis."
+    - name: "profit_center_category"
+      expr: profit_center_category
+      comment: "Category of the profit center — supports granular P&L segmentation."
+    - name: "profit_center_status"
+      expr: profit_center_status
+      comment: "Status of the profit center (active, closed) — filters for operational vs. inactive profit centers."
+    - name: "geographic_region"
+      expr: geographic_region
+      comment: "Geographic region of the profit center — enables regional P&L analysis."
+    - name: "technology_node"
+      expr: technology_node
+      comment: "Technology node associated with the profit center — supports node-level profitability analysis."
+    - name: "product_line"
+      expr: product_line
+      comment: "Product line of the profit center — enables product-line P&L analysis."
+    - name: "is_consolidated"
+      expr: is_consolidated
+      comment: "Whether the profit center is included in group consolidation — used to validate consolidation scope."
+    - name: "sox_compliant"
+      expr: sox_compliant
+      comment: "Whether the profit center is SOX compliant — identifies entities requiring enhanced internal controls."
+    - name: "reporting_currency"
+      expr: reporting_currency
+      comment: "Reporting currency of the profit center — required for multi-currency P&L analysis."
+  measures:
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budgeted amount across profit centers. Primary metric for P&L budget sizing and resource allocation."
+    - name: "total_actual_spend"
+      expr: SUM(CAST(actual_spend AS DOUBLE))
+      comment: "Total actual spend across profit centers. Core P&L execution metric — compared against budget to identify variances."
+    - name: "total_variance_amount"
+      expr: SUM(CAST(variance_amount AS DOUBLE))
+      comment: "Total budget vs. actual variance across profit centers. Negative variance signals overspend requiring management intervention."
+    - name: "avg_allocation_percent"
+      expr: AVG(CAST(allocation_percent AS DOUBLE))
+      comment: "Average cost allocation percentage across profit centers. Monitors allocation policy consistency."
+    - name: "profit_center_count"
+      expr: COUNT(1)
+      comment: "Total number of profit centers. Used to assess P&L reporting granularity and organizational complexity."
+    - name: "sox_compliant_count"
+      expr: COUNT(CASE WHEN sox_compliant = TRUE THEN 1 END)
+      comment: "Number of SOX-compliant profit centers. Tracks internal control coverage across the P&L reporting structure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_gl_account`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provides chart of accounts analytics including account balances, hierarchy coverage, and budget control status. Supports financial close governance, account rationalization, and chart of accounts optimization."
+  source: "`vibe_semiconductors_v1`.`finance`.`gl_account`"
+  dimensions:
+    - name: "account_type"
+      expr: account_type
+      comment: "Type of GL account (P&L, balance sheet, statistical) — primary classification for financial statement analysis."
+    - name: "account_category"
+      expr: account_category
+      comment: "Category of the GL account (revenue, expense, asset, liability) — supports financial statement line analysis."
+    - name: "account_group"
+      expr: account_group
+      comment: "Account group in the chart of accounts — used for account hierarchy and reporting structure analysis."
+    - name: "gl_account_status"
+      expr: gl_account_status
+      comment: "Status of the GL account (active, blocked, marked for deletion) — filters for active vs. inactive accounts."
+    - name: "is_budget_controlled"
+      expr: is_budget_controlled
+      comment: "Whether the account is subject to budget control — identifies accounts with spending limits."
+    - name: "is_reconciliation_account"
+      expr: is_reconciliation_account
+      comment: "Whether the account is a reconciliation account — reconciliation accounts require sub-ledger matching."
+    - name: "is_consolidation_account"
+      expr: is_consolidation_account
+      comment: "Whether the account is used in group consolidation — identifies accounts included in the consolidated financial statements."
+    - name: "financial_statement"
+      expr: financial_statement
+      comment: "Financial statement the account appears on (P&L, balance sheet, cash flow) — supports statement-level analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the GL account — required for multi-currency chart of accounts analysis."
+  measures:
+    - name: "total_opening_balance"
+      expr: SUM(CAST(opening_balance AS DOUBLE))
+      comment: "Total opening balance across GL accounts. Baseline for period movement analysis and balance sheet reconciliation."
+    - name: "total_closing_balance"
+      expr: SUM(CAST(closing_balance AS DOUBLE))
+      comment: "Total closing balance across GL accounts. Primary balance sheet metric for period-end financial reporting."
+    - name: "total_period_movement"
+      expr: SUM(CAST(closing_balance AS DOUBLE) - CAST(opening_balance AS DOUBLE))
+      comment: "Total period movement (closing minus opening balance) across GL accounts. Quantifies the net financial activity in the period."
+    - name: "gl_account_count"
+      expr: COUNT(1)
+      comment: "Total number of GL accounts. Used to assess chart of accounts complexity and rationalization opportunities."
+    - name: "budget_controlled_account_count"
+      expr: COUNT(CASE WHEN is_budget_controlled = TRUE THEN 1 END)
+      comment: "Number of budget-controlled GL accounts. Tracks the scope of budget control coverage in the chart of accounts."
+    - name: "avg_depreciation_rate"
+      expr: AVG(CAST(depreciation_rate AS DOUBLE))
+      comment: "Average depreciation rate on GL accounts configured for asset depreciation. Monitors rate consistency across asset accounts."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`finance_allocation_cycle`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Monitors cost allocation cycle configuration and execution including allocation percentages, frequency, and automation status. Supports overhead absorption governance and period-end close efficiency."
+  source: "`vibe_semiconductors_v1`.`finance`.`allocation_cycle`"
+  dimensions:
+    - name: "cycle_type"
+      expr: cycle_type
+      comment: "Type of allocation cycle (assessment, distribution, settlement) — primary classification for allocation method analysis."
+    - name: "allocation_method"
+      expr: allocation_method
+      comment: "Method used in the allocation cycle — supports allocation policy governance."
+    - name: "allocation_frequency"
+      expr: allocation_frequency
+      comment: "Frequency of the allocation cycle (monthly, quarterly) — used to validate cycle cadence and close schedule alignment."
+    - name: "allocation_cycle_status"
+      expr: allocation_cycle_status
+      comment: "Status of the allocation cycle (active, inactive, completed) — filters for operational vs. closed cycles."
+    - name: "is_automatic"
+      expr: is_automatic
+      comment: "Whether the cycle runs automatically — tracks automation coverage of the allocation process."
+    - name: "allocation_basis"
+      expr: allocation_basis
+      comment: "Basis for the allocation (headcount, square footage, revenue) — supports allocation driver analysis."
+    - name: "last_run_timestamp_month"
+      expr: DATE_TRUNC('MONTH', last_run_timestamp)
+      comment: "Month of the last allocation run — used to identify stale cycles that have not run recently."
+  measures:
+    - name: "avg_default_allocation_percentage"
+      expr: AVG(CAST(default_allocation_percentage AS DOUBLE))
+      comment: "Average default allocation percentage across cycles. Monitors allocation rate consistency and identifies outliers."
+    - name: "allocation_cycle_count"
+      expr: COUNT(1)
+      comment: "Total number of allocation cycles. Used to assess the complexity of the overhead allocation structure."
+    - name: "automatic_cycle_count"
+      expr: COUNT(CASE WHEN is_automatic = TRUE THEN 1 END)
+      comment: "Number of automated allocation cycles. Higher automation rates reduce manual close effort and error risk."
+    - name: "active_cycle_count"
+      expr: COUNT(CASE WHEN allocation_cycle_status = 'active' THEN 1 END)
+      comment: "Number of active allocation cycles. Tracks the operational scope of the cost allocation framework."
 $$;

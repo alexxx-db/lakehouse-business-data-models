@@ -1,95 +1,95 @@
--- Metric views for domain: grant | Business: Ngo | Version: 2 | Generated on: 2026-07-03 06:15:30
+-- Metric views for domain: grant | Business: Ngo | Version: 2 | Generated on: 2026-07-10 20:18:10
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_award`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPI layer over the award fact table. Tracks portfolio size, funding volumes, cost-share commitments, and indirect cost ceilings to support grant portfolio steering and donor relationship management."
+  comment: "Strategic KPIs for grant awards — tracks portfolio size, funding obligations, cost-share commitments, and award lifecycle health for executive portfolio oversight."
   source: "`vibe_ngo_v1`.`grant`.`award`"
   dimensions:
     - name: "award_status"
       expr: award_status
-      comment: "Lifecycle status of the award (e.g. Active, Closed, Suspended) — primary filter for portfolio health dashboards."
+      comment: "Current lifecycle status of the award (e.g. Active, Closed, Suspended) — primary filter for portfolio health dashboards."
     - name: "award_type"
       expr: award_type
-      comment: "Classification of the award instrument (e.g. Grant, Cooperative Agreement, Contract) — drives compliance and reporting obligations."
-    - name: "funding_mechanism"
-      expr: funding_mechanism
-      comment: "Mechanism through which funding is delivered (e.g. Direct, Pass-through) — informs sub-award and flow-down analysis."
+      comment: "Instrument type of the award (e.g. Grant, Cooperative Agreement, Contract) — drives compliance and reporting obligations."
     - name: "thematic_sector"
       expr: thematic_sector
-      comment: "Programmatic sector alignment (e.g. Health, WASH, Education) — used for portfolio allocation and donor reporting."
-    - name: "primary_country_code"
-      expr: primary_country_code
-      comment: "ISO country code of the primary implementation geography — enables geographic portfolio analysis."
+      comment: "Thematic sector alignment (e.g. Health, Education, WASH) — used for portfolio allocation analysis."
     - name: "currency"
       expr: currency
-      comment: "Award currency code — required for multi-currency portfolio reconciliation."
+      comment: "Award currency code — needed for multi-currency portfolio analysis."
     - name: "functional_currency"
       expr: functional_currency
-      comment: "Functional reporting currency — used to normalise cross-currency comparisons."
+      comment: "Functional reporting currency for the award — used for consolidated financial reporting."
+    - name: "geographic_scope"
+      expr: geographic_scope
+      comment: "Geographic scope of the award — supports regional portfolio breakdown."
     - name: "dac_sector_code"
       expr: dac_sector_code
       comment: "OECD DAC sector code — required for ODA/donor regulatory reporting."
     - name: "sdg_alignment"
       expr: sdg_alignment
-      comment: "Sustainable Development Goal alignment tag — supports impact and strategic reporting."
+      comment: "SDG goal alignment tag — used for impact and strategic alignment reporting."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment mechanism (e.g. Reimbursement, Advance) — affects cash-flow planning."
     - name: "reporting_frequency"
       expr: reporting_frequency
-      comment: "Donor-required reporting cadence — drives report scheduling and compliance workload planning."
-    - name: "fund_restriction_type"
-      expr: fund_restriction_type
-      comment: "Restriction classification (Restricted / Unrestricted / Temporarily Restricted) — critical for fund utilisation governance."
-    - name: "start_year"
-      expr: YEAR(start_date)
-      comment: "Year the award period of performance begins — used for cohort and vintage analysis."
-    - name: "end_year"
-      expr: YEAR(end_date)
-      comment: "Year the award period of performance ends — used to identify awards approaching closeout."
-    - name: "is_grantmaking_out"
-      expr: is_grantmaking_out
-      comment: "Flag indicating the organisation is acting as a grantmaker (pass-through) — separates prime from sub-recipient portfolio views."
-    - name: "geographic_scope"
-      expr: geographic_scope
-      comment: "Breadth of geographic coverage (e.g. National, Regional, Global) — used for programme reach analysis."
+      comment: "Donor-required reporting cadence — drives compliance workload planning."
+    - name: "regulatory_framework"
+      expr: regulatory_framework
+      comment: "Applicable regulatory framework (e.g. 2 CFR 200, FCDO Smart Rules) — determines compliance requirements."
+    - name: "cost_share_required"
+      expr: cost_share_required
+      comment: "Boolean flag indicating whether cost-share is a condition of the award."
+    - name: "audit_required"
+      expr: audit_required
+      comment: "Boolean flag indicating whether an audit is required — used for audit planning and risk management."
+    - name: "start_date_month"
+      expr: DATE_TRUNC('MONTH', start_date)
+      comment: "Award start month — used for cohort and pipeline timing analysis."
+    - name: "end_date_month"
+      expr: DATE_TRUNC('MONTH', end_date)
+      comment: "Award end month — used for closeout planning and pipeline expiry analysis."
+    - name: "agreement_signed_year"
+      expr: YEAR(agreement_signed_date)
+      comment: "Year the award agreement was signed — used for vintage/cohort analysis of the portfolio."
   measures:
-    - name: "total_awards"
-      expr: COUNT(1)
-      comment: "Total number of awards in the portfolio. Baseline volume KPI for portfolio size tracking."
-    - name: "total_obligated_amount"
-      expr: SUM(CAST(total_obligated_amount AS DOUBLE))
-      comment: "Sum of all obligated award amounts in award currency. Primary funding volume KPI for portfolio valuation and donor stewardship."
-    - name: "total_obligated_amount_functional"
+    - name: "active_award_count"
+      expr: COUNT(CASE WHEN award_status = 'Active' THEN award_id END)
+      comment: "Number of currently active awards — primary portfolio size KPI for executive dashboards."
+    - name: "total_obligated_amount_usd"
       expr: SUM(CAST(total_obligated_amount_functional AS DOUBLE))
-      comment: "Sum of obligated amounts converted to functional currency. Enables normalised cross-currency portfolio comparison for executive reporting."
+      comment: "Total obligated funding in functional currency across all awards — primary portfolio value KPI."
+    - name: "avg_award_obligated_amount_usd"
+      expr: AVG(CAST(total_obligated_amount_functional AS DOUBLE))
+      comment: "Average obligated amount per award in functional currency — indicates typical award size for benchmarking."
     - name: "total_authorized_amount"
       expr: SUM(CAST(authorized_amount AS DOUBLE))
-      comment: "Sum of amounts formally authorised for expenditure. Compared against obligated amounts to identify funding gaps or over-authorisation."
+      comment: "Total authorized funding ceiling across all awards — measures maximum funding envelope available."
     - name: "total_cost_share_amount"
       expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Total cost-share (matching) commitments across the portfolio. Tracks organisational co-investment obligations to donors."
+      comment: "Total cost-share committed across all awards — tracks organizational co-investment obligations to donors."
     - name: "avg_cost_share_percentage"
       expr: AVG(CAST(cost_share_percentage AS DOUBLE))
-      comment: "Average cost-share percentage across awards. Indicates the typical co-investment burden and informs proposal strategy."
+      comment: "Average cost-share percentage across awards — indicates organizational leverage and donor partnership intensity."
     - name: "total_indirect_cost_ceiling"
       expr: SUM(CAST(indirect_cost_ceiling AS DOUBLE))
-      comment: "Sum of indirect cost ceilings across all awards. Tracks the maximum recoverable overhead and informs NICRA negotiation strategy."
+      comment: "Total indirect cost ceiling across all awards — critical for overhead recovery planning."
     - name: "avg_nicra_icr_rate"
       expr: AVG(CAST(nicra_icr_rate AS DOUBLE))
-      comment: "Average NICRA indirect cost recovery rate across awards. Benchmarks overhead recovery performance against negotiated rates."
-    - name: "avg_period_of_performance_months"
-      expr: AVG(DATEDIFF(end_date, start_date) / 30.44)
-      comment: "Average award duration in months derived from start and end dates. Informs programme planning and resource allocation cycles."
-    - name: "active_award_count"
-      expr: COUNT(CASE WHEN award_status = 'Active' THEN 1 END)
-      comment: "Count of currently active awards. Core operational KPI for portfolio management and staffing capacity planning."
-    - name: "awards_with_audit_required"
-      expr: COUNT(CASE WHEN audit_required = TRUE THEN 1 END)
-      comment: "Number of awards requiring a formal audit. Drives audit scheduling, compliance workload, and risk management planning."
-    - name: "audit_coverage_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN audit_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of awards subject to audit requirements. Indicates compliance exposure and audit resource demand across the portfolio."
+      comment: "Average NICRA/ICR indirect cost rate applied across awards — used to assess overhead recovery efficiency."
+    - name: "awards_requiring_audit_count"
+      expr: COUNT(CASE WHEN audit_required = TRUE THEN award_id END)
+      comment: "Number of awards requiring an audit — drives audit planning, resource allocation, and compliance risk management."
+    - name: "awards_with_cost_share_count"
+      expr: COUNT(CASE WHEN cost_share_required = TRUE THEN award_id END)
+      comment: "Number of awards with mandatory cost-share — tracks co-financing obligation exposure across the portfolio."
+    - name: "total_audit_threshold_amount"
+      expr: SUM(CAST(audit_threshold_amount AS DOUBLE))
+      comment: "Sum of audit threshold amounts across awards — used to assess aggregate audit risk exposure."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_proposal`
@@ -97,70 +97,73 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Business development and pipeline KPI layer over the proposal fact table. Tracks win rates, funding requested, proposal conversion, and pipeline health to steer grant acquisition strategy."
+  comment: "Business development pipeline KPIs — tracks proposal win rates, funding requested, cost-share proposed, and pipeline conversion for strategic resource allocation decisions."
   source: "`vibe_ngo_v1`.`grant`.`proposal`"
   dimensions:
     - name: "proposal_status"
       expr: proposal_status
-      comment: "Current stage of the proposal lifecycle (e.g. Draft, Submitted, Won, Lost) — primary dimension for pipeline funnel analysis."
+      comment: "Current status of the proposal (e.g. Draft, Submitted, Won, Lost) — primary pipeline stage dimension."
     - name: "proposal_type"
       expr: proposal_type
-      comment: "Type of proposal (e.g. Unsolicited, Competitive, Renewal) — informs business development strategy and resource allocation."
+      comment: "Type of proposal (e.g. Unsolicited, Competitive, Sole Source) — affects win-rate benchmarking."
     - name: "win_loss_outcome"
       expr: win_loss_outcome
-      comment: "Final outcome of the proposal (Won / Lost / No Decision) — core dimension for win-rate and conversion analysis."
+      comment: "Final win/loss outcome of the proposal — core dimension for conversion rate analysis."
     - name: "go_no_go_decision"
       expr: go_no_go_decision
-      comment: "Internal go/no-go gate decision — tracks proposal qualification discipline and pipeline quality."
+      comment: "Go/No-Go decision outcome — used to assess pipeline qualification rigor."
     - name: "lead_technical_sector"
       expr: lead_technical_sector
-      comment: "Primary technical sector of the proposal — enables sector-level win-rate and funding pipeline analysis."
+      comment: "Primary technical sector of the proposal — used for sector-level win-rate and pipeline analysis."
     - name: "geographic_focus"
       expr: geographic_focus
-      comment: "Geographic focus of the proposed programme — supports regional business development strategy."
+      comment: "Geographic focus of the proposal — supports regional pipeline and win-rate analysis."
     - name: "partnership_model"
       expr: partnership_model
-      comment: "Partnership structure (e.g. Prime, Sub, Consortium) — informs partnership strategy and risk distribution."
+      comment: "Partnership model (e.g. Prime, Sub, Consortium) — affects competitive positioning analysis."
     - name: "requested_currency"
       expr: requested_currency
-      comment: "Currency of the funding request — required for multi-currency pipeline valuation."
+      comment: "Currency of the requested funding amount — needed for multi-currency pipeline valuation."
     - name: "submission_year"
       expr: YEAR(submission_date)
-      comment: "Year the proposal was submitted — enables year-over-year business development trend analysis."
+      comment: "Year the proposal was submitted — used for year-over-year pipeline trend analysis."
+    - name: "submission_month"
+      expr: DATE_TRUNC('MONTH', submission_date)
+      comment: "Month the proposal was submitted — used for monthly pipeline volume and seasonality analysis."
     - name: "compliance_review_completed"
       expr: compliance_review_completed
-      comment: "Flag indicating internal compliance review was completed before submission — tracks proposal quality gate adherence."
+      comment: "Boolean flag indicating whether compliance review was completed before submission."
   measures:
-    - name: "total_proposals"
-      expr: COUNT(1)
-      comment: "Total number of proposals in the pipeline. Baseline volume KPI for business development activity tracking."
+    - name: "total_proposals_submitted"
+      expr: COUNT(CASE WHEN proposal_status = 'Submitted' THEN proposal_id END)
+      comment: "Total number of proposals submitted — primary business development pipeline volume KPI."
+    - name: "total_proposals_won"
+      expr: COUNT(CASE WHEN win_loss_outcome = 'Won' THEN proposal_id END)
+      comment: "Total number of proposals won — measures business development success and revenue generation."
+    - name: "total_proposals_lost"
+      expr: COUNT(CASE WHEN win_loss_outcome = 'Lost' THEN proposal_id END)
+      comment: "Total number of proposals lost — used to calculate win rate and identify competitive gaps."
     - name: "total_requested_amount_usd"
       expr: SUM(CAST(requested_amount_usd AS DOUBLE))
-      comment: "Total funding requested across all proposals in USD. Primary pipeline valuation KPI for business development forecasting."
+      comment: "Total funding requested across all proposals in USD — measures the gross pipeline value."
     - name: "avg_requested_amount_usd"
       expr: AVG(CAST(requested_amount_usd AS DOUBLE))
-      comment: "Average funding requested per proposal in USD. Benchmarks deal size and informs resource allocation per proposal."
-    - name: "won_proposals_count"
-      expr: COUNT(CASE WHEN win_loss_outcome = 'Won' THEN 1 END)
-      comment: "Number of proposals that resulted in an award. Core business development success KPI."
-    - name: "win_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN win_loss_outcome = 'Won' THEN 1 END) / NULLIF(COUNT(CASE WHEN win_loss_outcome IN ('Won', 'Lost') THEN 1 END), 0), 2)
-      comment: "Percentage of decided proposals that were won. Strategic KPI for evaluating business development effectiveness and proposal quality."
-    - name: "total_won_amount_usd"
+      comment: "Average requested amount per proposal in USD — indicates typical deal size for resource planning."
+    - name: "total_won_requested_amount_usd"
       expr: SUM(CASE WHEN win_loss_outcome = 'Won' THEN CAST(requested_amount_usd AS DOUBLE) ELSE 0 END)
-      comment: "Total USD value of won proposals. Measures the financial yield of the business development function."
-    - name: "avg_proposed_duration_months"
-      expr: AVG(CAST(proposed_duration_months AS DOUBLE))
-      comment: "Average proposed programme duration in months. Informs programme planning capacity and multi-year funding strategy."
-    - name: "total_cost_share_committed_usd"
+      comment: "Total USD value of won proposals — measures actual funding secured through business development."
+    - name: "total_cost_share_proposed_usd"
       expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Total cost-share amounts committed in proposals. Tracks organisational co-investment obligations being proposed to donors."
-    - name: "compliance_review_completion_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_review_completed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of proposals with completed compliance review. Measures proposal quality gate adherence and risk management discipline."
-    - name: "go_no_go_approval_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN go_no_go_decision = 'Go' THEN 1 END) / NULLIF(COUNT(CASE WHEN go_no_go_decision IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of proposals that passed the go/no-go gate. Tracks pipeline qualification discipline and strategic selectivity."
+      comment: "Total cost-share amount proposed across all proposals — tracks organizational co-investment commitments in the pipeline."
+    - name: "avg_indirect_cost_rate_proposed"
+      expr: AVG(CAST(indirect_cost_rate_proposed AS DOUBLE))
+      comment: "Average indirect cost rate proposed — used to assess overhead recovery strategy across the pipeline."
+    - name: "proposals_with_compliance_review_count"
+      expr: COUNT(CASE WHEN compliance_review_completed = TRUE THEN proposal_id END)
+      comment: "Number of proposals with completed compliance review — measures process adherence and submission quality."
+    - name: "distinct_funding_sources_targeted"
+      expr: COUNT(DISTINCT funding_source_id)
+      comment: "Number of distinct funding sources targeted in proposals — measures donor diversification in the pipeline."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_award_budget`
@@ -168,61 +171,73 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Budget planning and cost structure KPI layer over the award budget fact table. Tracks approved budgets, cost category breakdowns, indirect cost recovery, and budget amendment activity to support financial governance."
+  comment: "Award budget performance KPIs — tracks approved budget composition, cost structure, indirect cost recovery, and budget version management for financial stewardship decisions."
   source: "`vibe_ngo_v1`.`grant`.`award_budget`"
   dimensions:
+    - name: "award_budget_status"
+      expr: award_budget_status
+      comment: "Current status of the budget (e.g. Draft, Approved, Superseded) — primary filter for active budget analysis."
     - name: "award_currency"
       expr: award_currency
-      comment: "Currency of the award budget — required for multi-currency budget analysis."
+      comment: "Currency of the award budget — needed for multi-currency budget analysis."
     - name: "fund_restriction_type"
       expr: fund_restriction_type
-      comment: "Restriction type of the budget (Restricted / Unrestricted) — governs allowable expenditure and reporting."
+      comment: "Type of fund restriction (e.g. Restricted, Unrestricted) — affects budget flexibility and reallocation decisions."
+    - name: "indirect_cost_base"
+      expr: indirect_cost_base
+      comment: "Base used for indirect cost calculation (e.g. MTDC, TDC) — affects overhead recovery analysis."
     - name: "is_amendment"
       expr: is_amendment
-      comment: "Flag indicating this budget version is an amendment — separates original budgets from revised versions for trend analysis."
-    - name: "approved_by"
-      expr: approved_by
-      comment: "Name or role of the approving authority — supports approval workflow audit and accountability tracking."
+      comment: "Boolean flag indicating whether this budget is associated with an amendment — used to track budget revision frequency."
+    - name: "cost_share_required"
+      expr: cost_share_required
+      comment: "Boolean flag indicating whether cost-share is required for this budget."
+    - name: "period"
+      expr: period
+      comment: "Budget period label — used for period-over-period budget comparison."
+    - name: "period_start_month"
+      expr: DATE_TRUNC('MONTH', period_start_date)
+      comment: "Budget period start month — used for time-series budget analysis."
+    - name: "period_end_month"
+      expr: DATE_TRUNC('MONTH', period_end_date)
+      comment: "Budget period end month — used for budget expiry and closeout planning."
     - name: "donor_approval_year"
       expr: YEAR(donor_approval_date)
-      comment: "Year of donor budget approval — enables year-over-year budget approval cycle analysis."
-    - name: "created_year"
-      expr: YEAR(created_timestamp)
-      comment: "Year the budget record was created — used for budget vintage and planning cycle analysis."
+      comment: "Year of donor budget approval — used for approval cycle time analysis."
   measures:
     - name: "total_approved_budget"
       expr: SUM(CAST(total_approved_budget AS DOUBLE))
-      comment: "Sum of all approved award budgets. Primary financial planning KPI for portfolio budget under management."
+      comment: "Total approved budget across all award budgets — primary financial envelope KPI for portfolio oversight."
     - name: "total_direct_costs"
       expr: SUM(CAST(total_direct_costs AS DOUBLE))
-      comment: "Sum of all direct programme costs across budgets. Measures the direct programme investment and informs cost structure analysis."
+      comment: "Total direct costs budgeted — measures programmatic spend capacity."
     - name: "total_indirect_costs"
       expr: SUM(CAST(total_indirect_costs AS DOUBLE))
-      comment: "Sum of all indirect (overhead) costs across budgets. Tracks overhead recovery and informs NICRA rate negotiations."
-    - name: "indirect_cost_ratio"
-      expr: ROUND(100.0 * SUM(CAST(total_indirect_costs AS DOUBLE)) / NULLIF(SUM(CAST(total_direct_costs AS DOUBLE)), 0), 2)
-      comment: "Indirect costs as a percentage of direct costs across the portfolio. Strategic KPI for overhead efficiency and donor cost-effectiveness reporting."
+      comment: "Total indirect costs budgeted — measures overhead recovery across the portfolio."
     - name: "total_personnel_costs"
       expr: SUM(CAST(personnel_costs AS DOUBLE))
-      comment: "Sum of personnel costs across all budgets. Tracks the largest cost driver and informs staffing and HR planning."
-    - name: "personnel_cost_ratio"
-      expr: ROUND(100.0 * SUM(CAST(personnel_costs AS DOUBLE)) / NULLIF(SUM(CAST(total_approved_budget AS DOUBLE)), 0), 2)
-      comment: "Personnel costs as a percentage of total approved budget. Benchmarks staffing intensity and informs budget structure decisions."
-    - name: "total_travel_costs"
-      expr: SUM(CAST(travel_costs AS DOUBLE))
-      comment: "Sum of travel costs across all budgets. Tracks field presence investment and informs travel policy and cost containment."
+      comment: "Total personnel costs budgeted — largest cost driver; critical for workforce planning and cost structure analysis."
     - name: "total_contractual_costs"
       expr: SUM(CAST(contractual_costs AS DOUBLE))
-      comment: "Sum of contractual (sub-award and vendor) costs. Tracks partnership and procurement spend volume."
-    - name: "total_cost_share_amount"
-      expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Total cost-share contributions budgeted. Tracks organisational co-investment commitments against donor requirements."
+      comment: "Total contractual/subaward costs budgeted — measures partnership and subcontracting financial exposure."
+    - name: "total_travel_costs"
+      expr: SUM(CAST(travel_costs AS DOUBLE))
+      comment: "Total travel costs budgeted — used for operational efficiency and cost reduction analysis."
+    - name: "total_equipment_costs"
+      expr: SUM(CAST(equipment_costs AS DOUBLE))
+      comment: "Total equipment costs budgeted — used for asset planning and donor prior-approval tracking."
+    - name: "total_supplies_costs"
+      expr: SUM(CAST(supplies_costs AS DOUBLE))
+      comment: "Total supplies costs budgeted — used for procurement planning and cost structure analysis."
     - name: "avg_nicra_rate_applied"
       expr: AVG(CAST(nicra_rate_applied AS DOUBLE))
-      comment: "Average NICRA indirect cost rate applied across budgets. Benchmarks actual rate application against negotiated ceilings."
+      comment: "Average NICRA rate applied across budgets — used to assess consistency of overhead recovery rate application."
+    - name: "total_cost_share_amount"
+      expr: SUM(CAST(cost_share_amount AS DOUBLE))
+      comment: "Total cost-share amount budgeted — tracks organizational co-financing obligations across the portfolio."
     - name: "amendment_budget_count"
-      expr: COUNT(CASE WHEN is_amendment = TRUE THEN 1 END)
-      comment: "Number of budget records that are amendments. Tracks budget revision frequency as a proxy for award complexity and change management burden."
+      expr: COUNT(CASE WHEN is_amendment = TRUE THEN award_budget_id END)
+      comment: "Number of budgets associated with amendments — indicates portfolio instability and scope change frequency."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_award_budget_line`
@@ -230,76 +245,79 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-item budget execution KPI layer. Tracks approved vs revised amounts, expenditure variances, cost allowability, and indirect cost recovery at the most granular budget level to support financial control and donor reporting."
+  comment: "Budget line-level execution KPIs — tracks approved vs. revised amounts, expenditure variance, cost compliance flags, and burn rate at the most granular financial level for operational financial management."
   source: "`vibe_ngo_v1`.`grant`.`award_budget_line`"
   dimensions:
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the budget line — required for multi-currency expenditure analysis."
-    - name: "donor_reporting_category"
-      expr: donor_reporting_category
-      comment: "Donor-defined cost category for reporting — maps internal cost structure to donor reporting requirements."
+    - name: "cost_category"
+      expr: cost_category
+      comment: "High-level cost category (e.g. Personnel, Travel, Equipment) — primary dimension for cost structure analysis."
+    - name: "cost_subcategory"
+      expr: cost_subcategory
+      comment: "Detailed cost subcategory — enables granular cost analysis within each category."
+    - name: "budget_line_status"
+      expr: budget_line_status
+      comment: "Current status of the budget line (e.g. Active, Closed, Pending) — used to filter active spend analysis."
     - name: "fund_restriction_type"
       expr: fund_restriction_type
-      comment: "Restriction type of the budget line — governs allowable use of funds."
-    - name: "gl_account_code"
-      expr: gl_account_code
-      comment: "General ledger account code — links budget lines to financial accounting for reconciliation."
+      comment: "Fund restriction type for the budget line — affects allowability and reallocation decisions."
+    - name: "donor_reporting_category"
+      expr: donor_reporting_category
+      comment: "Donor-defined reporting category — used for donor financial report preparation."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year of the budget line — enables year-over-year budget and expenditure trend analysis."
+      comment: "Fiscal year of the budget line — used for annual budget vs. actuals analysis."
     - name: "fiscal_period"
       expr: fiscal_period
-      comment: "Fiscal period (e.g. quarter or month) of the budget line — supports periodic financial reporting."
+      comment: "Fiscal period of the budget line — used for period-level burn rate and variance analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the budget line — needed for multi-currency financial analysis."
     - name: "allocability_flag"
       expr: allocability_flag
-      comment: "Flag indicating the cost is allocable to the award — used to identify and remediate non-allocable charges."
+      comment: "Boolean flag indicating whether the cost is allocable to the award — used for compliance monitoring."
     - name: "allowability_flag"
       expr: allowability_flag
-      comment: "Flag indicating the cost is allowable under donor rules — critical for compliance and audit risk management."
+      comment: "Boolean flag indicating whether the cost is allowable under donor rules — critical compliance dimension."
     - name: "reasonableness_flag"
       expr: reasonableness_flag
-      comment: "Flag indicating the cost meets reasonableness standards — supports cost certification and audit defence."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the budget line item — enables quantity-based cost analysis."
-    - name: "approval_year"
-      expr: YEAR(approval_date)
-      comment: "Year the budget line was approved — used for approval cycle and budget planning analysis."
+      comment: "Boolean flag indicating whether the cost is deemed reasonable — used for cost compliance audits."
+    - name: "gl_account_code"
+      expr: gl_account_code
+      comment: "General ledger account code — links budget lines to the financial accounting system."
+    - name: "approval_date_month"
+      expr: DATE_TRUNC('MONTH', approval_date)
+      comment: "Month the budget line was approved — used for approval cycle analysis."
   measures:
     - name: "total_approved_amount_usd"
       expr: SUM(CAST(approved_amount_usd AS DOUBLE))
-      comment: "Total approved budget line amounts in USD. Primary budget baseline KPI for financial planning and donor reporting."
+      comment: "Total approved budget amount in USD across all budget lines — primary financial envelope measure."
     - name: "total_revised_amount_usd"
       expr: SUM(CAST(revised_amount_usd AS DOUBLE))
-      comment: "Total revised budget line amounts in USD. Tracks cumulative budget modifications and amendment impact."
+      comment: "Total revised budget amount in USD — measures cumulative budget modifications and scope changes."
     - name: "total_cumulative_expenditure_usd"
       expr: SUM(CAST(cumulative_expenditure_usd AS DOUBLE))
-      comment: "Total cumulative expenditure against budget lines in USD. Core financial execution KPI for burn rate and budget utilisation tracking."
+      comment: "Total cumulative expenditure in USD — measures actual spend against approved budget."
     - name: "total_variance_amount"
       expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Sum of budget-to-actual variance amounts. Identifies over- and under-spending patterns requiring management intervention."
+      comment: "Total budget variance amount (approved minus actual) — key financial management KPI for under/over-spend detection."
     - name: "avg_variance_percentage"
       expr: AVG(CAST(variance_percentage AS DOUBLE))
-      comment: "Average budget variance percentage across line items. Measures overall budget execution accuracy and financial management quality."
-    - name: "budget_utilisation_rate"
-      expr: ROUND(100.0 * SUM(CAST(cumulative_expenditure_usd AS DOUBLE)) / NULLIF(SUM(CAST(approved_amount_usd AS DOUBLE)), 0), 2)
-      comment: "Cumulative expenditure as a percentage of approved budget in USD. Strategic KPI for burn rate monitoring and closeout readiness assessment."
+      comment: "Average budget variance percentage across budget lines — used to assess overall budget execution accuracy."
     - name: "total_indirect_cost_amount"
       expr: SUM(CAST(indirect_cost_amount AS DOUBLE))
-      comment: "Total indirect costs charged at line-item level. Tracks overhead recovery against NICRA ceilings."
-    - name: "non_allowable_line_count"
-      expr: COUNT(CASE WHEN allowability_flag = FALSE THEN 1 END)
-      comment: "Number of budget lines flagged as non-allowable. Critical compliance KPI — non-allowable costs must be remediated before donor reporting."
-    - name: "non_allocable_line_count"
-      expr: COUNT(CASE WHEN allocability_flag = FALSE THEN 1 END)
-      comment: "Number of budget lines flagged as non-allocable. Tracks cost allocation compliance risk requiring corrective action."
-    - name: "avg_nicra_rate_applied"
-      expr: AVG(CAST(nicra_rate_applied AS DOUBLE))
-      comment: "Average NICRA rate applied at line-item level. Validates consistent rate application across the award portfolio."
+      comment: "Total indirect costs charged across budget lines — used for overhead recovery monitoring."
     - name: "total_cost_share_amount"
       expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Total cost-share amounts at line-item level. Tracks granular co-investment fulfilment against donor commitments."
+      comment: "Total cost-share amount across budget lines — tracks co-financing fulfillment at line level."
+    - name: "non_compliant_line_count"
+      expr: COUNT(CASE WHEN allowability_flag = FALSE OR allocability_flag = FALSE OR reasonableness_flag = FALSE THEN award_budget_line_id END)
+      comment: "Number of budget lines failing at least one compliance flag (allowability, allocability, or reasonableness) — critical audit risk KPI."
+    - name: "avg_nicra_rate_applied"
+      expr: AVG(CAST(nicra_rate_applied AS DOUBLE))
+      comment: "Average NICRA rate applied at budget line level — used to verify consistent overhead rate application."
+    - name: "distinct_awards_with_expenditure"
+      expr: COUNT(DISTINCT award_id)
+      comment: "Number of distinct awards with budget line activity — measures portfolio breadth of financial execution."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_donor_report`
@@ -307,67 +325,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Donor reporting compliance and performance KPI layer. Tracks submission timeliness, overdue reports, financial reporting accuracy, and report acceptance rates to manage donor relationships and regulatory compliance."
+  comment: "Donor reporting compliance and financial performance KPIs — tracks submission timeliness, overdue reports, financial amounts reported, and budget variance for donor relationship management and compliance risk oversight."
   source: "`vibe_ngo_v1`.`grant`.`donor_report`"
   dimensions:
-    - name: "report_type"
-      expr: report_type
-      comment: "Type of donor report (e.g. Financial, Narrative, Progress, Final) — primary dimension for report workload and compliance analysis."
-    - name: "report_status"
-      expr: report_status
-      comment: "Current status of the report (e.g. Draft, Submitted, Accepted, Rejected) — tracks report lifecycle and compliance posture."
+    - name: "donor_report_status"
+      expr: donor_report_status
+      comment: "Current status of the donor report (e.g. Draft, Submitted, Accepted, Overdue) — primary compliance monitoring dimension."
+    - name: "donor_report_type"
+      expr: donor_report_type
+      comment: "Type of donor report (e.g. Financial, Narrative, Final) — used to segment reporting workload and compliance obligations."
     - name: "reporting_frequency"
       expr: reporting_frequency
-      comment: "Cadence of reporting obligation (e.g. Monthly, Quarterly, Annual) — informs reporting workload planning."
-    - name: "submission_method"
-      expr: submission_method
-      comment: "Channel used to submit the report (e.g. Portal, Email, Post) — tracks digital adoption and submission efficiency."
+      comment: "Reporting cadence (e.g. Quarterly, Annual) — used to analyze compliance burden by frequency."
     - name: "financial_currency"
       expr: financial_currency
-      comment: "Currency of financial amounts reported — required for multi-currency financial reporting analysis."
-    - name: "is_final_version"
-      expr: is_final_version
-      comment: "Flag indicating this is the final accepted version — separates draft iterations from official submissions."
+      comment: "Currency of the financial amounts reported — needed for multi-currency financial reporting analysis."
     - name: "is_overdue"
       expr: is_overdue
-      comment: "Flag indicating the report was submitted after the due date — primary dimension for compliance risk dashboards."
+      comment: "Boolean flag indicating whether the report is overdue — primary compliance risk dimension."
+    - name: "is_final_version"
+      expr: is_final_version
+      comment: "Boolean flag indicating whether this is the final version of the report."
     - name: "compliance_certification_flag"
       expr: compliance_certification_flag
-      comment: "Flag indicating the report includes a compliance certification — tracks regulatory certification adherence."
+      comment: "Boolean flag indicating whether compliance certification was included — used for regulatory compliance tracking."
+    - name: "submission_method"
+      expr: submission_method
+      comment: "Method used to submit the report (e.g. Portal, Email) — used for process efficiency analysis."
     - name: "submission_year"
       expr: YEAR(submission_date)
-      comment: "Year of report submission — enables year-over-year reporting compliance trend analysis."
-    - name: "reporting_period_end_year"
-      expr: YEAR(reporting_period_end_date)
-      comment: "Year the reporting period ends — used for cohort-based compliance analysis."
+      comment: "Year the report was submitted — used for year-over-year compliance trend analysis."
+    - name: "due_date_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month the report was due — used for workload planning and deadline management."
+    - name: "reporting_period_start_month"
+      expr: DATE_TRUNC('MONTH', reporting_period_start_date)
+      comment: "Start month of the reporting period — used for period-level financial performance analysis."
   measures:
-    - name: "total_reports"
-      expr: COUNT(1)
-      comment: "Total number of donor reports. Baseline volume KPI for reporting workload and compliance obligation tracking."
+    - name: "total_reports_submitted"
+      expr: COUNT(CASE WHEN donor_report_status = 'Submitted' THEN donor_report_id END)
+      comment: "Total number of donor reports submitted — primary compliance volume KPI."
     - name: "overdue_report_count"
-      expr: COUNT(CASE WHEN is_overdue = TRUE THEN 1 END)
-      comment: "Number of reports submitted after their due date. Critical compliance KPI — overdue reports risk donor relationship damage and funding suspension."
-    - name: "on_time_submission_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_overdue = FALSE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of reports submitted on time. Strategic KPI for donor relationship management and compliance performance benchmarking."
+      expr: COUNT(CASE WHEN is_overdue = TRUE THEN donor_report_id END)
+      comment: "Number of overdue donor reports — critical compliance risk KPI; triggers escalation and donor relationship risk."
     - name: "total_financial_amount_reported_usd"
       expr: SUM(CAST(financial_amount_reported_usd AS DOUBLE))
-      comment: "Total financial amounts reported to donors in USD. Tracks the scale of financial accountability and donor stewardship."
+      comment: "Total financial amount reported to donors in USD — measures financial accountability and reporting completeness."
+    - name: "total_cumulative_expenditure_to_date"
+      expr: SUM(CAST(cumulative_expenditure_to_date AS DOUBLE))
+      comment: "Total cumulative expenditure reported to date across all donor reports — tracks aggregate spend accountability."
     - name: "total_budget_variance_amount"
       expr: SUM(CAST(budget_variance_amount AS DOUBLE))
-      comment: "Sum of budget-to-actual variance amounts reported to donors. Identifies systemic over- or under-spending patterns requiring management action."
+      comment: "Total budget variance amount reported — measures aggregate financial deviation from approved budgets across the portfolio."
     - name: "avg_budget_variance_percentage"
       expr: AVG(CAST(budget_variance_percentage AS DOUBLE))
-      comment: "Average budget variance percentage across donor reports. Measures financial execution accuracy as reported to donors."
-    - name: "accepted_report_count"
-      expr: COUNT(CASE WHEN report_status = 'Accepted' THEN 1 END)
-      comment: "Number of reports formally accepted by donors. Measures reporting quality and donor satisfaction with submissions."
-    - name: "report_acceptance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN report_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(CASE WHEN report_status IN ('Accepted', 'Rejected') THEN 1 END), 0), 2)
-      comment: "Percentage of decided reports accepted by donors. Strategic KPI for reporting quality and donor relationship health."
-    - name: "compliance_certification_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_certification_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of reports including a compliance certification. Tracks regulatory certification adherence across the reporting portfolio."
+      comment: "Average budget variance percentage across donor reports — used to assess overall financial execution quality."
+    - name: "reports_with_compliance_certification_count"
+      expr: COUNT(CASE WHEN compliance_certification_flag = TRUE THEN donor_report_id END)
+      comment: "Number of reports with compliance certification — measures regulatory compliance adherence rate."
+    - name: "distinct_awards_reported"
+      expr: COUNT(DISTINCT award_id)
+      comment: "Number of distinct awards with donor reports — measures reporting portfolio breadth."
+    - name: "avg_exchange_rate_used"
+      expr: AVG(CAST(exchange_rate_used AS DOUBLE))
+      comment: "Average exchange rate used in donor reports — used to monitor currency risk exposure in financial reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_subaward`
@@ -375,235 +396,25 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sub-award portfolio management KPI layer. Tracks sub-award obligations, disbursements, remaining balances, risk ratings, and compliance flags to support partner financial oversight and pass-through grant governance."
+  comment: "Subaward portfolio KPIs — tracks obligated amounts, disbursements, remaining balances, indirect cost recovery, and compliance flags for partner financial management and flow-down oversight."
   source: "`vibe_ngo_v1`.`grant`.`award`"
   dimensions:
-    - name: "fund_restriction_type"
-      expr: fund_restriction_type
-      comment: "Restriction type of sub-award funds — governs allowable expenditure and reporting obligations."
-    - name: "reporting_frequency"
-      expr: reporting_frequency
-      comment: "Sub-awardee reporting cadence — informs compliance workload and partner capacity planning."
     - name: "currency"
       expr: currency
-      comment: "Currency of the sub-award — required for multi-currency portfolio analysis."
+      comment: "Currency of the subaward — needed for multi-currency portfolio analysis."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method for the subaward (e.g. Advance, Reimbursement) — affects cash flow and financial risk."
+    - name: "reporting_frequency"
+      expr: reporting_frequency
+      comment: "Reporting cadence required of the subrecipient — drives compliance workload planning."
   measures:
-    - name: "total_subawards"
-      expr: COUNT(1)
-      comment: "Total number of sub-awards in the portfolio. Baseline volume KPI for partnership and pass-through grant management."
     - name: "total_cost_share_amount"
       expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Total cost-share contributions required from sub-awardees. Tracks partner co-investment obligations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_sub_award_disbursement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Sub-award cash flow and disbursement execution KPI layer. Tracks disbursement volumes, advance balances, liquidation performance, and emergency disbursements to support partner financial management and cash flow governance."
-  source: "`vibe_ngo_v1`.`grant`.`sub_award_disbursement`"
-  dimensions:
-    - name: "disbursement_status"
-      expr: disbursement_status
-      comment: "Current status of the disbursement (e.g. Pending, Approved, Paid, Cancelled) — primary dimension for payment pipeline monitoring."
-    - name: "disbursement_type"
-      expr: disbursement_type
-      comment: "Type of disbursement (e.g. Advance, Reimbursement, Final Payment) — informs cash flow pattern and advance management analysis."
-    - name: "disbursement_method"
-      expr: disbursement_method
-      comment: "Payment method used (e.g. Wire Transfer, Mobile Money, Cheque) — tracks payment channel efficiency and financial inclusion."
-    - name: "disbursement_currency"
-      expr: disbursement_currency
-      comment: "Currency of the disbursement — required for multi-currency cash flow analysis."
-    - name: "liquidation_status"
-      expr: liquidation_status
-      comment: "Status of advance liquidation (e.g. Pending, Partial, Fully Liquidated) — tracks advance accountability and financial risk."
-    - name: "fund_restriction_type"
-      expr: fund_restriction_type
-      comment: "Restriction type of disbursed funds — governs allowable use and reporting."
-    - name: "donor_reporting_category"
-      expr: donor_reporting_category
-      comment: "Donor cost category for the disbursement — maps cash flows to donor reporting requirements."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the disbursement — enables year-over-year cash flow trend analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period of the disbursement — supports periodic cash flow and burn rate reporting."
-    - name: "is_emergency_disbursement"
-      expr: is_emergency_disbursement
-      comment: "Flag indicating an emergency disbursement — tracks humanitarian response cash flow separately from regular programme disbursements."
-    - name: "disbursement_year"
-      expr: YEAR(disbursement_date)
-      comment: "Year of actual disbursement — used for annual cash flow and partner payment trend analysis."
-  measures:
-    - name: "total_disbursement_amount_usd"
-      expr: SUM(CAST(disbursement_amount_usd AS DOUBLE))
-      comment: "Total disbursements to sub-awardees in USD. Primary cash flow KPI for partner financial management and programme implementation tracking."
-    - name: "total_net_disbursement_amount"
-      expr: SUM(CAST(net_disbursement_amount AS DOUBLE))
-      comment: "Total net disbursements after withholdings. Measures actual cash transferred to partners net of deductions."
-    - name: "total_advance_balance_outstanding"
-      expr: SUM(CAST(advance_balance_outstanding AS DOUBLE))
-      comment: "Total outstanding advance balances across sub-awardees. Critical financial risk KPI — high outstanding advances indicate liquidation risk and potential misuse of funds."
-    - name: "total_liquidated_amount"
-      expr: SUM(CAST(liquidated_amount AS DOUBLE))
-      comment: "Total advance amounts liquidated by sub-awardees. Tracks accountability for advances and partner financial management capacity."
-    - name: "advance_liquidation_rate"
-      expr: ROUND(100.0 * SUM(CAST(liquidated_amount AS DOUBLE)) / NULLIF(SUM(CAST(disbursement_amount_usd AS DOUBLE)), 0), 2)
-      comment: "Liquidated amount as a percentage of total disbursements. Strategic KPI for advance accountability and partner financial management quality."
-    - name: "total_withholding_amount"
-      expr: SUM(CAST(withholding_amount AS DOUBLE))
-      comment: "Total amounts withheld from disbursements. Tracks compliance-driven payment deductions and their financial impact on partners."
-    - name: "total_indirect_cost_amount"
-      expr: SUM(CAST(indirect_cost_amount AS DOUBLE))
-      comment: "Total indirect costs included in disbursements. Tracks overhead recovery through the sub-award payment cycle."
-    - name: "emergency_disbursement_count"
-      expr: COUNT(CASE WHEN is_emergency_disbursement = TRUE THEN 1 END)
-      comment: "Number of emergency disbursements. Tracks humanitarian response payment volume and informs emergency cash flow planning."
-    - name: "emergency_disbursement_amount_usd"
-      expr: SUM(CASE WHEN is_emergency_disbursement = TRUE THEN CAST(disbursement_amount_usd AS DOUBLE) ELSE 0 END)
-      comment: "Total USD value of emergency disbursements. Measures the financial scale of humanitarian response cash flows."
-    - name: "avg_disbursement_amount_usd"
-      expr: AVG(CAST(disbursement_amount_usd AS DOUBLE))
-      comment: "Average disbursement amount per transaction in USD. Benchmarks payment size and informs cash flow forecasting and partner capacity assessment."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_donor_condition`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Donor condition compliance KPI layer. Tracks condition fulfilment rates, overdue conditions, financial thresholds, and risk ratings to manage award compliance obligations and donor relationship risk."
-  source: "`vibe_ngo_v1`.`grant`.`donor_condition`"
-  dimensions:
-    - name: "condition_type"
-      expr: condition_type
-      comment: "Type of donor condition (e.g. Precedent, Subsequent, Reporting) — primary dimension for compliance obligation categorisation."
-    - name: "condition_category"
-      expr: condition_category
-      comment: "Category of the condition (e.g. Financial, Programmatic, Legal) — enables targeted compliance management by domain."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Current compliance status (e.g. Met, Pending, Overdue, Waived) — primary dimension for compliance risk dashboards."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the condition (e.g. Critical, High, Medium, Low) — drives escalation and resource allocation for compliance management."
-    - name: "risk_rating"
-      expr: risk_rating
-      comment: "Risk rating of the condition — informs monitoring intensity and escalation thresholds."
-    - name: "responsible_department"
-      expr: responsible_department
-      comment: "Department accountable for condition fulfilment — enables workload distribution and accountability tracking."
-    - name: "monitoring_frequency"
-      expr: monitoring_frequency
-      comment: "Frequency of condition monitoring — tracks oversight intensity relative to risk and priority."
-    - name: "is_special_award_condition"
-      expr: is_special_award_condition
-      comment: "Flag indicating a special award condition (SAC) — SACs require elevated management attention and donor approval."
-    - name: "is_membership_obligation"
-      expr: is_membership_obligation
-      comment: "Flag indicating a membership dues obligation — separates membership compliance from programmatic award conditions."
-    - name: "due_year"
-      expr: YEAR(due_date)
-      comment: "Year the condition is due — used for compliance calendar and workload planning."
-  measures:
-    - name: "total_conditions"
-      expr: COUNT(1)
-      comment: "Total number of donor conditions. Baseline compliance obligation volume KPI for workload and risk management planning."
-    - name: "met_condition_count"
-      expr: COUNT(CASE WHEN compliance_status = 'Met' THEN 1 END)
-      comment: "Number of conditions successfully met. Tracks compliance fulfilment performance across the award portfolio."
-    - name: "condition_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_status = 'Met' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of donor conditions met. Strategic KPI for compliance performance and donor relationship health — low rates signal systemic compliance risk."
-    - name: "overdue_condition_count"
-      expr: COUNT(CASE WHEN compliance_status = 'Overdue' THEN 1 END)
-      comment: "Number of conditions past their due date without fulfilment. Critical risk KPI — overdue conditions can trigger donor sanctions or funding suspension."
-    - name: "high_risk_condition_count"
-      expr: COUNT(CASE WHEN risk_rating = 'High' THEN 1 END)
-      comment: "Number of conditions rated high risk. Tracks the concentration of high-risk compliance obligations requiring priority management attention."
-    - name: "total_financial_threshold_amount"
-      expr: SUM(CAST(financial_threshold_amount AS DOUBLE))
-      comment: "Sum of financial thresholds associated with donor conditions. Quantifies the financial exposure linked to compliance obligations."
-    - name: "total_membership_dues_amount"
-      expr: SUM(CAST(membership_dues_amount AS DOUBLE))
-      comment: "Total membership dues obligations tracked as donor conditions. Tracks financial commitments to membership bodies and networks."
-    - name: "special_award_condition_count"
-      expr: COUNT(CASE WHEN is_special_award_condition = TRUE THEN 1 END)
-      comment: "Number of special award conditions (SACs). SACs represent elevated compliance obligations requiring donor prior approval — tracking volume informs compliance resource planning."
-    - name: "critical_priority_condition_count"
-      expr: COUNT(CASE WHEN priority_level = 'Critical' THEN 1 END)
-      comment: "Number of conditions at critical priority level. Drives immediate escalation and executive attention for highest-risk compliance obligations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_funding_source`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Funding source portfolio KPI layer. Tracks available funding, endowment assets, cost-share requirements, and compliance characteristics of funding sources to support donor diversification and funding strategy."
-  source: "`vibe_ngo_v1`.`grant`.`funding_source`"
-  dimensions:
-    - name: "funding_source_status"
-      expr: funding_source_status
-      comment: "Status of the funding source (e.g. Active, Inactive, Closed) — primary dimension for active funding pipeline analysis."
-    - name: "funding_mechanism_type"
-      expr: funding_mechanism_type
-      comment: "Mechanism type (e.g. Grant, Contract, Cooperative Agreement, Endowment) — informs compliance requirements and reporting obligations."
-    - name: "fund_restriction_type"
-      expr: fund_restriction_type
-      comment: "Restriction classification — governs allowable use and financial reporting requirements."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the funding source — required for multi-currency portfolio analysis."
-    - name: "compliance_framework"
-      expr: compliance_framework
-      comment: "Regulatory compliance framework (e.g. US Federal, EU, UN) — drives compliance and reporting obligations."
-    - name: "audit_requirement"
-      expr: audit_requirement
-      comment: "Audit requirement type associated with the funding source — informs audit planning and compliance workload."
-    - name: "is_endowment_fund"
-      expr: is_endowment_fund
-      comment: "Flag indicating an endowment fund — separates endowment from operational funding sources for investment and spending policy analysis."
-    - name: "subaward_allowed"
-      expr: subaward_allowed
-      comment: "Flag indicating sub-awarding is permitted — informs partnership and pass-through programme design."
-    - name: "oda_dac_classification"
-      expr: oda_dac_classification
-      comment: "OECD DAC ODA classification — required for official development assistance reporting and donor regulatory compliance."
-    - name: "funding_start_year"
-      expr: YEAR(funding_start_date)
-      comment: "Year the funding source becomes available — used for funding pipeline and vintage analysis."
-  measures:
-    - name: "total_funding_available"
-      expr: SUM(CAST(total_funding_available AS DOUBLE))
-      comment: "Total funding available across all funding sources. Primary portfolio valuation KPI for funding pipeline and resource planning."
-    - name: "total_endowment_principal"
-      expr: SUM(CAST(endowment_principal_amount AS DOUBLE))
-      comment: "Total endowment principal under management. Tracks the long-term asset base supporting organisational sustainability."
-    - name: "total_endowment_net_appreciation"
-      expr: SUM(CAST(endowment_net_appreciation_amount AS DOUBLE))
-      comment: "Total net appreciation on endowment assets. Measures investment performance and growth of the endowment portfolio."
-    - name: "avg_endowment_spending_policy_rate"
-      expr: AVG(CAST(endowment_spending_policy_rate AS DOUBLE))
-      comment: "Average endowment spending policy rate. Benchmarks the sustainable draw-down rate against investment returns for long-term financial health."
-    - name: "avg_cost_share_percentage"
-      expr: AVG(CAST(cost_share_percentage AS DOUBLE))
-      comment: "Average cost-share percentage required by funding sources. Informs proposal strategy and organisational co-investment capacity planning."
-    - name: "avg_nicra_rate"
-      expr: AVG(CAST(nicra_rate AS DOUBLE))
-      comment: "Average NICRA indirect cost rate across funding sources. Benchmarks overhead recovery rates and informs NICRA negotiation strategy."
-    - name: "active_funding_source_count"
-      expr: COUNT(CASE WHEN funding_source_status = 'Active' THEN 1 END)
-      comment: "Number of currently active funding sources. Tracks funding diversification and pipeline health."
-    - name: "endowment_fund_count"
-      expr: COUNT(CASE WHEN is_endowment_fund = TRUE THEN 1 END)
-      comment: "Number of endowment funding sources. Tracks the breadth of long-term sustainable funding instruments."
-    - name: "subaward_eligible_source_count"
-      expr: COUNT(CASE WHEN subaward_allowed = TRUE THEN 1 END)
-      comment: "Number of funding sources permitting sub-awards. Informs partnership programme design and pass-through funding capacity."
+      comment: "Total cost-share amount committed by subrecipients — tracks partner co-financing obligations."
+    - name: "distinct_parent_awards_count"
+      expr: COUNT(DISTINCT award_id)
+      comment: "Number of distinct parent awards with subawards — measures the breadth of pass-through funding activity."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_amendment`
@@ -611,56 +422,177 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Award amendment KPI layer. Tracks amendment volumes, funding changes, budget modifications, period extensions, and approval cycles to support award change management and donor prior approval governance."
+  comment: "Grant amendment KPIs — tracks funding changes, no-cost extensions, scope modifications, and approval cycle times to monitor portfolio stability and donor relationship management."
   source: "`vibe_ngo_v1`.`grant`.`amendment`"
   dimensions:
-    - name: "amendment_status"
-      expr: amendment_status
-      comment: "Current status of the amendment (e.g. Draft, Pending Approval, Approved, Rejected) — primary dimension for amendment pipeline monitoring."
-    - name: "amendment_type"
-      expr: amendment_type
-      comment: "Type of amendment (e.g. Budget Modification, No-Cost Extension, Scope Change) — categorises the nature of award changes."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the amendment financial values — required for multi-currency amendment analysis."
-    - name: "donor_prior_approval_required"
-      expr: donor_prior_approval_required
-      comment: "Flag indicating donor prior approval was required — tracks compliance with donor prior approval requirements."
+    - name: "grant_amendment_status"
+      expr: grant_amendment_status
+      comment: "Current status of the amendment (e.g. Pending, Approved, Rejected) — primary lifecycle dimension."
+    - name: "grant_amendment_type"
+      expr: grant_amendment_type
+      comment: "Type of amendment (e.g. Budget Modification, No-Cost Extension, Scope Change) — used to categorize portfolio instability drivers."
     - name: "is_no_cost_extension"
       expr: is_no_cost_extension
-      comment: "Flag indicating a no-cost extension amendment — separates period extensions from financial modifications."
-    - name: "approved_by_title"
-      expr: approved_by_title
-      comment: "Title of the approving authority — tracks approval authority levels and delegation of authority compliance."
+      comment: "Boolean flag indicating whether the amendment is a no-cost extension — key indicator of project delivery challenges."
+    - name: "donor_prior_approval_required"
+      expr: donor_prior_approval_required
+      comment: "Boolean flag indicating whether donor prior approval was required — used to track compliance with donor approval thresholds."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the amendment funding change — needed for multi-currency amendment analysis."
     - name: "approval_year"
       expr: YEAR(approval_date)
-      comment: "Year the amendment was approved — enables year-over-year amendment trend analysis."
-    - name: "effective_year"
-      expr: YEAR(effective_date)
-      comment: "Year the amendment takes effect — used for programme planning and financial period analysis."
+      comment: "Year the amendment was approved — used for year-over-year amendment volume trend analysis."
+    - name: "effective_date_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month the amendment became effective — used for portfolio change timeline analysis."
+    - name: "approved_by_title"
+      expr: approved_by_title
+      comment: "Title of the approver — used to analyze approval authority distribution and escalation patterns."
   measures:
-    - name: "total_amendments"
-      expr: COUNT(1)
-      comment: "Total number of amendments. Baseline volume KPI for award change management workload and portfolio complexity."
+    - name: "total_amendment_count"
+      expr: COUNT(amendment_id)
+      comment: "Total number of amendments across the portfolio — primary indicator of portfolio instability and change management burden."
+    - name: "no_cost_extension_count"
+      expr: COUNT(CASE WHEN is_no_cost_extension = TRUE THEN amendment_id END)
+      comment: "Number of no-cost extension amendments — key indicator of project delivery delays and implementation challenges."
     - name: "total_funding_change"
       expr: SUM(CAST(funding_change AS DOUBLE))
-      comment: "Net sum of funding changes across all amendments. Tracks the cumulative financial impact of award modifications on the portfolio."
-    - name: "total_budget_modification_amount"
-      expr: SUM(CAST(budget_modification_summary AS DOUBLE))
-      comment: "Total budget modification amounts across amendments. Measures the scale of budget restructuring activity and financial management complexity."
+      comment: "Net total funding change across all amendments — measures aggregate budget modification impact on the portfolio."
     - name: "total_revised_obligation"
       expr: SUM(CAST(revised_total_obligation AS DOUBLE))
-      comment: "Sum of revised total obligations post-amendment. Tracks the updated financial commitment level across amended awards."
-    - name: "no_cost_extension_count"
-      expr: COUNT(CASE WHEN is_no_cost_extension = TRUE THEN 1 END)
-      comment: "Number of no-cost extension amendments. Tracks programme timeline extensions — high counts may indicate implementation challenges."
-    - name: "no_cost_extension_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_no_cost_extension = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of amendments that are no-cost extensions. Strategic KPI for programme delivery performance — high rates signal systemic implementation delays."
-    - name: "donor_prior_approval_required_count"
-      expr: COUNT(CASE WHEN donor_prior_approval_required = TRUE THEN 1 END)
-      comment: "Number of amendments requiring donor prior approval. Tracks compliance workload and donor relationship management burden."
-    - name: "avg_approval_cycle_days"
-      expr: AVG(DATEDIFF(approval_date, request_date))
-      comment: "Average number of days from amendment request to approval. Measures amendment processing efficiency and identifies bottlenecks in the approval workflow."
+      comment: "Total revised obligation amount across all amendments — measures the updated financial commitment after modifications."
+    - name: "total_original_obligation"
+      expr: SUM(CAST(original_total_obligation AS DOUBLE))
+      comment: "Total original obligation amount before amendments — used as baseline for measuring portfolio scope change."
+    - name: "amendments_requiring_donor_approval_count"
+      expr: COUNT(CASE WHEN donor_prior_approval_required = TRUE THEN amendment_id END)
+      comment: "Number of amendments requiring donor prior approval — measures compliance burden and donor relationship management workload."
+    - name: "distinct_awards_amended"
+      expr: COUNT(DISTINCT award_id)
+      comment: "Number of distinct awards that have been amended — measures portfolio-wide amendment prevalence."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_donor_condition`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Donor condition compliance KPIs — tracks special award conditions, compliance status, overdue conditions, and financial thresholds to manage donor relationship risk and regulatory obligations."
+  source: "`vibe_ngo_v1`.`grant`.`donor_condition`"
+  dimensions:
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Current compliance status of the donor condition (e.g. Compliant, Non-Compliant, Pending) — primary risk monitoring dimension."
+    - name: "donor_condition_type"
+      expr: donor_condition_type
+      comment: "Type of donor condition (e.g. Financial, Programmatic, Reporting) — used to categorize compliance obligations."
+    - name: "category"
+      expr: category
+      comment: "Category of the donor condition — used for grouping and prioritization of compliance actions."
+    - name: "priority_level"
+      expr: priority_level
+      comment: "Priority level of the condition (e.g. High, Medium, Low) — used for compliance workload prioritization."
+    - name: "risk_rating"
+      expr: risk_rating
+      comment: "Risk rating of the donor condition — used for risk-based compliance monitoring decisions."
+    - name: "responsible_department"
+      expr: responsible_department
+      comment: "Department responsible for fulfilling the condition — used for accountability and workload distribution analysis."
+    - name: "is_special_award_condition"
+      expr: is_special_award_condition
+      comment: "Boolean flag indicating whether this is a Special Award Condition (SAC) — SACs carry elevated compliance risk."
+    - name: "monitoring_frequency"
+      expr: monitoring_frequency
+      comment: "Frequency of condition monitoring — used to assess oversight intensity."
+    - name: "due_date_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month the condition is due — used for compliance deadline planning and workload forecasting."
+    - name: "recurrence_frequency"
+      expr: recurrence_frequency
+      comment: "Recurrence frequency for recurring conditions — used to forecast ongoing compliance obligations."
+  measures:
+    - name: "total_conditions_count"
+      expr: COUNT(donor_condition_id)
+      comment: "Total number of donor conditions across the portfolio — measures overall compliance obligation volume."
+    - name: "non_compliant_condition_count"
+      expr: COUNT(CASE WHEN compliance_status = 'Non-Compliant' THEN donor_condition_id END)
+      comment: "Number of non-compliant donor conditions — critical risk KPI; non-compliance can trigger award suspension or clawback."
+    - name: "special_award_condition_count"
+      expr: COUNT(CASE WHEN is_special_award_condition = TRUE THEN donor_condition_id END)
+      comment: "Number of Special Award Conditions (SACs) — elevated compliance risk items requiring executive attention."
+    - name: "high_risk_condition_count"
+      expr: COUNT(CASE WHEN risk_rating = 'High' THEN donor_condition_id END)
+      comment: "Number of high-risk donor conditions — used to prioritize compliance monitoring resources."
+    - name: "total_financial_threshold_amount"
+      expr: SUM(CAST(financial_threshold_amount AS DOUBLE))
+      comment: "Total financial threshold amount across all donor conditions — measures aggregate financial compliance exposure."
+    - name: "distinct_awards_with_conditions"
+      expr: COUNT(DISTINCT award_id)
+      comment: "Number of distinct awards with donor conditions — measures breadth of compliance obligation across the portfolio."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`grant_funding_source`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Funding source portfolio KPIs — tracks available funding, cost-share requirements, indirect cost rates, and donor diversification for strategic resource mobilization decisions."
+  source: "`vibe_ngo_v1`.`grant`.`funding_source`"
+  dimensions:
+    - name: "funding_source_status"
+      expr: funding_source_status
+      comment: "Current status of the funding source (e.g. Active, Inactive, Pipeline) — primary filter for active funding analysis."
+    - name: "funding_mechanism_type"
+      expr: funding_mechanism_type
+      comment: "Type of funding mechanism (e.g. Grant, Contract, Cooperative Agreement) — affects compliance and reporting requirements."
+    - name: "fund_restriction_type"
+      expr: fund_restriction_type
+      comment: "Restriction type of the funding source (e.g. Restricted, Unrestricted) — affects budget flexibility."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the funding source — needed for multi-currency portfolio analysis."
+    - name: "compliance_framework"
+      expr: compliance_framework
+      comment: "Applicable compliance framework (e.g. 2 CFR 200, FCDO) — determines regulatory requirements."
+    - name: "indirect_cost_rate_type"
+      expr: indirect_cost_rate_type
+      comment: "Type of indirect cost rate (e.g. NICRA, Negotiated, De Minimis) — affects overhead recovery strategy."
+    - name: "oda_dac_classification"
+      expr: oda_dac_classification
+      comment: "ODA/DAC classification of the funding source — used for ODA reporting and donor alignment analysis."
+    - name: "cost_share_required"
+      expr: cost_share_required
+      comment: "Boolean flag indicating whether cost-share is required — affects organizational co-financing obligations."
+    - name: "subaward_allowed"
+      expr: subaward_allowed
+      comment: "Boolean flag indicating whether subawards are permitted — affects partnership model decisions."
+    - name: "advance_payment_allowed"
+      expr: advance_payment_allowed
+      comment: "Boolean flag indicating whether advance payments are allowed — affects cash flow planning."
+    - name: "funding_start_year"
+      expr: YEAR(funding_start_date)
+      comment: "Year the funding source becomes available — used for pipeline timing analysis."
+    - name: "funding_end_year"
+      expr: YEAR(funding_end_date)
+      comment: "Year the funding source expires — used for pipeline expiry and renewal planning."
+  measures:
+    - name: "total_funding_available"
+      expr: SUM(CAST(total_funding_available AS DOUBLE))
+      comment: "Total funding available across all funding sources — primary resource mobilization pipeline KPI."
+    - name: "avg_nicra_rate"
+      expr: AVG(CAST(nicra_rate AS DOUBLE))
+      comment: "Average NICRA indirect cost rate across funding sources — used to assess overhead recovery potential."
+    - name: "avg_cost_share_percentage"
+      expr: AVG(CAST(cost_share_percentage AS DOUBLE))
+      comment: "Average cost-share percentage required across funding sources — measures organizational co-financing burden."
+    - name: "avg_budget_revision_threshold"
+      expr: AVG(CAST(budget_revision_threshold AS DOUBLE))
+      comment: "Average budget revision threshold across funding sources — indicates typical flexibility for budget modifications without donor approval."
+    - name: "active_funding_source_count"
+      expr: COUNT(CASE WHEN funding_source_status = 'Active' THEN funding_source_id END)
+      comment: "Number of active funding sources — measures donor diversification and funding pipeline breadth."
+    - name: "subaward_eligible_source_count"
+      expr: COUNT(CASE WHEN subaward_allowed = TRUE THEN funding_source_id END)
+      comment: "Number of funding sources that permit subawards — measures partnership and pass-through funding capacity."
 $$;

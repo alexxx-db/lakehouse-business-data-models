@@ -1,535 +1,80 @@
--- Metric views for domain: engineering | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:48:32
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_bom`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Bom business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`bom`"
-  dimensions:
-    - name: "Alternative Bom Indicator"
-      expr: alternative_bom_indicator
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Approved Date"
-      expr: approved_date
-    - name: "Base Unit Of Measure"
-      expr: base_unit_of_measure
-    - name: "Bom Number"
-      expr: bom_number
-    - name: "Bom Status"
-      expr: bom_status
-    - name: "Bom Type"
-      expr: bom_type
-    - name: "Category"
-      expr: category
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Description"
-      expr: description
-    - name: "Effective From Date"
-      expr: effective_from_date
-    - name: "Effective To Date"
-      expr: effective_to_date
-    - name: "Engineering Change Order Number"
-      expr: engineering_change_order_number
-    - name: "Explosion Type"
-      expr: explosion_type
-    - name: "Is Configurable"
-      expr: is_configurable
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Bom"
-      expr: COUNT(DISTINCT bom_id)
-    - name: "Total Configuration Profile"
-      expr: SUM(configuration_profile)
-    - name: "Average Configuration Profile"
-      expr: AVG(configuration_profile)
-    - name: "Total Cost Estimate Currency"
-      expr: SUM(cost_estimate_currency)
-    - name: "Average Cost Estimate Currency"
-      expr: AVG(cost_estimate_currency)
-    - name: "Total Cost Estimate Total"
-      expr: SUM(cost_estimate_total)
-    - name: "Average Cost Estimate Total"
-      expr: AVG(cost_estimate_total)
-    - name: "Total Lot Size"
-      expr: SUM(lot_size)
-    - name: "Average Lot Size"
-      expr: AVG(lot_size)
-    - name: "Total Plm Item Code"
-      expr: SUM(plm_item_code)
-    - name: "Average Plm Item Code"
-      expr: AVG(plm_item_code)
-    - name: "Total Quantity Basis"
-      expr: SUM(quantity_basis)
-    - name: "Average Quantity Basis"
-      expr: AVG(quantity_basis)
-    - name: "Total Scrap Percentage"
-      expr: SUM(scrap_percentage)
-    - name: "Average Scrap Percentage"
-      expr: AVG(scrap_percentage)
-    - name: "Total Weight Total"
-      expr: SUM(weight_total)
-    - name: "Average Weight Total"
-      expr: AVG(weight_total)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_bom_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Bom Line business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`bom_line`"
-  dimensions:
-    - name: "Assembly Instruction"
-      expr: assembly_instruction
-    - name: "Bulk Material Flag"
-      expr: bulk_material_flag
-    - name: "Change Number"
-      expr: change_number
-    - name: "Co Product Flag"
-      expr: co_product_flag
-    - name: "Cost Rollup Flag"
-      expr: cost_rollup_flag
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Critical Component Flag"
-      expr: critical_component_flag
-    - name: "Effectivity End Date"
-      expr: effectivity_end_date
-    - name: "Effectivity Serial Number End"
-      expr: effectivity_serial_number_end
-    - name: "Effectivity Serial Number Start"
-      expr: effectivity_serial_number_start
-    - name: "Effectivity Start Date"
-      expr: effectivity_start_date
-    - name: "Engineering Bom Line Status"
-      expr: engineering_bom_line_status
-    - name: "Engineering Notes"
-      expr: engineering_notes
-    - name: "Find Number"
-      expr: find_number
-    - name: "Fixed Quantity Flag"
-      expr: fixed_quantity_flag
-    - name: "Installation Point"
-      expr: installation_point
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Bom Line"
-      expr: COUNT(DISTINCT bom_line_id)
-    - name: "Total Quantity Per Assembly"
-      expr: SUM(quantity_per_assembly)
-    - name: "Average Quantity Per Assembly"
-      expr: AVG(quantity_per_assembly)
-    - name: "Total Scrap Factor Percentage"
-      expr: SUM(scrap_factor_percentage)
-    - name: "Average Scrap Factor Percentage"
-      expr: AVG(scrap_factor_percentage)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_cad_model`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Cad Model business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`cad_model`"
-  dimensions:
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Approved Timestamp"
-      expr: approved_timestamp
-    - name: "Authoring Tool"
-      expr: authoring_tool
-    - name: "Authoring Tool Version"
-      expr: authoring_tool_version
-    - name: "Cam Programming Required"
-      expr: cam_programming_required
-    - name: "Checksum Hash"
-      expr: checksum_hash
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Dataset Type"
-      expr: dataset_type
-    - name: "Design Intent"
-      expr: design_intent
-    - name: "Dfm Analysis Status"
-      expr: dfm_analysis_status
-    - name: "Drawing Number"
-      expr: drawing_number
-    - name: "Export Control Classification"
-      expr: export_control_classification
-    - name: "File Format"
-      expr: file_format
-    - name: "Intellectual Property Owner"
-      expr: intellectual_property_owner
-    - name: "Is Confidential"
-      expr: is_confidential
-    - name: "Material Specification"
-      expr: material_specification
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Cad Model"
-      expr: COUNT(DISTINCT cad_model_id)
-    - name: "Total Bounding Box Height"
-      expr: SUM(bounding_box_height)
-    - name: "Average Bounding Box Height"
-      expr: AVG(bounding_box_height)
-    - name: "Total Bounding Box Length"
-      expr: SUM(bounding_box_length)
-    - name: "Average Bounding Box Length"
-      expr: AVG(bounding_box_length)
-    - name: "Total Bounding Box Width"
-      expr: SUM(bounding_box_width)
-    - name: "Average Bounding Box Width"
-      expr: AVG(bounding_box_width)
-    - name: "Total Cam Program Reference"
-      expr: SUM(cam_program_reference)
-    - name: "Average Cam Program Reference"
-      expr: AVG(cam_program_reference)
-    - name: "Total Center Of Gravity X"
-      expr: SUM(center_of_gravity_x)
-    - name: "Average Center Of Gravity X"
-      expr: AVG(center_of_gravity_x)
-    - name: "Total Center Of Gravity Y"
-      expr: SUM(center_of_gravity_y)
-    - name: "Average Center Of Gravity Y"
-      expr: AVG(center_of_gravity_y)
-    - name: "Total Center Of Gravity Z"
-      expr: SUM(center_of_gravity_z)
-    - name: "Average Center Of Gravity Z"
-      expr: AVG(center_of_gravity_z)
-    - name: "Total Dfm Complexity Score"
-      expr: SUM(dfm_complexity_score)
-    - name: "Average Dfm Complexity Score"
-      expr: AVG(dfm_complexity_score)
-    - name: "Total File Size Bytes"
-      expr: SUM(file_size_bytes)
-    - name: "Average File Size Bytes"
-      expr: AVG(file_size_bytes)
-    - name: "Total Model Mass"
-      expr: SUM(model_mass)
-    - name: "Average Model Mass"
-      expr: AVG(model_mass)
-    - name: "Total Model Surface Area"
-      expr: SUM(model_surface_area)
-    - name: "Average Model Surface Area"
-      expr: AVG(model_surface_area)
-    - name: "Total Model Volume"
-      expr: SUM(model_volume)
-    - name: "Average Model Volume"
-      expr: AVG(model_volume)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_component`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Component business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`component`"
-  dimensions:
-    - name: "Abc Classification"
-      expr: abc_classification
-    - name: "Cad Model Reference"
-      expr: cad_model_reference
-    - name: "Ce Marking Flag"
-      expr: ce_marking_flag
-    - name: "Commodity Code"
-      expr: commodity_code
-    - name: "Component Number"
-      expr: component_number
-    - name: "Component Type"
-      expr: component_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Description"
-      expr: description
-    - name: "Dfmea Reference"
-      expr: dfmea_reference
-    - name: "Drawing Number"
-      expr: drawing_number
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "Functional Group"
-      expr: functional_group
-    - name: "Hazardous Material Flag"
-      expr: hazardous_material_flag
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Lifecycle Phase"
-      expr: lifecycle_phase
-    - name: "Make Or Buy"
-      expr: make_or_buy
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Component"
-      expr: COUNT(DISTINCT component_id)
-    - name: "Total Cost Currency Code"
-      expr: SUM(cost_currency_code)
-    - name: "Average Cost Currency Code"
-      expr: AVG(cost_currency_code)
-    - name: "Total Dfm Score"
-      expr: SUM(dfm_score)
-    - name: "Average Dfm Score"
-      expr: AVG(dfm_score)
-    - name: "Total Height Mm"
-      expr: SUM(height_mm)
-    - name: "Average Height Mm"
-      expr: AVG(height_mm)
-    - name: "Total Length Mm"
-      expr: SUM(length_mm)
-    - name: "Average Length Mm"
-      expr: AVG(length_mm)
-    - name: "Total Lot Size"
-      expr: SUM(lot_size)
-    - name: "Average Lot Size"
-      expr: AVG(lot_size)
-    - name: "Total Minimum Order Quantity"
-      expr: SUM(minimum_order_quantity)
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(minimum_order_quantity)
-    - name: "Total Reorder Point"
-      expr: SUM(reorder_point)
-    - name: "Average Reorder Point"
-      expr: AVG(reorder_point)
-    - name: "Total Safety Stock Quantity"
-      expr: SUM(safety_stock_quantity)
-    - name: "Average Safety Stock Quantity"
-      expr: AVG(safety_stock_quantity)
-    - name: "Total Standard Cost"
-      expr: SUM(standard_cost)
-    - name: "Average Standard Cost"
-      expr: AVG(standard_cost)
-    - name: "Total Weight Kg"
-      expr: SUM(weight_kg)
-    - name: "Average Weight Kg"
-      expr: AVG(weight_kg)
-    - name: "Total Width Mm"
-      expr: SUM(width_mm)
-    - name: "Average Width Mm"
-      expr: AVG(width_mm)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_drawing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Drawing business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`drawing`"
-  dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Assembly Level"
-      expr: assembly_level
-    - name: "Checked By"
-      expr: checked_by
-    - name: "Confidentiality Level"
-      expr: confidentiality_level
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Drawing Number"
-      expr: drawing_number
-    - name: "Drawing Status"
-      expr: drawing_status
-    - name: "Drawing Type"
-      expr: drawing_type
-    - name: "Drawn By"
-      expr: drawn_by
-    - name: "Export Control Classification"
-      expr: export_control_classification
-    - name: "File Format"
-      expr: file_format
-    - name: "File Path"
-      expr: file_path
-    - name: "Is Master Drawing"
-      expr: is_master_drawing
-    - name: "Language Code"
-      expr: language_code
-    - name: "Material Callout"
-      expr: material_callout
-    - name: "Modified Timestamp"
-      expr: modified_timestamp
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Drawing"
-      expr: COUNT(DISTINCT drawing_id)
-    - name: "Total Weight Kg"
-      expr: SUM(weight_kg)
-    - name: "Average Weight Kg"
-      expr: AVG(weight_kg)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_ecn`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Ecn business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`ecn`"
-  dimensions:
-    - name: "Acknowledgement Count"
-      expr: acknowledgement_count
-    - name: "Acknowledgement Required"
-      expr: acknowledgement_required
-    - name: "Acknowledgement Target Count"
-      expr: acknowledgement_target_count
-    - name: "Affected Drawing Count"
-      expr: affected_drawing_count
-    - name: "Affected Part Count"
-      expr: affected_part_count
-    - name: "Affected Product Lines"
-      expr: affected_product_lines
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Bom Impact Flag"
-      expr: bom_impact_flag
-    - name: "Change Category"
-      expr: change_category
-    - name: "Change Description"
-      expr: change_description
-    - name: "Change Reason"
-      expr: change_reason
-    - name: "Closure Date"
-      expr: closure_date
-    - name: "Comments"
-      expr: comments
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Notification Required"
-      expr: customer_notification_required
-    - name: "Distribution List"
-      expr: distribution_list
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Ecn"
-      expr: COUNT(DISTINCT ecn_id)
-    - name: "Total Cost Impact Currency"
-      expr: SUM(cost_impact_currency)
-    - name: "Average Cost Impact Currency"
-      expr: AVG(cost_impact_currency)
-    - name: "Total Cost Impact Estimate"
-      expr: SUM(cost_impact_estimate)
-    - name: "Average Cost Impact Estimate"
-      expr: AVG(cost_impact_estimate)
-$$;
+-- Metric views for domain: engineering | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:39:56
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_eco`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Eco business metrics"
+  comment: "Engineering Change Order (ECO) metrics tracking change volume, cost impact, cycle time, and approval efficiency — critical for product lifecycle management and change control governance."
   source: "`vibe_manufacturing_v1`.`engineering`.`eco`"
   dimensions:
-    - name: "Acknowledgement Count"
-      expr: acknowledgement_count
-    - name: "Acknowledgement Required"
-      expr: acknowledgement_required
-    - name: "Actual Schedule Impact Days"
-      expr: actual_schedule_impact_days
-    - name: "Affected Items Count"
-      expr: affected_items_count
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approved By Name"
-      expr: approved_by_name
-    - name: "Approved By Title"
-      expr: approved_by_title
-    - name: "Change Priority"
-      expr: change_priority
-    - name: "Change Type"
+    - name: "change_type"
       expr: change_type
-    - name: "Closure Date"
-      expr: closure_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Approval Date"
-      expr: customer_approval_date
-    - name: "Customer Approval Received"
+      comment: "Type of engineering change (e.g., design, process, material) — primary segmentation for change analysis."
+    - name: "change_priority"
+      expr: change_priority
+      comment: "Priority level of the change order — used to segment urgent vs. routine changes."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Current lifecycle state of the ECO (e.g., draft, submitted, approved, closed) — tracks change progression."
+    - name: "reason_code"
+      expr: reason_code
+      comment: "Standardized reason code for the change — enables root cause and trend analysis."
+    - name: "effectivity_type"
+      expr: effectivity_type
+      comment: "How the change takes effect (e.g., date-based, serial-based) — impacts implementation planning."
+    - name: "customer_approval_received"
       expr: customer_approval_received
-    - name: "Description"
-      expr: description
-    - name: "Disposition Action"
-      expr: disposition_action
-    - name: "Eco Number"
-      expr: eco_number
+      comment: "Whether customer approval was received — critical for customer-facing changes."
+    - name: "initiated_year"
+      expr: YEAR(initiated_date)
+      comment: "Year the ECO was initiated — enables year-over-year trend analysis."
+    - name: "initiated_quarter"
+      expr: CONCAT('Q', QUARTER(initiated_date), '-', YEAR(initiated_date))
+      comment: "Quarter the ECO was initiated — enables quarterly trend analysis."
+    - name: "initiated_month"
+      expr: DATE_TRUNC('MONTH', initiated_date)
+      comment: "Month the ECO was initiated — enables monthly trend analysis."
   measures:
-    - name: "Row Count"
+    - name: "total_eco_count"
       expr: COUNT(1)
-    - name: "Distinct Eco"
-      expr: COUNT(DISTINCT eco_id)
-    - name: "Total Actual Cost Impact"
-      expr: SUM(actual_cost_impact)
-    - name: "Average Actual Cost Impact"
-      expr: AVG(actual_cost_impact)
-    - name: "Total Cost Currency Code"
-      expr: SUM(cost_currency_code)
-    - name: "Average Cost Currency Code"
-      expr: AVG(cost_currency_code)
-    - name: "Total Estimated Cost Impact"
-      expr: SUM(estimated_cost_impact)
-    - name: "Average Estimated Cost Impact"
-      expr: AVG(estimated_cost_impact)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_engineering_specification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Engineering Specification business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`engineering_specification`"
-  dimensions:
-    - name: "Acceptance Criteria"
-      expr: acceptance_criteria
-    - name: "Applicable Standards"
-      expr: applicable_standards
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Approver Name"
-      expr: approver_name
-    - name: "Change Reason"
-      expr: change_reason
-    - name: "Confidentiality Level"
-      expr: confidentiality_level
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Design Authority"
-      expr: design_authority
-    - name: "Dfm Analysis Completed"
-      expr: dfm_analysis_completed
-    - name: "Dfmea Reference"
-      expr: dfmea_reference
-    - name: "Document Format"
-      expr: document_format
-    - name: "Document Location"
-      expr: document_location
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "Environmental Conditions"
-      expr: environmental_conditions
-    - name: "Language"
-      expr: language
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Engineering Specification"
-      expr: COUNT(DISTINCT engineering_specification_id)
+      comment: "Total number of engineering change orders — baseline volume metric for change activity."
+    - name: "total_estimated_cost_impact"
+      expr: SUM(CAST(estimated_cost_impact AS DOUBLE))
+      comment: "Sum of estimated cost impacts across all ECOs — forecasts financial exposure from changes."
+    - name: "total_actual_cost_impact"
+      expr: SUM(CAST(actual_cost_impact AS DOUBLE))
+      comment: "Sum of actual cost impacts across all ECOs — measures realized financial impact of changes."
+    - name: "avg_estimated_cost_impact"
+      expr: AVG(CAST(estimated_cost_impact AS DOUBLE))
+      comment: "Average estimated cost impact per ECO — indicates typical change cost magnitude."
+    - name: "avg_actual_cost_impact"
+      expr: AVG(CAST(actual_cost_impact AS DOUBLE))
+      comment: "Average actual cost impact per ECO — measures typical realized change cost."
+    - name: "total_affected_items"
+      expr: SUM(CAST(affected_items_count AS BIGINT))
+      comment: "Total number of items affected across all ECOs — measures change scope and complexity."
+    - name: "avg_affected_items_per_eco"
+      expr: AVG(CAST(affected_items_count AS DOUBLE))
+      comment: "Average number of items affected per ECO — indicates typical change breadth."
+    - name: "eco_requiring_customer_approval_count"
+      expr: COUNT(CASE WHEN requires_customer_approval = TRUE THEN 1 END)
+      comment: "Count of ECOs requiring customer approval — measures customer-facing change volume."
+    - name: "eco_with_customer_approval_received_count"
+      expr: COUNT(CASE WHEN customer_approval_received = TRUE THEN 1 END)
+      comment: "Count of ECOs where customer approval was received — tracks customer approval completion."
+    - name: "eco_requiring_supplier_notification_count"
+      expr: COUNT(CASE WHEN requires_supplier_notification = TRUE THEN 1 END)
+      comment: "Count of ECOs requiring supplier notification — measures supply chain coordination needs."
+    - name: "closed_eco_count"
+      expr: COUNT(CASE WHEN closure_date IS NOT NULL THEN 1 END)
+      comment: "Count of ECOs that have been closed — measures change completion rate."
+    - name: "approved_eco_count"
+      expr: COUNT(CASE WHEN approval_date IS NOT NULL THEN 1 END)
+      comment: "Count of ECOs that have been approved — tracks approval throughput."
+    - name: "implemented_eco_count"
+      expr: COUNT(CASE WHEN implementation_date IS NOT NULL THEN 1 END)
+      comment: "Count of ECOs that have been implemented — measures change execution completion."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_project`
@@ -537,103 +82,367 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Project business metrics"
+  comment: "Engineering project portfolio metrics tracking budget performance, timeline adherence, complexity, and design quality — essential for R&D and product development governance."
   source: "`vibe_manufacturing_v1`.`engineering`.`project`"
   dimensions:
-    - name: "Actual Launch Date"
-      expr: actual_launch_date
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Approved Timestamp"
-      expr: approved_timestamp
-    - name: "Business Justification"
-      expr: business_justification
-    - name: "Capex Opex Classification"
-      expr: capex_opex_classification
-    - name: "Code"
-      expr: code
-    - name: "Complexity Score"
-      expr: complexity_score
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Description"
-      expr: description
-    - name: "Design Methodology"
+    - name: "project_status"
+      expr: project_status
+      comment: "Current status of the project (e.g., active, on-hold, completed) — primary segmentation for portfolio health."
+    - name: "project_type"
+      expr: project_type
+      comment: "Type of engineering project (e.g., new product, redesign, cost reduction) — enables strategic portfolio mix analysis."
+    - name: "priority_level"
+      expr: priority_level
+      comment: "Priority level of the project — used to segment strategic vs. tactical initiatives."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level of the project — critical for portfolio risk management."
+    - name: "program_phase"
+      expr: program_phase
+      comment: "Current phase of the project (e.g., concept, design, validation, launch) — tracks project lifecycle progression."
+    - name: "design_methodology"
       expr: design_methodology
-    - name: "Design Review Count"
-      expr: design_review_count
-    - name: "Dfm Analysis Completed"
-      expr: dfm_analysis_completed
-    - name: "Dfmea Completed"
+      comment: "Design methodology used (e.g., agile, waterfall, lean) — enables methodology effectiveness analysis."
+    - name: "ppap_required"
+      expr: ppap_required
+      comment: "Whether Production Part Approval Process is required — segments automotive/regulated projects."
+    - name: "dfmea_completed"
       expr: dfmea_completed
-    - name: "Eco Count"
-      expr: eco_count
-    - name: "End Date"
-      expr: end_date
-    - name: "Modified By"
-      expr: modified_by
+      comment: "Whether Design Failure Mode Effects Analysis is completed — tracks design quality gate completion."
+    - name: "pfmea_completed"
+      expr: pfmea_completed
+      comment: "Whether Process Failure Mode Effects Analysis is completed — tracks process quality gate completion."
+    - name: "start_year"
+      expr: YEAR(start_date)
+      comment: "Year the project started — enables cohort analysis by project vintage."
+    - name: "target_launch_quarter"
+      expr: CONCAT('Q', QUARTER(target_launch_date), '-', YEAR(target_launch_date))
+      comment: "Target launch quarter — enables pipeline and capacity planning."
   measures:
-    - name: "Row Count"
+    - name: "total_project_count"
       expr: COUNT(1)
-    - name: "Distinct Project"
-      expr: COUNT(DISTINCT project_id)
-    - name: "Total Budget Allocated Amount"
-      expr: SUM(budget_allocated_amount)
-    - name: "Average Budget Allocated Amount"
-      expr: AVG(budget_allocated_amount)
-    - name: "Total Budget Currency Code"
-      expr: SUM(budget_currency_code)
-    - name: "Average Budget Currency Code"
-      expr: AVG(budget_currency_code)
-    - name: "Total Budget Spent Amount"
-      expr: SUM(budget_spent_amount)
-    - name: "Average Budget Spent Amount"
-      expr: AVG(budget_spent_amount)
-    - name: "Total Collaboration Partners"
-      expr: SUM(collaboration_partners)
-    - name: "Average Collaboration Partners"
-      expr: AVG(collaboration_partners)
+      comment: "Total number of engineering projects — baseline portfolio size metric."
+    - name: "total_budget_allocated"
+      expr: SUM(CAST(budget_allocated_amount AS DOUBLE))
+      comment: "Total budget allocated across all projects — measures total R&D investment."
+    - name: "total_budget_spent"
+      expr: SUM(CAST(budget_spent_amount AS DOUBLE))
+      comment: "Total budget spent across all projects — measures actual R&D expenditure."
+    - name: "avg_budget_allocated_per_project"
+      expr: AVG(CAST(budget_allocated_amount AS DOUBLE))
+      comment: "Average budget allocated per project — indicates typical project investment size."
+    - name: "avg_budget_spent_per_project"
+      expr: AVG(CAST(budget_spent_amount AS DOUBLE))
+      comment: "Average budget spent per project — measures typical project cost."
+    - name: "total_eco_count_across_projects"
+      expr: SUM(CAST(eco_count AS BIGINT))
+      comment: "Total number of ECOs across all projects — measures change activity and design stability."
+    - name: "avg_eco_count_per_project"
+      expr: AVG(CAST(eco_count AS DOUBLE))
+      comment: "Average number of ECOs per project — indicates typical design churn."
+    - name: "total_design_review_count"
+      expr: SUM(CAST(design_review_count AS BIGINT))
+      comment: "Total number of design reviews across all projects — measures design governance rigor."
+    - name: "avg_design_review_count_per_project"
+      expr: AVG(CAST(design_review_count AS DOUBLE))
+      comment: "Average number of design reviews per project — indicates typical review intensity."
+    - name: "total_prototype_count"
+      expr: SUM(CAST(prototype_count AS BIGINT))
+      comment: "Total number of prototypes across all projects — measures development iteration volume."
+    - name: "avg_prototype_count_per_project"
+      expr: AVG(CAST(prototype_count AS DOUBLE))
+      comment: "Average number of prototypes per project — indicates typical iteration cycles."
+    - name: "projects_with_dfmea_completed_count"
+      expr: COUNT(CASE WHEN dfmea_completed = TRUE THEN 1 END)
+      comment: "Count of projects with DFMEA completed — tracks design quality gate compliance."
+    - name: "projects_with_pfmea_completed_count"
+      expr: COUNT(CASE WHEN pfmea_completed = TRUE THEN 1 END)
+      comment: "Count of projects with PFMEA completed — tracks process quality gate compliance."
+    - name: "projects_with_dfm_analysis_completed_count"
+      expr: COUNT(CASE WHEN dfm_analysis_completed = TRUE THEN 1 END)
+      comment: "Count of projects with Design for Manufacturability analysis completed — tracks manufacturing readiness."
+    - name: "projects_requiring_ppap_count"
+      expr: COUNT(CASE WHEN ppap_required = TRUE THEN 1 END)
+      comment: "Count of projects requiring PPAP — measures automotive/regulated project volume."
+    - name: "projects_approved_count"
+      expr: COUNT(CASE WHEN approved_timestamp IS NOT NULL THEN 1 END)
+      comment: "Count of projects that have been approved — tracks project approval throughput."
+    - name: "projects_launched_count"
+      expr: COUNT(CASE WHEN actual_launch_date IS NOT NULL THEN 1 END)
+      comment: "Count of projects that have launched — measures project completion and delivery."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_project_component_assignment`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_component`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Project Component Assignment business metrics"
-  source: "`vibe_manufacturing_v1`.`engineering`.`project_component_assignment`"
+  comment: "Component master metrics tracking inventory value, lifecycle health, compliance status, and sourcing strategy — critical for product cost management and supply chain planning."
+  source: "`vibe_manufacturing_v1`.`engineering`.`component`"
   dimensions:
-    - name: "Assigned Engineer"
-      expr: assigned_engineer
-    - name: "Assignment End Date"
-      expr: assignment_end_date
-    - name: "Assignment Start Date"
-      expr: assignment_start_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Development Status"
-      expr: development_status
-    - name: "Milestone Date"
-      expr: milestone_date
-    - name: "Modified By"
-      expr: modified_by
-    - name: "Modified Timestamp"
-      expr: modified_timestamp
-    - name: "Priority Level"
-      expr: priority_level
-    - name: "Role In Project"
-      expr: role_in_project
-    - name: "Target Revision"
-      expr: target_revision
-    - name: "Assignment End Date Month"
-      expr: DATE_TRUNC('MONTH', assignment_end_date)
-    - name: "Assignment Start Date Month"
-      expr: DATE_TRUNC('MONTH', assignment_start_date)
+    - name: "component_type"
+      expr: component_type
+      comment: "Type of component (e.g., mechanical, electrical, software) — primary segmentation for component portfolio."
+    - name: "lifecycle_phase"
+      expr: lifecycle_phase
+      comment: "Current lifecycle phase (e.g., active, phase-out, obsolete) — critical for lifecycle management."
+    - name: "release_status"
+      expr: release_status
+      comment: "Release status of the component (e.g., draft, released, frozen) — tracks design maturity."
+    - name: "make_or_buy"
+      expr: make_or_buy
+      comment: "Whether component is made in-house or purchased — key sourcing strategy dimension."
+    - name: "abc_classification"
+      expr: abc_classification
+      comment: "ABC classification for inventory management — segments components by value/criticality."
+    - name: "technology_family"
+      expr: technology_family
+      comment: "Technology family of the component — enables technology portfolio analysis."
+    - name: "functional_group"
+      expr: functional_group
+      comment: "Functional group or subsystem — enables functional cost and complexity analysis."
+    - name: "rohs_compliant_flag"
+      expr: rohs_compliant_flag
+      comment: "Whether component is RoHS compliant — critical for environmental compliance tracking."
+    - name: "reach_compliant_flag"
+      expr: reach_compliant_flag
+      comment: "Whether component is REACH compliant — critical for chemical substance compliance."
+    - name: "ce_marking_flag"
+      expr: ce_marking_flag
+      comment: "Whether component requires CE marking — tracks EU regulatory compliance."
+    - name: "hazardous_material_flag"
+      expr: hazardous_material_flag
+      comment: "Whether component contains hazardous materials — critical for safety and disposal planning."
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Year the component became effective — enables vintage analysis."
   measures:
-    - name: "Row Count"
+    - name: "total_component_count"
       expr: COUNT(1)
-    - name: "Distinct Project Component Assignment"
-      expr: COUNT(DISTINCT project_component_assignment_id)
+      comment: "Total number of components — baseline portfolio size metric."
+    - name: "active_component_count"
+      expr: COUNT(CASE WHEN lifecycle_phase = 'Active' THEN 1 END)
+      comment: "Count of active components — measures current usable component base."
+    - name: "total_standard_cost"
+      expr: SUM(CAST(standard_cost AS DOUBLE))
+      comment: "Sum of standard costs across all components — measures total component inventory value at standard cost."
+    - name: "avg_standard_cost_per_component"
+      expr: AVG(CAST(standard_cost AS DOUBLE))
+      comment: "Average standard cost per component — indicates typical component cost."
+    - name: "total_weight_kg"
+      expr: SUM(CAST(weight_kg AS DOUBLE))
+      comment: "Total weight of all components in kilograms — measures total material mass for logistics and sustainability."
+    - name: "avg_weight_kg_per_component"
+      expr: AVG(CAST(weight_kg AS DOUBLE))
+      comment: "Average weight per component in kilograms — indicates typical component mass."
+    - name: "total_dfm_score"
+      expr: SUM(CAST(dfm_score AS DOUBLE))
+      comment: "Sum of Design for Manufacturability scores — aggregate manufacturability assessment."
+    - name: "avg_dfm_score_per_component"
+      expr: AVG(CAST(dfm_score AS DOUBLE))
+      comment: "Average DFM score per component — measures typical manufacturability quality."
+    - name: "total_safety_stock_quantity"
+      expr: SUM(CAST(safety_stock_quantity AS DOUBLE))
+      comment: "Total safety stock quantity across all components — measures inventory buffer requirements."
+    - name: "total_reorder_point"
+      expr: SUM(CAST(reorder_point AS DOUBLE))
+      comment: "Total reorder point across all components — measures aggregate replenishment trigger level."
+    - name: "total_minimum_order_quantity"
+      expr: SUM(CAST(minimum_order_quantity AS DOUBLE))
+      comment: "Total minimum order quantity across all components — measures procurement constraint impact."
+    - name: "rohs_compliant_component_count"
+      expr: COUNT(CASE WHEN rohs_compliant_flag = TRUE THEN 1 END)
+      comment: "Count of RoHS compliant components — tracks environmental compliance coverage."
+    - name: "reach_compliant_component_count"
+      expr: COUNT(CASE WHEN reach_compliant_flag = TRUE THEN 1 END)
+      comment: "Count of REACH compliant components — tracks chemical compliance coverage."
+    - name: "ce_marking_required_component_count"
+      expr: COUNT(CASE WHEN ce_marking_flag = TRUE THEN 1 END)
+      comment: "Count of components requiring CE marking — measures EU regulatory scope."
+    - name: "hazardous_material_component_count"
+      expr: COUNT(CASE WHEN hazardous_material_flag = TRUE THEN 1 END)
+      comment: "Count of components with hazardous materials — tracks safety and disposal risk."
+    - name: "make_component_count"
+      expr: COUNT(CASE WHEN make_or_buy = 'Make' THEN 1 END)
+      comment: "Count of make components — measures in-house manufacturing scope."
+    - name: "buy_component_count"
+      expr: COUNT(CASE WHEN make_or_buy = 'Buy' THEN 1 END)
+      comment: "Count of buy components — measures procurement scope."
+    - name: "obsolete_component_count"
+      expr: COUNT(CASE WHEN obsolescence_date IS NOT NULL THEN 1 END)
+      comment: "Count of components with obsolescence date set — measures lifecycle risk exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_test_result`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Engineering test result metrics tracking test pass rates, failure modes, retest frequency, and regulatory compliance — essential for product quality assurance and validation governance."
+  source: "`vibe_manufacturing_v1`.`engineering`.`test_result`"
+  dimensions:
+    - name: "test_outcome"
+      expr: test_outcome
+      comment: "Outcome of the test (e.g., pass, fail, conditional) — primary segmentation for quality analysis."
+    - name: "test_type"
+      expr: test_type
+      comment: "Type of test performed (e.g., functional, environmental, safety) — enables test portfolio analysis."
+    - name: "test_status"
+      expr: test_status
+      comment: "Current status of the test (e.g., planned, in-progress, completed) — tracks test execution progress."
+    - name: "test_purpose"
+      expr: test_purpose
+      comment: "Purpose of the test (e.g., design validation, production qualification) — segments tests by objective."
+    - name: "prototype_phase"
+      expr: prototype_phase
+      comment: "Prototype phase during which test was conducted — enables phase-based quality trend analysis."
+    - name: "failure_mode_code"
+      expr: failure_mode_code
+      comment: "Standardized failure mode code — critical for failure analysis and FMEA linkage."
+    - name: "retest_flag"
+      expr: retest_flag
+      comment: "Whether this is a retest — measures test efficiency and first-pass yield."
+    - name: "root_cause_analysis_required"
+      expr: root_cause_analysis_required
+      comment: "Whether root cause analysis is required — segments critical failures requiring investigation."
+    - name: "regulatory_submission_flag"
+      expr: regulatory_submission_flag
+      comment: "Whether test results are for regulatory submission — tracks compliance testing volume."
+    - name: "test_facility"
+      expr: test_facility
+      comment: "Facility where test was conducted — enables facility performance comparison."
+    - name: "test_year"
+      expr: YEAR(test_date)
+      comment: "Year the test was conducted — enables year-over-year quality trend analysis."
+    - name: "test_quarter"
+      expr: CONCAT('Q', QUARTER(test_date), '-', YEAR(test_date))
+      comment: "Quarter the test was conducted — enables quarterly quality trend analysis."
+    - name: "test_month"
+      expr: DATE_TRUNC('MONTH', test_date)
+      comment: "Month the test was conducted — enables monthly quality trend analysis."
+  measures:
+    - name: "total_test_count"
+      expr: COUNT(1)
+      comment: "Total number of test results — baseline test volume metric."
+    - name: "passed_test_count"
+      expr: COUNT(CASE WHEN test_outcome = 'Pass' THEN 1 END)
+      comment: "Count of tests that passed — measures test success volume."
+    - name: "failed_test_count"
+      expr: COUNT(CASE WHEN test_outcome = 'Fail' THEN 1 END)
+      comment: "Count of tests that failed — measures test failure volume and quality risk."
+    - name: "retest_count"
+      expr: COUNT(CASE WHEN retest_flag = TRUE THEN 1 END)
+      comment: "Count of retests — measures test inefficiency and rework."
+    - name: "tests_requiring_rca_count"
+      expr: COUNT(CASE WHEN root_cause_analysis_required = TRUE THEN 1 END)
+      comment: "Count of tests requiring root cause analysis — measures critical failure volume."
+    - name: "regulatory_submission_test_count"
+      expr: COUNT(CASE WHEN regulatory_submission_flag = TRUE THEN 1 END)
+      comment: "Count of tests for regulatory submission — measures compliance testing activity."
+    - name: "total_test_duration_hours"
+      expr: SUM(CAST(test_duration_hours AS DOUBLE))
+      comment: "Total test duration in hours across all tests — measures total test resource consumption."
+    - name: "avg_test_duration_hours"
+      expr: AVG(CAST(test_duration_hours AS DOUBLE))
+      comment: "Average test duration in hours — indicates typical test cycle time."
+    - name: "avg_measured_value"
+      expr: AVG(CAST(measured_value AS DOUBLE))
+      comment: "Average measured value across all tests — provides central tendency of test measurements."
+    - name: "avg_measurement_uncertainty"
+      expr: AVG(CAST(measurement_uncertainty AS DOUBLE))
+      comment: "Average measurement uncertainty — indicates typical test precision."
+    - name: "tests_within_upper_limit_count"
+      expr: COUNT(CASE WHEN measured_value <= acceptance_criteria_upper_limit THEN 1 END)
+      comment: "Count of tests where measured value is within upper acceptance limit — tracks upper spec compliance."
+    - name: "tests_within_lower_limit_count"
+      expr: COUNT(CASE WHEN measured_value >= acceptance_criteria_lower_limit THEN 1 END)
+      comment: "Count of tests where measured value is within lower acceptance limit — tracks lower spec compliance."
+    - name: "tests_within_both_limits_count"
+      expr: COUNT(CASE WHEN measured_value >= acceptance_criteria_lower_limit AND measured_value <= acceptance_criteria_upper_limit THEN 1 END)
+      comment: "Count of tests where measured value is within both acceptance limits — measures full spec compliance."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_bom`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Bill of Materials (BOM) metrics tracking BOM complexity, cost estimates, approval status, and configuration management — critical for product cost control and manufacturing planning."
+  source: "`vibe_manufacturing_v1`.`engineering`.`bom`"
+  dimensions:
+    - name: "bom_type"
+      expr: bom_type
+      comment: "Type of BOM (e.g., engineering, manufacturing, service) — primary segmentation for BOM analysis."
+    - name: "bom_status"
+      expr: bom_status
+      comment: "Current status of the BOM (e.g., draft, released, frozen) — tracks BOM maturity."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the BOM — tracks approval workflow progress."
+    - name: "category"
+      expr: category
+      comment: "BOM category — enables categorical segmentation for analysis."
+    - name: "explosion_type"
+      expr: explosion_type
+      comment: "Explosion type (e.g., single-level, multi-level) — indicates BOM structure complexity."
+    - name: "is_configurable"
+      expr: is_configurable
+      comment: "Whether BOM is configurable — segments standard vs. configurable products."
+    - name: "is_phantom_bom"
+      expr: is_phantom_bom
+      comment: "Whether BOM is a phantom BOM — identifies transient assemblies."
+    - name: "is_critical_bom"
+      expr: is_critical_bom
+      comment: "Whether BOM is critical — segments high-priority BOMs."
+    - name: "usage"
+      expr: usage
+      comment: "Usage context of the BOM — enables usage-based segmentation."
+    - name: "approved_year"
+      expr: YEAR(approved_date)
+      comment: "Year the BOM was approved — enables approval trend analysis."
+    - name: "effective_from_year"
+      expr: YEAR(effective_from_date)
+      comment: "Year the BOM became effective — enables effectivity trend analysis."
+  measures:
+    - name: "total_bom_count"
+      expr: COUNT(1)
+      comment: "Total number of BOMs — baseline BOM portfolio size metric."
+    - name: "approved_bom_count"
+      expr: COUNT(CASE WHEN approved_date IS NOT NULL THEN 1 END)
+      comment: "Count of approved BOMs — measures BOM approval throughput."
+    - name: "configurable_bom_count"
+      expr: COUNT(CASE WHEN is_configurable = TRUE THEN 1 END)
+      comment: "Count of configurable BOMs — measures product configuration complexity."
+    - name: "phantom_bom_count"
+      expr: COUNT(CASE WHEN is_phantom_bom = TRUE THEN 1 END)
+      comment: "Count of phantom BOMs — tracks transient assembly usage."
+    - name: "critical_bom_count"
+      expr: COUNT(CASE WHEN is_critical_bom = TRUE THEN 1 END)
+      comment: "Count of critical BOMs — measures high-priority BOM volume."
+    - name: "total_cost_estimate"
+      expr: SUM(CAST(cost_estimate_total AS DOUBLE))
+      comment: "Sum of total cost estimates across all BOMs — measures aggregate product cost at BOM level."
+    - name: "avg_cost_estimate_per_bom"
+      expr: AVG(CAST(cost_estimate_total AS DOUBLE))
+      comment: "Average cost estimate per BOM — indicates typical product cost."
+    - name: "total_weight"
+      expr: SUM(CAST(weight_total AS DOUBLE))
+      comment: "Sum of total weights across all BOMs — measures aggregate product mass for logistics and sustainability."
+    - name: "avg_weight_per_bom"
+      expr: AVG(CAST(weight_total AS DOUBLE))
+      comment: "Average weight per BOM — indicates typical product mass."
+    - name: "total_lot_size"
+      expr: SUM(CAST(lot_size AS DOUBLE))
+      comment: "Sum of lot sizes across all BOMs — measures aggregate production batch sizing."
+    - name: "avg_lot_size_per_bom"
+      expr: AVG(CAST(lot_size AS DOUBLE))
+      comment: "Average lot size per BOM — indicates typical production batch size."
+    - name: "total_quantity_basis"
+      expr: SUM(CAST(quantity_basis AS DOUBLE))
+      comment: "Sum of quantity basis across all BOMs — measures aggregate BOM quantity foundation."
+    - name: "avg_scrap_percentage"
+      expr: AVG(CAST(scrap_percentage AS DOUBLE))
+      comment: "Average scrap percentage across all BOMs — indicates typical material waste rate."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_revision`
@@ -641,48 +450,92 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Revision business metrics"
+  comment: "Engineering revision metrics tracking revision volume, change impact, compliance gate completion, and lifecycle state — essential for design change control and product maturity governance."
   source: "`vibe_manufacturing_v1`.`engineering`.`revision`"
   dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Cad File Reference"
-      expr: cad_file_reference
-    - name: "Ce Marking Required"
-      expr: ce_marking_required
-    - name: "Change Category"
-      expr: change_category
-    - name: "Change Impact Level"
-      expr: change_impact_level
-    - name: "Change Justification"
-      expr: change_justification
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Dfm Analysis Completed"
-      expr: dfm_analysis_completed
-    - name: "Dfmea Completed"
-      expr: dfmea_completed
-    - name: "Drawing Number"
-      expr: drawing_number
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Export Control Classification"
-      expr: export_control_classification
-    - name: "Interchangeability Code"
-      expr: interchangeability_code
-    - name: "Label"
-      expr: label
-    - name: "Lifecycle State"
+    - name: "lifecycle_state"
       expr: lifecycle_state
+      comment: "Current lifecycle state of the revision (e.g., draft, released, obsolete) — primary segmentation for revision maturity."
+    - name: "revision_type"
+      expr: revision_type
+      comment: "Type of revision (e.g., major, minor, ECO-driven) — segments revisions by change magnitude."
+    - name: "change_category"
+      expr: change_category
+      comment: "Category of change (e.g., design, process, documentation) — enables change type analysis."
+    - name: "change_impact_level"
+      expr: change_impact_level
+      comment: "Impact level of the change (e.g., low, medium, high) — critical for risk assessment."
+    - name: "interchangeability_code"
+      expr: interchangeability_code
+      comment: "Interchangeability code — indicates whether revision is backward/forward compatible."
+    - name: "mass_production_approved"
+      expr: mass_production_approved
+      comment: "Whether revision is approved for mass production — tracks production readiness."
+    - name: "dfmea_completed"
+      expr: dfmea_completed
+      comment: "Whether Design FMEA is completed — tracks design quality gate compliance."
+    - name: "pfmea_completed"
+      expr: pfmea_completed
+      comment: "Whether Process FMEA is completed — tracks process quality gate compliance."
+    - name: "dfm_analysis_completed"
+      expr: dfm_analysis_completed
+      comment: "Whether Design for Manufacturability analysis is completed — tracks manufacturing readiness."
+    - name: "ppap_required"
+      expr: ppap_required
+      comment: "Whether PPAP is required — segments automotive/regulated revisions."
+    - name: "rohs_compliant"
+      expr: rohs_compliant
+      comment: "Whether revision is RoHS compliant — tracks environmental compliance."
+    - name: "reach_compliant"
+      expr: reach_compliant
+      comment: "Whether revision is REACH compliant — tracks chemical compliance."
+    - name: "ce_marking_required"
+      expr: ce_marking_required
+      comment: "Whether CE marking is required — tracks EU regulatory compliance."
+    - name: "release_year"
+      expr: YEAR(release_date)
+      comment: "Year the revision was released — enables release trend analysis."
+    - name: "approval_year"
+      expr: YEAR(approval_date)
+      comment: "Year the revision was approved — enables approval trend analysis."
   measures:
-    - name: "Row Count"
+    - name: "total_revision_count"
       expr: COUNT(1)
-    - name: "Distinct Revision"
-      expr: COUNT(DISTINCT revision_id)
-    - name: "Total Configuration Baseline"
-      expr: SUM(configuration_baseline)
-    - name: "Average Configuration Baseline"
-      expr: AVG(configuration_baseline)
+      comment: "Total number of revisions — baseline revision volume metric."
+    - name: "released_revision_count"
+      expr: COUNT(CASE WHEN release_date IS NOT NULL THEN 1 END)
+      comment: "Count of released revisions — measures revision release throughput."
+    - name: "approved_revision_count"
+      expr: COUNT(CASE WHEN approval_date IS NOT NULL THEN 1 END)
+      comment: "Count of approved revisions — tracks approval completion."
+    - name: "mass_production_approved_revision_count"
+      expr: COUNT(CASE WHEN mass_production_approved = TRUE THEN 1 END)
+      comment: "Count of revisions approved for mass production — measures production-ready design volume."
+    - name: "revisions_with_dfmea_completed_count"
+      expr: COUNT(CASE WHEN dfmea_completed = TRUE THEN 1 END)
+      comment: "Count of revisions with DFMEA completed — tracks design quality gate compliance."
+    - name: "revisions_with_pfmea_completed_count"
+      expr: COUNT(CASE WHEN pfmea_completed = TRUE THEN 1 END)
+      comment: "Count of revisions with PFMEA completed — tracks process quality gate compliance."
+    - name: "revisions_with_dfm_analysis_completed_count"
+      expr: COUNT(CASE WHEN dfm_analysis_completed = TRUE THEN 1 END)
+      comment: "Count of revisions with DFM analysis completed — tracks manufacturing readiness."
+    - name: "revisions_requiring_ppap_count"
+      expr: COUNT(CASE WHEN ppap_required = TRUE THEN 1 END)
+      comment: "Count of revisions requiring PPAP — measures automotive/regulated revision volume."
+    - name: "prototype_tested_revision_count"
+      expr: COUNT(CASE WHEN prototype_tested = TRUE THEN 1 END)
+      comment: "Count of revisions where prototype was tested — tracks validation completion."
+    - name: "rohs_compliant_revision_count"
+      expr: COUNT(CASE WHEN rohs_compliant = TRUE THEN 1 END)
+      comment: "Count of RoHS compliant revisions — tracks environmental compliance coverage."
+    - name: "reach_compliant_revision_count"
+      expr: COUNT(CASE WHEN reach_compliant = TRUE THEN 1 END)
+      comment: "Count of REACH compliant revisions — tracks chemical compliance coverage."
+    - name: "ce_marking_required_revision_count"
+      expr: COUNT(CASE WHEN ce_marking_required = TRUE THEN 1 END)
+      comment: "Count of revisions requiring CE marking — measures EU regulatory scope."
+    - name: "ul_certification_required_revision_count"
+      expr: COUNT(CASE WHEN ul_certification_required = TRUE THEN 1 END)
+      comment: "Count of revisions requiring UL certification — measures safety certification scope."
 $$;

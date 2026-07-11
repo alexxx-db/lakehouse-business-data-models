@@ -1,11 +1,11 @@
--- Metric views for domain: loyalty | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-06-27 02:47:23
+-- Metric views for domain: loyalty | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 22:17:24
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_member`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core loyalty member health and value metrics. Tracks membership growth, engagement, tier distribution, points economics, and lifetime value — essential for loyalty program steering and investment decisions."
+  comment: "Strategic loyalty member health and value metrics. Tracks membership growth, tier distribution, points economics, and lifetime value to steer loyalty program investment and retention strategy."
   source: "`vibe_travel_hospitality_v1`.`loyalty`.`member`"
   dimensions:
     - name: "membership_status"
@@ -13,74 +13,86 @@ AS $$
       comment: "Current status of the loyalty membership (e.g., Active, Suspended, Closed). Used to segment active vs. churned members."
     - name: "tier_id"
       expr: tier_id
-      comment: "Foreign key to the loyalty tier. Used to segment members by tier level for tier-based performance analysis."
-    - name: "enrollment_date_month"
-      expr: DATE_TRUNC('MONTH', enrollment_date)
-      comment: "Month of member enrollment. Used to track cohort-based membership growth trends."
-    - name: "enrollment_date_year"
+      comment: "Foreign key to the loyalty tier. Enables analysis of KPIs by tier level (Base, Silver, Gold, Platinum)."
+    - name: "enrollment_channel"
+      expr: enrollment_channel
+      comment: "Channel through which the member enrolled (e.g., Web, Mobile, Front Desk). Informs acquisition channel effectiveness."
+    - name: "enrollment_year"
       expr: DATE_TRUNC('YEAR', enrollment_date)
-      comment: "Year of member enrollment. Used for annual cohort and vintage analysis."
-    - name: "last_stay_date_month"
-      expr: DATE_TRUNC('MONTH', last_stay_date)
-      comment: "Month of the member's most recent stay. Used to identify recency cohorts and dormancy patterns."
-    - name: "currency_preference"
-      expr: currency_preference
-      comment: "Member's preferred currency. Used for regional and currency-based segmentation."
-    - name: "language_preference"
-      expr: language_preference
-      comment: "Member's preferred language. Used for localization and regional engagement analysis."
+      comment: "Year of member enrollment. Used for cohort analysis and year-over-year membership growth tracking."
+    - name: "enrollment_month"
+      expr: DATE_TRUNC('MONTH', enrollment_date)
+      comment: "Month of member enrollment. Enables monthly enrollment trend analysis."
     - name: "vip_flag"
       expr: vip_flag
-      comment: "Indicates whether the member holds VIP status. Used to isolate high-value member segments."
-    - name: "communication_opt_in"
-      expr: communication_opt_in
-      comment: "Whether the member has opted into communications. Used to measure reachable audience size."
-    - name: "email_opt_in"
-      expr: email_opt_in
-      comment: "Whether the member has opted into email communications. Used for email channel reach analysis."
+      comment: "Indicates whether the member holds VIP status. Used to segment and prioritize high-value member analytics."
+    - name: "language_preference"
+      expr: language_preference
+      comment: "Member's preferred communication language. Supports localization and personalization strategy analysis."
+    - name: "last_stay_year"
+      expr: DATE_TRUNC('YEAR', last_stay_date)
+      comment: "Year of the member's most recent stay. Used to identify recency cohorts and at-risk lapsed members."
+    - name: "tier_expiration_month"
+      expr: DATE_TRUNC('MONTH', tier_expiration_date)
+      comment: "Month when the member's tier status expires. Enables proactive retention campaigns before tier downgrade."
+    - name: "member_enrollment_hotel_property_id"
+      expr: member_enrollment_hotel_property_id
+      comment: "Property where the member enrolled. Identifies top enrollment-generating properties."
   measures:
     - name: "total_active_members"
       expr: COUNT(CASE WHEN membership_status = 'Active' THEN member_id END)
-      comment: "Total number of members with Active status. Core KPI for loyalty program scale and health."
-    - name: "total_members"
-      expr: COUNT(DISTINCT member_id)
-      comment: "Total distinct loyalty members across all statuses. Used as the denominator for penetration and conversion rates."
+      comment: "Total count of members with Active status. Core KPI for measuring loyalty program scale and health."
+    - name: "total_members_enrolled"
+      expr: COUNT(member_id)
+      comment: "Total count of all enrolled members regardless of status. Tracks overall program reach and acquisition volume."
     - name: "total_lifetime_revenue"
       expr: SUM(CAST(lifetime_revenue AS DOUBLE))
-      comment: "Sum of lifetime revenue attributed to loyalty members. Directly measures the revenue contribution of the loyalty program."
+      comment: "Sum of lifetime revenue attributed to loyalty members. Directly measures the financial value of the loyalty program to the business."
     - name: "avg_lifetime_revenue_per_member"
       expr: AVG(CAST(lifetime_revenue AS DOUBLE))
-      comment: "Average lifetime revenue per loyalty member. Indicates the average economic value of a member — key for ROI and acquisition cost benchmarking."
+      comment: "Average lifetime revenue per loyalty member. Benchmarks member value and informs tier investment decisions."
     - name: "total_lifetime_points_earned"
       expr: SUM(CAST(lifetime_points_earned AS DOUBLE))
-      comment: "Total points ever earned by all members. Measures program engagement volume and liability accrual scale."
+      comment: "Total lifetime points earned across all members. Measures program engagement and liability accrual volume."
+    - name: "avg_lifetime_points_earned_per_member"
+      expr: AVG(CAST(lifetime_points_earned AS DOUBLE))
+      comment: "Average lifetime points earned per member. Indicates average engagement depth and earning behavior."
     - name: "total_current_points_balance"
       expr: SUM(CAST(current_points_balance AS DOUBLE))
-      comment: "Total unredeemed points balance across all active members. Represents outstanding loyalty liability on the balance sheet."
-    - name: "total_points_redeemed"
-      expr: SUM(CAST(points_redeemed AS DOUBLE))
-      comment: "Total points redeemed by members. Measures program utilization and member engagement with redemption benefits."
-    - name: "total_points_expired"
-      expr: SUM(CAST(points_expired AS DOUBLE))
-      comment: "Total points that have expired without redemption. High expiry rates signal disengagement and potential member dissatisfaction."
+      comment: "Total outstanding points balance across all active members. Represents the program's unredeemed points liability — a critical financial exposure metric."
     - name: "avg_current_points_balance"
       expr: AVG(CAST(current_points_balance AS DOUBLE))
-      comment: "Average unredeemed points balance per member. Indicates average engagement depth and potential redemption demand."
+      comment: "Average current points balance per member. Signals redemption propensity and engagement level across the member base."
+    - name: "total_points_redeemed"
+      expr: SUM(CAST(points_redeemed AS DOUBLE))
+      comment: "Total points redeemed by members. Measures redemption activity and program utilization — high redemption signals strong member engagement."
+    - name: "total_points_expired"
+      expr: SUM(CAST(points_expired AS DOUBLE))
+      comment: "Total points expired without redemption. High expiry may indicate poor member engagement or overly restrictive redemption rules."
+    - name: "points_redemption_rate"
+      expr: ROUND(100.0 * SUM(CAST(points_redeemed AS DOUBLE)) / NULLIF(SUM(CAST(lifetime_points_earned AS DOUBLE)), 0), 2)
+      comment: "Percentage of lifetime earned points that have been redeemed. Key loyalty health indicator — low rates signal disengagement or redemption friction."
     - name: "total_ytd_revenue"
       expr: SUM(CAST(ytd_revenue AS DOUBLE))
-      comment: "Total year-to-date revenue from loyalty members. Used for in-year performance tracking against annual targets."
+      comment: "Total year-to-date revenue from loyalty members. Tracks in-year revenue contribution of the loyalty base for financial planning."
     - name: "avg_ytd_revenue_per_member"
       expr: AVG(CAST(ytd_revenue AS DOUBLE))
-      comment: "Average year-to-date revenue per loyalty member. Tracks in-year member value trends for forecasting and incentive planning."
+      comment: "Average year-to-date revenue per loyalty member. Benchmarks current-year member productivity against prior periods."
+    - name: "avg_nps_score"
+      expr: AVG(CAST(nps_score AS DOUBLE))
+      comment: "Average Net Promoter Score across loyalty members. Measures member satisfaction and advocacy — a leading indicator of retention and referral revenue."
     - name: "avg_salt_score"
       expr: AVG(CAST(salt_score AS DOUBLE))
-      comment: "Average SALT (Satisfaction and Loyalty Tracking) score across members. Directly measures member satisfaction — a leading indicator of retention and churn."
+      comment: "Average SALT (satisfaction) score across loyalty members. Tracks service quality perception among the loyalty base, informing experience investment decisions."
     - name: "vip_member_count"
       expr: COUNT(CASE WHEN vip_flag = TRUE THEN member_id END)
-      comment: "Count of members with VIP status. Used to track the size of the highest-value member segment."
-    - name: "email_opt_in_member_count"
-      expr: COUNT(CASE WHEN email_opt_in = TRUE THEN member_id END)
-      comment: "Count of members opted into email communications. Measures the reachable audience for email-driven loyalty campaigns."
+      comment: "Count of members with VIP designation. Tracks the size of the highest-value member segment requiring premium service investment."
+    - name: "communication_opt_in_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN communication_opt_in = TRUE THEN member_id END) / NULLIF(COUNT(member_id), 0), 2)
+      comment: "Percentage of members opted into communications. Measures marketing reachability of the loyalty base — critical for campaign ROI planning."
+    - name: "email_opt_in_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN email_opt_in = TRUE THEN member_id END) / NULLIF(COUNT(member_id), 0), 2)
+      comment: "Percentage of members opted into email communications. Informs email channel capacity for loyalty marketing campaigns."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_points_ledger`
@@ -88,79 +100,79 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Points transaction economics and flow metrics. Tracks points earned, redeemed, adjusted, and transferred — essential for liability management, program engagement, and fraud monitoring."
+  comment: "Operational and financial metrics for loyalty points transactions. Tracks points flow, earning vs. redemption economics, transfer activity, and transaction quality to manage program liability and member engagement."
   source: "`vibe_travel_hospitality_v1`.`loyalty`.`points_ledger`"
   dimensions:
     - name: "transaction_type"
       expr: transaction_type
-      comment: "Type of points transaction (e.g., Earn, Redeem, Adjust, Transfer, Expire). Used to segment points flow by transaction category."
+      comment: "Type of points transaction (e.g., Earn, Redeem, Adjust, Transfer, Expire). Primary dimension for segmenting points flow analysis."
     - name: "transaction_status"
       expr: transaction_status
-      comment: "Status of the points transaction (e.g., Posted, Pending, Reversed). Used to filter to confirmed vs. in-flight transactions."
+      comment: "Status of the points transaction (e.g., Posted, Pending, Reversed). Used to filter for settled vs. in-flight transactions."
     - name: "source_activity_type"
       expr: source_activity_type
-      comment: "The business activity that generated the points transaction (e.g., Hotel Stay, F&B, Spa). Used to attribute points volume to revenue-generating activities."
-    - name: "activity_date_month"
+      comment: "Business activity that generated the points transaction (e.g., Hotel Stay, F&B, Partner). Identifies which revenue streams drive loyalty earning."
+    - name: "activity_month"
       expr: DATE_TRUNC('MONTH', activity_date)
-      comment: "Month of the points activity. Used for monthly trend analysis of points flow."
-    - name: "activity_date_year"
+      comment: "Month of the points activity. Enables monthly trend analysis of points earning and redemption volumes."
+    - name: "activity_year"
       expr: DATE_TRUNC('YEAR', activity_date)
-      comment: "Year of the points activity. Used for annual points economics reporting."
-    - name: "posting_date_month"
+      comment: "Year of the points activity. Supports year-over-year comparison of points economics."
+    - name: "posting_month"
       expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month the transaction was posted to the ledger. Used for accounting period alignment."
-    - name: "tier_at_transaction"
-      expr: tier_at_transaction
-      comment: "Member tier at the time of the transaction. Used to analyze points economics by tier segment."
+      comment: "Month the transaction was posted to the ledger. Used for financial period reconciliation of points liability."
     - name: "is_qualifying"
       expr: is_qualifying
-      comment: "Whether the transaction counts toward tier qualification. Used to separate qualifying from non-qualifying activity."
-    - name: "base_currency_code"
-      expr: base_currency_code
-      comment: "Currency of the base transaction amount. Used for multi-currency points economics analysis."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property associated with the points transaction. Used for property-level points economics analysis."
+      comment: "Indicates whether the transaction counts toward tier qualification. Segments qualifying vs. non-qualifying earning activity."
+    - name: "tier_at_transaction"
+      expr: tier_at_transaction
+      comment: "Member's tier level at the time of the transaction. Enables tier-based analysis of earning and redemption patterns."
     - name: "transfer_direction"
       expr: transfer_direction
-      comment: "Direction of a points transfer (Inbound/Outbound). Used to analyze partner transfer flows."
+      comment: "Direction of points transfer (Inbound/Outbound). Used to analyze partner program points flow and net transfer position."
     - name: "partner_program_code"
       expr: partner_program_code
-      comment: "Partner loyalty program code for transfer transactions. Used to evaluate partner program exchange volumes."
+      comment: "Partner loyalty program code associated with the transaction. Identifies which partner programs drive points exchange volume."
+    - name: "property_id"
+      expr: property_id
+      comment: "Property associated with the points transaction. Enables property-level analysis of points earning and redemption activity."
   measures:
-    - name: "total_points_earned"
-      expr: SUM(CASE WHEN transaction_type = 'Earn' THEN CAST(points_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total points earned across all earn transactions. Measures program engagement and accrual volume — drives liability forecasting."
-    - name: "total_points_redeemed"
-      expr: SUM(CASE WHEN transaction_type = 'Redeem' THEN CAST(points_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total points redeemed. Measures member utilization of earned benefits — a key engagement and satisfaction indicator."
-    - name: "total_points_adjusted"
-      expr: SUM(CASE WHEN transaction_type = 'Adjust' THEN CAST(points_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total points adjusted (manual corrections). High adjustment volumes may signal operational or system issues requiring investigation."
-    - name: "total_points_transferred"
-      expr: SUM(CASE WHEN transaction_type = 'Transfer' THEN CAST(points_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total points transferred to/from partner programs. Measures partner program engagement and exchange economics."
-    - name: "total_base_amount"
-      expr: SUM(CAST(base_amount AS DOUBLE))
-      comment: "Total base transaction amount (in local currency) across all ledger entries. Used to compute points-per-currency-unit yield and validate accrual rule effectiveness."
+    - name: "total_points_transacted"
+      expr: SUM(CAST(points_amount AS DOUBLE))
+      comment: "Total points amount across all ledger transactions. Measures gross points flow volume — foundational metric for program liability management."
     - name: "avg_points_per_transaction"
       expr: AVG(CAST(points_amount AS DOUBLE))
-      comment: "Average points amount per ledger transaction. Tracks the average transaction size in points — useful for detecting anomalies and benchmarking accrual rule performance."
+      comment: "Average points amount per ledger transaction. Benchmarks transaction-level earning/redemption intensity."
+    - name: "total_base_transaction_amount"
+      expr: SUM(CAST(base_amount AS DOUBLE))
+      comment: "Total qualifying spend amount underlying points transactions. Measures the revenue base that drives loyalty earning — links program cost to revenue."
+    - name: "avg_base_transaction_amount"
+      expr: AVG(CAST(base_amount AS DOUBLE))
+      comment: "Average qualifying spend per points transaction. Indicates average transaction size driving loyalty earning activity."
     - name: "total_transfer_fees"
       expr: SUM(CAST(transfer_fee_amount AS DOUBLE))
-      comment: "Total fees collected on points transfer transactions. Measures revenue generated from partner transfer activity."
-    - name: "total_qualifying_transactions"
-      expr: COUNT(CASE WHEN is_qualifying = TRUE THEN points_ledger_id END)
-      comment: "Count of transactions that qualify toward tier status. Used to monitor tier qualification pipeline and forecast tier upgrade volumes."
-    - name: "total_transactions"
-      expr: COUNT(DISTINCT points_ledger_id)
-      comment: "Total distinct points ledger transactions. Used as the baseline volume measure for points activity."
+      comment: "Total fees collected on points transfers. Measures revenue generated from points transfer activity — a direct program revenue line."
+    - name: "total_balance_after_transaction"
+      expr: SUM(CAST(balance_after_transaction AS DOUBLE))
+      comment: "Sum of post-transaction balances across all ledger records. Proxy for aggregate outstanding points liability at transaction level."
     - name: "avg_balance_after_transaction"
       expr: AVG(CAST(balance_after_transaction AS DOUBLE))
-      comment: "Average member balance after each transaction. Tracks the average outstanding liability per transaction event — useful for liability trend monitoring."
+      comment: "Average member balance after each transaction. Tracks typical points accumulation level and redemption drawdown patterns."
+    - name: "transaction_count"
+      expr: COUNT(points_ledger_id)
+      comment: "Total number of points ledger transactions. Measures program activity volume and member engagement frequency."
+    - name: "distinct_active_members"
+      expr: COUNT(DISTINCT member_id)
+      comment: "Count of unique members with points ledger activity. Measures the breadth of engaged members transacting within the program."
+    - name: "qualifying_transaction_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_qualifying = TRUE THEN points_ledger_id END) / NULLIF(COUNT(points_ledger_id), 0), 2)
+      comment: "Percentage of transactions that are tier-qualifying. Measures what share of activity contributes to tier advancement — informs tier attainment forecasting."
     - name: "avg_conversion_rate"
       expr: AVG(CAST(conversion_rate AS DOUBLE))
-      comment: "Average currency-to-points conversion rate applied across transactions. Used to monitor consistency of accrual rule application and detect rate anomalies."
+      comment: "Average currency conversion rate applied to points transactions. Monitors consistency of points valuation across currencies and partner programs."
+    - name: "points_per_currency_unit_earned"
+      expr: ROUND(SUM(CAST(points_amount AS DOUBLE)) / NULLIF(SUM(CAST(base_amount AS DOUBLE)), 0), 4)
+      comment: "Effective points earned per unit of qualifying spend. Measures actual earning rate vs. program design — deviations signal rule misapplication or fraud."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_redemption`
@@ -168,197 +180,73 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Redemption activity and value metrics. Tracks redemption volume, points consumed, monetary equivalent value, and fulfillment performance — critical for liability management and member benefit utilization."
+  comment: "Redemption performance and economics metrics. Tracks redemption volume, points consumed, monetary value delivered, fulfillment efficiency, and cancellation rates to optimize the redemption experience and manage program liability."
   source: "`vibe_travel_hospitality_v1`.`loyalty`.`redemption`"
   dimensions:
     - name: "redemption_type"
       expr: redemption_type
-      comment: "Type of redemption (e.g., Free Night, Upgrade, F&B, Spa, Partner). Used to analyze redemption mix and reward category popularity."
+      comment: "Type of redemption (e.g., Free Night, Upgrade, F&B, Partner). Identifies which reward categories drive the most redemption activity."
     - name: "redemption_status"
       expr: redemption_status
-      comment: "Current status of the redemption (e.g., Confirmed, Cancelled, Fulfilled, Pending). Used to track fulfillment pipeline and cancellation rates."
-    - name: "tier_at_redemption"
-      expr: tier_at_redemption
-      comment: "Member tier at the time of redemption. Used to analyze redemption behavior by tier segment."
+      comment: "Current status of the redemption (e.g., Confirmed, Cancelled, Fulfilled, Pending). Used to segment completed vs. in-flight vs. cancelled redemptions."
     - name: "fulfillment_channel"
       expr: fulfillment_channel
-      comment: "Channel through which the redemption was fulfilled. Used to evaluate fulfillment channel efficiency."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the redemption transaction. Used for multi-currency redemption value analysis."
-    - name: "request_date_month"
+      comment: "Channel through which the redemption was fulfilled (e.g., Property, Online, Call Center). Informs channel cost and efficiency analysis."
+    - name: "tier_at_redemption"
+      expr: tier_at_redemption
+      comment: "Member's tier at the time of redemption. Enables tier-based analysis of redemption behavior and reward preference."
+    - name: "request_month"
       expr: DATE_TRUNC('MONTH', request_date)
-      comment: "Month the redemption was requested. Used for monthly redemption volume and liability release trend analysis."
-    - name: "request_date_year"
+      comment: "Month the redemption was requested. Enables monthly trend analysis of redemption demand."
+    - name: "request_year"
       expr: DATE_TRUNC('YEAR', request_date)
-      comment: "Year the redemption was requested. Used for annual redemption economics reporting."
-    - name: "fulfillment_date_month"
+      comment: "Year the redemption was requested. Supports year-over-year redemption volume and liability release tracking."
+    - name: "fulfillment_month"
       expr: DATE_TRUNC('MONTH', fulfillment_date)
-      comment: "Month the redemption was fulfilled. Used to track fulfillment lag and operational throughput."
-    - name: "channel_id"
-      expr: channel_id
-      comment: "Channel through which the redemption was initiated. Used to attribute redemption volume to booking and service channels."
-    - name: "property_outlet_id"
-      expr: property_outlet_id
-      comment: "Property outlet associated with the redemption. Used for outlet-level redemption analysis."
+      comment: "Month the redemption was fulfilled. Used to measure fulfillment lag and operational throughput."
+    - name: "property_id"
+      expr: property_id
+      comment: "Property where the redemption was fulfilled. Enables property-level redemption load and cost analysis."
     - name: "partner_code"
       expr: partner_code
-      comment: "Partner code for partner-based redemptions. Used to evaluate partner redemption program performance."
+      comment: "Partner program code for partner redemptions. Identifies partner redemption volume and associated liability transfer."
+    - name: "cancellation_reason"
+      expr: cancellation_reason
+      comment: "Reason for redemption cancellation. Identifies systemic issues causing redemption failures — informs process improvement."
   measures:
     - name: "total_redemptions"
-      expr: COUNT(DISTINCT redemption_id)
-      comment: "Total number of distinct redemption transactions. Core volume KPI for redemption program utilization."
+      expr: COUNT(redemption_id)
+      comment: "Total number of redemption transactions. Measures overall redemption activity volume — core indicator of program utilization."
+    - name: "distinct_redeeming_members"
+      expr: COUNT(DISTINCT member_id)
+      comment: "Count of unique members who have redeemed. Measures redemption breadth across the member base — low rates signal redemption friction."
     - name: "total_points_redeemed"
       expr: SUM(CAST(points_redeemed AS DOUBLE))
-      comment: "Total points consumed through redemptions. Directly measures loyalty liability release — critical for program cost management."
-    - name: "total_monetary_equivalent_value"
-      expr: SUM(CAST(monetary_equivalent_value AS DOUBLE))
-      comment: "Total monetary equivalent value of all redemptions. Measures the economic cost of the redemption program in currency terms."
+      comment: "Total points consumed through redemptions. Directly measures liability release — a key financial metric for the loyalty program P&L."
     - name: "avg_points_per_redemption"
       expr: AVG(CAST(points_redeemed AS DOUBLE))
-      comment: "Average points consumed per redemption transaction. Used to benchmark redemption efficiency and detect high-cost redemption patterns."
+      comment: "Average points consumed per redemption transaction. Benchmarks redemption cost per event and informs reward catalog pricing."
+    - name: "total_monetary_equivalent_value"
+      expr: SUM(CAST(monetary_equivalent_value AS DOUBLE))
+      comment: "Total monetary value of all redemptions. Quantifies the financial benefit delivered to members — measures program value proposition strength."
     - name: "avg_monetary_value_per_redemption"
       expr: AVG(CAST(monetary_equivalent_value AS DOUBLE))
-      comment: "Average monetary equivalent value per redemption. Used to assess the average cost per redemption event for program economics."
+      comment: "Average monetary value delivered per redemption. Benchmarks reward generosity and perceived value per redemption event."
     - name: "total_cash_amount"
       expr: SUM(CAST(cash_amount AS DOUBLE))
-      comment: "Total cash component of redemptions (points + cash redemptions). Measures hybrid redemption revenue contribution."
+      comment: "Total cash component of points-plus-cash redemptions. Measures incremental cash revenue generated through hybrid redemption transactions."
     - name: "total_points_refunded"
       expr: SUM(CAST(points_refunded AS DOUBLE))
-      comment: "Total points refunded due to cancellations or reversals. High refund volumes indicate fulfillment issues or member dissatisfaction."
-    - name: "cancelled_redemption_count"
-      expr: COUNT(CASE WHEN redemption_status = 'Cancelled' THEN redemption_id END)
-      comment: "Count of cancelled redemptions. Used to calculate cancellation rate and identify fulfillment or member experience issues."
-    - name: "fulfilled_redemption_count"
-      expr: COUNT(CASE WHEN redemption_status = 'Fulfilled' THEN redemption_id END)
-      comment: "Count of successfully fulfilled redemptions. Used to measure fulfillment success rate and operational efficiency."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_tier_history`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tier movement and qualification metrics. Tracks upgrades, downgrades, status matches, and qualification performance — essential for understanding tier dynamics, retention risk, and program health."
-  source: "`vibe_travel_hospitality_v1`.`loyalty`.`tier_history`"
-  dimensions:
-    - name: "change_type"
-      expr: change_type
-      comment: "Type of tier change (e.g., Upgrade, Downgrade, Renewal, Status Match, Override). Used to segment tier movement by change category."
-    - name: "change_reason_code"
-      expr: change_reason_code
-      comment: "Reason code for the tier change. Used to diagnose drivers of tier movement and identify systemic issues."
-    - name: "qualification_basis"
-      expr: qualification_basis
-      comment: "Basis on which tier qualification was achieved (e.g., Nights, Points, Spend, Status Match). Used to analyze which qualification paths are most common."
-    - name: "previous_tier_code"
-      expr: previous_tier_code
-      comment: "Tier code before the change. Used to build tier transition matrices and identify downgrade risk segments."
-    - name: "is_current_tier_flag"
-      expr: is_current_tier_flag
-      comment: "Whether this record represents the member's current active tier. Used to filter to current-state tier distribution."
-    - name: "tier_extension_granted_flag"
-      expr: tier_extension_granted_flag
-      comment: "Whether a tier extension was granted. Used to measure the volume of retention-driven tier extensions."
-    - name: "effective_date_month"
-      expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month the tier change became effective. Used for monthly tier movement trend analysis."
-    - name: "effective_date_year"
-      expr: DATE_TRUNC('YEAR', effective_date)
-      comment: "Year the tier change became effective. Used for annual tier dynamics reporting."
-    - name: "qualifying_period_start_date_month"
-      expr: DATE_TRUNC('MONTH', qualifying_period_start_date)
-      comment: "Month the qualifying period started. Used to align tier qualification analysis to program year cycles."
-    - name: "source_system_code"
-      expr: source_system_code
-      comment: "Source system that triggered the tier change. Used to audit data provenance and identify system-driven vs. manual changes."
-    - name: "status_match_source_program"
-      expr: status_match_source_program
-      comment: "External program from which a status match was sourced. Used to evaluate competitive status match program effectiveness."
-  measures:
-    - name: "total_tier_changes"
-      expr: COUNT(DISTINCT tier_history_id)
-      comment: "Total number of tier change events. Baseline volume KPI for tier movement activity."
-    - name: "total_upgrades"
-      expr: COUNT(CASE WHEN change_type = 'Upgrade' THEN tier_history_id END)
-      comment: "Total number of tier upgrade events. Measures program engagement success — upgrades indicate members are deepening their relationship with the brand."
-    - name: "total_downgrades"
-      expr: COUNT(CASE WHEN change_type = 'Downgrade' THEN tier_history_id END)
-      comment: "Total number of tier downgrade events. A leading indicator of member disengagement and potential churn risk."
-    - name: "total_status_matches"
-      expr: COUNT(CASE WHEN change_type = 'Status Match' THEN tier_history_id END)
-      comment: "Total number of status match tier grants. Measures competitive acquisition activity and the scale of status match programs."
-    - name: "total_tier_extensions"
-      expr: COUNT(CASE WHEN tier_extension_granted_flag = TRUE THEN tier_history_id END)
-      comment: "Total number of tier extensions granted. Measures the scale of retention-driven tier extension activity and associated program cost."
-    - name: "total_bonus_points_awarded_on_tier_change"
-      expr: SUM(CAST(bonus_points_awarded AS DOUBLE))
-      comment: "Total bonus points awarded in connection with tier changes (e.g., upgrade bonuses). Measures the points liability cost of tier change incentives."
-    - name: "avg_qualifying_points_achieved"
-      expr: AVG(CAST(qualifying_points_achieved AS DOUBLE))
-      comment: "Average qualifying points achieved at the time of tier change. Used to benchmark how far above or below threshold members are qualifying — informs threshold calibration."
-    - name: "avg_qualifying_spend_amount"
-      expr: AVG(CAST(qualifying_spend_amount AS DOUBLE))
-      comment: "Average qualifying spend amount at the time of tier change. Used to assess the revenue quality of tier-qualifying members."
-    - name: "total_qualifying_spend"
-      expr: SUM(CAST(qualifying_spend_amount AS DOUBLE))
-      comment: "Total qualifying spend across all tier change events. Measures the revenue volume associated with tier qualification activity."
-    - name: "members_with_current_tier"
-      expr: COUNT(CASE WHEN is_current_tier_flag = TRUE THEN member_id END)
-      comment: "Count of members with a current active tier record. Used to validate tier assignment completeness and measure tiered member population."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_promotion_enrollment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Promotion enrollment and completion metrics. Tracks enrollment volume, completion rates, and bonus award performance — essential for evaluating promotional campaign ROI and member engagement."
-  source: "`vibe_travel_hospitality_v1`.`loyalty`.`promotion_enrollment`"
-  dimensions:
-    - name: "promotion_enrollment_status"
-      expr: promotion_enrollment_status
-      comment: "Current status of the promotion enrollment (e.g., Enrolled, Completed, Opted Out, Expired). Used to segment enrollment pipeline by stage."
-    - name: "enrollment_channel"
-      expr: enrollment_channel
-      comment: "Channel through which the member enrolled in the promotion. Used to evaluate which channels drive the most promotion sign-ups."
-    - name: "bonus_awarded_flag"
-      expr: bonus_awarded_flag
-      comment: "Whether a bonus was awarded for this enrollment. Used to measure bonus fulfillment rate and identify unfulfilled completions."
-    - name: "enrollment_date_month"
-      expr: DATE_TRUNC('MONTH', enrollment_date)
-      comment: "Month of promotion enrollment. Used for monthly enrollment trend analysis."
-    - name: "enrollment_date_year"
-      expr: DATE_TRUNC('YEAR', enrollment_date)
-      comment: "Year of promotion enrollment. Used for annual campaign performance reporting."
-    - name: "completion_date_month"
-      expr: DATE_TRUNC('MONTH', completion_date)
-      comment: "Month the promotion was completed. Used to track completion velocity and campaign fulfillment timelines."
-    - name: "promotion_id"
-      expr: promotion_id
-      comment: "Foreign key to the promotion. Used to group enrollment and completion metrics by specific campaign."
-    - name: "award_date_month"
-      expr: DATE_TRUNC('MONTH', award_date)
-      comment: "Month the promotion award was issued. Used to track award fulfillment timing."
-  measures:
-    - name: "total_enrollments"
-      expr: COUNT(DISTINCT promotion_enrollment_id)
-      comment: "Total number of promotion enrollments. Core volume KPI for campaign reach and member participation."
-    - name: "total_completions"
-      expr: COUNT(CASE WHEN promotion_enrollment_status = 'Completed' THEN promotion_enrollment_id END)
-      comment: "Total number of completed promotion enrollments. Measures campaign effectiveness — completions drive bonus point liability and member satisfaction."
-    - name: "total_opt_outs"
-      expr: COUNT(CASE WHEN promotion_enrollment_status = 'Opted Out' THEN promotion_enrollment_id END)
-      comment: "Total number of members who opted out of a promotion. High opt-out rates signal poor campaign targeting or relevance issues."
-    - name: "total_bonuses_awarded"
-      expr: COUNT(CASE WHEN bonus_awarded_flag = TRUE THEN promotion_enrollment_id END)
-      comment: "Total number of enrollments where a bonus was awarded. Used to measure bonus fulfillment volume and validate award processing."
-    - name: "distinct_members_enrolled"
-      expr: COUNT(DISTINCT member_id)
-      comment: "Number of distinct members enrolled in promotions. Measures the breadth of promotional campaign reach across the member base."
-    - name: "distinct_promotions_with_enrollments"
-      expr: COUNT(DISTINCT promotion_id)
-      comment: "Number of distinct promotions that have at least one enrollment. Used to assess active campaign portfolio size."
+      comment: "Total points refunded due to cancellations or reversals. High refund volumes signal operational issues or member dissatisfaction."
+    - name: "redemption_cancellation_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN redemption_status = 'Cancelled' THEN redemption_id END) / NULLIF(COUNT(redemption_id), 0), 2)
+      comment: "Percentage of redemptions that were cancelled. High cancellation rates indicate friction in the redemption process or unmet member expectations."
+    - name: "fulfilled_redemption_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN redemption_status = 'Fulfilled' THEN redemption_id END) / NULLIF(COUNT(redemption_id), 0), 2)
+      comment: "Percentage of redemptions successfully fulfilled. Measures operational fulfillment effectiveness — a key service quality KPI."
+    - name: "avg_monetary_value_per_point_redeemed"
+      expr: ROUND(SUM(CAST(monetary_equivalent_value AS DOUBLE)) / NULLIF(SUM(CAST(points_redeemed AS DOUBLE)), 0), 6)
+      comment: "Effective monetary value delivered per point redeemed. Measures the real-world value of the loyalty currency — critical for program economics and liability valuation."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_promotion`
@@ -366,61 +254,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Promotion program economics and budget metrics. Tracks promotion budget utilization, bonus multipliers, and spend thresholds — essential for campaign investment governance and ROI management."
+  comment: "Loyalty promotion performance and budget efficiency metrics. Tracks promotion spend, budget utilization, enrollment, and completion rates to optimize promotional investment and campaign ROI."
   source: "`vibe_travel_hospitality_v1`.`loyalty`.`promotion`"
   dimensions:
     - name: "promotion_type"
       expr: promotion_type
-      comment: "Type of promotion (e.g., Bonus Points, Double Points, Free Night, Spend Challenge). Used to analyze performance by promotion category."
+      comment: "Type of loyalty promotion (e.g., Bonus Points, Double Miles, Free Night). Segments promotion performance by campaign mechanic."
     - name: "promotion_status"
       expr: promotion_status
-      comment: "Current status of the promotion (e.g., Active, Expired, Cancelled, Draft). Used to filter to live vs. historical campaigns."
-    - name: "start_date_month"
+      comment: "Current status of the promotion (e.g., Active, Expired, Draft, Cancelled). Used to filter live vs. historical promotions."
+    - name: "start_month"
       expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the promotion started. Used for campaign launch trend analysis."
-    - name: "start_date_year"
+      comment: "Month the promotion started. Enables monthly analysis of promotional activity and spend timing."
+    - name: "start_year"
       expr: DATE_TRUNC('YEAR', start_date)
-      comment: "Year the promotion started. Used for annual campaign portfolio reporting."
-    - name: "end_date_month"
-      expr: DATE_TRUNC('MONTH', end_date)
-      comment: "Month the promotion ended. Used to align campaign performance to completion periods."
-    - name: "registration_required_flag"
-      expr: registration_required_flag
-      comment: "Whether registration is required to participate. Used to compare opt-in vs. automatic promotion performance."
-    - name: "stackable_flag"
-      expr: stackable_flag
-      comment: "Whether the promotion can be stacked with other offers. Used to assess combinability risk and liability exposure."
+      comment: "Year the promotion started. Supports year-over-year comparison of promotional investment and effectiveness."
     - name: "tier_id"
       expr: tier_id
-      comment: "Tier targeted by the promotion. Used to analyze promotion investment by tier segment."
+      comment: "Tier targeted by the promotion. Enables analysis of promotional investment by member tier segment."
     - name: "property_id"
       expr: property_id
-      comment: "Property associated with the promotion. Used for property-level campaign performance analysis."
-    - name: "segment_id"
-      expr: segment_id
-      comment: "Guest segment targeted by the promotion. Used to evaluate segment-specific campaign effectiveness."
+      comment: "Property associated with the promotion. Enables property-level promotional spend and performance analysis."
+    - name: "channel_id"
+      expr: channel_id
+      comment: "Channel through which the promotion is distributed. Identifies which channels drive the most promotional engagement."
+    - name: "registration_required_flag"
+      expr: registration_required_flag
+      comment: "Indicates whether member registration is required to participate. Compares opt-in vs. automatic promotion performance."
+    - name: "stackable_flag"
+      expr: stackable_flag
+      comment: "Indicates whether the promotion can be combined with other offers. Used to analyze combinability impact on budget consumption."
+    - name: "approved_by"
+      expr: approved_by
+      comment: "Approver of the promotion. Enables governance tracking of promotional approval workflows."
   measures:
-    - name: "total_budget_cap"
+    - name: "total_promotions"
+      expr: COUNT(promotion_id)
+      comment: "Total number of promotions created. Measures promotional program activity volume and campaign cadence."
+    - name: "total_budget_cap_amount"
       expr: SUM(CAST(budget_cap_amount AS DOUBLE))
-      comment: "Total budget allocated across all promotions. Used to measure total promotional investment commitment."
-    - name: "total_budget_consumed"
+      comment: "Total budget allocated across all promotions. Measures total promotional investment commitment for financial planning."
+    - name: "total_budget_consumed_amount"
       expr: SUM(CAST(budget_consumed_amount AS DOUBLE))
-      comment: "Total budget consumed across all promotions. Used to track promotional spend against allocated budgets."
-    - name: "avg_budget_utilization_rate"
-      expr: AVG(CAST(budget_consumed_amount AS DOUBLE) / NULLIF(CAST(budget_cap_amount AS DOUBLE), 0))
-      comment: "Average budget utilization rate per promotion (consumed / cap). Measures how efficiently promotional budgets are being deployed — under-utilization signals targeting or awareness issues."
+      comment: "Total budget actually consumed by promotions. Measures actual promotional spend — key input for ROI and cost-per-acquisition calculations."
+    - name: "budget_utilization_rate"
+      expr: ROUND(100.0 * SUM(CAST(budget_consumed_amount AS DOUBLE)) / NULLIF(SUM(CAST(budget_cap_amount AS DOUBLE)), 0), 2)
+      comment: "Percentage of allocated promotion budget consumed. Measures promotional spend efficiency — under-utilization signals poor campaign execution; over-utilization signals budget risk."
+    - name: "avg_budget_cap_per_promotion"
+      expr: AVG(CAST(budget_cap_amount AS DOUBLE))
+      comment: "Average budget allocated per promotion. Benchmarks typical promotional investment size for planning and approval governance."
+    - name: "avg_budget_consumed_per_promotion"
+      expr: AVG(CAST(budget_consumed_amount AS DOUBLE))
+      comment: "Average budget consumed per promotion. Measures typical promotional cost and informs future budget sizing."
+    - name: "total_minimum_spend_threshold"
+      expr: SUM(CAST(minimum_spend_amount AS DOUBLE))
+      comment: "Sum of minimum spend thresholds across promotions. Measures the aggregate qualifying spend requirement designed into the promotional portfolio."
     - name: "avg_bonus_points_multiplier"
       expr: AVG(CAST(bonus_points_multiplier AS DOUBLE))
-      comment: "Average bonus points multiplier across promotions. Used to benchmark the generosity of active promotions and assess liability exposure."
-    - name: "avg_minimum_spend_threshold"
-      expr: AVG(CAST(minimum_spend_amount AS DOUBLE))
-      comment: "Average minimum spend threshold required to qualify for promotions. Used to calibrate promotion accessibility and revenue qualification requirements."
-    - name: "total_active_promotions"
+      comment: "Average bonus points multiplier across promotions. Benchmarks the generosity of the promotional points offer — informs liability impact assessment."
+    - name: "active_promotion_count"
       expr: COUNT(CASE WHEN promotion_status = 'Active' THEN promotion_id END)
-      comment: "Count of currently active promotions. Used to monitor the live promotional portfolio size and complexity."
-    - name: "total_promotions"
-      expr: COUNT(DISTINCT promotion_id)
-      comment: "Total number of distinct promotions. Used as the baseline count for promotion portfolio analysis."
+      comment: "Count of currently active promotions. Measures live promotional exposure and concurrent campaign load on the program."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_benefit_entitlement`
@@ -428,62 +322,118 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Benefit entitlement utilization and value metrics. Tracks benefit grants, usage, monetary value, and expiry — essential for understanding the cost and effectiveness of loyalty benefit programs."
+  comment: "Benefit entitlement utilization and value metrics. Tracks benefit grants, usage, monetary value delivered, and expiry patterns to optimize the benefit portfolio and measure member value delivery."
   source: "`vibe_travel_hospitality_v1`.`loyalty`.`benefit_entitlement`"
   dimensions:
     - name: "benefit_type_code"
       expr: benefit_type_code
-      comment: "Type of benefit entitlement (e.g., Free Breakfast, Room Upgrade, Late Checkout, Spa Credit). Used to analyze benefit mix and utilization by category."
+      comment: "Type of benefit entitlement (e.g., Room Upgrade, Late Checkout, F&B Credit). Segments benefit performance by reward category."
     - name: "entitlement_status"
       expr: entitlement_status
-      comment: "Current status of the benefit entitlement (e.g., Active, Used, Expired, Revoked). Used to track benefit lifecycle and utilization rates."
+      comment: "Current status of the benefit entitlement (e.g., Active, Used, Expired, Revoked). Used to track benefit lifecycle and utilization."
     - name: "entitlement_source"
       expr: entitlement_source
-      comment: "Source that granted the entitlement (e.g., Tier, Promotion, Manual). Used to attribute benefit costs to their originating program."
+      comment: "Source that granted the benefit (e.g., Tier, Promotion, Manual). Identifies which program mechanisms drive benefit issuance."
     - name: "tier_id"
       expr: tier_id
-      comment: "Tier associated with the benefit entitlement. Used to analyze benefit cost and utilization by tier level."
-    - name: "effective_date_month"
+      comment: "Tier associated with the benefit entitlement. Enables tier-based analysis of benefit cost and utilization."
+    - name: "effective_month"
       expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month the benefit became effective. Used for monthly benefit grant trend analysis."
-    - name: "expiry_date_month"
+      comment: "Month the benefit became effective. Tracks benefit issuance volume over time."
+    - name: "expiry_month"
       expr: DATE_TRUNC('MONTH', expiry_date)
-      comment: "Month the benefit expires. Used to forecast upcoming benefit expiry volumes and liability release."
-    - name: "granted_timestamp_month"
-      expr: DATE_TRUNC('MONTH', granted_timestamp)
-      comment: "Month the benefit was granted. Used for grant volume trend analysis."
+      comment: "Month the benefit expires. Enables proactive identification of benefits at risk of expiring unused."
     - name: "auto_apply_flag"
       expr: auto_apply_flag
-      comment: "Whether the benefit is automatically applied. Used to compare auto-applied vs. member-initiated benefit utilization."
+      comment: "Indicates whether the benefit is automatically applied. Compares auto-apply vs. manual redemption utilization rates."
     - name: "transferable_flag"
       expr: transferable_flag
-      comment: "Whether the benefit can be transferred to another member. Used to assess transferability risk and benefit sharing patterns."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the benefit monetary value. Used for multi-currency benefit cost analysis."
+      comment: "Indicates whether the benefit can be transferred to another member. Tracks transferable benefit issuance and associated liability."
+    - name: "combinable_flag"
+      expr: combinable_flag
+      comment: "Indicates whether the benefit can be combined with other offers. Analyzes combinability impact on total benefit cost."
   measures:
-    - name: "total_benefit_entitlements"
-      expr: COUNT(DISTINCT benefit_entitlement_id)
-      comment: "Total number of benefit entitlements granted. Core volume KPI for benefit program scale."
-    - name: "total_monetary_value_of_benefits"
-      expr: SUM(CAST(monetary_value AS DOUBLE))
-      comment: "Total monetary value of all benefit entitlements granted. Measures the total economic cost of the benefit program — critical for program P&L management."
-    - name: "avg_monetary_value_per_benefit"
-      expr: AVG(CAST(monetary_value AS DOUBLE))
-      comment: "Average monetary value per benefit entitlement. Used to benchmark benefit generosity and assess cost per benefit event."
-    - name: "total_active_benefits"
-      expr: COUNT(CASE WHEN entitlement_status = 'Active' THEN benefit_entitlement_id END)
-      comment: "Count of currently active (unused, non-expired) benefit entitlements. Represents outstanding benefit liability."
-    - name: "total_expired_benefits"
-      expr: COUNT(CASE WHEN entitlement_status = 'Expired' THEN benefit_entitlement_id END)
-      comment: "Count of expired benefit entitlements. High expiry rates indicate members are not utilizing their benefits — a satisfaction and engagement risk signal."
-    - name: "total_revoked_benefits"
-      expr: COUNT(CASE WHEN entitlement_status = 'Revoked' THEN benefit_entitlement_id END)
-      comment: "Count of revoked benefit entitlements. Used to monitor compliance and fraud-related benefit revocations."
-    - name: "avg_points_multiplier_on_benefits"
-      expr: AVG(CAST(points_multiplier AS DOUBLE))
-      comment: "Average points multiplier applied to benefit entitlements. Used to assess the points earning enhancement provided through benefit programs."
+    - name: "total_benefit_entitlements_granted"
+      expr: COUNT(benefit_entitlement_id)
+      comment: "Total number of benefit entitlements granted. Measures the scale of benefit issuance — a key driver of member satisfaction and program cost."
     - name: "distinct_members_with_benefits"
       expr: COUNT(DISTINCT member_id)
-      comment: "Number of distinct members holding at least one benefit entitlement. Measures the breadth of benefit program reach across the member base."
+      comment: "Count of unique members who have received benefit entitlements. Measures benefit program reach across the member base."
+    - name: "total_monetary_value_of_benefits"
+      expr: SUM(CAST(monetary_value AS DOUBLE))
+      comment: "Total monetary value of all benefit entitlements granted. Quantifies the financial cost of the benefit program — critical for loyalty P&L management."
+    - name: "avg_monetary_value_per_benefit"
+      expr: AVG(CAST(monetary_value AS DOUBLE))
+      comment: "Average monetary value per benefit entitlement. Benchmarks the generosity of individual benefit grants and informs benefit portfolio design."
+    - name: "avg_points_multiplier_on_benefits"
+      expr: AVG(CAST(points_multiplier AS DOUBLE))
+      comment: "Average points multiplier applied through benefit entitlements. Measures the earning acceleration delivered via benefits — informs liability impact."
+    - name: "benefit_expiry_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN entitlement_status = 'Expired' THEN benefit_entitlement_id END) / NULLIF(COUNT(benefit_entitlement_id), 0), 2)
+      comment: "Percentage of benefit entitlements that expired unused. High expiry rates indicate poor benefit awareness or redemption friction — signals program design issues."
+    - name: "benefit_utilization_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN entitlement_status = 'Used' THEN benefit_entitlement_id END) / NULLIF(COUNT(benefit_entitlement_id), 0), 2)
+      comment: "Percentage of granted benefits that were actually used. Core measure of benefit program effectiveness and member engagement with the reward portfolio."
+    - name: "revoked_benefit_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN entitlement_status = 'Revoked' THEN benefit_entitlement_id END) / NULLIF(COUNT(benefit_entitlement_id), 0), 2)
+      comment: "Percentage of benefits that were revoked. Elevated revocation rates may signal fraud, policy violations, or operational errors requiring investigation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_accrual_rule`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Loyalty points accrual rule portfolio metrics. Tracks rule configuration, earning rates, tier and segment multipliers, and estimated liability volume to govern the points earning framework and manage program economics."
+  source: "`vibe_travel_hospitality_v1`.`loyalty`.`accrual_rule`"
+  dimensions:
+    - name: "rule_type"
+      expr: rule_type
+      comment: "Type of accrual rule (e.g., Base Earn, Bonus, Partner). Segments the rule portfolio by earning mechanism."
+    - name: "rule_status"
+      expr: rule_status
+      comment: "Current status of the accrual rule (e.g., Active, Inactive, Pending). Used to filter live vs. retired earning rules."
+    - name: "earning_basis"
+      expr: earning_basis
+      comment: "Basis on which points are earned (e.g., Per Currency Unit, Per Night, Per Stay). Identifies the earning mechanic driving points accrual."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the accrual rule. Supports governance tracking of rule approval workflows."
+    - name: "property_applicability"
+      expr: property_applicability
+      comment: "Scope of property applicability for the rule (e.g., All Properties, Specific Properties). Segments rules by geographic or brand scope."
+    - name: "tier_id"
+      expr: tier_id
+      comment: "Tier associated with the accrual rule. Enables analysis of earning rule design by tier level."
+    - name: "effective_start_year"
+      expr: DATE_TRUNC('YEAR', effective_start_date)
+      comment: "Year the accrual rule became effective. Tracks rule portfolio evolution over time."
+    - name: "is_stackable"
+      expr: is_stackable
+      comment: "Indicates whether the rule can be stacked with other earning rules. Analyzes combinability exposure in the rule portfolio."
+  measures:
+    - name: "total_active_accrual_rules"
+      expr: COUNT(CASE WHEN rule_status = 'Active' THEN accrual_rule_id END)
+      comment: "Count of currently active accrual rules. Measures the complexity and breadth of the earning rule portfolio — high counts may signal governance risk."
+    - name: "total_accrual_rules"
+      expr: COUNT(accrual_rule_id)
+      comment: "Total count of all accrual rules across all statuses. Measures the full scope of the earning rule portfolio."
+    - name: "total_estimated_annual_points_volume"
+      expr: SUM(CAST(estimated_annual_points_volume AS DOUBLE))
+      comment: "Total estimated annual points volume across all active rules. Measures projected points liability generation — critical for financial planning and hedging."
+    - name: "avg_points_per_currency_unit"
+      expr: AVG(CAST(points_per_currency_unit AS DOUBLE))
+      comment: "Average points awarded per currency unit spent across all rules. Benchmarks the overall generosity of the earning framework."
+    - name: "avg_tier_multiplier"
+      expr: AVG(CAST(tier_multiplier AS DOUBLE))
+      comment: "Average tier multiplier applied across accrual rules. Measures the average earning acceleration provided to tiered members."
+    - name: "avg_segment_multiplier"
+      expr: AVG(CAST(segment_multiplier AS DOUBLE))
+      comment: "Average segment multiplier across accrual rules. Measures the average earning boost provided to targeted member segments."
+    - name: "avg_minimum_transaction_amount"
+      expr: AVG(CAST(minimum_transaction_amount AS DOUBLE))
+      comment: "Average minimum transaction amount required to earn points. Benchmarks the qualifying spend threshold across the rule portfolio — informs accessibility of the earning program."
+    - name: "stackable_rule_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_stackable = TRUE THEN accrual_rule_id END) / NULLIF(COUNT(accrual_rule_id), 0), 2)
+      comment: "Percentage of accrual rules that are stackable. High stackability rates increase liability exposure — a key risk governance metric for the program design team."
 $$;

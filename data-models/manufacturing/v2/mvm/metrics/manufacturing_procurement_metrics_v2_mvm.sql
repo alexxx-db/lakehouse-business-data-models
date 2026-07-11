@@ -1,86 +1,66 @@
--- Metric views for domain: procurement | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:49:38
+-- Metric views for domain: procurement | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:43:55
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_contract_release_order`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Contract Release Order business metrics"
-  source: "`vibe_manufacturing_v1`.`procurement`.`contract_release_order`"
+  comment: "Goods Receipt business metrics"
+  source: "`vibe_manufacturing_v1`.`procurement`.`goods_receipt`"
   dimensions:
-    - name: "Actual Delivery Date"
-      expr: actual_delivery_date
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Approved Timestamp"
-      expr: approved_timestamp
-    - name: "Closed Timestamp"
-      expr: closed_timestamp
-    - name: "Confirmed Delivery Date"
-      expr: confirmed_delivery_date
+    - name: "Accounting Document Number"
+      expr: accounting_document_number
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Currency Code"
       expr: currency_code
+    - name: "Damage Flag"
+      expr: damage_flag
     - name: "Delivery Date"
       expr: delivery_date
-    - name: "Goods Receipt Number"
-      expr: goods_receipt_number
-    - name: "Incoterms"
-      expr: incoterms
-    - name: "Inspection Lot Number"
-      expr: inspection_lot_number
-    - name: "Invoice Number"
-      expr: invoice_number
+    - name: "Delivery Note Number"
+      expr: delivery_note_number
+    - name: "Document Date"
+      expr: document_date
+    - name: "Document Number"
+      expr: document_number
+    - name: "Expiration Date"
+      expr: expiration_date
+    - name: "Goods Receipt Status"
+      expr: goods_receipt_status
+    - name: "Gr Ir Clearing Status"
+      expr: gr_ir_clearing_status
+    - name: "Invoice Verification Flag"
+      expr: invoice_verification_flag
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
-    - name: "Modified By"
-      expr: modified_by
-    - name: "Modified Timestamp"
-      expr: modified_timestamp
-    - name: "Quality Inspection Required"
-      expr: quality_inspection_required
+    - name: "Manufacturing Date"
+      expr: manufacturing_date
+    - name: "Material Document Number"
+      expr: material_document_number
+    - name: "Material Document Year"
+      expr: material_document_year
   measures:
     - name: "Row Count"
       expr: COUNT(1)
-    - name: "Distinct Contract Release Order"
-      expr: COUNT(DISTINCT contract_release_order_id)
-    - name: "Total Contract Remaining Quantity"
-      expr: SUM(contract_remaining_quantity)
-    - name: "Average Contract Remaining Quantity"
-      expr: AVG(contract_remaining_quantity)
-    - name: "Total Contract Remaining Value"
-      expr: SUM(contract_remaining_value)
-    - name: "Average Contract Remaining Value"
-      expr: AVG(contract_remaining_value)
-    - name: "Total Cumulative Released Value"
-      expr: SUM(cumulative_released_value)
-    - name: "Average Cumulative Released Value"
-      expr: AVG(cumulative_released_value)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Release Quantity"
-      expr: SUM(release_quantity)
-    - name: "Average Release Quantity"
-      expr: AVG(release_quantity)
-    - name: "Total Release Value"
-      expr: SUM(release_value)
-    - name: "Average Release Value"
-      expr: AVG(release_value)
-    - name: "Total Released Quantity"
-      expr: SUM(released_quantity)
-    - name: "Average Released Quantity"
-      expr: AVG(released_quantity)
-    - name: "Total Released Value"
-      expr: SUM(released_value)
-    - name: "Average Released Value"
-      expr: AVG(released_value)
-    - name: "Total Unit Price"
-      expr: SUM(unit_price)
-    - name: "Average Unit Price"
-      expr: AVG(unit_price)
+    - name: "Distinct Goods Receipt"
+      expr: COUNT(DISTINCT goods_receipt_id)
+    - name: "Total Ordered Quantity"
+      expr: SUM(ordered_quantity)
+    - name: "Average Ordered Quantity"
+      expr: AVG(ordered_quantity)
+    - name: "Total Quantity Variance"
+      expr: SUM(quantity_variance)
+    - name: "Average Quantity Variance"
+      expr: AVG(quantity_variance)
+    - name: "Total Received Quantity"
+      expr: SUM(received_quantity)
+    - name: "Average Received Quantity"
+      expr: AVG(received_quantity)
+    - name: "Total Value"
+      expr: SUM(value)
+    - name: "Average Value"
+      expr: AVG(value)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_po_line_item`
@@ -128,10 +108,6 @@ AS $$
       expr: COUNT(1)
     - name: "Distinct Po Line Item"
       expr: COUNT(DISTINCT po_line_item_id)
-    - name: "Total Net Line Amount"
-      expr: SUM(net_line_amount)
-    - name: "Average Net Line Amount"
-      expr: AVG(net_line_amount)
     - name: "Total Net Order Value"
       expr: SUM(net_order_value)
     - name: "Average Net Order Value"
@@ -148,10 +124,6 @@ AS $$
       expr: SUM(over_delivery_tolerance_percent)
     - name: "Average Over Delivery Tolerance Percent"
       expr: AVG(over_delivery_tolerance_percent)
-    - name: "Total Price Unit"
-      expr: SUM(price_unit)
-    - name: "Average Price Unit"
-      expr: AVG(price_unit)
     - name: "Total Quantity Invoiced"
       expr: SUM(quantity_invoiced)
     - name: "Average Quantity Invoiced"
@@ -172,10 +144,6 @@ AS $$
       expr: SUM(under_delivery_tolerance_percent)
     - name: "Average Under Delivery Tolerance Percent"
       expr: AVG(under_delivery_tolerance_percent)
-    - name: "Total Unit Price"
-      expr: SUM(unit_price)
-    - name: "Average Unit Price"
-      expr: AVG(unit_price)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_procurement_contract`
@@ -223,26 +191,10 @@ AS $$
       expr: COUNT(1)
     - name: "Distinct Procurement Contract"
       expr: COUNT(DISTINCT procurement_contract_id)
-    - name: "Total Committed Volume"
-      expr: SUM(committed_volume)
-    - name: "Average Committed Volume"
-      expr: AVG(committed_volume)
     - name: "Total Minimum Order Quantity"
       expr: SUM(minimum_order_quantity)
     - name: "Average Minimum Order Quantity"
       expr: AVG(minimum_order_quantity)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Price Deescalation Mechanism"
-      expr: SUM(price_deescalation_mechanism)
-    - name: "Average Price Deescalation Mechanism"
-      expr: AVG(price_deescalation_mechanism)
-    - name: "Total Price Escalation Mechanism"
-      expr: SUM(price_escalation_mechanism)
-    - name: "Average Price Escalation Mechanism"
-      expr: AVG(price_escalation_mechanism)
     - name: "Total Release Quantity"
       expr: SUM(release_quantity)
     - name: "Average Release Quantity"
@@ -269,156 +221,6 @@ AS $$
       expr: AVG(total_contract_value)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_procurement_goods_receipt`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Procurement Goods Receipt business metrics"
-  source: "`vibe_manufacturing_v1`.`procurement`.`procurement_goods_receipt`"
-  dimensions:
-    - name: "Accounting Document Number"
-      expr: accounting_document_number
-    - name: "Batch Number"
-      expr: batch_number
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Damage Flag"
-      expr: damage_flag
-    - name: "Delivery Date"
-      expr: delivery_date
-    - name: "Document Date"
-      expr: document_date
-    - name: "Document Number"
-      expr: document_number
-    - name: "Expiration Date"
-      expr: expiration_date
-    - name: "Goods Receipt Status"
-      expr: goods_receipt_status
-    - name: "Gr Ir Clearing Status"
-      expr: gr_ir_clearing_status
-    - name: "Inspection Required Flag"
-      expr: inspection_required_flag
-    - name: "Invoice Verification Flag"
-      expr: invoice_verification_flag
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Manufacturing Date"
-      expr: manufacturing_date
-    - name: "Material Document Number"
-      expr: material_document_number
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Procurement Goods Receipt"
-      expr: COUNT(DISTINCT procurement_goods_receipt_id)
-    - name: "Total Goods Receipt Value"
-      expr: SUM(goods_receipt_value)
-    - name: "Average Goods Receipt Value"
-      expr: AVG(goods_receipt_value)
-    - name: "Total Ordered Quantity"
-      expr: SUM(ordered_quantity)
-    - name: "Average Ordered Quantity"
-      expr: AVG(ordered_quantity)
-    - name: "Total Quantity Variance"
-      expr: SUM(quantity_variance)
-    - name: "Average Quantity Variance"
-      expr: AVG(quantity_variance)
-    - name: "Total Received Quantity"
-      expr: SUM(received_quantity)
-    - name: "Average Received Quantity"
-      expr: AVG(received_quantity)
-    - name: "Total Rejected Quantity"
-      expr: SUM(rejected_quantity)
-    - name: "Average Rejected Quantity"
-      expr: AVG(rejected_quantity)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_purchase_info_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Purchase Info Record business metrics"
-  source: "`vibe_manufacturing_v1`.`procurement`.`purchase_info_record`"
-  dimensions:
-    - name: "Approved Source Flag"
-      expr: approved_source_flag
-    - name: "Contract Reference"
-      expr: contract_reference
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Fixed Source Flag"
-      expr: fixed_source_flag
-    - name: "Incoterms"
-      expr: incoterms
-    - name: "Info Record Category"
-      expr: info_record_category
-    - name: "Info Record Number"
-      expr: info_record_number
-    - name: "Info Record Status"
-      expr: info_record_status
-    - name: "Info Record Type"
-      expr: info_record_type
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Last Price Update Timestamp"
-      expr: last_price_update_timestamp
-    - name: "Mrp Relevant Flag"
-      expr: mrp_relevant_flag
-    - name: "Notes"
-      expr: notes
-    - name: "Planned Delivery Time Days"
-      expr: planned_delivery_time_days
-    - name: "Plant Code"
-      expr: plant_code
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Purchase Info Record"
-      expr: COUNT(DISTINCT purchase_info_record_id)
-    - name: "Total Minimum Order Quantity"
-      expr: SUM(minimum_order_quantity)
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(minimum_order_quantity)
-    - name: "Total Net Price"
-      expr: SUM(net_price)
-    - name: "Average Net Price"
-      expr: AVG(net_price)
-    - name: "Total Order Quantity Multiple"
-      expr: SUM(order_quantity_multiple)
-    - name: "Average Order Quantity Multiple"
-      expr: AVG(order_quantity_multiple)
-    - name: "Total Price Change Indicator"
-      expr: SUM(price_change_indicator)
-    - name: "Average Price Change Indicator"
-      expr: AVG(price_change_indicator)
-    - name: "Total Price Change Reason"
-      expr: SUM(price_change_reason)
-    - name: "Average Price Change Reason"
-      expr: AVG(price_change_reason)
-    - name: "Total Price Unit"
-      expr: SUM(price_unit)
-    - name: "Average Price Unit"
-      expr: AVG(price_unit)
-    - name: "Total Tolerance Limit Percent"
-      expr: SUM(tolerance_limit_percent)
-    - name: "Average Tolerance Limit Percent"
-      expr: AVG(tolerance_limit_percent)
-    - name: "Total Tolerance Percent"
-      expr: SUM(tolerance_percent)
-    - name: "Average Tolerance Percent"
-      expr: AVG(tolerance_percent)
-    - name: "Total Vendor Price List"
-      expr: SUM(vendor_price_list)
-    - name: "Average Vendor Price List"
-      expr: AVG(vendor_price_list)
-$$;
-
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_purchase_order`
 WITH METRICS
 LANGUAGE YAML
@@ -435,8 +237,6 @@ AS $$
       expr: approval_date
     - name: "Approval Status"
       expr: approval_status
-    - name: "Approved Date"
-      expr: approved_date
     - name: "Closed Date"
       expr: closed_date
     - name: "Company Code"
@@ -449,8 +249,6 @@ AS $$
       expr: created_timestamp
     - name: "Currency Code"
       expr: currency_code
-    - name: "Delivery Date"
-      expr: delivery_date
     - name: "Goods Receipt Status"
       expr: goods_receipt_status
     - name: "Incoterms"
@@ -459,6 +257,10 @@ AS $$
       expr: incoterms_location
     - name: "Invoice Receipt Status"
       expr: invoice_receipt_status
+    - name: "Material Category"
+      expr: material_category
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -468,30 +270,14 @@ AS $$
       expr: SUM(net_po_value)
     - name: "Average Net Po Value"
       expr: AVG(net_po_value)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
     - name: "Total Tax Amount"
       expr: SUM(tax_amount)
     - name: "Average Tax Amount"
       expr: AVG(tax_amount)
-    - name: "Total Total Gross Amount"
-      expr: SUM(total_gross_amount)
-    - name: "Average Total Gross Amount"
-      expr: AVG(total_gross_amount)
-    - name: "Total Total Net Amount"
-      expr: SUM(total_net_amount)
-    - name: "Average Total Net Amount"
-      expr: AVG(total_net_amount)
     - name: "Total Total Po Value"
       expr: SUM(total_po_value)
     - name: "Average Total Po Value"
       expr: AVG(total_po_value)
-    - name: "Total Total Tax Amount"
-      expr: SUM(total_tax_amount)
-    - name: "Average Total Tax Amount"
-      expr: AVG(total_tax_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_purchase_requisition`
@@ -520,10 +306,6 @@ AS $$
       expr: mrp_controller
     - name: "Plant Code"
       expr: plant_code
-    - name: "Po Created Date"
-      expr: po_created_date
-    - name: "Po Number"
-      expr: po_number
     - name: "Pr Date"
       expr: pr_date
     - name: "Pr Number"
@@ -534,6 +316,10 @@ AS $$
       expr: pr_type
     - name: "Priority Code"
       expr: priority_code
+    - name: "Purchasing Group Code"
+      expr: purchasing_group_code
+    - name: "Purchasing Organization Code"
+      expr: purchasing_organization_code
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -606,85 +392,6 @@ AS $$
       expr: SUM(estimated_total_value)
     - name: "Average Estimated Total Value"
       expr: AVG(estimated_total_value)
-    - name: "Total Estimated Value"
-      expr: SUM(estimated_value)
-    - name: "Average Estimated Value"
-      expr: AVG(estimated_value)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_source_list`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Source List business metrics"
-  source: "`vibe_manufacturing_v1`.`procurement`.`source_list`"
-  dimensions:
-    - name: "Compliance Status"
-      expr: compliance_status
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Description"
-      expr: description
-    - name: "Fixed Source Flag"
-      expr: fixed_source_flag
-    - name: "Is Blocked"
-      expr: is_blocked
-    - name: "Is Fixed Source"
-      expr: is_fixed_source
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Mrp Relevant Flag"
-      expr: mrp_relevant_flag
-    - name: "Mrp Source Indicator"
-      expr: mrp_source_indicator
-    - name: "Priority"
-      expr: priority
-    - name: "Procurement Type"
-      expr: procurement_type
-    - name: "Source List Number"
-      expr: source_list_number
-    - name: "Source List Status"
-      expr: source_list_status
-    - name: "Source Name"
-      expr: source_name
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Source List"
-      expr: COUNT(DISTINCT source_list_id)
-    - name: "Total Allocation Percent"
-      expr: SUM(allocation_percent)
-    - name: "Average Allocation Percent"
-      expr: AVG(allocation_percent)
-    - name: "Total Minimum Order Quantity"
-      expr: SUM(minimum_order_quantity)
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(minimum_order_quantity)
-    - name: "Total Price Per Unit"
-      expr: SUM(price_per_unit)
-    - name: "Average Price Per Unit"
-      expr: AVG(price_per_unit)
-    - name: "Total Price Valid From"
-      expr: SUM(price_valid_from)
-    - name: "Average Price Valid From"
-      expr: AVG(price_valid_from)
-    - name: "Total Price Valid To"
-      expr: SUM(price_valid_to)
-    - name: "Average Price Valid To"
-      expr: AVG(price_valid_to)
-    - name: "Total Source Rating"
-      expr: SUM(source_rating)
-    - name: "Average Source Rating"
-      expr: AVG(source_rating)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_supplier_invoice`
@@ -709,8 +416,6 @@ AS $$
       expr: currency_code
     - name: "Document Date"
       expr: document_date
-    - name: "Due Date"
-      expr: due_date
     - name: "Fiscal Period"
       expr: fiscal_period
     - name: "Fiscal Year"
@@ -723,10 +428,12 @@ AS $$
       expr: invoice_status
     - name: "Invoice Type"
       expr: invoice_type
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
     - name: "Material Category"
       expr: material_category
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Payment Block Indicator"
+      expr: payment_block_indicator
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -752,26 +459,6 @@ AS $$
       expr: SUM(net_amount)
     - name: "Average Net Amount"
       expr: AVG(net_amount)
-    - name: "Total Payment Block Indicator"
-      expr: SUM(payment_block_indicator)
-    - name: "Average Payment Block Indicator"
-      expr: AVG(payment_block_indicator)
-    - name: "Total Payment Method"
-      expr: SUM(payment_method)
-    - name: "Average Payment Method"
-      expr: AVG(payment_method)
-    - name: "Total Payment Reference Number"
-      expr: SUM(payment_reference_number)
-    - name: "Average Payment Reference Number"
-      expr: AVG(payment_reference_number)
-    - name: "Total Payment Status"
-      expr: SUM(payment_status)
-    - name: "Average Payment Status"
-      expr: AVG(payment_status)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
     - name: "Total Tax Amount"
       expr: SUM(tax_amount)
     - name: "Average Tax Amount"
@@ -780,6 +467,14 @@ AS $$
       expr: SUM(tolerance_variance_amount)
     - name: "Average Tolerance Variance Amount"
       expr: AVG(tolerance_variance_amount)
+    - name: "Total Tolerance Variance Percentage"
+      expr: SUM(tolerance_variance_percentage)
+    - name: "Average Tolerance Variance Percentage"
+      expr: AVG(tolerance_variance_percentage)
+    - name: "Total Withholding Tax Amount"
+      expr: SUM(withholding_tax_amount)
+    - name: "Average Withholding Tax Amount"
+      expr: AVG(withholding_tax_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_supplier_quotation`
@@ -812,14 +507,14 @@ AS $$
       expr: environmental_compliance_flag
     - name: "Incoterms"
       expr: incoterms
-    - name: "Is Awarded"
-      expr: is_awarded
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
     - name: "Lead Time Days"
       expr: lead_time_days
     - name: "Material Group"
       expr: material_group
+    - name: "Payment Terms"
+      expr: payment_terms
     - name: "Plant Code"
       expr: plant_code
   measures:
@@ -843,18 +538,6 @@ AS $$
       expr: SUM(minimum_order_quantity)
     - name: "Average Minimum Order Quantity"
       expr: AVG(minimum_order_quantity)
-    - name: "Total Payment Terms"
-      expr: SUM(payment_terms)
-    - name: "Average Payment Terms"
-      expr: AVG(payment_terms)
-    - name: "Total Quoted Quantity"
-      expr: SUM(quoted_quantity)
-    - name: "Average Quoted Quantity"
-      expr: AVG(quoted_quantity)
-    - name: "Total Quoted Total Price"
-      expr: SUM(quoted_total_price)
-    - name: "Average Quoted Total Price"
-      expr: AVG(quoted_total_price)
     - name: "Total Quoted Unit Price"
       expr: SUM(quoted_unit_price)
     - name: "Average Quoted Unit Price"

@@ -1,5 +1,5 @@
--- Schema for Domain: experience | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:42
+-- Schema for Domain: experience | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:51
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`experience` COMMENT 'Guest experience, service quality, and service recovery management including guest feedback, NPS surveys, complaint case management, GRR (Guest Recovery Rate), and satisfaction tracking. Manages service recovery workflows, amenity fulfillment, special request tracking, and GSS/CSAT scoring. Integrates with Medallia as the primary experience analytics platform and Salesforce CRM for case management. Supports SALT programs.';
@@ -7,7 +7,7 @@ CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`experience` COMMENT 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` (
     `guest_feedback_id` BIGINT COMMENT 'Unique identifier for the guest feedback submission record. Primary key for the guest feedback entity.',
-    `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: Post-stay feedback must link to originating channel booking to enable channel performance analysis by guest satisfaction, NPS by distribution partner, and channel mix optimization based on experience ',
+    `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: Post-stay feedback must link to originating channel booking to enable channel performance analysis by guest satisfaction, NPS by distribution partner, and channel mix optimization based on experience',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Guest feedback tracks F&B outlet-specific ratings (fnb_rating attribute exists). Links feedback to specific restaurant/bar for outlet-level performance analysis, service recovery targeting, and operat',
     `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Guest satisfaction analysis requires linking feedback to specific room type products for product-level quality metrics, defect tracking, and renovation prioritization. Replaces denormalized room_type_',
     `meeting_space_id` BIGINT COMMENT 'Foreign key linking to property.meeting_space. Business justification: Event planners provide separate feedback on meeting spaces. Sales teams require space-level satisfaction scores for proposals and contract renewals. Real business process: meeting space performance da',
@@ -21,6 +21,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedbac
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Facility-specific feedback (noise, cleanliness, maintenance issues) must link to exact room for targeted corrective action, out-of-order decisions, and room-level quality tracking. Critical for operat',
     `service_case_id` BIGINT COMMENT 'Reference to the service recovery case created in Salesforce CRM if this feedback triggered a complaint or service recovery workflow. Links feedback to resolution tracking.',
     `touchpoint_id` BIGINT COMMENT 'Foreign key linking to experience.touchpoint. Business justification: Guest feedback is collected at specific touchpoints in the journey (post-checkout survey, post-stay email, in-app feedback). Linking feedback to touchpoint enables touchpoint-level satisfaction analys',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Guests frequently mention specific vendor-provided services in feedback (restaurant quality, spa experience, shuttle service, concierge partnerships). Linking vendor enables correlation of vendor perf',
     `amenities_rating` DECIMAL(18,2) COMMENT 'Guest rating of property amenities including pool, fitness center, business center, and other facilities. Informs capital expenditure and FF&E decisions.',
     `cleanliness_rating` DECIMAL(18,2) COMMENT 'Guest rating specific to property cleanliness standards across all areas. Essential metric for housekeeping operations and health compliance.',
     `complaint_flag` BOOLEAN COMMENT 'Boolean indicator whether this feedback contains a complaint requiring service recovery action. Triggers case management workflow in Salesforce CRM.',
@@ -100,10 +101,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` (
     `service_case_id` BIGINT COMMENT 'Unique identifier for the guest service recovery case. Primary key for the service case entity.',
-    `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Service cases are assigned to and owned by specific departments for resolution, workload balancing, and SLA tracking. Hotels measure case resolution time by org_unit for operational performance manage',
     `channel_booking_id` BIGINT COMMENT 'Foreign key linking to channel.channel_booking. Business justification: Service recovery cases originate from bookings; tracking channel source enables identification of problematic distribution partners, supports recovery cost allocation by channel, and informs OTA partn',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Service cases originate from specific F&B outlets (restaurant complaints, room service issues, food quality problems). Required for outlet-level accountability, manager escalation, cost center allocat',
-    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Service cases frequently originate from health/safety incidents (guest injuries, illness, property hazards). Operations require linking guest service recovery to formal incident reports for liability ',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Service cases frequently originate from health/safety incidents (guest injuries, illness, property hazards). Operations require linking guest service recovery to formal incident reports for liability',
     `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Product-level issue tracking (all suites have faulty HVAC, deluxe rooms lack promised amenities) requires room type linkage for systemic problem identification, brand standard compliance, and portfoli',
     `meeting_space_id` BIGINT COMMENT 'Foreign key linking to property.meeting_space. Business justification: Event-related service cases (AV failure, temperature issues, catering problems) are a major category. Event services teams require space-level case tracking for SLA compliance and space-specific issue',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Service case resolution workflows require direct member access for tier-based recovery authorization limits, points compensation rules, and VIP escalation protocols. Real process: tiered service recov',
@@ -152,11 +152,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case`
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` (
     `case_activity_id` BIGINT COMMENT 'Unique identifier for the case activity record. Primary key for the case activity log.',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Case activities involve outlet-specific actions (manager follow-up, chef consultation, meal replacement). Tracks which F&B location handled recovery activity, essential for outlet performance metrics,',
-    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Case activities can be triggered by guest feedback submissions requiring service recovery. When feedback indicates complaint or low satisfaction, a case activity may be created to address it. This FK ',
-    `online_review_id` BIGINT COMMENT 'Foreign key linking to experience.online_review. Business justification: Case activities can be triggered by online reviews requiring management response or service recovery. When a negative review is published, case activity tracks the response actions. This FK links the ',
+    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Case activities can be triggered by guest feedback submissions requiring service recovery. When feedback indicates complaint or low satisfaction, a case activity may be created to address it. This FK',
+    `online_review_id` BIGINT COMMENT 'Foreign key linking to experience.online_review. Business justification: Case activities can be triggered by online reviews requiring management response or service recovery. When a negative review is published, case activity tracks the response actions. This FK links the',
     `employee_id` BIGINT COMMENT 'Reference to the employee or agent responsible for performing or logging this activity. Supports accountability and performance tracking.',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile associated with the service case. Links activity to guest history and loyalty program.',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Case activities document facility-specific actions (inspected pool, tested gym equipment, visited restaurant). Root cause analysis requires facility context to identify systemic issues. Real business ',
+    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Case activities document facility-specific actions (inspected pool, tested gym equipment, visited restaurant). Root cause analysis requires facility context to identify systemic issues. Real business',
     `property_id` BIGINT COMMENT 'Reference to the hotel property where the activity took place. Supports multi-property operations and location-based analysis.',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Case activities (room inspections, follow-up visits, maintenance verification) require room linkage to document which specific unit was inspected/serviced. Critical for audit trail of room-specific se',
     `service_case_id` BIGINT COMMENT 'Reference to the parent service recovery case that this activity belongs to. Links activity to the case lifecycle.',
@@ -204,6 +204,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recov
     `employee_id` BIGINT COMMENT 'Reference to the employee who authorized the service recovery action.',
     `profile_id` BIGINT COMMENT 'Reference to the guest receiving the service recovery action.',
     `property_id` BIGINT COMMENT 'Reference to the property where the service recovery action was authorized and fulfilled.',
+    `quaternary_service_last_modified_by_employee_id` BIGINT COMMENT 'Reference to the employee who last modified the service recovery action record.',
     `reputation_alert_id` BIGINT COMMENT 'Foreign key linking to experience.reputation_alert. Business justification: Service recovery actions can be triggered by reputation alerts (e.g., alert fires when NPS score breaches threshold, recovery action is initiated to address the issue). This FK tracks the alert that p',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the reservation associated with this recovery action, if applicable.',
     `service_case_id` BIGINT COMMENT 'Reference to the originating service case that triggered this recovery action. Links to the complaint or service issue being resolved.',
@@ -241,13 +242,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_sp
     `ada_assessment_id` BIGINT COMMENT 'Foreign key linking to compliance.ada_assessment. Business justification: Special requests for accessibility accommodations (wheelchair access, visual/hearing aids, room modifications) directly inform ADA assessment requirements and barrier remediation tracking. Essential f',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Special dining requests (dietary accommodations, celebration cakes, private dining, wine pairings) are fulfilled by specific outlets. Essential for operational fulfillment tracking, outlet workload pl',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile who submitted the special request. Links to the guest master record.',
-    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Room type preference requests (upgrade to suite, ocean view room) require room type linkage for inventory availability checking, upgrade eligibility verification, and tracking demand patterns by room ',
+    `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Room type preference requests (upgrade to suite, ocean view room) require room type linkage for inventory availability checking, upgrade eligibility verification, and tracking demand patterns by room',
     `service_case_id` BIGINT COMMENT 'Reference to a service recovery case if the special request is part of a guest complaint resolution or service recovery workflow. Links to Salesforce CRM case management.',
     `employee_id` BIGINT COMMENT 'Reference to the staff member assigned to fulfill the request. Links to the workforce employee record responsible for execution.',
     `property_id` BIGINT COMMENT 'Reference to the property where the special request is to be fulfilled. Links to the property master record.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the reservation associated with this special request. Links to the reservation under which the request was submitted.',
-    `reservation_special_request_id` BIGINT COMMENT 'add column reservation_special_request_id (BIGINT) with FK to reservation.reservation_special_request.reservation_special_request_id - experience special requests are derived from reservation special requests.',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Room-specific requests (extra pillows, temperature adjustment, connecting room setup) require room linkage for fulfillment routing to housekeeping/maintenance, tracking repeat requests by unit, and id',
+    `reservation_special_request_id` BIGINT COMMENT '',
     `actual_cost_amount` DECIMAL(18,2) COMMENT 'Actual cost incurred by the property for fulfilling the special request. Captured post-fulfillment for financial analysis and service cost management.',
     `actual_fulfillment_timestamp` TIMESTAMP COMMENT 'Date and time when the special request was actually completed and delivered to the guest. Used to measure fulfillment timeliness and service performance.',
     `advance_notice_hours` STRING COMMENT 'Number of hours of advance notice required for this request type. Defines the minimum lead time needed for successful fulfillment.',
@@ -282,7 +283,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_sp
     `source_system_record_code` STRING COMMENT 'The unique identifier of this special request in the source operational system. Enables traceability back to the system of record.',
     `special_instructions` STRING COMMENT 'Additional instructions or special handling requirements for fulfilling the request. Captures nuanced guest preferences and operational guidance.',
     CONSTRAINT pk_experience_special_request PRIMARY KEY(`experience_special_request_id`)
-) COMMENT 'Single source of truth is reservation.reservation_special_request. Master record for guest special requests submitted at booking, pre-arrival, or during stay. Captures request type (room preference, accessibility need, dietary requirement, celebration setup, early check-in, late checkout, amenity delivery, pillow menu, transportation), request source (reservation system, guest app, front desk, concierge, loyalty program), fulfillment status, assigned department, fulfillment deadline, actual fulfillment timestamp, and guest satisfaction outcome. Integrates with OPERA PMS guest profile and reservation data. Tracks request fulfillment rate as a key experience KPI. Distinct from amenity_fulfillment which tracks the physical delivery execution of amenity items — special_request captures the guests intent and fulfillment lifecycle at a higher level. SSOT: defers to reservation.reservation_special_request (MVM).reservation_special_request as single source of truth] [SSOT:special_request] Canonical single-source-of-truth for the special_request concept; other domain variants are domain-specific specializations referencing this owner. SSOT: defers to canonical reservation.reservation_special_request (MVM cross-domain dedup).';
+) COMMENT 'Master record for guest special requests submitted at booking, pre-arrival, or during stay. Captures request type (room preference, accessibility need, dietary requirement, celebration setup, early check-in, late checkout, amenity delivery, pillow menu, transportation), request source (reservation system, guest app, front desk, concierge, loyalty program), fulfillment status, assigned department, fulfillment deadline, actual fulfillment timestamp, and guest satisfaction outcome. Integrates with OPERA PMS guest profile and reservation data. Tracks request fulfillment rate as a key experience KPI. Distinct from amenity_fulfillment which tracks the physical delivery execution of amenity items — special_request captures the guests intent and fulfillment lifecycle at a higher level.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` (
     `amenity_fulfillment_id` BIGINT COMMENT 'Unique identifier for the amenity fulfillment record. Primary key.',
@@ -290,7 +291,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfi
     `employee_id` BIGINT COMMENT 'Reference to the staff member (housekeeping, concierge, or room service) who delivered the amenity.',
     `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Amenity fulfillments often originate from guest special requests (e.g., champagne on arrival, extra pillows, dietary accommodations). This FK links the fulfillment record to the originating request, e',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: F&B amenities (welcome drinks, birthday cakes, fruit baskets, minibar items) are prepared/delivered by specific outlets. Required for cost allocation, outlet workload tracking, inventory reconciliatio',
-    `food_safety_cert_id` BIGINT COMMENT 'Foreign key linking to compliance.food_safety_cert. Business justification: Amenity fulfillment involving food/beverage items (welcome amenities, in-room dining, special dietary requests) must reference food safety certifications for compliance verification, allergen tracking',
     `guest_experience_enrollment_id` BIGINT COMMENT 'Foreign key linking to experience.guest_experience_enrollment. Business justification: Amenities can be delivered as part of experience program enrollment (e.g., SALT program includes welcome amenity package, spa program includes in-room amenities). This FK links amenity delivery to the',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile receiving the amenity.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Amenity transactions require GL account posting for revenue recognition (charged amenities) or expense recognition (complimentary). Critical for daily revenue posting, financial statement accuracy, an',
@@ -342,13 +342,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interac
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Front desk, concierge, and service staff interactions require real-time loyalty tier visibility for benefit fulfillment (upgrades, late checkout), personalized greetings, and service level differentia',
     `employee_id` BIGINT COMMENT 'Reference to the employee who conducted the interaction. Enables staff engagement scoring and service quality attribution.',
     `profile_id` BIGINT COMMENT 'Reference to the guest who participated in this interaction. Links to the guest master data product.',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Guest interactions occur at specific facilities (concierge desk, restaurant host stand, spa reception). Interaction analytics require facility-level segmentation for staffing optimization and service ',
+    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Guest interactions occur at specific facilities (concierge desk, restaurant host stand, spa reception). Interaction analytics require facility-level segmentation for staffing optimization and service',
     `property_id` BIGINT COMMENT 'Reference to the hotel property where the interaction occurred.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the reservation associated with this interaction, if applicable. Null for non-stay interactions.',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Guest interactions (in-room service calls, facility inquiries, room issue reports) require room linkage for context documentation, issue pattern identification by unit, and tracking interaction freque',
     `service_case_id` BIGINT COMMENT 'Reference to a formal service recovery case if this interaction escalated to case management. Null for interactions that did not escalate.',
     `tertiary_guest_last_modified_by_user_employee_id` BIGINT COMMENT 'User identifier of the staff member or system user who last modified this interaction record.',
-    `touchpoint_id` BIGINT COMMENT 'Foreign key linking to experience.touchpoint. Business justification: Guest interactions occur at specific touchpoints in the guest journey (pre-arrival, check-in, in-stay, checkout, post-stay). Linking interaction to touchpoint enables journey analytics and touchpoint ',
+    `touchpoint_id` BIGINT COMMENT 'Foreign key linking to experience.touchpoint. Business justification: Guest interactions occur at specific touchpoints in the guest journey (pre-arrival, check-in, in-stay, checkout, post-stay). Linking interaction to touchpoint enables journey analytics and touchpoint',
     `amenity_description` STRING COMMENT 'Description of the amenity or gesture offered, if applicable. Null if no amenity was provided.',
     `amenity_offered_flag` BOOLEAN COMMENT 'Boolean indicator of whether a complimentary amenity or service recovery gesture was offered during this interaction.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp when this interaction record was first created in the source system. Used for audit trail and data lineage.',
@@ -378,7 +378,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interac
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`program` (
     `program_id` BIGINT COMMENT 'Unique identifier for the experience program. Primary key.',
-    `property_id` BIGINT COMMENT 'FK connection added per structural fix',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - experience programs operate at specific properties and this table is currently isolated with zero outbound FKs',
     `amenity_package_code` STRING COMMENT 'Reference code linking to the standard amenity package associated with this experience program.',
     `benefits_summary` STRING COMMENT 'Summary of benefits, amenities, and services included in the experience program offering.',
     `blackout_dates` STRING COMMENT 'Comma-separated list of date ranges when this experience program is not available (e.g., peak holiday periods).',
@@ -424,7 +424,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`program` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` (
     `guest_experience_enrollment_id` BIGINT COMMENT 'Unique identifier for the guest experience enrollment record. Primary key.',
-    `compliance_training_completion_id` BIGINT COMMENT 'Foreign key linking to compliance.training_completion. Business justification: Experience programs requiring specialized service delivery (spa treatments, adventure activities, culinary experiences) must verify staff training completion for liability protection, insurance compli',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Experience program costs must be allocated to responsible department cost centers for budget tracking, variance reporting, and departmental P&L accountability. Essential for program ROI analysis and c',
     `employee_id` BIGINT COMMENT 'Identifier of the staff member or experience host assigned to guide and support the guest through the program.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Program costs and guest charges require GL posting for financial statement accuracy, revenue/expense recognition, and audit compliance. Critical for monthly financial close and program cost accounting',
@@ -474,7 +473,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Linking reviews to loyalty members enables program effectiveness analysis (do higher tiers give better reviews?), targeted recovery for high-LTV detractors, and member review sentiment tracking for re',
     `ota_partner_id` BIGINT COMMENT 'Foreign key linking to channel.ota_partner. Business justification: Reviews posted on OTA platforms must link to partner entity for partner-specific reputation tracking, content quality monitoring, and management response SLA compliance by partner. Essential for OTA c',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile who authored this review, if the guest can be matched to internal records.',
-    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Online reviews routinely mention specific facilities by name (pool, restaurant, gym). Reputation management teams need facility-level sentiment analysis to prioritize capital improvements and respond ',
+    `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Online reviews routinely mention specific facilities by name (pool, restaurant, gym). Reputation management teams need facility-level sentiment analysis to prioritize capital improvements and respond',
     `property_id` BIGINT COMMENT 'Reference to the property that this review is about. Links to the property master data.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the reservation associated with this guest stay, if available. Links to the reservation record in the PMS.',
     `amenities_rating` DECIMAL(18,2) COMMENT 'Sub-rating for property amenities and facilities on a normalized 0-5 scale, if provided by the platform.',
@@ -513,8 +512,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` (
     `reputation_alert_id` BIGINT COMMENT 'Unique identifier for the reputation alert record. Primary key.',
-    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Reputation alerts triggered by F&B issues (food quality complaints, service delays, health concerns) require outlet-level accountability. Essential for escalation routing to outlet managers, tracking ',
-    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Reputation alerts can be triggered by internal guest feedback when NPS/GSS scores breach thresholds (e.g., detractor score, low CSAT). This FK links the alert to the specific feedback submission that ',
+    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Reputation alerts triggered by F&B issues (food quality complaints, service delays, health concerns) require outlet-level accountability. Essential for escalation routing to outlet managers, tracking',
+    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Reputation alerts can be triggered by internal guest feedback when NPS/GSS scores breach thresholds (e.g., detractor score, low CSAT). This FK links the alert to the specific feedback submission that',
     `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Product-level reputation issues (all ocean view rooms overpriced, suites dont meet expectations) require room type linkage for portfolio-wide response, pricing adjustments, and identifying systemic p',
     `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Reputation alerts for loyalty members trigger tier-appropriate escalation paths and recovery budgets. Real process: platinum member negative review alerts route to GM immediately with higher compensat',
     `online_review_id` BIGINT COMMENT 'Foreign key linking to experience.online_review. Business justification: Reputation alerts are often triggered by negative online reviews on OTA platforms (TripAdvisor, Google, Booking.com). This FK links the alert to the specific review that triggered it, enabling review-',
@@ -524,6 +523,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_al
     `reservation_booking_id` BIGINT COMMENT 'Identifier of the reservation associated with the feedback event. May be null if feedback is not tied to a specific reservation.',
     `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Reputation alerts triggered by room-specific issues in reviews (room 305 has mold, noisy HVAC in corner rooms) require room linkage for immediate investigation, out-of-order decisions, and tracking re',
     `service_case_id` BIGINT COMMENT 'Identifier of the service recovery case created in Salesforce CRM in response to this alert. Null if no case has been created yet.',
+    `whistleblower_report_id` BIGINT COMMENT 'Foreign key linking to compliance.whistleblower_report. Business justification: Reputation alerts involving ethical violations, harassment, discrimination, or misconduct may escalate to or originate from formal whistleblower reports. Operations require linking public reputation i',
     `acknowledged_timestamp` TIMESTAMP COMMENT 'Date and time when the assigned user acknowledged receipt of the alert. Used to track response time SLA compliance.',
     `actual_response_minutes` STRING COMMENT 'Actual time in minutes from alert trigger to acknowledgment. Calculated as difference between triggered_timestamp and acknowledged_timestamp.',
     `alert_number` STRING COMMENT 'Human-readable business identifier for the alert, formatted as ALT-YYYYMMDD sequence. Used for tracking and communication.. Valid values are `^ALT-[0-9]{8}$`',
@@ -558,14 +558,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_al
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` (
     `gss_score_id` BIGINT COMMENT 'Unique identifier for the GSS score measurement record.',
-    `market_segment_id` BIGINT COMMENT '',
     `property_id` BIGINT COMMENT 'Reference to the property where this GSS score was measured.',
-    `bottom_box_pct` DECIMAL(18,2) COMMENT '',
     `bottom_box_percent` DECIMAL(18,2) COMMENT 'Percentage of respondents who gave the lowest satisfaction ratings (bottom-box scores), typically 1-2 on a 5-point scale or 0-6 on a 10-point scale.',
     `brand_code` STRING COMMENT 'Brand identifier for the property (e.g., luxury, premium, select-service segment), used for brand-level GSS aggregation and QA reviews.',
     `brand_qa_review_flag` BOOLEAN COMMENT 'Boolean indicator of whether this GSS score has been flagged for brand-level quality assurance review due to performance concerns or significant variance.',
     `calculation_timestamp` TIMESTAMP COMMENT 'Timestamp when the GSS score was calculated and recorded in the system.',
-    `comparison_period_score` STRING COMMENT '',
     `confidence_interval_lower` DECIMAL(18,2) COMMENT 'Lower bound of the statistical confidence interval for the GSS score, typically at 95% confidence level.',
     `confidence_interval_upper` DECIMAL(18,2) COMMENT 'Upper bound of the statistical confidence interval for the GSS score, typically at 95% confidence level.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this GSS score record was first created in the data platform.',
@@ -581,31 +578,22 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` (
     `notes` STRING COMMENT 'Free-text notes or comments regarding this GSS score measurement, including context for anomalies, data quality issues, or special circumstances affecting the score.',
     `nps_score` DECIMAL(18,2) COMMENT 'Net Promoter Score calculated for the same measurement period and scope, derived from likelihood-to-recommend survey responses.',
     `passive_percent` DECIMAL(18,2) COMMENT 'Percentage of respondents classified as passives (score 7-8 on likelihood-to-recommend scale).',
-    `period_end_date` DATE COMMENT '',
-    `period_start_date` DATE COMMENT '',
     `prior_period_score` DECIMAL(18,2) COMMENT 'GSS score value from the immediately preceding measurement period of the same type, used for sequential trend comparison.',
     `prior_period_variance` DECIMAL(18,2) COMMENT 'Variance between current GSS score and prior period score, calculated as (gss_score_value - prior_period_score).',
     `promoter_percent` DECIMAL(18,2) COMMENT 'Percentage of respondents classified as promoters (score 9-10 on likelihood-to-recommend scale).',
     `published_flag` BOOLEAN COMMENT 'Boolean indicator of whether this GSS score has been published and made available to property management and brand QA teams (True if published, False if draft or under review).',
     `published_timestamp` TIMESTAMP COMMENT 'Timestamp when the GSS score was published and made available to stakeholders.',
     `region_code` STRING COMMENT 'Geographic region code for the property, used for regional GSS benchmarking and performance comparison.',
-    `response_rate_pct` DECIMAL(18,2) COMMENT '',
     `response_rate_percent` DECIMAL(18,2) COMMENT 'Percentage of surveys that received responses, calculated as (sample_size / surveys_sent_count) * 100.',
     `salt_target_attained_flag` BOOLEAN COMMENT 'Boolean indicator of whether the GSS score met or exceeded the SALT program target (True if gss_score_value >= salt_target_score).',
     `salt_target_score` DECIMAL(18,2) COMMENT 'Target GSS score defined by the SALT program for this property, department, and measurement period.',
     `sample_size` STRING COMMENT 'Number of survey responses included in the GSS score calculation for this measurement period.',
-    `score_average` STRING COMMENT '',
     `score_band` STRING COMMENT 'Categorical classification of the GSS score into performance bands (Excellent, Good, Needs Improvement, Critical) based on brand-defined thresholds.. Valid values are `EXCELLENT|GOOD|NEEDS_IMPROVEMENT|CRITICAL`',
-    `score_median` STRING COMMENT '',
-    `score_stddev` STRING COMMENT '',
     `service_recovery_case_count` STRING COMMENT 'Number of service recovery cases opened during the measurement period for this property and department, sourced from Salesforce CRM case management.',
-    `survey_response_count` STRING COMMENT '',
     `surveys_sent_count` STRING COMMENT 'Total number of surveys sent to guests during the measurement period.',
-    `top_box_pct` DECIMAL(18,2) COMMENT '',
     `top_box_percent` DECIMAL(18,2) COMMENT 'Percentage of respondents who gave the highest satisfaction rating (top-box score), typically 5 on a 5-point scale or 9-10 on a 10-point scale.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this GSS score record was last updated in the data platform.',
     `value` DECIMAL(18,2) COMMENT 'The calculated GSS score value for the measurement period, typically on a 0-100 scale derived from aggregated Medallia survey responses.',
-    `variance_pct` DECIMAL(18,2) COMMENT '',
     `yoy_score` DECIMAL(18,2) COMMENT 'GSS score value from the same measurement period in the prior year, used for year-over-year comparison.',
     `yoy_variance` DECIMAL(18,2) COMMENT 'Variance between current GSS score and year-over-year score, calculated as (gss_score_value - yoy_score).',
     CONSTRAINT pk_gss_score PRIMARY KEY(`gss_score_id`)
@@ -613,15 +601,15 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` (
     `quality_audit_id` BIGINT COMMENT 'Unique identifier for the quality audit record. Primary key for the quality audit entity.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_audit. Business justification: Quality audits (brand standards, service excellence) often run concurrently with or trigger regulatory compliance audits (health, safety, accessibility). Hospitality operations track which compliance ',
+    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_audit. Business justification: Quality audits (brand standards, service excellence) often run concurrently with or trigger regulatory compliance audits (health, safety, accessibility). Hospitality operations track which compliance',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Quality audit costs (auditor fees, corrective action expenses, re-inspection costs) must be tracked by cost center for departmental budget accountability and quality assurance program cost management.',
     `follow_up_quality_audit_id` BIGINT COMMENT 'Self-referencing FK on quality_audit (follow_up_quality_audit_id)',
     `room_type_id` BIGINT COMMENT 'Foreign key linking to inventory.room_type. Business justification: Brand quality audits inspect room type compliance with standards (suite amenities, deluxe finishes, ADA features). Room type linkage enables product-level scoring, deficiency tracking, and certificati',
     `meeting_space_id` BIGINT COMMENT 'Foreign key linking to property.meeting_space. Business justification: Meeting space audits cover fire safety, AV functionality, accessibility compliance. Brand standards require space-level audit documentation for insurance and liability purposes. Real business process:',
     `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Quality audits inspect individual facilities (restaurant health scores, pool safety certifications, spa licensing). Compliance teams track facility-level audit scores for regulatory reporting and bran',
     `property_id` BIGINT COMMENT 'Identifier of the property where the quality audit was conducted. Links to the property master record.',
-    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Audits sample specific rooms for inspection. Room linkage documents which units were audited, tracks deficiencies by room, and enables follow-up re-inspection scheduling. Critical for audit trail and ',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Quality audits assess vendor-delivered services (F&B providers, housekeeping suppliers, maintenance contractors, spa operators). Audit findings directly impact vendor performance scorecards, contract ',
+    `room_id` BIGINT COMMENT 'Foreign key linking to inventory.room. Business justification: Audits sample specific rooms for inspection. Room linkage documents which units were audited, tracks deficiencies by room, and enables follow-up re-inspection scheduling. Critical for audit trail and',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Quality audits assess vendor-delivered services (F&B providers, housekeeping suppliers, maintenance contractors, spa operators). Audit findings directly impact vendor performance scorecards, contract',
     `actual_end_timestamp` TIMESTAMP COMMENT 'The actual date and time when the audit fieldwork concluded. Captures the precise moment the audit inspection was completed.',
     `actual_start_timestamp` TIMESTAMP COMMENT 'The actual date and time when the audit fieldwork commenced. Captures the precise moment the audit inspection began.',
     `amenity_score` DECIMAL(18,2) COMMENT 'Category score evaluating the quality, availability, and condition of property amenities including fitness centers, pools, business centers, and guest conveniences.',
@@ -667,6 +655,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` (
     `touchpoint_id` BIGINT COMMENT 'Unique identifier for the guest journey touchpoint. Primary key.',
     `parent_touchpoint_id` BIGINT COMMENT 'Reference to a parent touchpoint if this touchpoint is a sub-touchpoint or variant of a broader interaction (self-referential hierarchy).',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - touchpoints occur at specific properties and this table only has a self-reference',
     `accessibility_compliant_flag` BOOLEAN COMMENT 'Indicates whether this touchpoint meets Americans with Disabilities Act (ADA) accessibility requirements.',
     `automation_level` STRING COMMENT 'The degree of automation at this touchpoint (fully automated, semi-automated, manual, hybrid).. Valid values are `fully_automated|semi_automated|manual|hybrid`',
     `brand_code` STRING COMMENT 'The brand code if this touchpoint is brand-specific (e.g., luxury, premium, select-service brand identifiers).. Valid values are `^[A-Z]{2,10}$`',
@@ -712,52 +701,43 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` (
     `program_treatment_inclusion_id` BIGINT COMMENT 'Unique identifier for this program-treatment inclusion record. Primary key.',
-    `primary_experience_program_id` BIGINT COMMENT 'Foreign key to experience_program',
+    `experience_program_id` BIGINT COMMENT 'Foreign key to experience_program',
+    `program_id` BIGINT COMMENT 'Foreign key linking to the experience program that includes this treatment',
     `treatment_id` BIGINT COMMENT 'Foreign key linking to the spa treatment included in this experience program',
     `blackout_dates` STRING COMMENT 'Specific dates or date ranges when this treatment is not available as part of this experience program (e.g., seasonal restrictions, therapist availability).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this program-treatment inclusion record was created.',
     `effective_end_date` DATE COMMENT 'Date when this treatment is no longer available for inclusion in this experience program. Null indicates ongoing availability.',
     `effective_start_date` DATE COMMENT 'Date when this treatment becomes available for inclusion in this experience program.',
-    `inclusion_quantity` STRING COMMENT '',
     `inclusion_sequence` STRING COMMENT 'Order in which this treatment should be delivered within the experience program journey. Used for scheduling and guest communication.',
     `inclusion_status` STRING COMMENT 'Current status of this treatment inclusion in the program (active, suspended, discontinued). Allows temporary removal without deleting the inclusion record.',
-    `inclusion_value` DECIMAL(18,2) COMMENT '',
-    `is_complimentary` BOOLEAN COMMENT '',
     `mandatory_flag` BOOLEAN COMMENT 'Indicates whether this treatment is mandatory (must be taken) or optional (guest can choose) within the experience program.',
     `quantity_included` STRING COMMENT 'Number of sessions or instances of this treatment included in the experience program (e.g., 2 massages, 1 facial).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this program-treatment inclusion record was last modified.',
     `upgrade_eligible_flag` BOOLEAN COMMENT 'Indicates whether the guest can upgrade this treatment to a premium version within the program (e.g., upgrade 60-min massage to 90-min).',
-    `program_id` BIGINT COMMENT '',
-    `experience_program_id` BIGINT COMMENT '',
     `created_by` STRING COMMENT 'User or system identifier that created this inclusion record.',
     CONSTRAINT pk_program_treatment_inclusion PRIMARY KEY(`program_treatment_inclusion_id`)
 ) COMMENT 'This association product represents the inclusion relationship between experience programs and spa treatments. It captures which treatments are included in which experience programs, along with sequencing, quantities, upgrade eligibility, and temporal availability. Each record links one experience program to one treatment with attributes that exist only in the context of this program-treatment pairing.. Existence Justification: In hospitality operations, experience programs (wellness retreats, romance packages, SALT programs) are curated bundles that include multiple spa treatments, and each treatment can be included in multiple different programs. The business actively manages these inclusions with specific rules about sequencing, quantities, upgrade eligibility, and seasonal availability. This is an operational product composition relationship, not an analytical correlation.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` (
     `program_fitness_inclusion_id` BIGINT COMMENT 'Unique identifier for this program-fitness class inclusion relationship. Primary key.',
+    `experience_program_id` BIGINT COMMENT 'Foreign key to experience_program',
     `fitness_class_id` BIGINT COMMENT 'Foreign key linking to the fitness class included in this experience program',
-    `primary_experience_program_id` BIGINT COMMENT 'Foreign key to experience_program',
+    `program_id` BIGINT COMMENT 'Foreign key linking to the experience program that includes this fitness class',
     `advance_booking_required_flag` BOOLEAN COMMENT 'Indicates whether guests enrolled in this program must book this fitness class in advance or can attend walk-in. This attribute was explicitly identified in the detection phase relationship data.',
-    `blackout_dates` STRING COMMENT '',
     `class_selection_flexibility` STRING COMMENT 'Indicates whether guests must attend specific scheduled sessions (fixed), can choose any available session (flexible), or can choose from a subset (choice_of_n). This attribute was explicitly identified in the detection phase relationship data.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this program-fitness class inclusion relationship was created in the system.',
     `effective_end_date` DATE COMMENT 'Date when this fitness class is no longer included in this experience program. Nullable for ongoing inclusions. This attribute was explicitly identified in the detection phase relationship data.',
     `effective_start_date` DATE COMMENT 'Date when this fitness class becomes available as part of this experience program. This attribute was explicitly identified in the detection phase relationship data.',
-    `inclusion_quantity` STRING COMMENT '',
     `inclusion_status` STRING COMMENT 'Current status of this fitness class inclusion in the experience program, allowing program managers to activate or deactivate specific class offerings without removing the relationship.',
-    `is_complimentary` BOOLEAN COMMENT '',
     `priority_booking_flag` BOOLEAN COMMENT 'Indicates whether guests enrolled in this program receive priority booking access for this fitness class over non-program guests.',
-    `session_credits` STRING COMMENT '',
     `sessions_included` STRING COMMENT 'Number of fitness class sessions included in the experience program for each enrolled guest. This attribute was explicitly identified in the detection phase relationship data.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this program-fitness class inclusion relationship was last modified.',
-    `program_id` BIGINT COMMENT '',
-    `experience_program_id` BIGINT COMMENT '',
     CONSTRAINT pk_program_fitness_inclusion PRIMARY KEY(`program_fitness_inclusion_id`)
 ) COMMENT 'This association product represents the inclusion relationship between experience programs and fitness classes. It captures which fitness classes are included in which experience programs, along with the number of sessions guests receive, booking requirements, and selection flexibility. Each record links one experience program to one fitness class with attributes that define the terms of inclusion.. Existence Justification: In travel hospitality operations, experience programs are curated packages that bundle multiple amenities and services, including fitness classes. A single experience program (e.g., Wellness Journey or VIP Welcome Package) includes multiple fitness class types (yoga, pilates, HIIT) to give guests variety and choice. Conversely, a popular fitness class like Morning Yoga can be included in multiple experience programs (Wellness Journey, SALT Recovery Program, Anniversary Package) with different terms for each program. Program managers actively configure and manage these inclusions, specifying how many sessions are included, booking rules, and guest selection flexibility for each program-class pairing.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` (
     `survey_template_id` BIGINT COMMENT 'Primary key for survey_template',
-    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - survey templates are property-scoped for branded surveys.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - survey templates are deployed at property level and this table only has a self-reference',
     `superseded_survey_template_id` BIGINT COMMENT 'Self-referencing FK on survey_template (superseded_survey_template_id)',
     `allows_anonymous_responses` BOOLEAN COMMENT 'Indicates whether guests can submit responses to this survey without providing identifying information, supporting privacy preferences.',
     `approved_by` STRING COMMENT 'Identifier of the user who approved this survey template for production use, supporting governance and quality control.',
@@ -803,55 +783,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_templa
     CONSTRAINT pk_survey_template PRIMARY KEY(`survey_template_id`)
 ) COMMENT 'Master reference table for survey_template. Referenced by survey_template_id.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` (
-    `review_topic_extraction_id` BIGINT COMMENT '',
-    `online_review_id` BIGINT COMMENT 'add column online_review_id (BIGINT) with FK to experience.online_review.online_review_id - review topic extractions must link to the source review.',
-    `profile_id` BIGINT COMMENT '',
-    `review_id` BIGINT COMMENT '',
-    `extracted_at` TIMESTAMP COMMENT '',
-    `model_version` STRING COMMENT '',
-    `topic_confidence_score` DECIMAL(18,2) COMMENT '',
-    `topic_keywords` STRING COMMENT '',
-    `topic_label` STRING COMMENT '',
-    CONSTRAINT pk_review_topic_extraction PRIMARY KEY(`review_topic_extraction_id`)
-) COMMENT 'Stores review topic extraction records for the experience domain.';
-
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` (
-    `feedback_topic_id` BIGINT COMMENT 'Primary key for feedback_topic',
-    `guest_feedback_id` BIGINT COMMENT '',
-    `feedback_review_topic_assignment_id` BIGINT COMMENT '',
-    `profile_id` BIGINT COMMENT '',
-    `extracted_at` TIMESTAMP COMMENT '',
-    `model_version` STRING COMMENT '',
-    `sentiment_alignment` STRING COMMENT '',
-    `topic_confidence_score` DECIMAL(18,2) COMMENT '',
-    `topic_keywords` STRING COMMENT '',
-    `topic_label` STRING COMMENT '',
-    CONSTRAINT pk_feedback_topic PRIMARY KEY(`feedback_topic_id`)
-) COMMENT 'Stores feedback topic records for the experience domain.';
-
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` (
-    `feedback_review_topic_assignment_id` BIGINT COMMENT '',
-    `guest_feedback_id` BIGINT COMMENT '',
-    `online_review_id` BIGINT COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `extracted_timestamp` TIMESTAMP COMMENT '',
-    `extraction_score` DECIMAL(18,2) COMMENT '',
-    `model_version` STRING COMMENT 'Version of the NLP model used for extraction',
-    `sentiment_score` STRING COMMENT '',
-    `source_text_ref` STRING COMMENT '',
-    `topic` STRING COMMENT '',
-    `topic_confidence` STRING COMMENT '',
-    `topic_label` STRING COMMENT '',
-    CONSTRAINT pk_feedback_review_topic_assignment PRIMARY KEY(`feedback_review_topic_assignment_id`)
-) COMMENT 'Records each feedback review topic assignment in the experience domain, capturing its key attributes and relationships.';
-
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic_extraction` (
-    `feedback_topic_extraction_id` BIGINT COMMENT 'Primary key for feedback_topic_extraction',
-    `guest_feedback_id` BIGINT COMMENT '',
-    CONSTRAINT pk_feedback_topic_extraction PRIMARY KEY(`feedback_topic_extraction_id`)
-) COMMENT '';
-
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ADD CONSTRAINT `fk_experience_guest_feedback_nps_survey_id` FOREIGN KEY (`nps_survey_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`nps_survey`(`nps_survey_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ADD CONSTRAINT `fk_experience_guest_feedback_service_case_id` FOREIGN KEY (`service_case_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`service_case`(`service_case_id`);
@@ -877,32 +808,23 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ADD CON
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ADD CONSTRAINT `fk_experience_reputation_alert_service_case_id` FOREIGN KEY (`service_case_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`service_case`(`service_case_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ADD CONSTRAINT `fk_experience_quality_audit_follow_up_quality_audit_id` FOREIGN KEY (`follow_up_quality_audit_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`quality_audit`(`quality_audit_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ADD CONSTRAINT `fk_experience_touchpoint_parent_touchpoint_id` FOREIGN KEY (`parent_touchpoint_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`touchpoint`(`touchpoint_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ADD CONSTRAINT `fk_experience_program_treatment_inclusion_primary_experience_program_id` FOREIGN KEY (`primary_experience_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ADD CONSTRAINT `fk_experience_program_fitness_inclusion_primary_experience_program_id` FOREIGN KEY (`primary_experience_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ADD CONSTRAINT `fk_experience_program_treatment_inclusion_experience_program_id` FOREIGN KEY (`experience_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ADD CONSTRAINT `fk_experience_program_treatment_inclusion_program_id` FOREIGN KEY (`program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ADD CONSTRAINT `fk_experience_program_fitness_inclusion_experience_program_id` FOREIGN KEY (`experience_program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ADD CONSTRAINT `fk_experience_program_fitness_inclusion_program_id` FOREIGN KEY (`program_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`program`(`program_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ADD CONSTRAINT `fk_experience_survey_template_superseded_survey_template_id` FOREIGN KEY (`superseded_survey_template_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`survey_template`(`survey_template_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ADD CONSTRAINT `fk_experience_review_topic_extraction_online_review_id` FOREIGN KEY (`online_review_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`online_review`(`online_review_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ADD CONSTRAINT `fk_experience_review_topic_extraction_review_id` FOREIGN KEY (`review_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`online_review`(`online_review_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ADD CONSTRAINT `fk_experience_feedback_topic_guest_feedback_id` FOREIGN KEY (`guest_feedback_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`guest_feedback`(`guest_feedback_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ADD CONSTRAINT `fk_experience_feedback_topic_feedback_review_topic_assignment_id` FOREIGN KEY (`feedback_review_topic_assignment_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment`(`feedback_review_topic_assignment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ADD CONSTRAINT `fk_experience_feedback_review_topic_assignment_guest_feedback_id` FOREIGN KEY (`guest_feedback_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`guest_feedback`(`guest_feedback_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ADD CONSTRAINT `fk_experience_feedback_review_topic_assignment_online_review_id` FOREIGN KEY (`online_review_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`online_review`(`online_review_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic_extraction` ADD CONSTRAINT `fk_experience_feedback_topic_extraction_guest_feedback_id` FOREIGN KEY (`guest_feedback_id`) REFERENCES `vibe_travel_hospitality_v1`.`experience`.`guest_feedback`(`guest_feedback_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`experience` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`experience` SET TAGS ('dbx_domain' = 'experience');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `channel_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Transaction Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `meeting_space_id` SET TAGS ('dbx_business_glossary_term' = 'Meeting Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `nps_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Nps Survey Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
@@ -912,6 +834,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Case ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Touchpoint Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `amenities_rating` SET TAGS ('dbx_business_glossary_term' = 'Amenities Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `cleanliness_rating` SET TAGS ('dbx_business_glossary_term' = 'Cleanliness Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `complaint_flag` SET TAGS ('dbx_business_glossary_term' = 'Complaint Flag');
@@ -924,7 +847,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `language_code` SET TAGS ('dbx_business_glossary_term' = 'Language Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `language_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `language_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `location_rating` SET TAGS ('dbx_business_glossary_term' = 'Location Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `nps_classification` SET TAGS ('dbx_business_glossary_term' = 'Net Promoter Score (NPS) Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `nps_classification` SET TAGS ('dbx_value_regex' = 'Promoter|Passive|Detractor');
@@ -950,9 +872,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `would_recommend_flag` SET TAGS ('dbx_business_glossary_term' = 'Would Recommend Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_feedback` ALTER COLUMN `would_return_flag` SET TAGS ('dbx_business_glossary_term' = 'Would Return Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `nps_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Net Promoter Score (NPS) Survey ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `survey_template_id` SET TAGS ('dbx_business_glossary_term' = 'Survey Template ID');
@@ -973,12 +893,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `incentive_description` SET TAGS ('dbx_business_glossary_term' = 'Incentive Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `incentive_offered_flag` SET TAGS ('dbx_business_glossary_term' = 'Incentive Offered Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `language_code` SET TAGS ('dbx_business_glossary_term' = 'Primary Language Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `language_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `medallia_survey_code` SET TAGS ('dbx_business_glossary_term' = 'Medallia Survey ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `multi_language_enabled_flag` SET TAGS ('dbx_business_glossary_term' = 'Multi-Language Enabled Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `multi_language_enabled_flag` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `passive_threshold_min` SET TAGS ('dbx_business_glossary_term' = 'Passive Threshold Minimum Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `program_owner` SET TAGS ('dbx_business_glossary_term' = 'Program Owner');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `promoter_threshold_min` SET TAGS ('dbx_business_glossary_term' = 'Promoter Threshold Minimum Score');
@@ -1000,23 +918,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`nps_survey` ALTER COLUMN `trigger_event` SET TAGS ('dbx_business_glossary_term' = 'Trigger Event');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` SET TAGS ('dbx_subdomain' = 'service_recovery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `channel_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Transaction Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `meeting_space_id` SET TAGS ('dbx_business_glossary_term' = 'Meeting Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Owner ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id (Foreign Key)');
@@ -1024,8 +933,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `tertiary_service_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `tertiary_service_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `tertiary_service_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `actual_resolution_hours` SET TAGS ('dbx_business_glossary_term' = 'Actual Resolution Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `case_category` SET TAGS ('dbx_business_glossary_term' = 'Case Category');
@@ -1039,11 +946,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `closed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Closed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Compensation Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_total_value` SET TAGS ('dbx_business_glossary_term' = 'Compensation Total Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_total_value` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_total_value` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `compensation_total_value` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `escalation_status` SET TAGS ('dbx_business_glossary_term' = 'Escalation Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `escalation_status` SET TAGS ('dbx_value_regex' = 'not_escalated|escalated_to_manager|escalated_to_gm|escalated_to_corporate');
@@ -1070,15 +975,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_case` ALTER COLUMN `source_system_case_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Case ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` SET TAGS ('dbx_subdomain' = 'service_recovery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `case_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Case Activity ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `online_review_id` SET TAGS ('dbx_business_glossary_term' = 'Online Review Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Agent ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -1092,22 +993,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `activity_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Activity Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `activity_type` SET TAGS ('dbx_business_glossary_term' = 'Activity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `agent_name` SET TAGS ('dbx_business_glossary_term' = 'Agent Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `agent_name` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `attachment_count` SET TAGS ('dbx_business_glossary_term' = 'Attachment Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `communication_channel` SET TAGS ('dbx_business_glossary_term' = 'Communication Channel');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Compensation Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_currency_code` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_offered_flag` SET TAGS ('dbx_business_glossary_term' = 'Compensation Offered Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_offered_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_offered_flag` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_offered_flag` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_type` SET TAGS ('dbx_business_glossary_term' = 'Compensation Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_type` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_type` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_value` SET TAGS ('dbx_business_glossary_term' = 'Compensation Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_value` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_value` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `compensation_value` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `department_code` SET TAGS ('dbx_business_glossary_term' = 'Department Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Activity Duration Minutes');
@@ -1121,7 +1017,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `guest_sentiment` SET TAGS ('dbx_business_glossary_term' = 'Guest Sentiment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `guest_sentiment` SET TAGS ('dbx_value_regex' = 'very_negative|negative|neutral|positive|very_positive');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `internal_notes` SET TAGS ('dbx_business_glossary_term' = 'Internal Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `internal_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `outcome` SET TAGS ('dbx_business_glossary_term' = 'Activity Outcome');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Activity Priority');
@@ -1134,26 +1029,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`case_activity` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` SET TAGS ('dbx_subdomain' = 'service_recovery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `service_recovery_action_id` SET TAGS ('dbx_business_glossary_term' = 'Service Recovery Action ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Authorized By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `quaternary_service_last_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By Employee ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `reputation_alert_id` SET TAGS ('dbx_business_glossary_term' = 'Reputation Alert Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `tertiary_service_created_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `tertiary_service_created_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `tertiary_service_created_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `action_description` SET TAGS ('dbx_business_glossary_term' = 'Action Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `action_number` SET TAGS ('dbx_business_glossary_term' = 'Service Recovery Action Number');
@@ -1188,33 +1076,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `recovery_action_type` SET TAGS ('dbx_value_regex' = 'room_upgrade|complimentary_night|fnb_credit|loyalty_points_award|amenity_delivery|written_apology');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`service_recovery_action` ALTER COLUMN `recovery_effectiveness_score` SET TAGS ('dbx_business_glossary_term' = 'Recovery Effectiveness Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_subdomain' = 'guest_programs');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_reference' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_concept' = 'special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_references' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_authority_defer_to' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_ref' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_group' = 'special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_canonical' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` SET TAGS ('dbx_subdomain' = 'service_recovery');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Special Request ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_ssot_reference' = 'reservation.reservation_special_request');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Linked Service Case ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Staff Member ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `reservation_special_request_id` SET TAGS ('dbx_ssot_owner' = 'reservation.reservation_special_request');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `reservation_special_request_id` SET TAGS ('dbx_ssot_entity' = 'special_request');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `actual_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Fulfillment Cost Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `actual_fulfillment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Fulfillment Timestamp');
@@ -1254,17 +1126,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_reques
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`experience_special_request` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` SET TAGS ('dbx_subdomain' = 'journey_touchpoints');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` SET TAGS ('dbx_subdomain' = 'service_recovery');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `amenity_fulfillment_id` SET TAGS ('dbx_business_glossary_term' = 'Amenity Fulfillment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Agent ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Special Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `food_safety_cert_id` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Cert Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `guest_experience_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Experience Enrollment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
@@ -1287,11 +1154,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTE
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `delivery_agent_name` SET TAGS ('dbx_business_glossary_term' = 'Delivery Agent Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `delivery_agent_name` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `delivery_method` SET TAGS ('dbx_business_glossary_term' = 'Delivery Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `delivery_method` SET TAGS ('dbx_value_regex' = 'pre_arrival_setup|in_room_delivery|concierge_handoff|turndown_service|check_in_delivery');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `dietary_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Dietary Restrictions');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `dietary_restrictions` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `folio_reference` SET TAGS ('dbx_business_glossary_term' = 'Folio Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `fulfillment_status` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `fulfillment_status` SET TAGS ('dbx_value_regex' = 'pending|scheduled|in_progress|delivered|cancelled|failed');
@@ -1309,23 +1174,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTE
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `scheduled_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Delivery Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `scheduled_delivery_time` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Delivery Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `total_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `total_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `unit_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`amenity_fulfillment` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` SET TAGS ('dbx_subdomain' = 'journey_touchpoints');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` SET TAGS ('dbx_subdomain' = 'service_recovery');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `guest_interaction_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Interaction Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Staff Member Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
@@ -1333,8 +1190,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Case Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `tertiary_guest_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `tertiary_guest_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `tertiary_guest_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Touchpoint Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `amenity_description` SET TAGS ('dbx_business_glossary_term' = 'Amenity Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `amenity_offered_flag` SET TAGS ('dbx_business_glossary_term' = 'Amenity Offered Flag');
@@ -1348,10 +1203,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Interaction Duration in Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_language` SET TAGS ('dbx_business_glossary_term' = 'Interaction Language Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_language` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_language` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_location` SET TAGS ('dbx_business_glossary_term' = 'Interaction Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_notes` SET TAGS ('dbx_business_glossary_term' = 'Interaction Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_number` SET TAGS ('dbx_business_glossary_term' = 'Interaction Reference Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_number` SET TAGS ('dbx_value_regex' = '^INT-[0-9]{10}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `interaction_outcome` SET TAGS ('dbx_business_glossary_term' = 'Interaction Outcome');
@@ -1369,13 +1222,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `special_request_fulfilled_flag` SET TAGS ('dbx_business_glossary_term' = 'Special Request Fulfilled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_interaction` ALTER COLUMN `vip_status_flag` SET TAGS ('dbx_business_glossary_term' = 'Very Important Person (VIP) Status Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` SET TAGS ('dbx_subdomain' = 'guest_programs');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` SET TAGS ('dbx_subdomain' = 'program_enrollment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `amenity_package_code` SET TAGS ('dbx_business_glossary_term' = 'Amenity Package Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `amenity_package_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `benefits_summary` SET TAGS ('dbx_business_glossary_term' = 'Benefits Summary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `booking_window_days` SET TAGS ('dbx_business_glossary_term' = 'Booking Window Days');
@@ -1386,7 +1236,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `pr
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `cost_estimate` SET TAGS ('dbx_business_glossary_term' = 'Program Cost Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `cost_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `csat_target_score` SET TAGS ('dbx_business_glossary_term' = 'Customer Satisfaction (CSAT) Target Score');
@@ -1424,19 +1273,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `se
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `target_guest_segment` SET TAGS ('dbx_business_glossary_term' = 'Target Guest Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program` ALTER COLUMN `terms_and_conditions` SET TAGS ('dbx_business_glossary_term' = 'Terms and Conditions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` SET TAGS ('dbx_subdomain' = 'guest_programs');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` SET TAGS ('dbx_subdomain' = 'program_enrollment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `guest_experience_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Experience Enrollment ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Experience Host ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -1462,7 +1304,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollme
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `feedback_comments` SET TAGS ('dbx_business_glossary_term' = 'Feedback Comments');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `feedback_received_date` SET TAGS ('dbx_business_glossary_term' = 'Feedback Received Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `fulfillment_progress_percentage` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Progress Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `fulfillment_progress_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `is_complimentary` SET TAGS ('dbx_business_glossary_term' = 'Is Complimentary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `loyalty_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Earned');
@@ -1479,16 +1320,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollme
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`guest_experience_enrollment` ALTER COLUMN `total_program_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Program Cost');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `online_review_id` SET TAGS ('dbx_business_glossary_term' = 'Online Review ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `channel_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Booking Transaction Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `meeting_space_id` SET TAGS ('dbx_business_glossary_term' = 'Meeting Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Ota Partner Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id (Foreign Key)');
@@ -1502,11 +1339,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `location_rating` SET TAGS ('dbx_business_glossary_term' = 'Location Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_status` SET TAGS ('dbx_business_glossary_term' = 'Management Response Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_status` SET TAGS ('dbx_value_regex' = 'not_responded|responded|pending_response|no_response_needed');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_status` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_text` SET TAGS ('dbx_business_glossary_term' = 'Management Response Text');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_text` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Management Response Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `management_response_timestamp` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `normalized_rating` SET TAGS ('dbx_business_glossary_term' = 'Normalized Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `platform_native_rating` SET TAGS ('dbx_business_glossary_term' = 'Platform Native Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `platform_rating_scale` SET TAGS ('dbx_business_glossary_term' = 'Platform Rating Scale');
@@ -1518,13 +1352,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_helpfulness_count` SET TAGS ('dbx_business_glossary_term' = 'Review Helpfulness Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_language_code` SET TAGS ('dbx_business_glossary_term' = 'Review Language Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_language_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_language_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_source_url` SET TAGS ('dbx_business_glossary_term' = 'Review Source URL');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_title` SET TAGS ('dbx_business_glossary_term' = 'Review Title');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_visibility_status` SET TAGS ('dbx_business_glossary_term' = 'Review Visibility Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `review_visibility_status` SET TAGS ('dbx_value_regex' = 'published|hidden|removed|flagged|pending_moderation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `reviewer_alias` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `reviewer_alias` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `reviewer_location` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `sentiment_classification` SET TAGS ('dbx_business_glossary_term' = 'Sentiment Classification');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `sentiment_classification` SET TAGS ('dbx_value_regex' = 'positive|neutral|negative|mixed');
@@ -1537,25 +1369,20 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `value_rating` SET TAGS ('dbx_business_glossary_term' = 'Value Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`online_review` ALTER COLUMN `verified_stay_flag` SET TAGS ('dbx_business_glossary_term' = 'Verified Stay Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `reputation_alert_id` SET TAGS ('dbx_business_glossary_term' = 'Reputation Alert ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `online_review_id` SET TAGS ('dbx_business_glossary_term' = 'Online Review Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Case ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `whistleblower_report_id` SET TAGS ('dbx_business_glossary_term' = 'Whistleblower Report Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `acknowledged_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Acknowledged Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `actual_response_minutes` SET TAGS ('dbx_business_glossary_term' = 'Actual Response Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `alert_number` SET TAGS ('dbx_business_glossary_term' = 'Alert Number');
@@ -1573,14 +1400,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `escalated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Escalated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_contact_method` SET TAGS ('dbx_business_glossary_term' = 'Guest Contact Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_contact_method` SET TAGS ('dbx_value_regex' = 'phone|email|in_person|sms|letter|no_contact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_contact_method` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_contacted_flag` SET TAGS ('dbx_business_glossary_term' = 'Guest Contacted Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_satisfaction_post_recovery` SET TAGS ('dbx_business_glossary_term' = 'Guest Satisfaction Post-Recovery');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `guest_satisfaction_post_recovery` SET TAGS ('dbx_value_regex' = 'satisfied|neutral|dissatisfied|not_measured');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `loyalty_points_awarded` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Awarded');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `recovery_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Recovery Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `recovery_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `recovery_cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Recovery Cost Currency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `recovery_cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `resolution_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Resolution Action Taken');
@@ -1595,9 +1420,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`reputation_alert` ALTER COLUMN `variance_from_threshold` SET TAGS ('dbx_business_glossary_term' = 'Variance from Threshold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `gss_score_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Satisfaction Score (GSS) Score ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `bottom_box_percent` SET TAGS ('dbx_business_glossary_term' = 'Bottom Box Percentage');
@@ -1642,14 +1465,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `yoy_score` SET TAGS ('dbx_business_glossary_term' = 'Year-over-Year (YoY) Guest Satisfaction Score (GSS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`gss_score` ALTER COLUMN `yoy_variance` SET TAGS ('dbx_business_glossary_term' = 'Year-over-Year (YoY) Variance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` SET TAGS ('dbx_subdomain' = 'service_recovery');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `quality_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Audit ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `follow_up_quality_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Quality Audit Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `follow_up_quality_audit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Room Type Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `meeting_space_id` SET TAGS ('dbx_business_glossary_term' = 'Meeting Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `property_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id (Foreign Key)');
@@ -1700,11 +1520,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `service_score` SET TAGS ('dbx_business_glossary_term' = 'Service Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`quality_audit` ALTER COLUMN `spa_score` SET TAGS ('dbx_business_glossary_term' = 'Spa Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` SET TAGS ('dbx_subdomain' = 'journey_touchpoints');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Touchpoint Identifier (ID)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `parent_touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Touchpoint Identifier (ID)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `accessibility_compliant_flag` SET TAGS ('dbx_business_glossary_term' = 'Accessibility Compliant Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `automation_level` SET TAGS ('dbx_business_glossary_term' = 'Automation Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `automation_level` SET TAGS ('dbx_value_regex' = 'fully_automated|semi_automated|manual|hybrid');
@@ -1718,12 +1537,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `cost_per_interaction` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Interaction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `cost_per_interaction` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `data_privacy_sensitive_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Privacy Sensitive Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `data_privacy_sensitive_flag` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `data_privacy_sensitive_flag` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `default_language_code` SET TAGS ('dbx_business_glossary_term' = 'Default Language Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `default_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{2}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `department_owner` SET TAGS ('dbx_business_glossary_term' = 'Department Owner');
@@ -1760,17 +1576,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `typical_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Typical Duration in Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`touchpoint` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_subdomain' = 'guest_programs');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_subdomain' = 'program_enrollment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_association_edges' = 'experience.experience_program,spa.treatment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `program_treatment_inclusion_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment Inclusion ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `program_treatment_inclusion_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `program_treatment_inclusion_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `primary_experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment Inclusion - Experience Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `treatment_id` SET TAGS ('dbx_business_glossary_term' = 'Program Treatment Inclusion - Treatment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `treatment_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `treatment_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
@@ -1783,13 +1594,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusi
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `upgrade_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Upgrade Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_treatment_inclusion` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_subdomain' = 'guest_programs');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_subdomain' = 'program_enrollment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_association_edges' = 'experience.experience_program,spa.fitness_class');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `program_fitness_inclusion_id` SET TAGS ('dbx_business_glossary_term' = 'Program Fitness Inclusion ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `fitness_class_id` SET TAGS ('dbx_business_glossary_term' = 'Program Fitness Inclusion - Fitness Class Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `primary_experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Fitness Inclusion - Experience Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `advance_booking_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `class_selection_flexibility` SET TAGS ('dbx_business_glossary_term' = 'Class Selection Flexibility');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1800,12 +1610,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `sessions_included` SET TAGS ('dbx_business_glossary_term' = 'Sessions Included');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`program_fitness_inclusion` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` SET TAGS ('dbx_subdomain' = 'feedback_management');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `survey_template_id` SET TAGS ('dbx_business_glossary_term' = 'Survey Template Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `superseded_survey_template_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Survey Template Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `superseded_survey_template_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `allows_anonymous_responses` SET TAGS ('dbx_business_glossary_term' = 'Allows Anonymous Responses');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
@@ -1847,63 +1655,3 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `usage_count` SET TAGS ('dbx_business_glossary_term' = 'Usage Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`survey_template` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `review_topic_extraction_id` SET TAGS ('dbx_business_glossary_term' = 'Review Topic Extraction Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `review_topic_extraction_id` SET TAGS ('dbx_pk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `profile_id` SET TAGS ('dbx_source' = 'guest_profile');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `review_id` SET TAGS ('dbx_business_glossary_term' = 'Review Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `review_id` SET TAGS ('dbx_source' = 'review');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `extracted_at` SET TAGS ('dbx_business_glossary_term' = 'Extracted At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `extracted_at` SET TAGS ('dbx_ml_metadata' = 'extraction_time');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `model_version` SET TAGS ('dbx_business_glossary_term' = 'Model Version');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `model_version` SET TAGS ('dbx_ml_metadata' = 'model_version');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_confidence_score` SET TAGS ('dbx_business_glossary_term' = 'Topic Confidence Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_confidence_score` SET TAGS ('dbx_ml_output' = 'confidence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_keywords` SET TAGS ('dbx_business_glossary_term' = 'Topic Keywords');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_keywords` SET TAGS ('dbx_ml_output' = 'keywords');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_label` SET TAGS ('dbx_business_glossary_term' = 'Topic Label');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`review_topic_extraction` ALTER COLUMN `topic_label` SET TAGS ('dbx_ml_output' = 'topic');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `feedback_topic_id` SET TAGS ('dbx_business_glossary_term' = 'feedback_topic Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Feedback Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_source' = 'feedback');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `feedback_review_topic_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Feedback Topic Extraction Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `feedback_review_topic_assignment_id` SET TAGS ('dbx_pk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `profile_id` SET TAGS ('dbx_source' = 'guest_profile');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `extracted_at` SET TAGS ('dbx_business_glossary_term' = 'Extracted At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `extracted_at` SET TAGS ('dbx_ml_metadata' = 'extraction_time');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `model_version` SET TAGS ('dbx_business_glossary_term' = 'Model Version');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `model_version` SET TAGS ('dbx_ml_metadata' = 'model_version');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `sentiment_alignment` SET TAGS ('dbx_business_glossary_term' = 'Sentiment Alignment');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `sentiment_alignment` SET TAGS ('dbx_ml_output' = 'sentiment_link');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_confidence_score` SET TAGS ('dbx_business_glossary_term' = 'Topic Confidence Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_confidence_score` SET TAGS ('dbx_ml_output' = 'confidence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_keywords` SET TAGS ('dbx_business_glossary_term' = 'Topic Keywords');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_keywords` SET TAGS ('dbx_ml_output' = 'keywords');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_label` SET TAGS ('dbx_business_glossary_term' = 'Topic Label');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic` ALTER COLUMN `topic_label` SET TAGS ('dbx_ml_output' = 'topic');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` SET TAGS ('dbx_subdomain' = 'feedback_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `feedback_review_topic_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Topic Extraction Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `online_review_id` SET TAGS ('dbx_business_glossary_term' = 'Online Review Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `extracted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Extracted Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `extraction_score` SET TAGS ('dbx_business_glossary_term' = 'Extraction Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `extraction_score` SET TAGS ('dbx_reviewer_directive' = 'VREQ-024');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `model_version` SET TAGS ('dbx_business_glossary_term' = 'Model Version');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `sentiment_score` SET TAGS ('dbx_business_glossary_term' = 'Sentiment Score');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `source_text_ref` SET TAGS ('dbx_business_glossary_term' = 'Source Text Ref');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `source_text_ref` SET TAGS ('dbx_reviewer_directive' = 'VREQ-024');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `topic` SET TAGS ('dbx_business_glossary_term' = 'Topic');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `topic` SET TAGS ('dbx_reviewer_directive' = 'VREQ-024');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `topic` SET TAGS ('dbx_supreme_authority' = 'section_2_reviewer_comments');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `topic_confidence` SET TAGS ('dbx_business_glossary_term' = 'Topic Confidence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_review_topic_assignment` ALTER COLUMN `topic_label` SET TAGS ('dbx_business_glossary_term' = 'Topic Label');
-ALTER TABLE `vibe_travel_hospitality_v1`.`experience`.`feedback_topic_extraction` SET TAGS ('dbx_data_type' = 'transactional_data');

@@ -1,5 +1,5 @@
--- Schema for Domain: housekeeping | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:44
+-- Schema for Domain: housekeeping | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:53
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`housekeeping` COMMENT 'Room cleaning operations, maintenance scheduling, and service quality management. Manages room status transitions (dirty, clean, inspected, out-of-order), housekeeping assignments, cleaning schedules, quality inspections, linen and supply consumption, and maintenance request handoffs. Integrates with Oracle OPERA PMS for real-time room status updates. Tracks CPOR (Cost Per Occupied Room) for housekeeping labor and supplies.';
@@ -9,18 +9,21 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignme
     `hk_assignment_id` BIGINT COMMENT 'Unique identifier for the housekeeping assignment record. Primary key.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Housekeeping assignments must be charged to departmental cost centers for USALI labor cost tracking, budget variance analysis, and departmental P&L reporting. Essential for rooms division financial ma',
     `attendant_id` BIGINT COMMENT 'Identifier of the housekeeping attendant assigned to perform the work.',
+    `beo_id` BIGINT COMMENT 'Foreign key linking to event.beo. Business justification: Banquet Event Orders specify detailed setup requirements (furniture arrangement, special cleaning protocols, amenity placement) that housekeeping must execute. Direct operational dependency for transl',
     `cleaning_standard_id` BIGINT COMMENT 'Foreign key linking to housekeeping.cleaning_standard. Business justification: Daily housekeeping assignments should follow specific cleaning standards based on room type, guest segment, and brand tier. Many assignments reference one cleaning standard (N:1). Links operational as',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping supervisor or inspector who performed the quality inspection, if applicable.',
-    `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Special housekeeping requests (extra cleaning, specific timing, hypoallergenic products) are tracked as special requests. Real business process: Guest preference fulfillment tracking for VIP service, ',
+    `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Special housekeeping requests (extra cleaning, specific timing, hypoallergenic products) are tracked as special requests. Real business process: Guest preference fulfillment tracking for VIP service,',
     `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Function spaces require housekeeping assignments for event preparation, maintenance, and post-event restoration. Critical for scheduling attendants to specific event venues and tracking service delive',
+    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Guest feedback about room cleanliness references specific housekeeping assignments for performance tracking. Real business process: Linking guest satisfaction scores to individual assignments for atte',
+    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Housekeeping attendants may be involved in or witness safety incidents during assignments (slips, chemical exposure, guest injuries). Links incidents to work assignments for workers compensation clai',
     `hk_schedule_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_schedule. Business justification: Daily housekeeping assignments are created based on the master schedule. This links individual room assignments to the shift structure. Many assignments are part of one schedule (N:1). The shift col',
     `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Housekeeping attendants report minibar consumption and chargeable amenities discovered during room cleaning. These must link to the POS check that bills the guest, enabling reconciliation of in-room F',
     `profile_id` BIGINT COMMENT 'Foreign key linking to guest.profile. Business justification: Room attendants require guest profile data (VIP status, allergies, preferences) for personalized service delivery. Pre-service briefing process depends on profile link. hk_assignment has vip_indicator',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property where the assignment is located.',
     `reputation_alert_id` BIGINT COMMENT 'Foreign key linking to experience.reputation_alert. Business justification: Reputation alerts about room cleanliness reference specific assignments for issue tracking. Real business process: Linking negative guest feedback to specific housekeeping assignments for root cause a',
-    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Housekeeping assignments must link to active reservations to coordinate DND flags, preferred service times, VIP protocols, allergy flags, and guest-present status during room servicing. Essential for ',
+    `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Housekeeping assignments must link to active reservations to coordinate DND flags, preferred service times, VIP protocols, allergy flags, and guest-present status during room servicing. Essential for',
     `room_id` BIGINT COMMENT 'Identifier of the specific room assigned for cleaning or service.',
-    `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Guest complaints about room cleanliness generate service cases requiring reference to specific housekeeping assignment. Real business process: Service recovery tracking, attendant accountability, and ',
+    `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Guest complaints about room cleanliness generate service cases requiring reference to specific housekeeping assignment. Real business process: Service recovery tracking, attendant accountability, and',
     `actual_end_time` TIMESTAMP COMMENT 'The actual timestamp when the attendant completed work on this assignment, captured from mobile device or PMS entry.',
     `actual_start_time` TIMESTAMP COMMENT 'The actual timestamp when the attendant began work on this assignment, captured from mobile device or PMS entry.',
     `allergy_flags` STRING COMMENT 'Comma-separated list of guest allergy or sensitivity flags that require special cleaning products or procedures (e.g., fragrance-free, latex-free, pet dander).',
@@ -60,16 +63,17 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_ta
     `attendant_id` BIGINT COMMENT 'Reference to the housekeeping attendant assigned to perform this task.',
     `cleaning_standard_id` BIGINT COMMENT 'Reference to the cleaning standard template that defines the task requirements and quality criteria.',
     `employee_id` BIGINT COMMENT 'Reference to the supervisor or inspector who verified the quality of this task.',
-    `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Special cleaning requests (hypoallergenic products, extra pillows, specific room setup) are special requests requiring task-level tracking. Real business process: Guest preference fulfillment at task ',
+    `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Special cleaning requests (hypoallergenic products, extra pillows, specific room setup) are special requests requiring task-level tracking. Real business process: Guest preference fulfillment at task',
     `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Function spaces generate recurring cleaning tasks based on event schedules, usage intensity, and space type. Essential for task scheduling, labor allocation, and ensuring spaces meet cleanliness stand',
     `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Cleaning tasks are granular work items performed within the context of a housekeeping assignment. The assignment is the work order; tasks are the line items. This link enables tracking of task-level p',
     `hk_schedule_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_schedule. Business justification: Cleaning tasks are performed during specific housekeeping shifts/schedules. This links operational task execution to the master schedule. Many cleaning tasks occur during one schedule (N:1). No bidire',
     `maintenance_handoff_id` BIGINT COMMENT 'Reference to the maintenance work order generated as a result of issues discovered during this task.',
+    `preference_id` BIGINT COMMENT 'Foreign key linking to guest.preference. Business justification: Task execution must honor guest-specific preferences (pillow type, room temperature, housekeeping schedule). Preference fulfillment workflow during cleaning requires direct link to preference record f',
     `property_id` BIGINT COMMENT 'Reference to the hotel property where this cleaning task is performed.',
     `room_assignment_id` BIGINT COMMENT 'Reference to the parent housekeeping room assignment that contains this task.',
     `room_id` BIGINT COMMENT 'Reference to the specific room being cleaned.',
-    `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Specific cleaning tasks (missed items, incomplete work) trigger guest complaints. Real business process: Task-level root cause analysis for service failures, identifying which specific cleaning steps ',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Individual cleaning tasks drive labor cost allocation to departments. Required for USALI departmental expense reporting, labor productivity analysis (cost per credit), and operational budget tracking ',
+    `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Specific cleaning tasks (missed items, incomplete work) trigger guest complaints. Real business process: Task-level root cause analysis for service failures, identifying which specific cleaning steps',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Individual cleaning tasks drive labor cost allocation to departments. Required for USALI departmental expense reporting, labor productivity analysis (cost per credit), and operational budget tracking',
     `actual_end_time` TIMESTAMP COMMENT 'Actual timestamp when the attendant completed or stopped performing this task.',
     `actual_start_time` TIMESTAMP COMMENT 'Actual timestamp when the attendant began performing this task, captured from mobile device or PMS entry.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this cleaning task record was first created in the system.',
@@ -113,16 +117,16 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection`
     `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_audit. Business justification: Room inspections may be part of broader compliance audits (health department, brand standards, safety regulations, quality certifications). Links inspection records to audit programs for evidence trai',
     `cleaning_standard_id` BIGINT COMMENT 'Foreign key linking to housekeeping.cleaning_standard. Business justification: Inspections evaluate rooms against specific cleaning standards/SOPs. This links quality control to the standard being evaluated. Many inspections reference one cleaning standard (N:1). Essential for t',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Quality inspections are labor activities that must be allocated to housekeeping department cost centers for accurate departmental expense tracking and quality assurance program cost analysis per USALI',
+    `employee_id` BIGINT COMMENT 'Reference to the housekeeping supervisor or quality inspector who performed the inspection. Links to workforce/employee master data.',
     `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Function spaces require quality inspections before event release and after cleaning completion. Essential for quality assurance, deficiency tracking, and ensuring spaces meet brand standards before hi',
-    `guest_feedback_id` BIGINT COMMENT 'Foreign key linking to experience.guest_feedback. Business justification: Guest feedback cleanliness ratings directly correlate with inspection outcomes. Real business process: Quality correlation analysis between housekeeping inspection scores and guest satisfaction rating',
-    `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Room inspections may discover safety hazards (exposed wiring, broken glass, mold, structural damage) requiring formal incident documentation. Standard safety protocol for guest and employee protection',
     `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Inspections verify the quality of work completed in housekeeping assignments. Linking inspection to the assignment that triggered it enables quality tracking per attendant and assignment, supports per',
-    `employee_id` BIGINT COMMENT 'FK to workforce.employee',
+    `inspector_employee_id` BIGINT COMMENT 'FK to workforce.employee',
     `maintenance_handoff_id` BIGINT COMMENT 'Reference to the maintenance work order created as a result of issues identified during this inspection. Links to maintenance request tracking system.',
-    `primary_inspection_employee_id` BIGINT COMMENT 'Reference to the housekeeping supervisor or quality inspector who performed the inspection. Links to workforce/employee master data.',
     `property_id` BIGINT COMMENT 'Reference to the property where the inspection occurred. Links to the property master data.',
     `reservation_booking_id` BIGINT COMMENT 'Foreign key linking to reservation.reservation_booking. Business justification: Pre-arrival inspections must link to incoming reservations to verify room readiness against guest arrival time, VIP status, and special requests. Critical for room release workflow and ensuring room m',
     `room_id` BIGINT COMMENT 'Reference to the specific room that was inspected. Links to the room inventory master data.',
+    `service_recovery_action_id` BIGINT COMMENT 'Foreign key linking to experience.service_recovery_action. Business justification: Failed inspections that impact guest experience trigger proactive service recovery before guest complaint. Real business process: Proactive compensation (room upgrade, amenity) when inspection reveals',
+    `stay_history_id` BIGINT COMMENT 'Foreign key linking to guest.stay_history. Business justification: Quality inspections tied to specific stays enable post-stay quality analysis, NPS correlation, service recovery tracking, and pre-arrival VIP room certification. Critical for guest satisfaction metric',
     `amenity_check_flag` BOOLEAN COMMENT 'Boolean indicator whether the inspector verified that all required room amenities are present and properly stocked (toiletries, linens, coffee supplies, etc.).',
     `bathroom_quality_flag` BOOLEAN COMMENT 'Boolean indicator whether the bathroom meets cleanliness and quality standards, including fixtures, surfaces, and amenities, a critical GSS (Guest Satisfaction Score) driver.',
     `cleanliness_score` DECIMAL(18,2) COMMENT 'Sub-score specifically measuring cleanliness standards (surfaces, bathroom, floors, linens), a key component of overall quality score and GSS (Guest Satisfaction Score).',
@@ -207,7 +211,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Housekeeping public area attendants service F&B outlet spaces (dining rooms, bars) and report maintenance defects (broken furniture, HVAC issues, equipment failures) specific to those outlets. Real bu',
     `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Function spaces generate maintenance requests for repairs, equipment failures, and preventive maintenance discovered during cleaning or inspections. Critical for asset maintenance tracking, ensuring e',
     `health_safety_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.health_safety_incident. Business justification: Maintenance requests often originate from safety incidents (slip hazards, equipment failures, structural issues). Links work orders to incident reports for liability tracking, root cause analysis, and',
-    `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Maintenance issues are often identified during specific housekeeping assignments (room cleaning, inspection). This links maintenance requests to the operational context. Many maintenance handoffs can ',
+    `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Maintenance issues are often identified during specific housekeeping assignments (room cleaning, inspection). This links maintenance requests to the operational context. Many maintenance handoffs can',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Maintenance requests must be charged to appropriate cost centers (housekeeping vs maintenance department) for interdepartmental cost allocation, chargeback processing, and accurate departmental P&L un',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping staff member who identified and reported the maintenance issue.',
     `profile_id` BIGINT COMMENT 'Foreign key linking to guest.profile. Business justification: Guest-reported defects, compensation tracking, VIP escalation workflows require profile link. Service recovery process depends on guest context. maintenance_handoff has guest_impacted, compensation_of',
@@ -215,7 +219,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance
     `reservation_booking_id` BIGINT COMMENT 'Identifier of the guest reservation associated with the room at the time the maintenance issue was identified, if applicable.',
     `room_id` BIGINT COMMENT 'Identifier of the specific room where the maintenance issue was discovered.',
     `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Maintenance issues reported by housekeeping that impact guest experience escalate to service cases. Real business process: Guest impact tracking, compensation decisions, and cross-functional issue res',
-    `spa_facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: Facility-level maintenance issues (shared HVAC, water systems, structural repairs) affecting spa operations are tracked through hotel maintenance coordination systems that housekeeping interfaces with',
+    `facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: Facility-level maintenance issues (shared HVAC, water systems, structural repairs) affecting spa operations are tracked through hotel maintenance coordination systems that housekeeping interfaces with',
     `treatment_room_id` BIGINT COMMENT 'Foreign key linking to spa.treatment_room. Business justification: Spa treatment rooms require maintenance (plumbing, HVAC, electrical) coordinated through hotel maintenance systems. Housekeeping initiates maintenance requests for spa facilities as part of integrated',
     `work_order_id` BIGINT COMMENT 'Identifier of the formal engineering work order created to track and resolve this maintenance issue, if applicable.',
     `acknowledged_timestamp` TIMESTAMP COMMENT 'Date and time when the maintenance team acknowledged receipt of the handoff request. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
@@ -288,10 +292,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` (
     `attendant_id` BIGINT COMMENT 'Unique identifier for the housekeeping attendant record. Primary key for the attendant entity in the housekeeping domain.',
-    `compliance_training_completion_id` BIGINT COMMENT 'Foreign key linking to compliance.training_completion. Business justification: Attendants must complete mandatory compliance training (chemical handling, bloodborne pathogens, safety protocols, harassment prevention). Tracks most recent or required certification for regulatory c',
     `employee_id` BIGINT COMMENT 'Reference to the master employee record in the workforce domain. Links this housekeeping operational profile to the full HR employee master record containing payroll, benefits, and personal details.',
-    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Attendants hold specific positions (Room Attendant, Housekeeping Supervisor, Turndown Attendant) that determine pay grade, shift eligibility, union classification, and labor cost allocation. Position ',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Attendants hold specific positions (Room Attendant, Housekeeping Supervisor, Turndown Attendant) that determine pay grade, shift eligibility, union classification, and labor cost allocation. Position',
     `property_id` BIGINT COMMENT 'Reference to the property where this attendant is primarily assigned. Supports multi-property workforce management.',
+    `reputation_alert_id` BIGINT COMMENT 'Foreign key linking to experience.reputation_alert. Business justification: Reputation alerts about cleanliness/housekeeping need to identify responsible attendant for rapid response. Real business process: Real-time alert routing to housekeeping management when negative feed',
+    `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Service cases about housekeeping quality need to track responsible attendant for accountability. Real business process: Performance management, coaching, and progressive discipline based on guest comp',
     `active_flag` BOOLEAN COMMENT 'Indicates whether this attendant record is currently active and available for scheduling and room assignments. Inactive records are retained for historical reporting but excluded from operational workflows.',
     `ada_accommodation_flag` BOOLEAN COMMENT 'Indicates whether the attendant has an approved reasonable accommodation under the Americans with Disabilities Act. Accommodations may include modified duty assignments, assistive equipment, or adjusted productivity targets. Details of specific accommodations are maintained in confidential HR records.',
     `attendance_points` STRING COMMENT 'Current attendance point balance under the propertys attendance policy. Points are typically assigned for absences, tardiness, and early departures, with progressive discipline triggered at defined thresholds. Points may expire after a rolling period (e.g., 12 months).',
@@ -325,6 +330,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_manag
     `linen_management_id` BIGINT COMMENT 'Primary key for linen_management',
     `attendant_id` BIGINT COMMENT 'Identifier of the housekeeping staff member who performed or recorded the linen transaction.',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping supervisor who approved or validated the transaction, particularly for discards and adjustments.',
+    `environmental_compliance_id` BIGINT COMMENT 'Foreign key linking to compliance.environmental_compliance. Business justification: Linen operations impact environmental compliance (water consumption, chemical use, energy for laundering, waste diversion). Tracks laundry program compliance with environmental permits and sustainabil',
     `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Linen transactions (issuance to floors, returns, discards) are associated with specific housekeeping assignments. This links linen inventory movements to operational context. Many linen transactions c',
     `laundry_order_id` BIGINT COMMENT 'Foreign key linking to housekeeping.laundry_order. Business justification: Linen management transactions may trigger or be associated with laundry orders (e.g., soiled linens sent to laundry facility). This links linen inventory movements to laundry processing. Many linen tr',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Linen transactions (purchases, transfers, discards) must be allocated to departmental cost centers for USALI operating expense reporting, inventory valuation, and departmental cost control of linen pr',
@@ -376,6 +382,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_cons
     `material_master_id` BIGINT COMMENT 'Identifier of the specific supply or amenity item consumed.',
     `pos_check_id` BIGINT COMMENT 'Foreign key linking to fnb.pos_check. Business justification: Guest-charged premium amenities (specialty toiletries, in-room snacks) logged by housekeeping must link to the POS transaction that posts the charge to the guest folio. Real business process: housekee',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping staff member who recorded the supply consumption.',
+    `profile_id` BIGINT COMMENT 'Foreign key linking to guest.profile. Business justification: Amenity consumption patterns by guest segment, VIP tier, loyalty status drive personalized amenity allocation and cost-per-guest profitability analysis. Business intelligence process requires profile',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property where the supply consumption occurred.',
     `reservation_booking_id` BIGINT COMMENT 'Identifier of the guest reservation associated with this supply consumption event.',
     `room_id` BIGINT COMMENT 'Identifier of the specific guest room where supplies were consumed.',
@@ -416,14 +423,18 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_cons
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` (
     `lost_and_found_id` BIGINT COMMENT 'Unique identifier for the lost and found record. Primary key.',
+    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Event bookings provide context for items found in function spaces after events conclude, enabling guest notification through event organizers and improving item return rates. Critical for guest servic',
+    `experience_special_request_id` BIGINT COMMENT 'Foreign key linking to experience.experience_special_request. Business justification: Lost item recovery requests are tracked as special requests for fulfillment workflow. Real business process: Guest request management system tracks lost item inquiries, shipping arrangements, and fulf',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Guests leave personal items in F&B outlets (restaurants, bars, banquet halls). Housekeeping and F&B staff log these with the specific outlet as discovery location for guest retrieval and liability tra',
-    `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Lost and found items are discovered during specific housekeeping assignments. This links item discovery to the operational context (who found it, when, during which room service). Many lost items can ',
+    `hk_assignment_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_assignment. Business justification: Lost and found items are discovered during specific housekeeping assignments. This links item discovery to the operational context (who found it, when, during which room service). Many lost items can',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping attendant or staff member who discovered the item.',
     `privacy_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.privacy_incident. Business justification: Lost items containing personal data (laptops, phones, documents, USB drives) may trigger privacy incident protocols under GDPR/data protection laws. Links lost property to breach notification and regu',
     `profile_id` BIGINT COMMENT 'Identifier of the guest associated with the room or area where the item was found, if known.',
     `property_id` BIGINT COMMENT 'Identifier of the property where the item was discovered.',
     `room_id` BIGINT COMMENT 'Identifier of the specific room where the item was found, if applicable.',
     `service_case_id` BIGINT COMMENT 'Foreign key linking to experience.service_case. Business justification: Lost item inquiries generate service cases for tracking and resolution. Real business process: Guest property recovery workflow, service recovery when items cannot be located, and compensation decisio',
+    `appointment_id` BIGINT COMMENT 'Foreign key linking to spa.appointment. Business justification: Lost items are tied to specific spa appointments for guest identification, contact, and return coordination. Appointment context enables efficient guest notification and item matching in lost & found',
+    `treatment_room_id` BIGINT COMMENT 'Foreign key linking to spa.treatment_room. Business justification: Guests frequently leave personal items in spa treatment rooms. Spa staff log these in hotel-wide lost & found system managed by housekeeping operations for guest retrieval and liability tracking.',
     `stay_history_id` BIGINT COMMENT 'Foreign key linking to guest.stay_history. Business justification: Items found during specific stays need stay context for accurate guest notification, claim validation, and shipping coordination. Lost item recovery workflow depends on stay-level detail (dates, room,',
     `claim_date` DATE COMMENT 'Date when the item was claimed by the guest or authorized party.',
     `claim_status` STRING COMMENT 'Status of the claim process indicating whether the item has been claimed by a guest or remains unclaimed.. Valid values are `unclaimed|claim_pending|claimed|claim_denied`',
@@ -477,7 +488,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_
     `primary_deep_employee_id` BIGINT COMMENT 'Identifier of the housekeeping supervisor responsible for overseeing the deep cleaning execution.',
     `property_id` BIGINT COMMENT 'Identifier of the property where the deep cleaning is scheduled.',
     `room_id` BIGINT COMMENT 'Identifier of the specific room scheduled for deep cleaning. Null if the plan applies to a public area.',
-    `spa_facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: Spa facility common areas (locker rooms, relaxation lounges, wet areas, saunas) are included in hotel-wide deep clean schedules managed by housekeeping for health code compliance and guest experience ',
+    `facility_id` BIGINT COMMENT 'Foreign key linking to spa.spa_facility. Business justification: Spa facility common areas (locker rooms, relaxation lounges, wet areas, saunas) are included in hotel-wide deep clean schedules managed by housekeeping for health code compliance and guest experience',
     `treatment_room_id` BIGINT COMMENT 'Foreign key linking to spa.treatment_room. Business justification: Spa treatment rooms require periodic deep cleaning (grout, upholstery, equipment sanitization) beyond daily maintenance. Hotels schedule these through housekeeping deep clean rotation cycles for quali',
     `actual_end_time` TIMESTAMP COMMENT 'Actual timestamp when the deep cleaning work was completed. Null if not yet completed.',
     `actual_labor_hours` DECIMAL(18,2) COMMENT 'Actual number of labor hours spent on the deep cleaning tasks. Null if not yet completed.',
@@ -562,7 +573,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_st
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` (
     `laundry_order_id` BIGINT COMMENT 'Unique identifier for the laundry order. Primary key for the laundry order transaction.',
-    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: External laundry orders generate AP invoices from vendors. Critical for three-way match validation (PO-receipt-invoice), accrual accounting accuracy, vendor payment processing, and USALI expense recog',
     `cost_center_id` BIGINT COMMENT 'Financial cost center to which laundry processing costs are allocated for accounting and budgeting purposes.',
     `org_unit_id` BIGINT COMMENT 'Identifier of the department requesting the laundry service (e.g., Housekeeping, Food and Beverage (F&B), Spa, Banquet).',
     `employee_id` BIGINT COMMENT 'Identifier of the housekeeping staff member who submitted the laundry order.',
@@ -606,7 +616,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: F&B outlets have associated public areas (dining rooms, bar lounges, restaurant restrooms) that housekeeping maintains with outlet-specific cleaning standards and schedules. Real business process: hou',
     `function_space_id` BIGINT COMMENT 'Foreign key linking to event.function_space. Business justification: Some function spaces (pre-function areas, ballroom foyers, breakout spaces) are classified as public areas for housekeeping scheduling and cleaning frequency management. Enables dual classification fo',
     `hk_schedule_id` BIGINT COMMENT 'Foreign key linking to housekeeping.hk_schedule. Business justification: Public area cleaning is scheduled as part of housekeeping operational schedules. This links public area maintenance to shift planning. Many public areas can be serviced during one schedule (N:1). Esse',
-    `org_unit_id` BIGINT COMMENT 'Identifier of the housekeeping team or crew permanently assigned to this public area zone. Null if assignment rotates or is dynamic.',
     `parent_public_area_id` BIGINT COMMENT 'Self-referencing FK on public_area (parent_public_area_id)',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property where this public area is located. Links to the property master record.',
     `active_flag` BOOLEAN COMMENT 'Indicates whether this public area record is currently active (True) or archived/inactive (False). Inactive records are retained for historical reporting but excluded from operational scheduling.',
@@ -653,11 +662,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` (
     `housekeeping_training_completion_id` BIGINT COMMENT 'Primary key for housekeeping_training_completion',
     `attendant_id` BIGINT COMMENT 'Foreign key linking to the housekeeping attendant who enrolled in or completed the training course',
-    `compliance_training_completion_id` BIGINT COMMENT 'Unique identifier for this training completion record. Primary key for the association.',
-    `housekeeping_compliance_training_completion_id` BIGINT COMMENT 'add column compliance_training_completion_id (BIGINT) with FK to compliance.compliance_training_completion.compliance_training_completion_id - housekeeping training completions should reference the master training completion record to resol',
-    `employee_id` BIGINT COMMENT 'Reference to the employee who served as instructor or facilitator for this specific course delivery. Null for self-paced or vendor-delivered courses. Used for instructor effectiveness tracking and quality assurance.',
     `learning_course_id` BIGINT COMMENT 'Foreign key linking to the learning course in which the attendant is enrolled or has completed',
-    `workforce_training_completion_id` BIGINT COMMENT '',
+    `compliance_training_completion_id` BIGINT COMMENT 'Unique identifier for this training completion record. Primary key for the association.',
+    `ssot_compliance_training_completion_fk` BIGINT COMMENT '',
     `attempt_number` STRING COMMENT 'Sequential attempt number for this attendant-course combination. Increments with each enrollment if attendant fails and re-enrolls. Compared against learning_course.max_attempts to enforce attempt limits.',
     `bloodborne_pathogen_certification_date` DATE COMMENT 'Date the attendant completed their most recent bloodborne pathogen safety certification. OSHA requires annual refresher training for all employees with potential occupational exposure. [Moved from attendant: This date represents the completion_date of the most recent bloodborne pathogen training completion record. It belongs in the association as it is specific to a particular course enrollment, not an inherent attribute of the attendant.]',
     `bloodborne_pathogen_certified_flag` BOOLEAN COMMENT 'Indicates whether the attendant has completed OSHA-required bloodborne pathogen training. Housekeeping staff may encounter blood, bodily fluids, or contaminated materials during room cleaning and must be trained in proper handling, disposal, and exposure response protocols. [Moved from attendant: This flag represents the CURRENT certification status derived from the most recent completed training_completion record for bloodborne pathogen courses. It should be computed from the association rather than stored redundantly on attendant.]',
@@ -676,21 +683,24 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeepin
     `training_hours_completed` DECIMAL(18,2) COMMENT 'Actual number of training hours the attendant completed for this course. May differ from learning_course.duration_hours for partial completions or extended sessions. Used for labor cost tracking and continuing education credit calculation.',
     `vip_certified_flag` BOOLEAN COMMENT 'Indicates whether the attendant is certified to service VIP guest rooms. VIP certification requires demonstrated excellence in cleaning standards, attention to detail, discretion, and ability to handle special requests. VIP rooms receive enhanced amenities and white-glove service. [Moved from attendant: This flag represents certification status that is earned through completion of VIP service training courses. The qualification is derived from training_completion records for VIP-related courses, making the association the proper source of truth.]',
     CONSTRAINT pk_housekeeping_training_completion PRIMARY KEY(`housekeeping_training_completion_id`)
-) COMMENT 'Single source of truth is compliance.compliance_training_completion. This association product represents the enrollment and completion tracking between housekeeping attendants and learning courses. It captures the operational training lifecycle including enrollment, completion status, assessment scores, certification issuance, and expiry tracking. Each record links one attendant to one learning course with attributes that exist only in the context of this specific training enrollment. Supports OSHA compliance reporting, certification tracking for suite/VIP qualifications, chemical handling and bloodborne pathogen protocol compliance, and scheduling of qualified staff to appropriate assignments.. Existence Justification: In hotel housekeeping operations, attendants must complete multiple training courses throughout their employment (chemical handling, bloodborne pathogen protocols, suite service certification, VIP certification, ongoing compliance refreshers), and each course is delivered to many attendants across the property and enterprise. The business actively manages training enrollments as operational records with enrollment dates, completion tracking, assessment scores, certification expiry dates, and recertification cycles. This is not an analytical correlation but an operational business process called training completion or course enrollment that HR and housekeeping managers actively create, monitor, and use for compliance reporting and qualified staff scheduling. SSOT: defers to compliance.compliance_training_completion (MVM).compliance_training_completion as single source of truth]compliance_training_completion. [SSOT:training_completion] Domain-specific specialization of the training_completion concept; canonical SSOT owner is compliance.compliance_training_completion. SSOT: defers to canonical compliance.compliance_training_completion (MVM cross-domain dedup).';
+) COMMENT 'This association product represents the enrollment and completion tracking between housekeeping attendants and learning courses. It captures the operational training lifecycle including enrollment, completion status, assessment scores, certification issuance, and expiry tracking. Each record links one attendant to one learning course with attributes that exist only in the context of this specific training enrollment. Supports OSHA compliance reporting, certification tracking for suite/VIP qualifications, chemical handling and bloodborne pathogen protocol compliance, and scheduling of qualified staff to appropriate assignments.. Existence Justification: In hotel housekeeping operations, attendants must complete multiple training courses throughout their employment (chemical handling, bloodborne pathogen protocols, suite service certification, VIP certification, ongoing compliance refreshers), and each course is delivered to many attendants across the property and enterprise. The business actively manages training enrollments as operational records with enrollment dates, completion tracking, assessment scores, certification expiry dates, and recertification cycles. This is not an analytical correlation but an operational business process called training completion or course enrollment that HR and housekeeping managers actively create, monitor, and use for compliance reporting and qualified staff scheduling.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` (
     `work_order_id` BIGINT COMMENT 'Primary key for work_order',
+    `employee_id` BIGINT COMMENT 'Reference to the housekeeping staff member or maintenance technician assigned to complete this work order.',
     `team_id` BIGINT COMMENT 'Reference to the housekeeping team assigned to this work order when team-based assignments are used.',
     `follow_up_work_order_id` BIGINT COMMENT 'Self-referencing FK on work_order (follow_up_work_order_id)',
+    `inspected_by_employee_id` BIGINT COMMENT 'Reference to the supervisor or quality assurance staff member who performed the inspection of the completed work order.',
     `maintenance_request_id` BIGINT COMMENT 'Reference to the maintenance request created as a result of issues identified during this housekeeping work order.',
-    `procurement_work_order_id` BIGINT COMMENT 'reference master procurement work order to resolve overlap',
+    `procurement_work_order_id` BIGINT COMMENT 'SSOT reference to owning entity.',
     `profile_id` BIGINT COMMENT 'Reference to the guest currently occupying the room or who requested the service, if applicable.',
     `property_id` BIGINT COMMENT 'Reference to the hotel, resort, or vacation property where this work order is assigned.',
+    `requested_by_employee_id` BIGINT COMMENT 'Reference to the employee who initiated or requested this work order, typically a supervisor, front desk agent, or guest services representative.',
     `reservation_booking_id` BIGINT COMMENT 'Reference to the active reservation associated with this work order, linking housekeeping activities to guest stays.',
     `room_id` BIGINT COMMENT 'Reference to the specific guest room or space that requires housekeeping or maintenance service.',
-    `employee_id` BIGINT COMMENT 'Reference to the housekeeping staff member or maintenance technician assigned to complete this work order.',
-    `work_inspected_by_employee_id` BIGINT COMMENT 'Reference to the supervisor or quality assurance staff member who performed the inspection of the completed work order.',
-    `work_requested_by_employee_id` BIGINT COMMENT 'Reference to the employee who initiated or requested this work order, typically a supervisor, front desk agent, or guest services representative.',
+    `work_order_ssot_id` BIGINT COMMENT 'SSOT reference to procurement.work_order (work_order master).',
+    `work_order_work_order_id` BIGINT COMMENT 'SSOT reference to procurement.work_order',
+    `ssot_work_order_fk` BIGINT COMMENT '',
     `actual_completion_time` TIMESTAMP COMMENT 'The actual timestamp when the work order was completed by the assigned staff member, used for calculating service duration and labor costs.',
     `actual_start_time` TIMESTAMP COMMENT 'The actual timestamp when the assigned staff member began working on this work order, captured for labor tracking and performance analysis.',
     `amenity_replenishment_required` BOOLEAN COMMENT 'Boolean flag indicating whether guest amenities (toiletries, coffee, water) need to be replenished during this service.',
@@ -713,19 +723,19 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order`
     `service_duration_minutes` STRING COMMENT 'The total time in minutes spent completing the work order, calculated from actual start and completion times, used for labor productivity analysis.',
     `source_system_code` STRING COMMENT 'The unique identifier for this work order in the source operational system, used for data lineage and reconciliation.',
     `special_instructions` STRING COMMENT 'Free-text field containing specific instructions or notes for the housekeeping staff, such as guest preferences, allergy alerts, or special cleaning requirements.',
+    `work_order_status` STRING COMMENT 'Current lifecycle status of the work order tracking its progression from creation through completion and inspection.',
     `supply_cost_amount` DECIMAL(18,2) COMMENT 'The total cost of housekeeping supplies and amenities consumed during this work order, including linens, toiletries, and cleaning materials, used for CPOR tracking.',
     `vip_service` BOOLEAN COMMENT 'Boolean flag indicating whether this work order is for a VIP guest requiring enhanced service standards, premium amenities, or special attention.',
     `work_order_number` STRING COMMENT 'Externally-visible unique work order number used for tracking and reference by housekeeping staff and property management systems.',
-    `work_order_status` STRING COMMENT 'Current lifecycle status of the work order tracking its progression from creation through completion and inspection.',
     `work_order_type` STRING COMMENT 'Classification of the work order indicating the nature of service required: routine cleaning, deep cleaning, quality inspection, maintenance handoff, turndown service, or mid-stay refresh.',
     CONSTRAINT pk_work_order PRIMARY KEY(`work_order_id`)
 ) COMMENT 'Master reference table for work_order. Referenced by work_order_id.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` (
     `team_id` BIGINT COMMENT 'Primary key for team',
-    `attendant_id` BIGINT COMMENT 'Reference to the housekeeping supervisor or manager responsible for this team.',
     `parent_team_id` BIGINT COMMENT 'Self-referencing FK on team (parent_team_id)',
     `property_id` BIGINT COMMENT 'Reference to the hotel property or resort where this team is assigned.',
+    `employee_id` BIGINT COMMENT 'Reference to the housekeeping supervisor or manager responsible for this team.',
     `average_rooms_per_attendant` DECIMAL(18,2) COMMENT 'Target average number of rooms each attendant on this team should clean per shift, used for workload balancing.',
     `break_duration_minutes` STRING COMMENT 'Total break time allocated per shift in minutes, for labor compliance and scheduling.',
     `budget_labor_hours_per_month` DECIMAL(18,2) COMMENT 'Budgeted labor hours allocated to this team per month for workforce planning and cost control.',
@@ -738,7 +748,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` (
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this team record was first created in the system.',
     `effective_from_date` DATE COMMENT 'Date when this team configuration became active and operational.',
     `effective_to_date` DATE COMMENT 'Date when this team configuration ended or is scheduled to end (null for currently active teams).',
-    `end_time` TIMESTAMP COMMENT 'Standard shift end time for this team in HH:mm format (24-hour clock).',
+    `end_time` STRING COMMENT 'Standard shift end time for this team in HH:mm format (24-hour clock).',
     `equipment_cart_ids` STRING COMMENT 'Comma-separated list of housekeeping cart and equipment identifiers assigned to this team.',
     `floor_assignment` STRING COMMENT 'Specific floor or floor range assigned to this team (e.g., 5-7, 10, Lobby Level).',
     `guest_satisfaction_score` DECIMAL(18,2) COMMENT 'Average guest satisfaction score related to room cleanliness and housekeeping service for areas serviced by this team.',
@@ -752,25 +762,25 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` (
     `seasonal_period` STRING COMMENT 'Description of the seasonal period when this team is active (e.g., Summer Peak, Holiday Season, Winter Ski Season).',
     `service_standard_level` STRING COMMENT 'Quality and service standard tier this team is trained to deliver, aligned with property segment.',
     `shift` STRING COMMENT 'Primary shift assignment for the team (morning, afternoon, evening, night, or split shift).',
-    `size` STRING COMMENT 'Number of housekeeping staff members currently assigned to this team.',
     `specialization` STRING COMMENT 'Specific area of expertise or specialized service this team provides (e.g., Suite Turndown, Deep Cleaning, VIP Service).',
-    `start_time` TIMESTAMP COMMENT 'Standard shift start time for this team in HH:mm format (24-hour clock).',
+    `start_time` STRING COMMENT 'Standard shift start time for this team in HH:mm format (24-hour clock).',
+    `team_status` STRING COMMENT 'Current operational status of the housekeeping team in the workforce lifecycle.',
     `supply_storage_location` STRING COMMENT 'Primary linen room or supply storage location assigned to this team for restocking.',
     `target_rooms_per_shift` STRING COMMENT 'Expected number of rooms this team should service during a standard shift, used for productivity planning.',
-    `team_status` STRING COMMENT 'Current operational status of the housekeeping team in the workforce lifecycle.',
+    `team_size` STRING COMMENT 'Number of housekeeping staff members currently assigned to this team.',
     `team_type` STRING COMMENT 'Classification of the housekeeping team based on primary function and service area.',
     CONSTRAINT pk_team PRIMARY KEY(`team_id`)
 ) COMMENT 'Master reference table for team. Referenced by assigned_to_team_id.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` (
     `maintenance_request_id` BIGINT COMMENT 'Primary key for maintenance_request',
+    `employee_id` BIGINT COMMENT 'Reference to the maintenance staff member or technician assigned to handle the request.',
     `vendor_id` BIGINT COMMENT 'Reference to the external vendor or contractor assigned to perform the maintenance work.',
     `follow_up_maintenance_request_id` BIGINT COMMENT 'Self-referencing FK on maintenance_request (follow_up_maintenance_request_id)',
-    `employee_id` BIGINT COMMENT 'Reference to the employee who performed the post-maintenance quality inspection.',
-    `maintenance_assigned_to_employee_id` BIGINT COMMENT 'Reference to the maintenance staff member or technician assigned to handle the request.',
-    `maintenance_reported_by_employee_id` BIGINT COMMENT 'Reference to the employee who reported or created the maintenance request.',
-    `profile_id` BIGINT COMMENT 'Reference to the guest who reported the maintenance issue, if applicable.',
+    `inspector_employee_id` BIGINT COMMENT 'Reference to the employee who performed the post-maintenance quality inspection.',
     `property_id` BIGINT COMMENT 'Reference to the property where the maintenance request originated.',
+    `reported_by_employee_id` BIGINT COMMENT 'Reference to the employee who reported or created the maintenance request.',
+    `profile_id` BIGINT COMMENT 'Reference to the guest who reported the maintenance issue, if applicable.',
     `room_id` BIGINT COMMENT 'Reference to the specific room where maintenance is required.',
     `acknowledged_timestamp` TIMESTAMP COMMENT 'Date and time when the maintenance request was acknowledged by the maintenance team.',
     `actual_cost_amount` DECIMAL(18,2) COMMENT 'Actual total cost incurred for completing the maintenance work, including labor and materials.',
@@ -793,7 +803,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance
     `labor_cost_amount` DECIMAL(18,2) COMMENT 'Cost of labor for the maintenance work performed.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'System timestamp when the maintenance request record was last updated in the database.',
     `location_description` STRING COMMENT 'Detailed description of the specific location within the property or room where maintenance is needed (e.g., bathroom sink, ceiling near window).',
-    `maintenance_request_status` STRING COMMENT 'Current lifecycle state of the maintenance request in the workflow from creation through completion.',
     `materials_cost_amount` DECIMAL(18,2) COMMENT 'Cost of materials and supplies used in the maintenance work.',
     `priority` STRING COMMENT 'Urgency level assigned to the maintenance request, determining response time and resource allocation.',
     `recurring_issue_flag` BOOLEAN COMMENT 'Indicates whether this is a recurring maintenance issue that has been reported multiple times.',
@@ -804,6 +813,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance
     `room_out_of_order_flag` BOOLEAN COMMENT 'Indicates whether the maintenance issue requires the room to be marked as out-of-order and unavailable for occupancy.',
     `safety_hazard_flag` BOOLEAN COMMENT 'Indicates whether the maintenance issue presents a safety hazard requiring immediate attention.',
     `scheduled_start_timestamp` TIMESTAMP COMMENT 'Planned date and time when maintenance work is scheduled to begin.',
+    `maintenance_request_status` STRING COMMENT 'Current lifecycle state of the maintenance request in the workflow from creation through completion.',
     `target_completion_timestamp` TIMESTAMP COMMENT 'Service Level Agreement (SLA) target date and time by which the maintenance request should be completed based on priority.',
     `warranty_claim_flag` BOOLEAN COMMENT 'Indicates whether the maintenance work is covered under equipment or vendor warranty.',
     CONSTRAINT pk_maintenance_request PRIMARY KEY(`maintenance_request_id`)
@@ -843,7 +853,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_c
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ADD CONSTRAINT `fk_housekeeping_work_order_team_id` FOREIGN KEY (`team_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`team`(`team_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ADD CONSTRAINT `fk_housekeeping_work_order_follow_up_work_order_id` FOREIGN KEY (`follow_up_work_order_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`work_order`(`work_order_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ADD CONSTRAINT `fk_housekeeping_work_order_maintenance_request_id` FOREIGN KEY (`maintenance_request_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request`(`maintenance_request_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ADD CONSTRAINT `fk_housekeeping_team_attendant_id` FOREIGN KEY (`attendant_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`attendant`(`attendant_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ADD CONSTRAINT `fk_housekeeping_team_parent_team_id` FOREIGN KEY (`parent_team_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`team`(`team_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ADD CONSTRAINT `fk_housekeeping_maintenance_request_follow_up_maintenance_request_id` FOREIGN KEY (`follow_up_maintenance_request_id`) REFERENCES `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request`(`maintenance_request_id`);
 
@@ -852,17 +861,16 @@ ALTER SCHEMA `vibe_travel_hospitality_v1`.`housekeeping` SET TAGS ('dbx_division
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`housekeeping` SET TAGS ('dbx_domain' = 'housekeeping');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeping Assignment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Attendant ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `beo_id` SET TAGS ('dbx_business_glossary_term' = 'Beo Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Special Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `hk_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Schedule Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id (Foreign Key)');
@@ -874,7 +882,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `actual_end_time` SET TAGS ('dbx_business_glossary_term' = 'Actual End Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `actual_start_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `allergy_flags` SET TAGS ('dbx_business_glossary_term' = 'Allergy Flags');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `allergy_flags` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `amenity_replenishment_flag` SET TAGS ('dbx_business_glossary_term' = 'Amenity Replenishment Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `assignment_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `assignment_number` SET TAGS ('dbx_business_glossary_term' = 'Assignment Number');
@@ -888,7 +895,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `estimated_end_time` SET TAGS ('dbx_business_glossary_term' = 'Estimated End Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `estimated_start_time` SET TAGS ('dbx_business_glossary_term' = 'Estimated Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `guest_preference_instructions` SET TAGS ('dbx_business_glossary_term' = 'Guest Preference Instructions');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `guest_preference_instructions` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `inspection_notes` SET TAGS ('dbx_business_glossary_term' = 'Inspection Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `inspection_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Inspection Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `inspection_result` SET TAGS ('dbx_business_glossary_term' = 'Inspection Result');
@@ -912,19 +918,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment` ALTER COLUMN `vip_indicator` SET TAGS ('dbx_business_glossary_term' = 'VIP Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `cleaning_task_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Task ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Attendant ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspected By ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Special Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Assignment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `hk_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Schedule Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `maintenance_handoff_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `preference_id` SET TAGS ('dbx_business_glossary_term' = 'Preference Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `room_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Room Assignment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
@@ -973,29 +976,22 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `task_type` SET TAGS ('dbx_value_regex' = 'cleaning|sanitization|restocking|inspection|maintenance_prep|turndown');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task` ALTER COLUMN `training_indicator` SET TAGS ('dbx_business_glossary_term' = 'Training Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` SET TAGS ('dbx_subdomain' = 'quality_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `inspection_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeper ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `guest_feedback_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Feedback Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `inspector_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `maintenance_handoff_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `primary_inspection_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `primary_inspection_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `primary_inspection_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `service_recovery_action_id` SET TAGS ('dbx_business_glossary_term' = 'Service Recovery Action Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `stay_history_id` SET TAGS ('dbx_business_glossary_term' = 'Stay History Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `amenity_check_flag` SET TAGS ('dbx_business_glossary_term' = 'Amenity Check Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `bathroom_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Bathroom Quality Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `cleanliness_score` SET TAGS ('dbx_business_glossary_term' = 'Cleanliness Score');
@@ -1033,19 +1029,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Inspection Start Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection` ALTER COLUMN `vip_flag` SET TAGS ('dbx_business_glossary_term' = 'VIP (Very Important Person) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` SET TAGS ('dbx_subdomain' = 'quality_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `inspection_deficiency_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Deficiency ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `inspection_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `maintenance_handoff_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case Id (Foreign Key)');
@@ -1085,40 +1075,30 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `severity_level` SET TAGS ('dbx_value_regex' = 'critical|major|minor|cosmetic');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency` ALTER COLUMN `verification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Verification Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` SET TAGS ('dbx_subdomain' = 'facility_maintenance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `maintenance_handoff_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Handoff Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Incident Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `health_safety_incident_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Assignment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Room Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `acknowledged_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Acknowledged Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `ada_compliance_issue` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Compliance Issue Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `assigned_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Assigned Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `compensation_offered` SET TAGS ('dbx_business_glossary_term' = 'Compensation Offered Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `compensation_offered` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `compensation_offered` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `compensation_offered` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `completed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1127,7 +1107,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `defect_type` SET TAGS ('dbx_business_glossary_term' = 'Defect Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `estimated_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Estimated Completion Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `ffe_category` SET TAGS ('dbx_business_glossary_term' = 'Furniture Fixtures and Equipment (FF&E) Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `ffe_category` SET TAGS ('dbx_value_regex' = 'furniture|fixtures|equipment|none');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `follow_up_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Date');
@@ -1154,27 +1133,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff` ALTER COLUMN `work_started_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Work Started Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `hk_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeping Schedule ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Published By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `tertiary_hk_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `tertiary_hk_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `tertiary_hk_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `assignment_method` SET TAGS ('dbx_business_glossary_term' = 'Assignment Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `assignment_method` SET TAGS ('dbx_value_regex' = 'seniority_bidding|rotation|manager_assignment|fixed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `break_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Break Duration in Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `break_start_time` SET TAGS ('dbx_business_glossary_term' = 'Break Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `consecutive_days_worked` SET TAGS ('dbx_business_glossary_term' = 'Consecutive Days Worked');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `cpor_target` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Occupied Room (CPOR) Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `cpor_target` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `labor_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `labor_budget_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Schedule Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `occupancy_forecast_tier` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Forecast Tier');
@@ -1198,44 +1169,36 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule` ALTER COLUMN `turndown_start_time` SET TAGS ('dbx_business_glossary_term' = 'Turndown Service Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Attendant Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier (ID)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `reputation_alert_id` SET TAGS ('dbx_business_glossary_term' = 'Reputation Alert Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `ada_accommodation_flag` SET TAGS ('dbx_business_glossary_term' = 'ADA (Americans with Disabilities Act) Accommodation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `attendance_points` SET TAGS ('dbx_business_glossary_term' = 'Attendance Points');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `average_credits_per_shift` SET TAGS ('dbx_business_glossary_term' = 'Average Credits Per Shift');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `average_credits_per_shift` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `attendant_code` SET TAGS ('dbx_business_glossary_term' = 'Attendant Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `attendant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `employment_status` SET TAGS ('dbx_business_glossary_term' = 'Employment Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `employment_status` SET TAGS ('dbx_value_regex' = 'active|on_leave|suspended|terminated|seasonal|probationary');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Hire Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `language_skills` SET TAGS ('dbx_business_glossary_term' = 'Language Skills');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `language_skills` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `last_performance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Performance Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `locker_number` SET TAGS ('dbx_business_glossary_term' = 'Locker Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_business_glossary_term' = 'Mobile Device Identifier (ID)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `mobile_device_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Attendant Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Performance Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `performance_rating` SET TAGS ('dbx_value_regex' = 'exceeds_expectations|meets_expectations|needs_improvement|unsatisfactory|not_rated');
@@ -1251,22 +1214,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `union_classification` SET TAGS ('dbx_business_glossary_term' = 'Union Classification Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`attendant` ALTER COLUMN `union_member_flag` SET TAGS ('dbx_business_glossary_term' = 'Union Member Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` SET TAGS ('dbx_subdomain' = 'supply_logistics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `linen_management_id` SET TAGS ('dbx_business_glossary_term' = 'Linen Management Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `linen_management_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeper ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `environmental_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Assignment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `laundry_order_id` SET TAGS ('dbx_business_glossary_term' = 'Laundry Order Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Linen Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Room Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
@@ -1299,7 +1256,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `source_location` SET TAGS ('dbx_business_glossary_term' = 'Source Location');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Transaction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `total_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `total_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `transaction_date` SET TAGS ('dbx_business_glossary_term' = 'Transaction Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `transaction_number` SET TAGS ('dbx_business_glossary_term' = 'Linen Transaction Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `transaction_number` SET TAGS ('dbx_value_regex' = '^LIN-[0-9]{10}$');
@@ -1307,30 +1263,24 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `transaction_type` SET TAGS ('dbx_business_glossary_term' = 'Transaction Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `transaction_type` SET TAGS ('dbx_value_regex' = 'issuance|return|discard|adjustment|transfer|purchase');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `unit_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'piece|set|dozen|pound|kilogram');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `void_reason` SET TAGS ('dbx_business_glossary_term' = 'Void Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `voided_by` SET TAGS ('dbx_business_glossary_term' = 'Voided By Employee ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`linen_management` ALTER COLUMN `voided_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Void Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` SET TAGS ('dbx_subdomain' = 'supply_logistics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `supply_consumption_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Consumption ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `cleaning_task_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Task Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeping Assignment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Item ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `pos_check_id` SET TAGS ('dbx_business_glossary_term' = 'Pos Check Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Housekeeper ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Room Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `amenity_type` SET TAGS ('dbx_business_glossary_term' = 'Amenity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `amenity_type` SET TAGS ('dbx_value_regex' = 'TOILETRIES|COFFEE_SUPPLIES|STATIONERY|COLLATERAL|LINENS|CLEANING_SUPPLIES');
@@ -1372,31 +1322,29 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption` ALTER COLUMN `waste_indicator` SET TAGS ('dbx_business_glossary_term' = 'Waste Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `lost_and_found_id` SET TAGS ('dbx_business_glossary_term' = 'Lost and Found ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `experience_special_request_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Special Request Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `hk_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Assignment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Finder Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `privacy_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Privacy Incident Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `service_case_id` SET TAGS ('dbx_business_glossary_term' = 'Service Case Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Appointment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Room Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `stay_history_id` SET TAGS ('dbx_business_glossary_term' = 'Stay History Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claim_date` SET TAGS ('dbx_business_glossary_term' = 'Claim Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claim_status` SET TAGS ('dbx_business_glossary_term' = 'Claim Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claim_status` SET TAGS ('dbx_value_regex' = 'unclaimed|claim_pending|claimed|claim_denied');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Claimant Identification Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_identification_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_identification_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_identification_type` SET TAGS ('dbx_business_glossary_term' = 'Claimant Identification Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_identification_type` SET TAGS ('dbx_value_regex' = 'drivers_license|passport|national_id|employee_badge|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_name` SET TAGS ('dbx_business_glossary_term' = 'Claimant Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_name` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `claimant_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1409,7 +1357,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `disposition_type` SET TAGS ('dbx_business_glossary_term' = 'Disposition Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `disposition_type` SET TAGS ('dbx_value_regex' = 'returned_to_guest|donated|discarded|turned_over_to_authorities|shipped_to_guest|pending');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `estimated_value_amount` SET TAGS ('dbx_business_glossary_term' = 'Estimated Value Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `estimated_value_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `guest_notification_date` SET TAGS ('dbx_business_glossary_term' = 'Guest Notification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `guest_notification_method` SET TAGS ('dbx_business_glossary_term' = 'Guest Notification Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `guest_notification_method` SET TAGS ('dbx_value_regex' = 'email|phone|sms|mail|in_person');
@@ -1433,12 +1380,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `shipping_tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Shipping Tracking Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `special_handling_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Handling Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `storage_location` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found` ALTER COLUMN `storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` SET TAGS ('dbx_subdomain' = 'quality_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `deep_clean_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Deep Clean Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Deep Clean Cost Center Id (Foreign Key)');
@@ -1447,19 +1390,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `hk_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Schedule Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `maintenance_handoff_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Team ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `primary_deep_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Supervisor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `primary_deep_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `primary_deep_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `spa_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Facility Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_business_glossary_term' = 'Spa Treatment Room Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `treatment_room_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `actual_end_time` SET TAGS ('dbx_business_glossary_term' = 'Actual End Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `actual_labor_hours` SET TAGS ('dbx_business_glossary_term' = 'Actual Labor Hours');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `actual_start_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Time');
@@ -1468,7 +1405,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `area_type` SET TAGS ('dbx_value_regex' = 'guest_room|public_area|back_of_house|meeting_space|fnb_outlet|fitness_center');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_business_glossary_term' = 'Completion Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `deep_clean_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Deep Clean Plan Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `deep_clean_plan_status` SET TAGS ('dbx_value_regex' = 'scheduled|in_progress|completed|cancelled|deferred|on_hold');
@@ -1479,7 +1415,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `inspection_status` SET TAGS ('dbx_business_glossary_term' = 'Inspection Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `inspection_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|passed|failed|re_inspection_required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `labor_cost` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `labor_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `maintenance_issues_identified` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Issues Identified Flag');
@@ -1498,14 +1433,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `rotation_cycle` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi_annual|annual|bi_annual|ad_hoc');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `scope_of_work` SET TAGS ('dbx_business_glossary_term' = 'Scope of Work');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `supply_cost` SET TAGS ('dbx_business_glossary_term' = 'Supply Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `supply_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `total_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `total_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` SET TAGS ('dbx_subdomain' = 'quality_control');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type Id (Foreign Key)');
@@ -1554,25 +1485,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTE
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTER COLUMN `training_module_reference` SET TAGS ('dbx_business_glossary_term' = 'Training Module Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` SET TAGS ('dbx_subdomain' = 'supply_inventory');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` SET TAGS ('dbx_subdomain' = 'supply_logistics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `laundry_order_id` SET TAGS ('dbx_business_glossary_term' = 'Laundry Order ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Submitted By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Processing Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `actual_return_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Return Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cost_per_item` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Item');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cost_per_item` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cost_per_pound` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Pound');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `cost_per_pound` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1599,28 +1523,21 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `submission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submission Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `total_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Laundry Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `total_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `total_item_count` SET TAGS ('dbx_business_glossary_term' = 'Total Item Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `total_weight_lbs` SET TAGS ('dbx_business_glossary_term' = 'Total Weight (Pounds)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order` ALTER COLUMN `turnaround_time_hours` SET TAGS ('dbx_business_glossary_term' = 'Turnaround Time (Hours)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` SET TAGS ('dbx_subdomain' = 'facility_maintenance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` SET TAGS ('dbx_subdomain' = 'room_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `public_area_id` SET TAGS ('dbx_business_glossary_term' = 'Public Area ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `ada_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Ada Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Area Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `cleaning_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Cleaning Standard ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Supervisor ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `fire_safety_record_id` SET TAGS ('dbx_business_glossary_term' = 'Fire Safety Record Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `function_space_id` SET TAGS ('dbx_business_glossary_term' = 'Function Space Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `hk_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Hk Schedule Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Team ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `parent_public_area_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Public Area Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `parent_public_area_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `ada_compliant_flag` SET TAGS ('dbx_business_glossary_term' = 'ADA (Americans with Disabilities Act) Compliant Flag');
@@ -1662,34 +1579,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `special_equipment_required` SET TAGS ('dbx_business_glossary_term' = 'Special Equipment Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `square_footage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `standard_cleaning_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Standard Cleaning Duration Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`public_area` ALTER COLUMN `sustainability_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_subdomain' = 'facility_maintenance');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_subdomain' = 'room_operations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_association_edges' = 'housekeeping.attendant,workforce.learning_course');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_reference' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_concept' = 'training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_references' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_authority_defer_to' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_ref' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_group' = 'training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_canonical' = 'compliance.compliance_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` SET TAGS ('dbx_ssot_role' = 'reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `housekeeping_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'housekeeping_training_completion Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `housekeeping_training_completion_id` SET TAGS ('dbx_ssot_reference' = 'compliance.compliance_training_completion');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion - Attendant Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Instructor Employee Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `learning_course_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion - Learning Course Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `workforce_training_completion_id` SET TAGS ('dbx_ssot_owner' = 'workforce.workforce_training_completion');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `workforce_training_completion_id` SET TAGS ('dbx_ssot_entity' = 'training_completion');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `compliance_training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `attempt_number` SET TAGS ('dbx_business_glossary_term' = 'Attempt Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `bloodborne_pathogen_certification_date` SET TAGS ('dbx_business_glossary_term' = 'Bloodborne Pathogen Certification Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `bloodborne_pathogen_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'Bloodborne Pathogen Certified Flag');
@@ -1708,27 +1607,22 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_c
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `training_hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Training Hours Completed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion` ALTER COLUMN `vip_certified_flag` SET TAGS ('dbx_business_glossary_term' = 'VIP (Very Important Person) Certified Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` SET TAGS ('dbx_subdomain' = 'facility_maintenance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_id` SET TAGS ('dbx_ssot_reference' = 'procurement.work_order');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `team_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Team Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `follow_up_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Work Order Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `follow_up_work_order_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `inspected_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspected By Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `maintenance_request_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `procurement_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Work Order Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Profile Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `requested_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requested By Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `reservation_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Reservation Booking Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_inspected_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspected By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_inspected_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_inspected_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_requested_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requested By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_requested_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_requested_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_ssot_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Ssot Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Work Order Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `actual_completion_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `actual_start_time` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `amenity_replenishment_required` SET TAGS ('dbx_business_glossary_term' = 'Amenity Replenishment Required');
@@ -1739,7 +1633,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `inspection_score` SET TAGS ('dbx_business_glossary_term' = 'Inspection Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `inspection_time` SET TAGS ('dbx_business_glossary_term' = 'Inspection Time');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `labor_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `labor_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `linen_change_required` SET TAGS ('dbx_business_glossary_term' = 'Linen Change Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `maintenance_handoff_required` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Handoff Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
@@ -1752,39 +1645,29 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `service_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Service Duration Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `special_instructions` SET TAGS ('dbx_business_glossary_term' = 'Special Instructions');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `supply_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Supply Cost Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `supply_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `vip_service` SET TAGS ('dbx_business_glossary_term' = 'Vip Service');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_number` SET TAGS ('dbx_business_glossary_term' = 'Work Order Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`work_order` ALTER COLUMN `work_order_type` SET TAGS ('dbx_business_glossary_term' = 'Work Order Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` SET TAGS ('dbx_subdomain' = 'room_operations');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_id` SET TAGS ('dbx_business_glossary_term' = 'Team Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `attendant_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `parent_team_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Team Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `parent_team_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `average_rooms_per_attendant` SET TAGS ('dbx_business_glossary_term' = 'Average Rooms Per Attendant');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `average_rooms_per_attendant` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `break_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Break Duration Minutes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `budget_labor_hours_per_month` SET TAGS ('dbx_business_glossary_term' = 'Budget Labor Hours Per Month');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `budget_labor_hours_per_month` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `building_section` SET TAGS ('dbx_business_glossary_term' = 'Building Section');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `certification_level` SET TAGS ('dbx_business_glossary_term' = 'Certification Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_code` SET TAGS ('dbx_business_glossary_term' = 'Team Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
@@ -1795,43 +1678,31 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `flo
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `guest_satisfaction_score` SET TAGS ('dbx_business_glossary_term' = 'Guest Satisfaction Score');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `is_seasonal` SET TAGS ('dbx_business_glossary_term' = 'Is Seasonal');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `language_capabilities` SET TAGS ('dbx_business_glossary_term' = 'Language Capabilities');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `language_capabilities` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_name` SET TAGS ('dbx_business_glossary_term' = 'Team Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `opera_pms_team_code` SET TAGS ('dbx_business_glossary_term' = 'Opera Pms Team Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `quality_score_average` SET TAGS ('dbx_business_glossary_term' = 'Quality Score Average');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `quality_score_average` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `seasonal_period` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `service_standard_level` SET TAGS ('dbx_business_glossary_term' = 'Service Standard Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `shift` SET TAGS ('dbx_business_glossary_term' = 'Shift');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `size` SET TAGS ('dbx_business_glossary_term' = 'Team Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `specialization` SET TAGS ('dbx_business_glossary_term' = 'Specialization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Start Time');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `supply_storage_location` SET TAGS ('dbx_business_glossary_term' = 'Supply Storage Location');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `supply_storage_location` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `target_rooms_per_shift` SET TAGS ('dbx_business_glossary_term' = 'Target Rooms Per Shift');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `supply_storage_location` SET TAGS ('dbx_business_glossary_term' = 'Supply Storage Location');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `target_rooms_per_shift` SET TAGS ('dbx_business_glossary_term' = 'Target Rooms Per Shift');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_size` SET TAGS ('dbx_business_glossary_term' = 'Team Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`team` ALTER COLUMN `team_type` SET TAGS ('dbx_business_glossary_term' = 'Team Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` SET TAGS ('dbx_subdomain' = 'facility_maintenance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` SET TAGS ('dbx_subdomain' = 'quality_assurance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_request_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Request Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `follow_up_maintenance_request_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Maintenance Request Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `follow_up_maintenance_request_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_assigned_to_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned To Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_assigned_to_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_assigned_to_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_reported_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_reported_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_reported_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Guest Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `inspector_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `reported_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Guest Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `acknowledged_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Acknowledged Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `actual_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Amount');
@@ -1854,7 +1725,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `labor_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `location_description` SET TAGS ('dbx_business_glossary_term' = 'Location Description');
-ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_request_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `materials_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Materials Cost Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `recurring_issue_flag` SET TAGS ('dbx_business_glossary_term' = 'Recurring Issue Flag');
@@ -1865,5 +1735,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `room_out_of_order_flag` SET TAGS ('dbx_business_glossary_term' = 'Room Out Of Order Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `safety_hazard_flag` SET TAGS ('dbx_business_glossary_term' = 'Safety Hazard Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `scheduled_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `maintenance_request_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `target_completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request` ALTER COLUMN `warranty_claim_flag` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Flag');

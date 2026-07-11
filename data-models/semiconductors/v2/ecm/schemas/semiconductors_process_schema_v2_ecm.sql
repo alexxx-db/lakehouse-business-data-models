@@ -1,5 +1,5 @@
 -- Schema for Domain: process | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 09:03:48
+-- Generated on: 2026-07-10 12:17:28
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`process` COMMENT 'Process engineering data for all semiconductor manufacturing process flows including photolithography, etch, diffusion, implant, deposition, and metrology steps. Manages SPC control charts, process capability indices, OPC rule sets, MEEF parameters, process qualification, yield optimization, and technology node readiness.';
@@ -7,17 +7,16 @@ CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`process` COMMENT 'Proces
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_flow` (
     `process_flow_id` BIGINT COMMENT 'Unique identifier for the semiconductor manufacturing process flow definition. Primary key.',
-    `cooling_condition_id` BIGINT COMMENT 'Default cooling condition for this flow.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Cost allocation of a process flow to a cost center is required for internal cost‑of‑goods‑sold calculations and budgeting.',
     `employee_id` BIGINT COMMENT 'FK to workforce.employee',
+    `export_license_id` BIGINT COMMENT 'Foreign key linking to compliance.export_license. Business justification: Export compliance review requires each process flow to be linked to the specific export license governing the technology used.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Process Flow Assignment report links each flow to the IC product it manufactures; experts expect a flow‑to‑product FK.',
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Governance report requires each process flow to be owned by a specific org unit for accountability and performance tracking.',
     `pdk_id` BIGINT COMMENT 'Reference to the Process Design Kit (PDK) that defines the design rules, device models, and technology files associated with this process flow.',
     `process_technology_node_id` BIGINT COMMENT 'Foreign key linking to process.process_technology_node. Business justification: A process flow is defined for a particular technology node; linking directly within the process domain eliminates cross‑domain indirection.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Process flows generate revenue for specific product lines; profit‑center linkage supports profitability reporting per flow.',
     `baseline_cpk` DECIMAL(18,2) COMMENT 'Baseline process capability index (Cpk) representing the statistical process control capability of the flow at qualification.',
     `beol_step_count` STRING COMMENT 'Number of process steps in the Back End of Line (BEOL) phase, covering metal interconnect layers and passivation.',
-    `cool_optimization_enabled` BOOLEAN COMMENT 'Whether cool optimization options are enabled for the flow.',
-    `cooling_step_count` STRING COMMENT 'Number of cooling steps in the flow.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this process flow record was first created in the system.',
     `critical_layer_count` STRING COMMENT 'Number of critical layers requiring advanced lithography techniques (EUV, multi-patterning, or tight overlay control).',
     `cycle_time_days` DECIMAL(18,2) COMMENT 'Standard manufacturing cycle time in days for a wafer lot to complete the entire process flow under normal production conditions.',
@@ -38,7 +37,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_flow` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this process flow record was last modified or updated.',
     `lithography_layer_count` STRING COMMENT 'Total number of photolithography (patterning) layers in the complete process flow.',
     `metal_layer_count` STRING COMMENT 'Total number of metal interconnect layers defined in the BEOL portion of the process flow.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `mol_step_count` STRING COMMENT 'Number of process steps in the Middle of Line (MOL) phase, covering contact formation and local interconnects.',
     `notes` STRING COMMENT 'Additional notes, comments, or special instructions related to the process flow execution, qualification, or usage.',
     `opc_rule_set_version` STRING COMMENT 'Version identifier of the Optical Proximity Correction (OPC) rule set used for mask data preparation in this process flow.',
@@ -48,13 +46,12 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_flow` (
     `supports_multi_patterning` BOOLEAN COMMENT 'Flag indicating whether the process flow includes multi-patterning lithography techniques (LELE, SADP, SAQP). True if multi-patterning is used, False otherwise.',
     `target_yield_percent` DECIMAL(18,2) COMMENT 'Target die yield percentage (good dies per wafer) for production lots running this qualified process flow.',
     `total_step_count` STRING COMMENT 'Total number of unit process steps in the complete flow from wafer start through final inspection.',
-    `waste_heat_recovery_enabled` BOOLEAN COMMENT 'Whether waste heat recovery is enabled in the flow.',
     CONSTRAINT pk_process_flow PRIMARY KEY(`process_flow_id`)
 ) COMMENT 'Master definition of a semiconductor manufacturing process flow (recipe sequence) for a given technology node. Captures the ordered sequence of unit process steps from FEOL through MOL and BEOL, including process node designation (e.g., 5nm, 3nm, 28nm), flow revision, qualification status, applicable device families, and PDK linkage. SSOT for all process flow definitions used in wafer fabrication.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_step` (
     `process_step_id` BIGINT COMMENT 'Unique identifier for the individual process step within the semiconductor manufacturing process flow. Primary key.',
-    `cooling_condition_id` BIGINT COMMENT 'Cooling condition applied at this step.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Manufacturing execution assigns each step to a defined position; staffing and training reports depend on this link.',
     `employee_id` BIGINT COMMENT 'Employee identifier of the process engineer responsible for maintaining and optimizing this process step.',
     `fab_operator_qualification_id` BIGINT COMMENT 'Foreign key linking to workforce.fab_operator_qualification. Business justification: Operator qualification records must be tied to the steps they qualify for to enforce qualification compliance.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this process step is designed and qualified.',
@@ -66,7 +63,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_step` (
     `process_spc_control_plan_id` BIGINT COMMENT 'Reference to the SPC control plan governing this process step, defining control charts, sampling frequency, and control limits.',
     `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Step definition includes the default chamber where the operation occurs; linking enables chamber allocation, maintenance, and utilization reporting.',
     `recipe_id` BIGINT COMMENT 'Reference to the nominal equipment recipe or parameter set used for this process step. Links to the detailed process control parameters.',
-    `cooling_target_temperature_celsius` DECIMAL(18,2) COMMENT 'Target temperature after cooling at this step.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this process step record was first created in the system.',
     `cycle_time_target_minutes` DECIMAL(18,2) COMMENT 'Target processing time for this step in minutes, used for manufacturing planning, scheduling, and throughput optimization.',
     `dose_target` DECIMAL(18,2) COMMENT 'Target ion implantation dose in ions per square centimeter, or exposure dose in millijoules per square centimeter for lithography steps.',
@@ -74,12 +70,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_step` (
     `effective_start_date` DATE COMMENT 'Date when this process step version became effective and available for use in production flows.',
     `energy_target_kev` DECIMAL(18,2) COMMENT 'Target ion implantation energy in kilo-electron volts (keV), controlling the depth of dopant penetration into the silicon substrate.',
     `gas_flow_rate_sccm` DECIMAL(18,2) COMMENT 'Nominal gas flow rate in standard cubic centimeters per minute (SCCM) for process steps involving gas delivery such as CVD or etch.',
-    `is_cooling_step` BOOLEAN COMMENT 'Whether this step is a cooling step.',
     `is_critical_step` BOOLEAN COMMENT 'Boolean flag indicating whether this step is classified as critical for yield, quality, or device performance, requiring enhanced monitoring and control.',
     `is_rework_allowed` BOOLEAN COMMENT 'Boolean flag indicating whether wafers can be reworked or reprocessed through this step if defects or out-of-spec conditions are detected.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this process step record was most recently updated, supporting audit trail and change tracking.',
     `meef_value` DECIMAL(18,2) COMMENT 'Mask Error Enhancement Factor for lithography steps, quantifying how mask CD errors are amplified on the wafer.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `operation_type` STRING COMMENT 'Classification of the manufacturing operation performed in this step. Categorizes the fundamental process technology applied. [ENUM-REF-CANDIDATE: photolithography|etch|deposition|implant|diffusion|cmp|metrology|inspection|cleaning|annealing — 10 candidates stripped; promote to reference product]',
     `power_setpoint_watts` DECIMAL(18,2) COMMENT 'Nominal RF or DC power setpoint in watts for plasma-based process steps such as reactive ion etch or PECVD.',
     `pressure_setpoint_torr` DECIMAL(18,2) COMMENT 'Nominal chamber pressure setpoint in Torr for vacuum process steps such as CVD, PVD, or plasma etch.',
@@ -103,10 +97,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_step` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `recipe_id` BIGINT COMMENT 'Primary key for recipe',
-    `cooling_condition_id` BIGINT COMMENT 'Unique identifier for the cooling condition record within the recipe process entity.',
     `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: A recipe is authored for a specific fab tool model; the FK supports recipe‑tool compatibility checks and tool‑specific parameter validation.',
     `fabrication_process_step_id` BIGINT COMMENT 'Reference to the process step in the overall process flow that this recipe executes.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this recipe is qualified.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Recipe Management tracks which IC product uses a recipe; required for change control and qualification.',
     `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Recipes define usage of specific chemicals/materials; linking to material_master enables supplier certification, lot tracking, and regulatory compliance.',
     `process_step_id` BIGINT COMMENT 'FK to process.process_step.process_step_id — Every recipe is defined for a specific process step (operation type + tool class). This FK connects the equipment-level parameters to the logical process step they implement.',
     `approval_status` STRING COMMENT 'Current approval and qualification state of the recipe: draft (under development), under_review (pending approval), approved (released for use), qualified (validated on production tool), deprecated (phasing out), or obsolete (no longer valid).. Valid values are `draft|under_review|approved|qualified|deprecated|obsolete`',
@@ -116,8 +110,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `cmp_removal_target_nm` DECIMAL(18,2) COMMENT 'Target material removal thickness in nanometers for CMP process. Null for non-CMP recipes.',
     `cmp_slurry_type` STRING COMMENT 'CMP slurry formulation identifier (e.g., oxide slurry, tungsten slurry, copper slurry). Null for non-CMP recipes.',
     `cmp_table_speed_rpm` DECIMAL(18,2) COMMENT 'Platen rotation speed in RPM during CMP. Null for non-CMP recipes.',
-    `coolant_type` STRING COMMENT 'The coolant type of the recipe record in the process domain.',
-    `cooling_rate_celsius_per_minute` DECIMAL(18,2) COMMENT 'The cooling rate celsius per minute of the recipe record in the process domain.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this recipe record was first created in the manufacturing execution system.',
     `deposition_method` STRING COMMENT 'Thin film deposition technique: LPCVD (low pressure chemical vapor deposition), PECVD (plasma enhanced CVD), ALD (atomic layer deposition), PVD (physical vapor deposition), EPI (epitaxy), MOCVD (metal-organic CVD), or MBE (molecular beam epitaxy). Null for non-deposition recipes. [ENUM-REF-CANDIDATE: lpcvd|pecvd|ald|pvd|epi|mocvd|mbe — 7 candidates stripped; promote to reference product]',
     `deposition_pressure_torr` DECIMAL(18,2) COMMENT 'Process chamber pressure in Torr during deposition. Null for non-deposition recipes.',
@@ -143,7 +135,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `litho_numerical_aperture` DECIMAL(18,2) COMMENT 'Numerical aperture of the lithography lens system controlling resolution. Null for non-lithography recipes.',
     `litho_scanner_model` STRING COMMENT 'Photolithography scanner tool model (e.g., ASML NXT:2000i, Nikon NSR-S630D). Null for non-lithography recipes.',
     `litho_wavelength_nm` DECIMAL(18,2) COMMENT 'Exposure wavelength in nanometers (e.g., 193 for ArF DUV, 13.5 for EUV). Null for non-lithography recipes.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this recipe record was last modified or updated.',
     `recipe_name` STRING COMMENT 'Human-readable name of the process recipe used for identification and reference in manufacturing execution systems.',
     `process_type` STRING COMMENT 'Primary process category that this recipe executes: implant (ion implantation), deposition (CVD/PVD/ALD/EPI), etch (dry/wet), CMP (chemical mechanical planarization), lithography (photolithography), anneal (thermal treatment), clean (wafer cleaning), or metrology (measurement). [ENUM-REF-CANDIDATE: implant|deposition|etch|cmp|lithography|anneal|clean|metrology — 8 candidates stripped; promote to reference product]',
@@ -155,7 +146,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` (
     `lot_process_run_id` BIGINT COMMENT 'Unique identifier for the lot process run record. Primary key for this transactional event capturing a wafer lot executing a specific process step on specific equipment.',
     `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Needed for Order Traceability: lot process runs are executed for a specific customer account, enabling billing, compliance, and yield reporting per customer.',
-    `cooling_condition_id` BIGINT COMMENT 'Unique identifier for the cooling condition record within the lot process run process entity.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: MES cost accounting assigns each lot run to a cost center for budgeting and variance analysis, required for daily production cost reporting.',
     `employee_id` BIGINT COMMENT 'Reference to the fab operator who initiated or supervised this process run. Used for training effectiveness analysis and operator certification tracking.',
     `experimental_lot_id` BIGINT COMMENT 'Foreign key linking to research.experimental_lot. Business justification: Production tracking of research experimental lots is required for yield learning and cost accounting; linking run to experimental lot enables this.',
@@ -195,7 +185,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` (
     `run_number` STRING COMMENT 'Business identifier for this process run event. Typically a sequential or timestamp-based identifier assigned by the MES (Manufacturing Execution System) for traceability and audit purposes.',
     `scrap_reason_code` STRING COMMENT 'Standardized code indicating the reason for lot scrap if lot_disposition is scrap. Examples include catastrophic defect, process excursion, contamination, equipment failure. Null if lot not scrapped.',
     `wafer_count` STRING COMMENT 'Number of wafers in the lot that were processed in this run. May differ from the original lot size if wafers were scrapped or held at prior steps.',
-    `waste_heat_recovered_kwh` DECIMAL(18,2) COMMENT 'The waste heat recovered kwh of the lot process run record in the process domain.',
     CONSTRAINT pk_lot_process_run PRIMARY KEY(`lot_process_run_id`)
 ) COMMENT 'Transactional record of a wafer lot executing a specific process step on a specific piece of equipment. Captures lot ID reference, process step reference, equipment ID, operator ID, actual start and end timestamps, actual recipe used, chamber ID, lot disposition (pass/hold/scrap), and any in-line measurement results collected at that step. This is the core WIP tracking event for process engineering analysis. SSOT boundary: process domain owns the process-step-level execution record for engineering analysis; fabrication domain owns the lot lifecycle (lot creation, split, merge, hold, scrap, ship) and overall WIP status. Sourced from Camstar MES and Applied SmartFactory MES lot history.';
 
@@ -204,6 +193,8 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` (
     `fab_tool_id` BIGINT COMMENT 'Identifier of the metrology tool or equipment used to take the measurement (e.g., KLA ICOS tool ID, inline metrology tool ID). Enables tool-to-tool variation analysis.',
     `fabrication_process_step_id` BIGINT COMMENT 'Reference to the specific process step (e.g., photolithography, etch, deposition, implant) being monitored by this SPC chart.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this SPC chart is defined. Links to the technology node master data.',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the fabrication wafer lot from which the measurement was taken. Links to the wafer lot master data for traceability.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Product‑specific SPC charts are defined per IC; used in the Product SPC Dashboard.',
     `process_step_id` BIGINT COMMENT 'FK to process.process_step.process_step_id — Every SPC control chart monitors a parameter at a specific process step. This FK is essential for SPC chart setup and process monitoring workflows.',
     `wafer_id` BIGINT COMMENT 'Reference to the specific wafer within the lot from which the measurement was taken. Enables wafer-level traceability.',
     `baseline_data_points` STRING COMMENT 'Number of data points collected during the baseline period to establish initial control limits. Typically 25-30 subgroups are required for reliable limit calculation.',
@@ -223,7 +214,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` (
     `measured_value` DECIMAL(18,2) COMMENT 'Actual measured value of the monitored parameter at the time of measurement. This is the primary data point plotted on the SPC chart.',
     `measurement_sequence_number` STRING COMMENT 'Sequential number of this measurement within the SPC chart history. Used for time-series analysis and trend detection.',
     `measurement_timestamp` TIMESTAMP COMMENT 'Date and time when the measurement was taken by the metrology tool. Represents the actual measurement event time.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `monitored_parameter_name` STRING COMMENT 'Name of the process parameter being monitored by this SPC chart (e.g., critical dimension, film thickness, overlay, etch rate, resistivity).',
     `ocap_reference_number` STRING COMMENT 'Reference number of the Out-of-Control Action Plan (OCAP) triggered by this measurement, if applicable. Links to the OCAP tracking system for root cause analysis and corrective action.',
     `parameter_unit_of_measure` STRING COMMENT 'Unit of measure for the monitored parameter (e.g., nm, angstrom, ohm-cm, percent, degrees Celsius).',
@@ -266,7 +256,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` (
     `measurement_status` STRING COMMENT 'The quality status of the measurement data point. Indicates whether the measurement is valid for SPC analysis or requires review, retest, or exclusion due to equipment errors or data quality issues.. Valid values are `valid|invalid|suspect|retest_required|equipment_error`',
     `measurement_timestamp` TIMESTAMP COMMENT 'Date and time when the measurement was captured by the metrology tool. Represents the real-world event time of the SPC data point collection.',
     `measurement_type` STRING COMMENT 'The category of measurement based on when and how it was taken. Distinguishes between inline production measurements, offline lab measurements, final inspection, process qualification runs, and dedicated monitor wafer measurements.. Valid values are `inline|offline|final_inspection|qualification|monitor_wafer`',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `out_of_control_flag` BOOLEAN COMMENT 'Boolean indicator of whether this measurement triggered an out-of-control condition. True if the measurement violated control limits or SPC rules requiring corrective action.',
     `out_of_spec_flag` BOOLEAN COMMENT 'Boolean indicator of whether this measurement exceeded specification limits. True if the measured value fell outside the upper or lower specification limits defined by engineering.',
     `parameter_code` STRING COMMENT 'The standardized code or abbreviation for the measured parameter. Used for system integration and cross-tool correlation (e.g., CD_GATE, THICK_OXIDE, OVL_X, RS_POLY).',
@@ -348,7 +337,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` (
     `meef_pitch_nm` DECIMAL(18,2) COMMENT 'Feature pitch in nanometers at which the MEEF value was measured.',
     `meef_target_cd_nm` DECIMAL(18,2) COMMENT 'Target critical dimension in nanometers for the MEEF characterization measurement.',
     `meef_value` DECIMAL(18,2) COMMENT 'Primary MEEF value characterizing the mask-to-wafer CD error amplification for this layer and process. MEEF = (wafer CD change) / (mask CD change).',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Additional notes, comments, or special instructions related to this OPC rule set.',
     `opc_for_node` BIGINT COMMENT 'FK to process.process_technology_node.process_technology_node_id — OPC rule sets are defined per technology node and layer. Node reference is essential for OPC management.',
     `opc_model_type` STRING COMMENT 'Type of OPC correction methodology employed in this rule set.. Valid values are `rule_based|model_based|hybrid|inverse_lithography`',
@@ -418,13 +406,14 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_qualificatio
     `employee_id` BIGINT COMMENT 'Employee identifier of the process engineer who signed off on the qualification results.',
     `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: Qualification runs are executed on a specific fab tool; the FK records which tool was qualified, supporting qualification history and tool eligibility checks.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this qualification applies.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Qualification records are tied to the specific IC they qualify; needed for the Qualification Status Report.',
     `process_flow_id` BIGINT COMMENT 'Foreign key linking to process.process_process_flow. Business justification: A qualification is scoped to a specific process flow; linking directly avoids cross‑domain indirection.',
     `research_program_id` BIGINT COMMENT 'Foreign key linking to research.program. Business justification: Qualification reports must be associated with the originating research program for readiness assessment and stakeholder communication.',
+    `tertiary_process_flow_id` BIGINT COMMENT 'FK to process.process_flow.process_flow_id — Process qualifications validate a process flow or step change. This link is required for qualification status lookup during production release decisions.',
     `acceptance_criteria_summary` STRING COMMENT 'High-level summary of the key acceptance criteria that must be met for qualification to pass (e.g., yield > 95%, Cpk > 1.33, defect density < 0.1/cm²).',
     `actual_completion_date` DATE COMMENT 'Actual date when the qualification program was completed. Populated when status transitions to passed, failed, waived, or cancelled.',
     `actual_cpk` DECIMAL(18,2) COMMENT 'Actual process capability index (Cpk) achieved during qualification testing. Populated upon completion of qualification runs.',
     `actual_yield_percent` DECIMAL(18,2) COMMENT 'Actual wafer yield percentage achieved during qualification testing. Populated upon completion of qualification runs.',
-    `cooling_optimization_evaluated` BOOLEAN COMMENT 'The cooling optimization evaluated of the process qualification record in the process domain.',
     `corrective_action_plan` STRING COMMENT 'Description of corrective actions planned or taken to address issues identified during qualification. Applicable for failed qualifications or qualifications requiring follow-up.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this qualification record was first created in the system. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `customer_approval_status` STRING COMMENT 'Status of customer approval for this qualification: not_required (no customer approval needed), pending (awaiting customer review), approved (customer approved), rejected (customer rejected).. Valid values are `not_required|pending|approved|rejected`',
@@ -433,7 +422,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_qualificatio
     `failure_mode_summary` STRING COMMENT 'Summary of failure modes observed during qualification testing, if applicable. Used for failed or waived qualifications to document issues encountered.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this qualification record was last modified or updated. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `lot_count` STRING COMMENT 'Total number of fabrication lots planned or executed for the qualification program.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Additional notes, comments, or observations related to the qualification program. Free-text field for supplementary information.',
     `owner_engineer_name` STRING COMMENT 'Name of the process engineer responsible for managing and executing the qualification program.',
     `owner_organization` STRING COMMENT 'Organizational unit or department responsible for the qualification program (e.g., Process Engineering, Integration, Module Development).',
@@ -479,7 +467,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`change_notification`
     `change_status` STRING COMMENT 'Current lifecycle status of the process change notification in the approval and implementation workflow. [ENUM-REF-CANDIDATE: draft|pending_approval|approved|customer_notified|implemented|cancelled|rejected — 7 candidates stripped; promote to reference product]',
     `change_title` STRING COMMENT 'Brief descriptive title summarizing the nature of the process change.',
     `change_type` STRING COMMENT 'Category of change being notified: process (recipe or flow modification), material (raw material or chemical change), equipment (tool or configuration change), design (mask or layout change), facility (fab site or cleanroom change), or supplier (vendor or subcontractor change).. Valid values are `process|material|equipment|design|facility|supplier`',
-    `cooling_process_impact` STRING COMMENT 'The cooling process impact of the change notification record in the process domain.',
     `cost_impact` STRING COMMENT 'Assessment of the financial impact of the process change including implementation costs, ongoing cost savings or increases, and return on investment.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the process change notification record was first created in the system.',
     `customer_approval_required` BOOLEAN COMMENT 'Indicates whether explicit customer approval is required before implementing the change, typically for major changes affecting form, fit, function, or reliability.',
@@ -535,7 +522,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this yield loss event record was last updated. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX. Used for audit trail and change tracking.',
     `layer_name` STRING COMMENT 'Name of the process layer or mask level at which the yield loss event occurred. Examples include M1, M2, POLY, CONTACT, VIA1, etc. Aligns with GDS layer naming convention.',
     `lot_hold_applied` BOOLEAN COMMENT 'Indicates whether a lot hold was placed on the affected wafer lot as a result of this yield loss event. True if hold applied; false if no hold applied.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Free-form text field for additional comments, observations, or context related to the yield loss event. May include investigation findings, lessons learned, or special handling instructions.',
     `reported_by` STRING COMMENT 'Name or identifier of the engineer, operator, or automated system that reported or logged the yield loss event. Used for accountability and follow-up.',
     `resolution_status` STRING COMMENT 'Current status of the yield loss event resolution workflow. Open indicates newly detected; under investigation indicates active RCA; root cause identified indicates RCA complete; corrective action implemented indicates fix deployed; closed indicates event resolved; deferred indicates event accepted or postponed.. Valid values are `open|under_investigation|root_cause_identified|corrective_action_implemented|closed|deferred`',
@@ -611,7 +597,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_me
     `cp_value` DECIMAL(18,2) COMMENT 'Process capability index (Cp) calculated from this measurement, indicating the potential capability of the process without considering centering.',
     `cpk_value` DECIMAL(18,2) COMMENT 'Process capability index (Cpk) calculated from this measurement, indicating how well the process is centered and controlled within specification limits.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this measurement record was first created in the system.',
-    `data_quality_flag` STRING COMMENT 'Flag indicating the quality and reliability of the measurement data. Good indicates reliable data, Suspect indicates questionable data, Bad indicates invalid data, Uncalibrated indicates tool calibration issue.. Valid values are `Good|Suspect|Bad|Uncalibrated`',
+    `data_quality_flag` BOOLEAN COMMENT 'Flag indicating the quality and reliability of the measurement data. Good indicates reliable data, Suspect indicates questionable data, Bad indicates invalid data, Uncalibrated indicates tool calibration issue.',
     `disposition` STRING COMMENT 'Pass/fail disposition of the measurement against specification limits. Pass indicates within spec, Fail indicates out of spec, Marginal indicates near limits, Rework indicates corrective action required, Hold indicates pending review.. Valid values are `Pass|Fail|Marginal|Rework|Hold`',
     `fab_site_code` STRING COMMENT 'Code identifying the fabrication facility where the measurement was performed.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this measurement record was last updated or modified.',
@@ -628,7 +614,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_me
     `median_value` DECIMAL(18,2) COMMENT 'Median value of all site measurements for this parameter.',
     `metrology_at_step` BIGINT COMMENT 'FK to process.process_process_step.process_process_step_id — Metrology measurements are taken at specific process steps. Step context is essential for measurement interpretation and SPC feeding.',
     `min_value` DECIMAL(18,2) COMMENT 'Minimum measured value across all sites on the wafer.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Free-text notes or comments about the measurement, including any anomalies, special conditions, or operator observations.',
     `range_value` DECIMAL(18,2) COMMENT 'Difference between maximum and minimum site measurements (max - min).',
     `site_count` STRING COMMENT 'Total number of measurement sites sampled on the wafer.',
@@ -650,6 +635,8 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` (
     `employee_id` BIGINT COMMENT 'Reference to the process engineer responsible for developing, qualifying, and maintaining this implant condition.',
     `fabrication_process_flow_id` BIGINT COMMENT 'Reference to the parent process flow that contains this implant step. Links this implant condition to the overall manufacturing process sequence.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this implant condition is qualified. Critical for process design kit alignment.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Implant conditions are defined per IC product for the Implant Process Specification document.',
+    `photomask_id` BIGINT COMMENT 'Reference to the photomask layer used to pattern the photoresist that defines the implant region. Links implant to lithography process.',
     `process_step_id` BIGINT COMMENT 'Foreign key linking to process.process_process_step. Business justification: Implant condition is associated with a specific process step; adding internal FK creates the needed relationship.',
     `spc_control_chart_id` BIGINT COMMENT 'Reference to the SPC control plan that defines monitoring parameters, sampling frequency, and control limits for this implant condition.',
     `anneal_temperature_celsius` DECIMAL(18,2) COMMENT 'Peak temperature of the post-implant anneal process in degrees Celsius. Typical range: 400°C to 1100°C depending on anneal type and dopant activation requirements.',
@@ -786,6 +773,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` (
     `cmp_condition_id` BIGINT COMMENT 'Unique identifier for the CMP process condition master record. Primary key.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (process geometry) for which this CMP condition is qualified, such as 7nm, 5nm, 3nm FinFET or GAA nodes.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: CMP conditions are maintained per IC product for the CMP Process Specification and quality control.',
     `substance_inventory_id` BIGINT COMMENT 'Foreign key linking to compliance.substance_inventory. Business justification: CMP slurry chemicals are regulated; linking condition to substance inventory supports substance reporting and safety.',
     `carrier_speed_rpm` DECIMAL(18,2) COMMENT 'Rotational speed of the wafer carrier head during CMP processing, measured in revolutions per minute. Affects relative velocity and material removal uniformity.',
     `cmp_step_type` STRING COMMENT 'Classification of the CMP process step based on the material and layer being planarized. STI (Shallow Trench Isolation) for FEOL, ILD (Inter-Layer Dielectric) for MOL/BEOL, W-plug for tungsten contact fill, Cu damascene for copper interconnect, barrier for barrier metal removal. [ENUM-REF-CANDIDATE: STI|ILD|W-plug|Cu damascene|barrier|poly|tungsten contact|cobalt contact — 8 candidates stripped; promote to reference product]',
@@ -835,6 +823,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` (
     `litho_condition_id` BIGINT COMMENT 'Unique identifier for the photolithography process condition master record.',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this lithography condition is defined.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Lithography conditions are defined per IC product; needed for Lithography Process Specification and OPC alignment.',
     `opc_rule_set_id` BIGINT COMMENT 'Reference to the OPC rule set used to correct mask patterns for optical proximity effects at this lithography condition.',
     `process_step_id` BIGINT COMMENT 'Foreign key linking to process.process_process_step. Business justification: Lithography condition is applied to a particular process step; internal FK enables step‑level linkage.',
     `substance_inventory_id` BIGINT COMMENT 'Foreign key linking to compliance.substance_inventory. Business justification: Lithography uses photoresist and developers; linking to substance inventory satisfies REACH and hazardous‑material compliance.',
@@ -929,9 +918,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_technology_n
     `process_technology_node_id` BIGINT COMMENT 'Unique identifier for the semiconductor technology node record. Primary key.',
     `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Technology Node Mapping aligns process nodes with product process nodes for the Technology Node Compatibility Matrix.',
     `technology_control_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.technology_control_plan. Business justification: Each technology node has an associated technology control plan that defines access and export controls.',
-    `authoritative_fabrication_technology_node_id` BIGINT COMMENT 'Authoritative FK resolving SSOT duplicate ownership',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Cross-domain FK to authoritative SSOT owner fabrication.fabrication_technology_node (resolves MVM SSOT duplicate).',
-    `fabrication_technology_node_ref_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node ref record within the process technology node process entity.',
+    `fabrication_technology_node_id` BIGINT COMMENT '',
     `application_scope` STRING COMMENT 'Primary application domains or product families this technology node is designed to support (e.g., High Performance Computing, Mobile, Automotive, IoT, AI/ML Accelerators).',
     `baseline_cpk` DECIMAL(18,2) COMMENT 'Baseline process capability index (Cpk) target for critical parameters in this technology node. Cpk measures process capability relative to specification limits.',
     `baseline_yield_target_percent` DECIMAL(18,2) COMMENT 'Target baseline yield percentage (good dies per wafer) for production qualification of this technology node.',
@@ -953,11 +940,9 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_technology_n
     `lithography_type` STRING COMMENT 'Primary lithography technology used for this node. DUV (Deep Ultraviolet), EUV (Extreme Ultraviolet Lithography), immersion lithography, dry lithography, or e-beam (electron beam) lithography.. Valid values are `duv|euv|immersion|dry|ebeam`',
     `metal_layer_count` STRING COMMENT 'Total number of metal interconnect layers in the Back End of Line (BEOL) stack for this technology node.',
     `minimum_metal_pitch_nm` DECIMAL(18,2) COMMENT 'Minimum metal interconnect pitch in nanometers, representing the smallest distance between adjacent metal lines in the Back End of Line (BEOL).',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `node_code` STRING COMMENT 'Standardized alphanumeric code for the technology node used across systems and documentation.',
     `node_generation` STRING COMMENT 'Generation classification of the technology node (e.g., Gen 1, Gen 2, Gen 3, Advanced Node, Mature Node, Legacy Node).',
     `node_name` STRING COMMENT 'Human-readable name of the technology node (e.g., 5nm, 3nm, 7nm, 28nm, 65nm, 90nm). This is the primary business identifier for the process generation.',
-    `node_nm` STRING COMMENT 'The node nm of the process technology node record in the process domain.',
     `notes` STRING COMMENT 'Additional notes, comments, or special considerations related to this technology node.',
     `owner_engineer_name` STRING COMMENT 'Name of the process engineer or engineering manager responsible for this technology node definition and maintenance.',
     `owner_organization` STRING COMMENT 'Organization or department responsible for managing and maintaining this technology node (e.g., Process Engineering, Advanced Technology Development).',
@@ -965,7 +950,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_technology_n
     `production_readiness_status` STRING COMMENT 'Current production readiness state of the technology node. Research: early R&D phase. Development: active development. Qualification: undergoing process qualification. Pilot: pilot production runs. Production: full production ready. Mature: established high-volume production. EOL (End of Life): being phased out. [ENUM-REF-CANDIDATE: research|development|qualification|pilot|production|mature|eol — 7 candidates stripped; promote to reference product]',
     `qualification_date` DATE COMMENT 'Date when the technology node successfully completed qualification and was approved for production use.',
     `qualification_status` STRING COMMENT 'Current qualification status of the technology node. Tracks progress through formal qualification and approval process.. Valid values are `not_started|in_progress|qualified|production_approved|failed|on_hold`',
-    `ssot_owner_reference` BIGINT COMMENT 'Single-source-of-truth owner reference for the technology_node concept (fabrication.fabrication_technology_node)',
     `supports_multi_patterning` BOOLEAN COMMENT 'Indicates whether this technology node requires or supports multi-patterning lithography techniques (e.g., double patterning, triple patterning, quadruple patterning) to achieve target dimensions.',
     `target_performance_improvement_percent` DECIMAL(18,2) COMMENT 'Target percentage improvement in performance (speed/frequency) compared to the previous technology node generation. Part of PPA (Power Performance Area) metrics.',
     `target_power_efficiency_improvement_percent` DECIMAL(18,2) COMMENT 'Target percentage improvement in power efficiency compared to the previous technology node generation. Part of PPA (Power Performance Area) metrics.',
@@ -1023,6 +1007,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`excursion` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` (
     `doe_experiment_id` BIGINT COMMENT 'Unique identifier for the DOE experiment record. Primary key for the DOE experiment entity.',
+    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to invoice.ar_invoice. Business justification: DOE NRE Billing links a design‑of‑experiments project to the invoice that charges the customer for the NRE work.',
     `employee_id` BIGINT COMMENT 'Reference to the process engineer responsible for designing, executing, and analyzing the DOE experiment.',
     `fabrication_process_step_id` BIGINT COMMENT 'Reference to the specific process step under study in this DOE experiment (e.g., photolithography, etch, deposition, implant).',
     `fabrication_technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this DOE experiment is being conducted.',
@@ -1074,158 +1059,27 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` (
     `flow_qualification_id` BIGINT COMMENT 'Primary key for the process_flow_qualification association',
     `account_id` BIGINT COMMENT 'Foreign key linking to the customer account',
-    `employee_id` BIGINT COMMENT 'Unique identifier for the employee record within the flow qualification process entity.',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node record within the flow qualification process entity.',
     `process_flow_id` BIGINT COMMENT 'Foreign key linking to the process flow definition',
-    `achieved_yield_percent` DECIMAL(18,2) COMMENT 'The achieved yield percent of the flow qualification record in the process domain.',
-    `actual_completion_date` DATE COMMENT 'The actual completion date associated with the flow qualification process record.',
-    `actual_cpk` DECIMAL(18,2) COMMENT 'The actual cpk of the flow qualification record in the process domain.',
-    `actual_yield_pct` DECIMAL(18,2) COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `actual_yield_percent` DECIMAL(18,2) COMMENT 'The actual yield percent of the flow qualification record in the process domain.',
-    `approval_date` DATE COMMENT 'The approval date associated with the flow qualification process record.',
-    `approval_signoff` STRING COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `approved_by` STRING COMMENT 'The approved by of the flow qualification record in the process domain.',
-    `baseline_yield_percent` DECIMAL(18,2) COMMENT 'Baseline yield percentage before qualification',
-    `completion_date` DATE COMMENT 'The completion date associated with the flow qualification process record.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the flow qualification record in the process domain.',
-    `customer_approval_date` DATE COMMENT 'The customer approval date associated with the flow qualification process record.',
-    `customer_approval_required_flag` BOOLEAN COMMENT 'Whether customer approval is required for this qualification',
-    `defect_density_actual` STRING COMMENT 'The defect density actual of the flow qualification record in the process domain.',
-    `defect_density_actual_per_cm2` DECIMAL(18,2) COMMENT 'Actual measured defect density per square centimeter',
-    `defect_density_target` STRING COMMENT 'The defect density target of the flow qualification record in the process domain.',
-    `defect_density_target_per_cm2` DECIMAL(18,2) COMMENT 'The defect density target per cm2 of the flow qualification record in the process domain.',
-    `disposition` STRING COMMENT 'The disposition of the flow qualification record in the process domain.',
     `effective_end_date` DATE COMMENT 'Date when the qualification expires or is superseded',
     `effective_start_date` DATE COMMENT 'Date when the qualification becomes effective for the account',
-    `environmental_condition` STRING COMMENT 'Environmental conditions during qualification testing',
-    `expiry_date` DATE COMMENT 'Enriched attribute for flow_qualification.',
-    `failure_mode_summary` STRING COMMENT 'Summary of identified failure modes during qualification',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the flow qualification record in the process domain.',
-    `lot_count` STRING COMMENT 'The lot count of the flow qualification record in the process domain.',
-    `notes` STRING COMMENT 'The notes of the flow qualification record in the process domain.',
-    `owner_organization` STRING COMMENT 'The owner organization of the flow qualification record in the process domain.',
-    `qual_completion_date` DATE COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `qual_criteria` STRING COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `qual_lot_count` STRING COMMENT 'Enriched attribute for flow_qualification.',
-    `qual_start_date` DATE COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `qualification_date` DATE COMMENT 'The qualification date associated with the flow qualification process record.',
-    `qualification_end_date` DATE COMMENT 'The qualification end date associated with the flow qualification process record.',
-    `qualification_lot_count` STRING COMMENT 'The qualification lot count of the flow qualification record in the process domain.',
-    `qualification_method` STRING COMMENT 'The qualification method of the flow qualification record in the process domain.',
-    `qualification_name` STRING COMMENT 'The qualification name of the flow qualification record in the process domain.',
-    `qualification_notes` STRING COMMENT 'The qualification notes of the flow qualification record in the process domain.',
-    `qualification_number` STRING COMMENT 'The qualification number of the flow qualification record in the process domain.',
-    `qualification_owner` STRING COMMENT 'The qualification owner of the flow qualification record in the process domain.',
-    `qualification_report_ref` STRING COMMENT 'The qualification report ref of the flow qualification record in the process domain.',
-    `qualification_result` STRING COMMENT 'The qualification result of the flow qualification record in the process domain.',
-    `qualification_revision` STRING COMMENT 'Revision number of the qualification document',
-    `qualification_scope` STRING COMMENT 'Scope of qualification (full flow, partial, delta)',
-    `qualification_start_date` DATE COMMENT 'The qualification start date associated with the flow qualification process record.',
     `qualification_status` STRING COMMENT 'Current qualification status of the process flow for the account',
-    `qualification_type` STRING COMMENT 'The qualification type of the flow qualification record in the process domain.',
-    `qualified_by` STRING COMMENT 'Added in v2 to expand attribute depth for thin product.',
-    `qualified_date` DATE COMMENT 'Enriched attribute for flow_qualification.',
-    `qualified_lot_count` STRING COMMENT 'The qualified lot count of the flow qualification record in the process domain.',
-    `qualifying_engineer` STRING COMMENT 'Enriched attribute for flow_qualification.',
-    `reliability_hours` STRING COMMENT 'Total reliability test hours completed',
-    `reliability_hours_completed` STRING COMMENT 'The reliability hours completed of the flow qualification record in the process domain.',
-    `reliability_hours_required` STRING COMMENT 'The reliability hours required of the flow qualification record in the process domain.',
-    `requalification_due_date` DATE COMMENT 'The requalification due date associated with the flow qualification process record.',
-    `requalification_trigger` STRING COMMENT 'Condition that triggers requalification (e.g., recipe change, tool change)',
-    `risk_level` STRING COMMENT 'Risk classification of the flow qualification (low/medium/high)',
-    `sample_size` STRING COMMENT 'Number of samples used in qualification testing',
-    `sign_off_date` DATE COMMENT 'Enriched attribute for flow_qualification.',
-    `sign_off_engineer_name` STRING COMMENT 'The sign off engineer name of the flow qualification record in the process domain.',
-    `start_date` DATE COMMENT 'The start date associated with the flow qualification process record.',
-    `statistical_confidence_level` DECIMAL(18,2) COMMENT 'Statistical confidence level of qualification results (e.g., 95.00)',
-    `target_completion_date` DATE COMMENT 'The target completion date associated with the flow qualification process record.',
-    `target_cpk` DECIMAL(18,2) COMMENT 'The target cpk of the flow qualification record in the process domain.',
     `target_yield_percent` DECIMAL(18,2) COMMENT 'Target die yield percentage agreed for the account',
-    `wafer_count` STRING COMMENT 'The wafer count of the flow qualification record in the process domain.',
-    `wafer_qty_completed` STRING COMMENT 'The wafer qty completed of the flow qualification record in the process domain.',
-    `wafer_qty_required` STRING COMMENT 'The wafer qty required of the flow qualification record in the process domain.',
-    `yield_achieved_percent` DECIMAL(18,2) COMMENT 'The yield achieved percent of the flow qualification record in the process domain.',
-    `yield_actual` DECIMAL(18,2) COMMENT 'The yield actual of the flow qualification record in the process domain.',
-    `yield_actual_pct` DECIMAL(18,2) COMMENT 'The yield actual pct of the flow qualification record in the process domain.',
-    `yield_target` DECIMAL(18,2) COMMENT 'The yield target of the flow qualification record in the process domain.',
-    `yield_target_pct` DECIMAL(18,2) COMMENT 'Added in v2 to expand attribute depth for thin product.',
     CONSTRAINT pk_flow_qualification PRIMARY KEY(`flow_qualification_id`)
 ) COMMENT 'This association product records the qualification of a semiconductor process flow for a specific customer account. It captures qualification status, target yield, and the effective date range for each customer‑process flow pairing.. Existence Justification: Customers (accounts) qualify for specific semiconductor process flows. Each qualification record captures the qualification status, target yield, and the effective date range, and a single process flow can be qualified for many customers while a customer can be qualified for many process flows.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` (
-    `process_supply_agreement_id` BIGINT COMMENT 'Primary key',
-    `fabrication_technology_node_id` BIGINT COMMENT 'FK to fabrication technology node',
-    `process_flow_id` BIGINT COMMENT 'FK to process flow',
-    `process_step_id` BIGINT COMMENT 'FK to process step',
-    `sourcing_contract_id` BIGINT COMMENT 'FK to sourcing contract',
-    `supplier_id` BIGINT COMMENT 'FK to supplier',
-    `agreement_end_date` DATE COMMENT 'The agreement end date associated with the process supply agreement process record.',
-    `agreement_name` STRING COMMENT 'The agreement name of the process supply agreement record in the process domain.',
-    `agreement_number` STRING COMMENT 'The agreement number of the process supply agreement record in the process domain.',
-    `agreement_start_date` DATE COMMENT 'The agreement start date associated with the process supply agreement process record.',
-    `agreement_status` STRING COMMENT 'The agreement status of the process supply agreement record in the process domain.',
-    `agreement_type` STRING COMMENT 'The agreement type of the process supply agreement record in the process domain.',
-    `capacity_allocation_pct` DECIMAL(18,2) COMMENT 'Capacity allocation percentage',
-    `capacity_commitment` DECIMAL(18,2) COMMENT 'The capacity commitment of the process supply agreement record in the process domain.',
-    `capacity_reservation` DECIMAL(18,2) COMMENT 'The capacity reservation of the process supply agreement record in the process domain.',
-    `capacity_reservation_pct` DECIMAL(18,2) COMMENT 'Capacity reservation percentage',
-    `committed_capacity_pct` DECIMAL(18,2) COMMENT 'Committed capacity percentage',
-    `committed_capacity_percent` DECIMAL(18,2) COMMENT 'The committed capacity percent of the process supply agreement record in the process domain.',
-    `committed_volume` DECIMAL(18,2) COMMENT 'The committed volume of the process supply agreement record in the process domain.',
-    `committed_volume_units` STRING COMMENT 'Committed volume in units',
-    `committed_volume_wafers` STRING COMMENT 'Committed volume in wafers',
-    `committed_wafer_volume` STRING COMMENT 'The committed wafer volume of the process supply agreement record in the process domain.',
-    `contract_number` STRING COMMENT 'The contract number of the process supply agreement record in the process domain.',
-    `created_at` TIMESTAMP COMMENT 'Created at timestamp',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `currency` STRING COMMENT 'The currency of the process supply agreement record in the process domain.',
-    `currency_code` STRING COMMENT 'Coded value representing the currency code of the process supply agreement process record.',
-    `delivery_terms` STRING COMMENT 'The delivery terms of the process supply agreement record in the process domain.',
-    `effective_date` DATE COMMENT 'The effective date associated with the process supply agreement process record.',
-    `effective_end_date` DATE COMMENT 'The effective end date associated with the process supply agreement process record.',
-    `effective_start_date` DATE COMMENT 'The effective start date associated with the process supply agreement process record.',
-    `end_date` DATE COMMENT 'The end date associated with the process supply agreement process record.',
-    `expiration_date` DATE COMMENT 'The expiration date associated with the process supply agreement process record.',
-    `expiry_date` DATE COMMENT 'The expiry date associated with the process supply agreement process record.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the process supply agreement record in the process domain.',
-    `lead_time_days` STRING COMMENT 'Lead time in days',
-    `lead_time_weeks` STRING COMMENT 'Lead time in weeks',
-    `material_category` STRING COMMENT 'The material category of the process supply agreement record in the process domain.',
-    `min_order_quantity` STRING COMMENT 'Minimum order quantity',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the process supply agreement record in the process domain.',
-    `notes` STRING COMMENT 'General notes',
-    `owner_organization` STRING COMMENT 'The owner organization of the process supply agreement record in the process domain.',
-    `payment_terms` STRING COMMENT 'The payment terms of the process supply agreement record in the process domain.',
-    `penalty_clause_flag` BOOLEAN COMMENT 'The penalty clause flag of the process supply agreement record in the process domain.',
-    `price_currency` STRING COMMENT 'The price currency of the process supply agreement record in the process domain.',
-    `price_per_unit` STRING COMMENT 'The price per unit of the process supply agreement record in the process domain.',
-    `price_per_wafer` DECIMAL(18,2) COMMENT 'The price per wafer of the process supply agreement record in the process domain.',
-    `price_terms` STRING COMMENT 'The price terms of the process supply agreement record in the process domain.',
-    `pricing_terms` STRING COMMENT 'The pricing terms of the process supply agreement record in the process domain.',
-    `process_supply_agreement_status` STRING COMMENT 'Current status',
-    `qualification_status` STRING COMMENT 'The qualification status of the process supply agreement record in the process domain.',
-    `quality_spec_reference` STRING COMMENT 'The quality spec reference of the process supply agreement record in the process domain.',
-    `renewal_clause` STRING COMMENT 'The renewal clause of the process supply agreement record in the process domain.',
-    `renewal_terms` STRING COMMENT 'The renewal terms of the process supply agreement record in the process domain.',
-    `signed_by` STRING COMMENT 'Person who signed the agreement',
-    `signed_date` DATE COMMENT 'The signed date associated with the process supply agreement process record.',
-    `start_date` DATE COMMENT 'The start date associated with the process supply agreement process record.',
-    `take_or_pay_flag` BOOLEAN COMMENT 'The take or pay flag of the process supply agreement record in the process domain.',
-    `termination_clause` STRING COMMENT 'Termination clause details',
-    `terms_notes` STRING COMMENT 'Notes on terms',
-    `unit_price` DECIMAL(18,2) COMMENT 'The unit price of the process supply agreement record in the process domain.',
-    `updated_at` TIMESTAMP COMMENT 'Updated at timestamp',
-    `volume_commitment_qty` DECIMAL(18,2) COMMENT 'The volume commitment qty of the process supply agreement record in the process domain.',
-    `volume_commitment_units` DECIMAL(18,2) COMMENT 'The volume commitment units of the process supply agreement record in the process domain.',
-    `wafer_price_usd` DECIMAL(18,2) COMMENT 'Wafer price in USD',
-    `yield_commitment_percent` DECIMAL(18,2) COMMENT 'Yield commitment percentage',
+    `process_supply_agreement_id` BIGINT COMMENT 'Primary key for the SupplyAgreement association',
+    `process_step_id` BIGINT COMMENT 'Foreign key linking to the process step',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to the supplier',
+    `contract_number` STRING COMMENT 'Unique identifier of the supply contract for the step‑supplier pair',
+    `lead_time_days` STRING COMMENT 'Agreed lead time in days for the supplier to deliver consumables for the step',
+    `qualification_status` STRING COMMENT 'Current qualification status of the supplier for the specific process step (e.g., Qualified, Pending, Disqualified)',
     CONSTRAINT pk_process_supply_agreement PRIMARY KEY(`process_supply_agreement_id`)
 ) COMMENT 'Represents the contractual relationship between a manufacturing process step and a supplier. Each record links one process_process_step to one supplier and stores contract-specific data such as contract number, lead time, and qualification status.. Existence Justification: A process step can require consumables, tools, or materials from multiple suppliers, and a given supplier can provide those items for many different process steps across multiple process flows. The relationship is managed through supply contracts that capture contract numbers, lead times, and qualification status, and it is actively created and maintained by procurement and engineering teams.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` (
     `process_site_map_id` BIGINT COMMENT 'Primary key for site_map',
-    `equipment_site_map_id` BIGINT COMMENT 'Cross-domain SSOT reference to authoritative owner equipment.site_map.site_map_id',
-    `fab_tool_id` BIGINT COMMENT 'FK to equipment.fab_tool.fab_tool_id (P16 VREQ-042)',
+    `fab_tool_id` BIGINT COMMENT 'add column fab_tool_id (BIGINT) with FK to equipment.fab_tool.fab_tool_id - process site maps define measurement locations on tools but have zero outbound FKs',
     `address_line1` STRING COMMENT 'Primary street address of the site.',
     `address_line2` STRING COMMENT 'Secondary address information (suite, building, etc.).',
     `capacity` DECIMAL(18,2) COMMENT 'Primary quantitative capacity of the site (e.g., wafers per month).',
@@ -1236,6 +1090,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` (
     `country_code` STRING COMMENT 'ISO 3166‑1 alpha‑3 country code of the site.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the site record was first created in the system.',
     `data_classification` STRING COMMENT 'Overall data classification for records originating from this site.',
+    `process_site_map_description` STRING COMMENT 'Free‑form description providing additional context about the site.',
     `effective_from` DATE COMMENT 'Date from which the site record is considered valid for reporting.',
     `effective_until` DATE COMMENT 'Date until which the site record remains valid (nullable for open‑ended).',
     `is_primary_site` BOOLEAN COMMENT 'Indicates whether this site is the primary manufacturing location for its product line.',
@@ -1244,33 +1099,23 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` (
     `manager_email` STRING COMMENT 'Email address of the site manager.',
     `manager_name` STRING COMMENT 'Full name of the primary manager responsible for the site.',
     `manager_phone` STRING COMMENT 'Contact phone number of the site manager.',
-    `measurement_site_count` STRING COMMENT 'The measurement site count of the process site map record in the process domain.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `opening_date` DATE COMMENT 'Date the site became operational.',
     `postal_code` STRING COMMENT 'Postal or ZIP code for the site address.',
     `region` STRING COMMENT 'Higher‑level geographic region (e.g., APAC, EMEA, Americas).',
     `security_level` STRING COMMENT 'Security classification of the site (e.g., public, confidential, restricted).',
     `site_code` STRING COMMENT 'Business identifier code assigned to the site (e.g., FAB01, RND‑NY).',
-    `site_count` STRING COMMENT 'The site count of the process site map record in the process domain.',
-    `site_map_code` STRING COMMENT 'Coded value representing the site map code of the process site map process record.',
-    `site_map_description` STRING COMMENT 'Free‑form description providing additional context about the site.',
-    `site_map_name` STRING COMMENT 'The site map name of the process site map record in the process domain.',
-    `site_map_status` STRING COMMENT 'Current lifecycle status of the site.',
     `site_name` STRING COMMENT 'Human‑readable name of the manufacturing or corporate site.',
     `site_type` STRING COMMENT 'Category of the site indicating its primary function.',
     `state_province` STRING COMMENT 'State or province of the site location.',
+    `process_site_map_status` STRING COMMENT 'Current lifecycle status of the site.',
     `sub_region` STRING COMMENT 'More granular region within the main region (e.g., West Coast, Southeast Asia).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the site record.',
-    `wafer_size_mm` STRING COMMENT 'The wafer size mm of the process site map record in the process domain.',
     CONSTRAINT pk_process_site_map PRIMARY KEY(`process_site_map_id`)
 ) COMMENT 'Master reference table for site_map. Referenced by site_map_id.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` (
     `process_spc_control_plan_id` BIGINT COMMENT 'Primary key for spc_control_plan',
     `employee_id` BIGINT COMMENT 'Identifier of the operator responsible for executing the plan.',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node record within the process spc control plan process entity.',
-    `primary_authoritative_spc_control_plan_id` BIGINT COMMENT 'Authoritative cross-domain reference for spc_control_plan; SSOT owner is process.spc_control_plan',
-    `control_plan_id` BIGINT COMMENT 'Cross-domain FK to authoritative SSOT owner process.spc_control_plan (resolves MVM SSOT duplicate).',
     `approval_timestamp` TIMESTAMP COMMENT 'Timestamp when the plan was approved.',
     `approved_by` STRING COMMENT 'Name of the person who approved the current version of the plan.',
     `capability_index_cp_k` DECIMAL(18,2) COMMENT 'Calculated Cpk value indicating process capability.',
@@ -1278,13 +1123,11 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_
     `control_chart_type` STRING COMMENT 'Type of SPC chart used (if more than 6 types, consider reference product).',
     `control_limit_lower` DECIMAL(18,2) COMMENT 'Statistical lower control limit for the monitored measurement.',
     `control_limit_upper` DECIMAL(18,2) COMMENT 'Statistical upper control limit for the monitored measurement.',
-    `control_plan_code` STRING COMMENT 'Coded value representing the control plan code of the process spc control plan process record.',
-    `control_plan_name` STRING COMMENT 'The control plan name of the process spc control plan record in the process domain.',
-    `control_plan_status` STRING COMMENT 'The control plan status of the process spc control plan record in the process domain.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the control plan record was first created in the system.',
     `data_source` STRING COMMENT 'Origin of the measurement data feeding the control plan.',
     `deprecation_date` DATE COMMENT 'Date when the plan was officially deprecated.',
     `deprecation_reason` STRING COMMENT 'Reason for deprecating the control plan.',
+    `process_spc_control_plan_description` STRING COMMENT 'Detailed free‑text description of the plans intent and scope.',
     `effective_end_date` DATE COMMENT 'Date when the SPC control plan is retired or expires (null if open‑ended).',
     `effective_start_date` DATE COMMENT 'Date when the SPC control plan becomes active.',
     `equipment_identifier` STRING COMMENT 'Identifier of the equipment (e.g., tool ID) used for the measurement.',
@@ -1294,7 +1137,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_
     `measurement_frequency` STRING COMMENT 'Frequency at which measurements are taken.',
     `measurement_name` STRING COMMENT 'Name of the process metric being controlled (e.g., film thickness, CD).',
     `measurement_unit` STRING COMMENT 'Unit of measure for the monitored metric.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Free‑form notes or comments about the control plan.',
     `plan_code` STRING COMMENT 'Business identifier code used to reference the SPC control plan across systems.',
     `plan_name` STRING COMMENT 'Human‑readable name of the SPC control plan.',
@@ -1305,9 +1147,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_
     `rule_set_version` STRING COMMENT 'Version identifier for the rule set definition.',
     `sample_size` STRING COMMENT 'Number of units in each statistical sample.',
     `sampling_rate_per_hour` DECIMAL(18,2) COMMENT 'Number of samples collected per hour for the measurement.',
-    `spc_control_plan_description` STRING COMMENT 'Detailed free‑text description of the plans intent and scope.',
-    `spc_control_plan_status` STRING COMMENT 'Current lifecycle status of the SPC control plan.',
-    `ssot_owner_reference` BIGINT COMMENT 'Single-source-of-truth owner reference for the spc_control_plan concept (fabrication.spc_control_plan)',
+    `process_spc_control_plan_status` STRING COMMENT 'Current lifecycle status of the SPC control plan.',
     `target_value` DECIMAL(18,2) COMMENT 'Desired nominal value for the measurement within the control plan.',
     `technology_node_nm` STRING COMMENT 'Target technology node size in nanometers for the plan.',
     `tolerance_lower` DECIMAL(18,2) COMMENT 'Maximum acceptable deviation below the target value.',
@@ -1321,23 +1161,18 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` (
     `metrology_plan_id` BIGINT COMMENT 'Primary key for metrology_plan',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node record within the metrology plan process entity.',
+    `fabrication_technology_node_id` BIGINT COMMENT 'add column fabrication_technology_node_id (BIGINT) with FK to fabrication.fabrication_technology_node.fabrication_technology_node_id - metrology plans are node-specific but currently only self-reference',
     `superseded_metrology_plan_id` BIGINT COMMENT 'Self-referencing FK on metrology_plan (superseded_metrology_plan_id)',
-    `metrology_plan_code` STRING COMMENT 'Coded value representing the code of the metrology plan process record.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the metrology plan record was first created in the system.',
     `metrology_plan_description` STRING COMMENT 'Detailed free‑text description of the plans purpose and scope.',
     `effective_from` DATE COMMENT 'Date when the metrology plan becomes effective.',
     `effective_until` DATE COMMENT 'Date when the metrology plan expires or is superseded (null if open‑ended).',
     `frequency_per_day` STRING COMMENT 'Number of times the metrology measurement is performed each day.',
-    `is_active` BOOLEAN COMMENT 'The is active of the metrology plan record in the process domain.',
     `last_modified_by` STRING COMMENT 'User or system identifier that performed the most recent modification.',
     `lifecycle_status` STRING COMMENT 'Current lifecycle state of the plan.',
     `measurement_category` STRING COMMENT 'High‑level category of measurements covered (e.g., critical dimension, film thickness, overlay).',
-    `measurement_parameter` STRING COMMENT 'The measurement parameter of the metrology plan record in the process domain.',
     `measurement_tool` STRING COMMENT 'Identifier of the equipment used to perform the measurements.',
     `measurement_unit` STRING COMMENT 'Unit of measure used for the primary metrology values.',
-    `metrology_type` STRING COMMENT 'The metrology type of the metrology plan record in the process domain.',
-    `metrology_plan_name` STRING COMMENT 'The name of the metrology plan record in the process domain.',
     `plan_code` STRING COMMENT 'External code or number used to reference the metrology plan in manufacturing systems.',
     `plan_name` STRING COMMENT 'Human‑readable name of the metrology plan.',
     `plan_type` STRING COMMENT 'Category of the plan indicating its purpose (e.g., critical, routine, calibration).',
@@ -1353,11 +1188,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` (
     `sampling_plan_id` BIGINT COMMENT 'Primary key for sampling_plan',
-    `process_flow_id` BIGINT COMMENT 'FK to process.process_flow.process_flow_id (P14 VREQ-040)',
+    `process_flow_id` BIGINT COMMENT 'add column process_flow_id (BIGINT) with FK to process.process_flow.process_flow_id - sampling plans apply to specific process flows but currently only self-reference',
     `superseded_sampling_plan_id` BIGINT COMMENT 'Self-referencing FK on sampling_plan (superseded_sampling_plan_id)',
     `approval_date` DATE COMMENT 'Date when the sampling plan was formally approved.',
     `approved_by` STRING COMMENT 'Name of the individual who approved the sampling plan.',
-    `sampling_plan_code` STRING COMMENT 'Coded value representing the code of the sampling plan process record.',
     `compliance_regulation` STRING COMMENT 'Regulatory or industry standard that the sampling plan adheres to.',
     `control_limit_lower` DECIMAL(18,2) COMMENT 'Lower statistical control limit for the target metric.',
     `control_limit_upper` DECIMAL(18,2) COMMENT 'Upper statistical control limit for the target metric.',
@@ -1365,14 +1199,11 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` (
     `sampling_plan_description` STRING COMMENT 'Detailed textual description of the sampling plan purpose and scope.',
     `effective_end_date` DATE COMMENT 'Date when the sampling plan expires or is superseded (nullable for open‑ended).',
     `effective_start_date` DATE COMMENT 'Date when the sampling plan becomes binding.',
-    `is_active` BOOLEAN COMMENT 'The is active of the sampling plan record in the process domain.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the sampling plan is considered critical for product quality.',
     `last_executed_by` STRING COMMENT 'Operator who most recently executed the sampling plan.',
     `last_executed_date` DATE COMMENT 'Most recent date the sampling plan was executed.',
     `lot_size` STRING COMMENT 'Number of wafers or units in a production lot covered by the plan.',
     `measurement_unit` STRING COMMENT 'Unit of measure for the target metric (e.g., nm, µm, percent).',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
-    `sampling_plan_name` STRING COMMENT 'The name of the sampling plan record in the process domain.',
     `notes` STRING COMMENT 'Additional free‑form notes or comments about the sampling plan.',
     `operator` STRING COMMENT 'Name of the primary operator responsible for executing the plan.',
     `plan_code` STRING COMMENT 'Business identifier code assigned to the sampling plan.',
@@ -1381,11 +1212,9 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` (
     `qualification_status` STRING COMMENT 'Current qualification state of the sampling plan.',
     `revision_number` STRING COMMENT 'Sequential revision identifier for the sampling plan.',
     `sample_frequency` STRING COMMENT 'How often the sampling plan is applied.',
-    `sample_rate_percent` DECIMAL(18,2) COMMENT 'The sample rate percent of the sampling plan record in the process domain.',
     `sample_size` STRING COMMENT 'Number of units to be sampled per execution of the plan.',
     `sampling_method` STRING COMMENT 'Method used to select units for measurement.',
     `sampling_plan_status` STRING COMMENT 'Current lifecycle status of the sampling plan.',
-    `sampling_rate_percent` DECIMAL(18,2) COMMENT 'The sampling rate percent of the sampling plan record in the process domain.',
     `target_metric` STRING COMMENT 'Process metric that the sampling plan monitors (e.g., critical dimension, film thickness).',
     `technology_node` STRING COMMENT 'Process technology node associated with the plan (e.g., 7nm, 5nm).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the sampling plan record.',
@@ -1395,7 +1224,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` (
     `inspection_point_id` BIGINT COMMENT 'Primary key for inspection_point',
-    `process_step_id` BIGINT COMMENT 'Unique identifier for the process step record within the inspection point process entity.',
+    `process_step_id` BIGINT COMMENT 'add column process_step_id (BIGINT) with FK to process.process_step.process_step_id - inspection points occur at specific process steps but currently only self-reference',
     `upstream_inspection_point_id` BIGINT COMMENT 'Self-referencing FK on inspection_point (upstream_inspection_point_id)',
     `classification` STRING COMMENT 'Classification indicating regulatory or quality requirement level.',
     `inspection_point_code` STRING COMMENT 'Unique alphanumeric code used to identify the inspection point within the manufacturing system.',
@@ -1406,9 +1235,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` (
     `equipment_name` STRING COMMENT 'Name of the equipment or tool used for the inspection.',
     `inspection_frequency` STRING COMMENT 'Frequency at which inspections are performed at this point.',
     `inspection_method` STRING COMMENT 'Method by which the inspection is performed.',
-    `inspection_point_status` STRING COMMENT 'Current lifecycle status of the inspection point.',
     `inspection_type` STRING COMMENT 'Category of inspection performed at this point.',
-    `is_active` BOOLEAN COMMENT 'The is active of the inspection point record in the process domain.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the inspection point is critical for yield or safety.',
     `last_calibrated_date` DATE COMMENT 'Date when the inspection equipment was last calibrated.',
     `location` STRING COMMENT 'Physical location within the fab (e.g., line, bay, zone).',
@@ -1416,7 +1243,7 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` (
     `inspection_point_name` STRING COMMENT 'Human‑readable name of the inspection point.',
     `notes` STRING COMMENT 'Free‑text comments or observations about the inspection point.',
     `process_stage` STRING COMMENT 'Manufacturing process stage (e.g., lithography, etch, diffusion) where the inspection occurs.',
-    `sampling_frequency` STRING COMMENT 'The sampling frequency of the inspection point record in the process domain.',
+    `inspection_point_status` STRING COMMENT 'Current lifecycle status of the inspection point.',
     `target_value` DECIMAL(18,2) COMMENT 'Target value for the primary measurement at this inspection point.',
     `tolerance_lower` DECIMAL(18,2) COMMENT 'Lower tolerance limit for the target measurement.',
     `tolerance_upper` DECIMAL(18,2) COMMENT 'Upper tolerance limit for the target measurement.',
@@ -1426,147 +1253,14 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` (
     CONSTRAINT pk_inspection_point PRIMARY KEY(`inspection_point_id`)
 ) COMMENT 'Master reference table for inspection_point. Referenced by inspection_point_id.';
 
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` (
-    `cooling_process_flow_id` BIGINT COMMENT 'Unique identifier for the cooling process flow record within the cooling process flow process entity.',
-    `employee_id` BIGINT COMMENT 'Unique identifier for the cooling created by employee record within the cooling process flow process entity.',
-    `cooling_employee_id` BIGINT COMMENT 'Unique identifier for the cooling employee record within the cooling process flow process entity.',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node record within the cooling process flow process entity.',
-    `org_unit_id` BIGINT COMMENT 'Unique identifier for the owner org unit record within the cooling process flow process entity.',
-    `process_flow_id` BIGINT COMMENT 'Unique identifier for the process flow record within the cooling process flow process entity.',
-    `cooling_condition_id` BIGINT COMMENT 'Unique identifier for the cooling condition record within the cooling process flow process entity.',
-    `baseline_energy_consumption_kwh` DECIMAL(18,2) COMMENT 'The baseline energy consumption kwh of the cooling process flow record in the process domain.',
-    `closed_loop_recirculation_flag` BOOLEAN COMMENT 'The closed loop recirculation flag of the cooling process flow record in the process domain.',
-    `co2_reduction_kg` DECIMAL(18,2) COMMENT 'The co2 reduction kg of the cooling process flow record in the process domain.',
-    `cool_optimization_enabled` BOOLEAN COMMENT 'The cool optimization enabled of the cooling process flow record in the process domain.',
-    `cool_optimization_mode` STRING COMMENT 'The cool optimization mode of the cooling process flow record in the process domain.',
-    `cool_optimization_objective` STRING COMMENT 'The cool optimization objective of the cooling process flow record in the process domain.',
-    `coolant_recovery_target_percent` DECIMAL(18,2) COMMENT 'The coolant recovery target percent of the cooling process flow record in the process domain.',
-    `coolant_type` STRING COMMENT 'The coolant type of the cooling process flow record in the process domain.',
-    `cooling_stage_count` STRING COMMENT 'The cooling stage count of the cooling process flow record in the process domain.',
-    `cooling_step_count` STRING COMMENT 'The cooling step count of the cooling process flow record in the process domain.',
-    `cooling_strategy` STRING COMMENT 'The cooling strategy of the cooling process flow record in the process domain.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the cooling process flow record in the process domain.',
-    `cycle_time_sec` DECIMAL(18,2) COMMENT 'The cycle time sec of the cooling process flow record in the process domain.',
-    `effective_date` DATE COMMENT 'The effective date associated with the cooling process flow process record.',
-    `effective_end_date` DATE COMMENT 'The effective end date associated with the cooling process flow process record.',
-    `effective_start_date` DATE COMMENT 'The effective start date associated with the cooling process flow process record.',
-    `energy_efficiency_rating` STRING COMMENT 'The energy efficiency rating of the cooling process flow record in the process domain.',
-    `energy_efficiency_target_percent` DECIMAL(18,2) COMMENT 'The energy efficiency target percent of the cooling process flow record in the process domain.',
-    `energy_savings_target_percent` DECIMAL(18,2) COMMENT 'The energy savings target percent of the cooling process flow record in the process domain.',
-    `estimated_energy_savings_kwh` DECIMAL(18,2) COMMENT 'The estimated energy savings kwh of the cooling process flow record in the process domain.',
-    `flow_code` STRING COMMENT 'Coded value representing the flow code of the cooling process flow process record.',
-    `flow_description` STRING COMMENT 'The flow description of the cooling process flow record in the process domain.',
-    `flow_name` STRING COMMENT 'The flow name of the cooling process flow record in the process domain.',
-    `flow_revision` STRING COMMENT 'The flow revision of the cooling process flow record in the process domain.',
-    `flow_status` STRING COMMENT 'The flow status of the cooling process flow record in the process domain.',
-    `flow_version` STRING COMMENT 'The flow version of the cooling process flow record in the process domain.',
-    `is_baseline_flow` BOOLEAN COMMENT 'The is baseline flow of the cooling process flow record in the process domain.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the cooling process flow record in the process domain.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the cooling process flow record in the process domain.',
-    `notes` STRING COMMENT 'The notes of the cooling process flow record in the process domain.',
-    `optimization_method` STRING COMMENT 'The optimization method of the cooling process flow record in the process domain.',
-    `optimization_objective` STRING COMMENT 'The optimization objective of the cooling process flow record in the process domain.',
-    `optimization_target` STRING COMMENT 'The optimization target of the cooling process flow record in the process domain.',
-    `optimized_energy_consumption_kwh` DECIMAL(18,2) COMMENT 'The optimized energy consumption kwh of the cooling process flow record in the process domain.',
-    `owner_organization` STRING COMMENT 'The owner organization of the cooling process flow record in the process domain.',
-    `primary_coolant_type` STRING COMMENT 'The primary coolant type of the cooling process flow record in the process domain.',
-    `qualification_date` DATE COMMENT 'The qualification date associated with the cooling process flow process record.',
-    `qualification_status` STRING COMMENT 'The qualification status of the cooling process flow record in the process domain.',
-    `sequence_order` STRING COMMENT 'The sequence order of the cooling process flow record in the process domain.',
-    `target_energy_savings_kwh` DECIMAL(18,2) COMMENT 'The target energy savings kwh of the cooling process flow record in the process domain.',
-    `target_exit_temperature_celsius` DECIMAL(18,2) COMMENT 'The target exit temperature celsius of the cooling process flow record in the process domain.',
-    `thermal_budget_c_sec` DECIMAL(18,2) COMMENT 'The thermal budget c sec of the cooling process flow record in the process domain.',
-    `total_coolant_consumption_lpm` DECIMAL(18,2) COMMENT 'The total coolant consumption lpm of the cooling process flow record in the process domain.',
-    `total_coolant_flow_lpm` DECIMAL(18,2) COMMENT 'The total coolant flow lpm of the cooling process flow record in the process domain.',
-    `total_cooling_step_count` STRING COMMENT 'The total cooling step count of the cooling process flow record in the process domain.',
-    `waste_elimination_method` STRING COMMENT 'The waste elimination method of the cooling process flow record in the process domain.',
-    `waste_elimination_strategy` STRING COMMENT 'The waste elimination strategy of the cooling process flow record in the process domain.',
-    `waste_heat_recovery_efficiency_percent` DECIMAL(18,2) COMMENT 'The waste heat recovery efficiency percent of the cooling process flow record in the process domain.',
-    `waste_heat_recovery_enabled` BOOLEAN COMMENT 'The waste heat recovery enabled of the cooling process flow record in the process domain.',
-    `waste_heat_recovery_target_kwh` DECIMAL(18,2) COMMENT 'The waste heat recovery target kwh of the cooling process flow record in the process domain.',
-    `waste_reduction_target_percent` DECIMAL(18,2) COMMENT 'The waste reduction target percent of the cooling process flow record in the process domain.',
-    CONSTRAINT pk_cooling_process_flow PRIMARY KEY(`cooling_process_flow_id`)
-) COMMENT 'Cooling process flow with waste elimination and cool optimization options.';
-
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` (
-    `cooling_condition_id` BIGINT COMMENT 'Unique identifier for the cooling condition record within the cooling condition process entity.',
-    `employee_id` BIGINT COMMENT 'Unique identifier for the created by employee record within the cooling condition process entity.',
-    `fab_tool_id` BIGINT COMMENT 'Unique identifier for the fab tool record within the cooling condition process entity.',
-    `fabrication_technology_node_id` BIGINT COMMENT 'Unique identifier for the fabrication technology node record within the cooling condition process entity.',
-    `substance_inventory_id` BIGINT COMMENT 'Unique identifier for the substance inventory record within the cooling condition process entity.',
-    `ambient_humidity_pct` DECIMAL(18,2) COMMENT 'The ambient humidity pct of the cooling condition record in the process domain.',
-    `backside_helium_pressure_torr` DECIMAL(18,2) COMMENT 'The backside helium pressure torr of the cooling condition record in the process domain.',
-    `chamber_pressure_torr` DECIMAL(18,2) COMMENT 'The chamber pressure torr of the cooling condition record in the process domain.',
-    `chiller_setpoint_celsius` DECIMAL(18,2) COMMENT 'The chiller setpoint celsius of the cooling condition record in the process domain.',
-    `condition_code` STRING COMMENT 'Coded value representing the condition code of the cooling condition process record.',
-    `condition_name` STRING COMMENT 'The condition name of the cooling condition record in the process domain.',
-    `cool_optimization_enabled` BOOLEAN COMMENT 'The cool optimization enabled of the cooling condition record in the process domain.',
-    `cool_optimization_mode` STRING COMMENT 'The cool optimization mode of the cooling condition record in the process domain.',
-    `cool_optimization_strategy` STRING COMMENT 'The cool optimization strategy of the cooling condition record in the process domain.',
-    `cool_optimization_target_percent` DECIMAL(18,2) COMMENT 'The cool optimization target percent of the cooling condition record in the process domain.',
-    `coolant_flow_rate` DECIMAL(18,2) COMMENT 'The coolant flow rate of the cooling condition record in the process domain.',
-    `coolant_flow_rate_lpm` DECIMAL(18,2) COMMENT 'The coolant flow rate lpm of the cooling condition record in the process domain.',
-    `coolant_inlet_temperature_celsius` DECIMAL(18,2) COMMENT 'The coolant inlet temperature celsius of the cooling condition record in the process domain.',
-    `coolant_outlet_temperature_celsius` DECIMAL(18,2) COMMENT 'The coolant outlet temperature celsius of the cooling condition record in the process domain.',
-    `coolant_recirculation_flag` BOOLEAN COMMENT 'The coolant recirculation flag of the cooling condition record in the process domain.',
-    `coolant_recovery_percent` DECIMAL(18,2) COMMENT 'The coolant recovery percent of the cooling condition record in the process domain.',
-    `coolant_recycle_percent` DECIMAL(18,2) COMMENT 'The coolant recycle percent of the cooling condition record in the process domain.',
-    `coolant_type` STRING COMMENT 'The coolant type of the cooling condition record in the process domain.',
-    `cooling_method` STRING COMMENT 'The cooling method of the cooling condition record in the process domain.',
-    `cooling_rate_celsius_per_minute` DECIMAL(18,2) COMMENT 'The cooling rate celsius per minute of the cooling condition record in the process domain.',
-    `cooling_rate_celsius_per_second` DECIMAL(18,2) COMMENT 'The cooling rate celsius per second of the cooling condition record in the process domain.',
-    `cooling_time_seconds` DECIMAL(18,2) COMMENT 'The cooling time seconds of the cooling condition record in the process domain.',
-    `created_date` DATE COMMENT 'The created date associated with the cooling condition process record.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the cooling condition record in the process domain.',
-    `cooling_condition_description` STRING COMMENT 'The description of the cooling condition record in the process domain.',
-    `effective_end_date` DATE COMMENT 'The effective end date associated with the cooling condition process record.',
-    `effective_start_date` DATE COMMENT 'The effective start date associated with the cooling condition process record.',
-    `energy_consumption_kwh` DECIMAL(18,2) COMMENT 'The energy consumption kwh of the cooling condition record in the process domain.',
-    `energy_efficiency_ratio` DECIMAL(18,2) COMMENT 'The energy efficiency ratio of the cooling condition record in the process domain.',
-    `energy_efficiency_target_percent` DECIMAL(18,2) COMMENT 'The energy efficiency target percent of the cooling condition record in the process domain.',
-    `heat_load_watts` DECIMAL(18,2) COMMENT 'The heat load watts of the cooling condition record in the process domain.',
-    `hold_time_sec` DECIMAL(18,2) COMMENT 'The hold time sec of the cooling condition record in the process domain.',
-    `inlet_temperature_celsius` DECIMAL(18,2) COMMENT 'The inlet temperature celsius of the cooling condition record in the process domain.',
-    `is_baseline_condition` BOOLEAN COMMENT 'The is baseline condition of the cooling condition record in the process domain.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the cooling condition record in the process domain.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the cooling condition record in the process domain.',
-    `notes` STRING COMMENT 'The notes of the cooling condition record in the process domain.',
-    `optimization_achieved_percent` DECIMAL(18,2) COMMENT 'The optimization achieved percent of the cooling condition record in the process domain.',
-    `optimization_mode` STRING COMMENT 'The optimization mode of the cooling condition record in the process domain.',
-    `optimization_status` STRING COMMENT 'The optimization status of the cooling condition record in the process domain.',
-    `outlet_temperature_celsius` DECIMAL(18,2) COMMENT 'The outlet temperature celsius of the cooling condition record in the process domain.',
-    `owner_organization` STRING COMMENT 'The owner organization of the cooling condition record in the process domain.',
-    `qualification_date` DATE COMMENT 'The qualification date associated with the cooling condition process record.',
-    `qualification_status` STRING COMMENT 'The qualification status of the cooling condition record in the process domain.',
-    `ramp_rate_c_per_min` DECIMAL(18,2) COMMENT 'The ramp rate c per min of the cooling condition record in the process domain.',
-    `target_chuck_temperature_celsius` DECIMAL(18,2) COMMENT 'The target chuck temperature celsius of the cooling condition record in the process domain.',
-    `target_temperature_c` DECIMAL(18,2) COMMENT 'The target temperature c of the cooling condition record in the process domain.',
-    `target_temperature_celsius` DECIMAL(18,2) COMMENT 'The target temperature celsius of the cooling condition record in the process domain.',
-    `temperature_tolerance_c` DECIMAL(18,2) COMMENT 'The temperature tolerance c of the cooling condition record in the process domain.',
-    `temperature_tolerance_celsius` DECIMAL(18,2) COMMENT 'The temperature tolerance celsius of the cooling condition record in the process domain.',
-    `version_number` STRING COMMENT 'The version number of the cooling condition record in the process domain.',
-    `waste_coolant_volume_liters` DECIMAL(18,2) COMMENT 'The waste coolant volume liters of the cooling condition record in the process domain.',
-    `waste_disposal_classification` STRING COMMENT 'The waste disposal classification of the cooling condition record in the process domain.',
-    `waste_elimination_method` STRING COMMENT 'The waste elimination method of the cooling condition record in the process domain.',
-    `waste_heat_recovered_kwh` DECIMAL(18,2) COMMENT 'The waste heat recovered kwh of the cooling condition record in the process domain.',
-    `waste_heat_recovery_enabled` BOOLEAN COMMENT 'The waste heat recovery enabled of the cooling condition record in the process domain.',
-    `waste_heat_recovery_flag` BOOLEAN COMMENT 'The waste heat recovery flag of the cooling condition record in the process domain.',
-    `waste_reduction_percent` DECIMAL(18,2) COMMENT 'The waste reduction percent of the cooling condition record in the process domain.',
-    CONSTRAINT pk_cooling_condition PRIMARY KEY(`cooling_condition_id`)
-) COMMENT 'Cooling process condition covering coolant, waste heat elimination and cool optimization options.';
-
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ADD CONSTRAINT `fk_process_process_flow_cooling_condition_id` FOREIGN KEY (`cooling_condition_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`cooling_condition`(`cooling_condition_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ADD CONSTRAINT `fk_process_process_flow_process_technology_node_id` FOREIGN KEY (`process_technology_node_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_technology_node`(`process_technology_node_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_cooling_condition_id` FOREIGN KEY (`cooling_condition_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`cooling_condition`(`cooling_condition_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_metrology_plan_id` FOREIGN KEY (`metrology_plan_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`metrology_plan`(`metrology_plan_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_opc_rule_set_id` FOREIGN KEY (`opc_rule_set_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`opc_rule_set`(`opc_rule_set_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_process_spc_control_plan_id` FOREIGN KEY (`process_spc_control_plan_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_spc_control_plan`(`process_spc_control_plan_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ADD CONSTRAINT `fk_process_process_step_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ADD CONSTRAINT `fk_process_recipe_cooling_condition_id` FOREIGN KEY (`cooling_condition_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`cooling_condition`(`cooling_condition_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ADD CONSTRAINT `fk_process_recipe_process_step_id` FOREIGN KEY (`process_step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_step`(`process_step_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_cooling_condition_id` FOREIGN KEY (`cooling_condition_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`cooling_condition`(`cooling_condition_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_primary_lot_recipe_id` FOREIGN KEY (`primary_lot_recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_process_step_id` FOREIGN KEY (`process_step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_step`(`process_step_id`);
@@ -1577,6 +1271,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ADD CONSTRAINT `fk_process_capability_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ADD CONSTRAINT `fk_process_meef_parameter_opc_rule_set_id` FOREIGN KEY (`opc_rule_set_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`opc_rule_set`(`opc_rule_set_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ADD CONSTRAINT `fk_process_process_qualification_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ADD CONSTRAINT `fk_process_process_qualification_tertiary_process_flow_id` FOREIGN KEY (`tertiary_process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ADD CONSTRAINT `fk_process_change_notification_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ADD CONSTRAINT `fk_process_change_notification_primary_change_process_flow_id` FOREIGN KEY (`primary_change_process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ADD CONSTRAINT `fk_process_yield_loss_event_inspection_point_id` FOREIGN KEY (`inspection_point_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`inspection_point`(`inspection_point_id`);
@@ -1598,38 +1293,30 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ADD CONSTRAINT `fk_
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ADD CONSTRAINT `fk_process_ocap_action_spc_measurement_id` FOREIGN KEY (`spc_measurement_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_measurement`(`spc_measurement_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ADD CONSTRAINT `fk_process_doe_experiment_process_step_id` FOREIGN KEY (`process_step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_step`(`process_step_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ADD CONSTRAINT `fk_process_flow_qualification_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ADD CONSTRAINT `fk_process_process_supply_agreement_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ADD CONSTRAINT `fk_process_process_supply_agreement_process_step_id` FOREIGN KEY (`process_step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_step`(`process_step_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ADD CONSTRAINT `fk_process_process_spc_control_plan_primary_authoritative_spc_control_plan_id` FOREIGN KEY (`primary_authoritative_spc_control_plan_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_spc_control_plan`(`process_spc_control_plan_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ADD CONSTRAINT `fk_process_metrology_plan_superseded_metrology_plan_id` FOREIGN KEY (`superseded_metrology_plan_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`metrology_plan`(`metrology_plan_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ADD CONSTRAINT `fk_process_sampling_plan_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ADD CONSTRAINT `fk_process_sampling_plan_superseded_sampling_plan_id` FOREIGN KEY (`superseded_sampling_plan_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`sampling_plan`(`sampling_plan_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ADD CONSTRAINT `fk_process_inspection_point_process_step_id` FOREIGN KEY (`process_step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_step`(`process_step_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ADD CONSTRAINT `fk_process_inspection_point_upstream_inspection_point_id` FOREIGN KEY (`upstream_inspection_point_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`inspection_point`(`inspection_point_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ADD CONSTRAINT `fk_process_cooling_process_flow_process_flow_id` FOREIGN KEY (`process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`process_flow`(`process_flow_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ADD CONSTRAINT `fk_process_cooling_process_flow_cooling_condition_id` FOREIGN KEY (`cooling_condition_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`cooling_condition`(`cooling_condition_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_semiconductors_v1`.`process` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_semiconductors_v1`.`process` SET TAGS ('dbx_domain' = 'process');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `export_license_id` SET TAGS ('dbx_business_glossary_term' = 'Export License Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `process_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Technology Node Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `baseline_cpk` SET TAGS ('dbx_business_glossary_term' = 'Baseline Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `beol_step_count` SET TAGS ('dbx_business_glossary_term' = 'Back End of Line (BEOL) Step Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `cool_optimization_enabled` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `cooling_step_count` SET TAGS ('dbx_business_glossary_term' = 'Cooling Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `critical_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Layer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `cycle_time_days` SET TAGS ('dbx_business_glossary_term' = 'Cycle Time (Days)');
@@ -1644,15 +1331,13 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `feol
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_code` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_for_node` SET TAGS ('dbx_business_glossary_term' = 'Flow For Node');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_name` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_revision` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Revision');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `flow_type` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `is_baseline_flow` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Flow');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `lithography_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Lithography Layer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Layer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `mol_step_count` SET TAGS ('dbx_business_glossary_term' = 'Middle of Line (MOL) Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `opc_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set Version');
@@ -1663,11 +1348,10 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `qual
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `supports_multi_patterning` SET TAGS ('dbx_business_glossary_term' = 'Supports Multi-Patterning');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `target_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Yield Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `total_step_count` SET TAGS ('dbx_business_glossary_term' = 'Total Step Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_flow` ALTER COLUMN `waste_heat_recovery_enabled` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Enabled');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Identifier (ID)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Position Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1681,7 +1365,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `proc
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `process_spc_control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Control Plan Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Chamber Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Identifier (ID)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `cooling_target_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Cooling Target Temperature Celsius');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `cycle_time_target_minutes` SET TAGS ('dbx_business_glossary_term' = 'Cycle Time Target (Minutes)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `dose_target` SET TAGS ('dbx_business_glossary_term' = 'Dose Target');
@@ -1689,14 +1372,10 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `effe
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `energy_target_kev` SET TAGS ('dbx_business_glossary_term' = 'Energy Target (keV)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `gas_flow_rate_sccm` SET TAGS ('dbx_business_glossary_term' = 'Gas Flow Rate (SCCM)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `is_cooling_step` SET TAGS ('dbx_business_glossary_term' = 'Is Cooling Step');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `is_critical_step` SET TAGS ('dbx_business_glossary_term' = 'Critical Step Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `is_rework_allowed` SET TAGS ('dbx_business_glossary_term' = 'Rework Allowed Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `meef_value` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Value');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `operation_type` SET TAGS ('dbx_business_glossary_term' = 'Operation Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `power_setpoint_watts` SET TAGS ('dbx_business_glossary_term' = 'Power Setpoint (Watts)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `pressure_setpoint_torr` SET TAGS ('dbx_business_glossary_term' = 'Pressure Setpoint (Torr)');
@@ -1709,6 +1388,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `qual
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `sequence_order` SET TAGS ('dbx_business_glossary_term' = 'Sequence Order');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_description` SET TAGS ('dbx_business_glossary_term' = 'Step Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_name` SET TAGS ('dbx_business_glossary_term' = 'Step Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_number` SET TAGS ('dbx_business_glossary_term' = 'Step Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_status` SET TAGS ('dbx_business_glossary_term' = 'Step Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `step_status` SET TAGS ('dbx_value_regex' = 'active|inactive|development|qualification|deprecated|obsolete');
@@ -1719,12 +1399,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `temp
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `tool_class` SET TAGS ('dbx_business_glossary_term' = 'Tool Class');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_step` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Default Fab Tool Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `fabrication_process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Recipe Approval Status');
@@ -1735,8 +1415,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_platen
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_removal_target_nm` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Removal Target (nanometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_slurry_type` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Slurry Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_table_speed_rpm` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Table Speed (revolutions per minute)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `coolant_type` SET TAGS ('dbx_business_glossary_term' = 'Coolant Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cooling_rate_celsius_per_minute` SET TAGS ('dbx_business_glossary_term' = 'Cooling Rate Celsius Per Minute');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Recipe Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `deposition_method` SET TAGS ('dbx_business_glossary_term' = 'Deposition Method');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `deposition_pressure_torr` SET TAGS ('dbx_business_glossary_term' = 'Deposition Pressure (Torr)');
@@ -1763,19 +1441,16 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_illu
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_numerical_aperture` SET TAGS ('dbx_business_glossary_term' = 'Lithography Numerical Aperture (NA)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_scanner_model` SET TAGS ('dbx_business_glossary_term' = 'Lithography Scanner Model');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_wavelength_nm` SET TAGS ('dbx_business_glossary_term' = 'Lithography Wavelength (nanometers)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Recipe Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_business_glossary_term' = 'Recipe Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `process_type` SET TAGS ('dbx_business_glossary_term' = 'Process Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `tool_class` SET TAGS ('dbx_business_glossary_term' = 'Tool Class');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Recipe Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1819,18 +1494,20 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `r
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Process Run Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `scrap_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Scrap Reason Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `wafer_count` SET TAGS ('dbx_business_glossary_term' = 'Wafer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `waste_heat_recovered_kwh` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovered Kwh');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` SET TAGS ('dbx_subdomain' = 'statistical_control');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Measurement Tool ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fabrication_process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Wafer Lot ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `wafer_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `baseline_data_points` SET TAGS ('dbx_business_glossary_term' = 'Baseline Data Points');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_activation_date` SET TAGS ('dbx_business_glossary_term' = 'Chart Activation Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_name` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Chart Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_owner` SET TAGS ('dbx_business_glossary_term' = 'Chart Owner');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_retirement_date` SET TAGS ('dbx_business_glossary_term' = 'Chart Retirement Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_status` SET TAGS ('dbx_business_glossary_term' = 'Chart Status');
@@ -1847,10 +1524,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measured_value` SET TAGS ('dbx_business_glossary_term' = 'Measured Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measurement_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Measurement Sequence Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `monitored_parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Monitored Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `monitored_parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `ocap_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Control Action Plan (OCAP) Reference Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `parameter_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Parameter Unit of Measure');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `process_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Process Action Taken');
@@ -1860,13 +1535,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `sampling_frequency` SET TAGS ('dbx_business_glossary_term' = 'Sampling Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site X Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site Y Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `specification_lower_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Lower Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `specification_upper_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Upper Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
@@ -1877,9 +1546,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` SET TAGS ('dbx_
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `spc_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Measurement ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Metrology Tool ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fabrication_process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
@@ -1902,25 +1568,17 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `m
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_type` SET TAGS ('dbx_business_glossary_term' = 'Measurement Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_type` SET TAGS ('dbx_value_regex' = 'inline|offline|final_inspection|qualification|monitor_wafer');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `out_of_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Out of Control Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `out_of_spec_flag` SET TAGS ('dbx_business_glossary_term' = 'Out of Specification Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_code` SET TAGS ('dbx_business_glossary_term' = 'Parameter Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `process_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Process Action Taken');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `rule_violation_flags` SET TAGS ('dbx_business_glossary_term' = 'Rule Violation Flags');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `sigma_level` SET TAGS ('dbx_business_glossary_term' = 'Sigma Level');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_number` SET TAGS ('dbx_business_glossary_term' = 'Site Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site X Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site Y Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `specification_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Lower Specification Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `specification_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
@@ -1961,6 +1619,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `normal
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `out_of_control_points` SET TAGS ('dbx_business_glossary_term' = 'Out of Control Points');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `parameter_code` SET TAGS ('dbx_business_glossary_term' = 'Parameter Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `pp_index` SET TAGS ('dbx_business_glossary_term' = 'Process Performance Index (Pp)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `ppk_index` SET TAGS ('dbx_business_glossary_term' = 'Process Performance Index (Ppk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `process_area` SET TAGS ('dbx_business_glossary_term' = 'Process Area');
@@ -1979,12 +1638,13 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `unit_o
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `upper_specification_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`capability` ALTER COLUMN `wafer_size_mm` SET TAGS ('dbx_business_glossary_term' = 'Wafer Size (mm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `opc_rule_set_id` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `assist_feature_rules` SET TAGS ('dbx_business_glossary_term' = 'Assist Feature Rules');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `eda_tool_name` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `eda_tool_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `eda_tool_vendor` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Vendor');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `eda_tool_version` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `illumination_mode` SET TAGS ('dbx_business_glossary_term' = 'Illumination Mode');
@@ -1998,14 +1658,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `meef
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `meef_pitch_nm` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Pitch (Nanometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `meef_target_cd_nm` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Target Critical Dimension (CD) (Nanometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `meef_value` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Value');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `opc_for_node` SET TAGS ('dbx_business_glossary_term' = 'Opc For Node');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `opc_model_type` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Model Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `opc_model_type` SET TAGS ('dbx_value_regex' = 'rule_based|model_based|hybrid|inverse_lithography');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `process_bias_table_reference` SET TAGS ('dbx_business_glossary_term' = 'Process Bias Table Reference');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `process_window_dof_nm` SET TAGS ('dbx_business_glossary_term' = 'Process Window Depth of Focus (DOF) (Nanometers)');
@@ -2017,13 +1675,15 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule_set_file_path` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set File Path');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule_set_file_path` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule_set_name` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule_set_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `scanner_numerical_aperture` SET TAGS ('dbx_business_glossary_term' = 'Scanner Numerical Aperture (NA)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `sigma_inner` SET TAGS ('dbx_business_glossary_term' = 'Sigma Inner Illumination Parameter');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `sigma_outer` SET TAGS ('dbx_business_glossary_term' = 'Sigma Outer Illumination Parameter');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `target_layer_name` SET TAGS ('dbx_business_glossary_term' = 'Target Lithography Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`opc_rule_set` ALTER COLUMN `target_layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `meef_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Parameter ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Lot ID');
@@ -2044,6 +1704,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `il
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `illumination_mode` SET TAGS ('dbx_value_regex' = 'conventional|annular|dipole|quadrupole|quasar|freeform');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Critical Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `lithography_type` SET TAGS ('dbx_business_glossary_term' = 'Lithography Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `lithography_type` SET TAGS ('dbx_value_regex' = 'DUV|EUV|i-line|KrF|ArF');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `mask_cd_target_nm` SET TAGS ('dbx_business_glossary_term' = 'Mask Critical Dimension (CD) Target (nm)');
@@ -2068,7 +1729,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `si
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`meef_parameter` ALTER COLUMN `wavelength_nm` SET TAGS ('dbx_business_glossary_term' = 'Exposure Wavelength (nm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` SET TAGS ('dbx_subdomain' = 'qualification_management');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `process_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Process Qualification ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
@@ -2078,13 +1739,14 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COL
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Flow Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `research_program_id` SET TAGS ('dbx_business_glossary_term' = 'Research Program Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `tertiary_process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Qualification For Flow');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `acceptance_criteria_summary` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria Summary');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `actual_cpk` SET TAGS ('dbx_business_glossary_term' = 'Actual Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `actual_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Actual Yield Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `cooling_optimization_evaluated` SET TAGS ('dbx_business_glossary_term' = 'Cooling Optimization Evaluated');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `corrective_action_plan` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `customer_approval_status` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Status');
@@ -2095,17 +1757,16 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COL
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `failure_mode_summary` SET TAGS ('dbx_business_glossary_term' = 'Failure Mode Summary');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `lot_count` SET TAGS ('dbx_business_glossary_term' = 'Qualification Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Qualification Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `plan_reference` SET TAGS ('dbx_business_glossary_term' = 'Qualification Plan Reference');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `plm_system_source` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) System Source');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `plm_system_source` SET TAGS ('dbx_value_regex' = 'oracle_agile|siemens_teamcenter|other');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `plm_workflow_reference` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) Workflow ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `qualification_name` SET TAGS ('dbx_business_glossary_term' = 'Qualification Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `qualification_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `qualification_number` SET TAGS ('dbx_business_glossary_term' = 'Qualification Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `qualification_number` SET TAGS ('dbx_value_regex' = '^PQ-[A-Z0-9]{6,12}$');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
@@ -2116,13 +1777,14 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COL
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `risk_assessment` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `sign_off_date` SET TAGS ('dbx_business_glossary_term' = 'Sign-Off Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `sign_off_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Sign-Off Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `sign_off_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Start Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `target_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `target_cpk` SET TAGS ('dbx_business_glossary_term' = 'Target Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `target_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Yield Percent');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_qualification` ALTER COLUMN `wafer_count` SET TAGS ('dbx_business_glossary_term' = 'Qualification Wafer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` SET TAGS ('dbx_subdomain' = 'qualification_management');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `change_notification_id` SET TAGS ('dbx_business_glossary_term' = 'Change Notification Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `fabrication_process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Affected Process Flow ID');
@@ -2149,7 +1811,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUM
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `change_title` SET TAGS ('dbx_business_glossary_term' = 'Change Title');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `change_type` SET TAGS ('dbx_business_glossary_term' = 'Change Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `change_type` SET TAGS ('dbx_value_regex' = 'process|material|equipment|design|facility|supplier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `cooling_process_impact` SET TAGS ('dbx_business_glossary_term' = 'Cooling Process Impact');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `cost_impact` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `cost_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -2165,6 +1826,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUM
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `notification_date` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `pcn_number` SET TAGS ('dbx_business_glossary_term' = 'Process Change Notification (PCN) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `pcn_number` SET TAGS ('dbx_value_regex' = '^PCN-[0-9]{6,10}$');
@@ -2179,7 +1841,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUM
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `yield_impact_percent` SET TAGS ('dbx_business_glossary_term' = 'Yield Impact Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`change_notification` ALTER COLUMN `yield_impact_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `yield_loss_event_id` SET TAGS ('dbx_business_glossary_term' = 'Yield Loss Event ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
@@ -2210,10 +1872,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `investigation_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Investigation Start Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `lot_hold_applied` SET TAGS ('dbx_business_glossary_term' = 'Lot Hold Applied');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `reported_by` SET TAGS ('dbx_business_glossary_term' = 'Reported By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `resolution_status` SET TAGS ('dbx_business_glossary_term' = 'Resolution Status');
@@ -2229,7 +1889,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `wafer_position_y_mm` SET TAGS ('dbx_business_glossary_term' = 'Wafer Position Y Millimeters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `yield_loss_mode` SET TAGS ('dbx_business_glossary_term' = 'Yield Loss Mode');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `defect_inspection_result_id` SET TAGS ('dbx_business_glossary_term' = 'Defect Inspection Result Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -2266,6 +1926,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `killer_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Killer Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Inspection Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `nuisance_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Nuisance Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `nuisance_filter_applied` SET TAGS ('dbx_business_glossary_term' = 'Nuisance Filter Applied Flag');
@@ -2281,7 +1942,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `spc_control_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Upper Control Limit');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `total_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Total Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `process_metrology_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for metrology_measurement');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -2298,12 +1959,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` A
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `cpk_value` SET TAGS ('dbx_business_glossary_term' = 'Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_value_regex' = 'Good|Suspect|Bad|Uncalibrated');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `disposition` SET TAGS ('dbx_business_glossary_term' = 'Disposition');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `disposition` SET TAGS ('dbx_value_regex' = 'Pass|Fail|Marginal|Rework|Hold');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `fab_site_code` SET TAGS ('dbx_business_glossary_term' = 'Fabrication (FAB) Site Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `lower_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Control Limit (LCL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `lower_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Specification Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `max_value` SET TAGS ('dbx_business_glossary_term' = 'Maximum Value');
@@ -2319,9 +1980,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` A
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `median_value` SET TAGS ('dbx_business_glossary_term' = 'Median Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `metrology_at_step` SET TAGS ('dbx_business_glossary_term' = 'Metrology At Step');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `min_value` SET TAGS ('dbx_business_glossary_term' = 'Minimum Value');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `range_value` SET TAGS ('dbx_business_glossary_term' = 'Range Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `site_count` SET TAGS ('dbx_business_glossary_term' = 'Site Count');
@@ -2335,7 +1993,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` A
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `upper_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_metrology_measurement` ALTER COLUMN `wafer_slot_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Slot Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Implant Condition Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Anneal Recipe Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Identifier (ID)');
@@ -2343,6 +2001,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `fabrication_process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `photomask_id` SET TAGS ('dbx_business_glossary_term' = 'Mask Layer Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Step Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Control Plan Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `anneal_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Anneal Temperature (°C)');
@@ -2353,6 +2013,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `beam_current_ma` SET TAGS ('dbx_business_glossary_term' = 'Beam Current (mA)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'Implant Condition Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'Implant Condition Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_condition_description` SET TAGS ('dbx_business_glossary_term' = 'Implant Condition Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `device_type` SET TAGS ('dbx_business_glossary_term' = 'Device Type');
@@ -2362,6 +2023,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_dose_ions_per_cm2` SET TAGS ('dbx_business_glossary_term' = 'Implant Dose (ions/cm²)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_energy_kev` SET TAGS ('dbx_business_glossary_term' = 'Implant Energy (keV)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_layer_name` SET TAGS ('dbx_business_glossary_term' = 'Implant Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_purpose` SET TAGS ('dbx_business_glossary_term' = 'Implant Purpose');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_tool_class` SET TAGS ('dbx_business_glossary_term' = 'Implant Tool Class');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `implant_tool_class` SET TAGS ('dbx_value_regex' = 'high_current|medium_current|low_energy|high_energy|ultra_high_dose');
@@ -2383,7 +2045,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `twist_angle_degrees` SET TAGS ('dbx_business_glossary_term' = 'Twist Angle (degrees)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`implant_condition` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `deposition_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Deposition Condition ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
@@ -2395,6 +2057,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLU
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `chamber_configuration` SET TAGS ('dbx_business_glossary_term' = 'Chamber Configuration');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'Deposition Condition Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'Deposition Condition Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `deposition_method` SET TAGS ('dbx_business_glossary_term' = 'Deposition Method');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `deposition_method` SET TAGS ('dbx_value_regex' = 'LPCVD|PECVD|ALD|PVD|EPI|MOCVD');
@@ -2409,6 +2072,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLU
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `film_stress_mpa` SET TAGS ('dbx_business_glossary_term' = 'Film Stress (MPa)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `precursor_gas_1` SET TAGS ('dbx_business_glossary_term' = 'Precursor Gas 1');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `precursor_gas_1_flow_rate_sccm` SET TAGS ('dbx_business_glossary_term' = 'Precursor Gas 1 Flow Rate (SCCM)');
@@ -2432,13 +2096,10 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLU
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `uniformity_specification_percent` SET TAGS ('dbx_business_glossary_term' = 'Uniformity Specification (Percent)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`deposition_condition` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `etch_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Etch Condition Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Step Id (Foreign Key)');
@@ -2447,6 +2108,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `ap
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `chamber_pressure_torr` SET TAGS ('dbx_business_glossary_term' = 'Chamber Pressure (Torr)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'Etch Condition Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'Etch Condition Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `critical_dimension_bias_nm` SET TAGS ('dbx_business_glossary_term' = 'Critical Dimension (CD) Bias (Nanometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
@@ -2485,14 +2147,16 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `ta
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `tool_class` SET TAGS ('dbx_business_glossary_term' = 'Tool Class');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`etch_condition` ALTER COLUMN `uniformity_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Etch Uniformity Target (Percent)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `cmp_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Condition ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `substance_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Substance Inventory Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `carrier_speed_rpm` SET TAGS ('dbx_business_glossary_term' = 'Carrier Speed (RPM)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `cmp_step_type` SET TAGS ('dbx_business_glossary_term' = 'CMP Step Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'CMP Condition Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'CMP Condition Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `conditioner_type` SET TAGS ('dbx_business_glossary_term' = 'Pad Conditioner Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `conditioning_frequency` SET TAGS ('dbx_business_glossary_term' = 'Pad Conditioning Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -2511,6 +2175,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `las
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Process Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `pad_product_name` SET TAGS ('dbx_business_glossary_term' = 'Polishing Pad Product Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `pad_product_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `pad_type` SET TAGS ('dbx_business_glossary_term' = 'Polishing Pad Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `pad_vendor` SET TAGS ('dbx_business_glossary_term' = 'Polishing Pad Vendor');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `platen_pressure_psi` SET TAGS ('dbx_business_glossary_term' = 'Platen Pressure (PSI)');
@@ -2522,28 +2187,33 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `qua
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `qualification_status` SET TAGS ('dbx_value_regex' = 'draft|under qualification|qualified|production approved|suspended|obsolete');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `qualified_by_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Qualified By Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `qualified_by_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `removal_rate_angstrom_per_min` SET TAGS ('dbx_business_glossary_term' = 'Material Removal Rate (Angstrom/min)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `selectivity_ratio` SET TAGS ('dbx_business_glossary_term' = 'CMP Selectivity Ratio');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `slurry_chemistry_type` SET TAGS ('dbx_business_glossary_term' = 'Slurry Chemistry Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `slurry_flow_rate_ml_per_min` SET TAGS ('dbx_business_glossary_term' = 'Slurry Flow Rate (mL/min)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `slurry_product_name` SET TAGS ('dbx_business_glossary_term' = 'Slurry Product Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `slurry_product_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `slurry_vendor` SET TAGS ('dbx_business_glossary_term' = 'Slurry Vendor');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `table_speed_rpm` SET TAGS ('dbx_business_glossary_term' = 'Platen Table Speed (RPM)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `target_layer_name` SET TAGS ('dbx_business_glossary_term' = 'Target Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `target_layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `target_removal_amount_angstrom` SET TAGS ('dbx_business_glossary_term' = 'Target Removal Amount (Angstrom)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Condition Version Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `wafer_to_wafer_uniformity_spec_percent` SET TAGS ('dbx_business_glossary_term' = 'Wafer-to-Wafer Uniformity Specification (Percent)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`cmp_condition` ALTER COLUMN `within_wafer_uniformity_spec_percent` SET TAGS ('dbx_business_glossary_term' = 'Within-Wafer Uniformity Specification (Percent)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `litho_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Lithography Condition ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `opc_rule_set_id` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Step Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `substance_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Substance Inventory Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `cd_tolerance_nm` SET TAGS ('dbx_business_glossary_term' = 'Critical Dimension (CD) Tolerance (nm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'Lithography Condition Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'Lithography Condition Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `depth_of_focus_nm` SET TAGS ('dbx_business_glossary_term' = 'Depth of Focus (DOF) (nm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `develop_process_type` SET TAGS ('dbx_business_glossary_term' = 'Develop Process Type');
@@ -2564,6 +2234,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `i
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `is_baseline_condition` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Condition');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Target Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `lithography_type` SET TAGS ('dbx_business_glossary_term' = 'Lithography Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `lithography_type` SET TAGS ('dbx_value_regex' = 'EUV|DUV|i-line|g-line');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `multi_patterning_type` SET TAGS ('dbx_business_glossary_term' = 'Multi-Patterning Type');
@@ -2572,6 +2243,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `n
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `numerical_aperture` SET TAGS ('dbx_business_glossary_term' = 'Numerical Aperture (NA)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `overlay_tolerance_nm` SET TAGS ('dbx_business_glossary_term' = 'Overlay Tolerance (nm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `post_exposure_bake_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Post-Exposure Bake (PEB) Temperature (°C)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`litho_condition` ALTER COLUMN `post_exposure_bake_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Post-Exposure Bake (PEB) Time (seconds)');
@@ -2601,9 +2273,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `spc_c
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `spc_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Measurement Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `tertiary_ocap_assigned_engineer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Tertiary Ocap Assigned Engineer Employee Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `tertiary_ocap_assigned_engineer_employee_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `tertiary_ocap_assigned_engineer_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `tertiary_ocap_assigned_engineer_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `tertiary_ocap_assigned_engineer_employee_id` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `action_completed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'OCAP Action Completed Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `action_initiated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'OCAP Action Initiated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `action_status` SET TAGS ('dbx_business_glossary_term' = 'OCAP Action Status');
@@ -2643,16 +2312,11 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `verif
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `verification_result` SET TAGS ('dbx_value_regex' = 'effective|ineffective|partially_effective|pending');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`ocap_action` ALTER COLUMN `verification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'OCAP Action Verification Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` SET TAGS ('dbx_subdomain' = 'flow_definition');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` SET TAGS ('dbx_ssot_owner' = 'fabrication.fabrication_technology_node');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `process_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Product Process Node Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `technology_control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Control Plan Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `authoritative_fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Authoritative Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_ssot_owner_ref' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `fabrication_technology_node_ref_id` SET TAGS ('dbx_ssot_owner' = 'fabrication.fabrication_technology_node');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `fabrication_technology_node_ref_id` SET TAGS ('dbx_references' = 'technology_node');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_ssot_reference' = 'fabrication_technology_node');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `application_scope` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Application Scope');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `baseline_cpk` SET TAGS ('dbx_business_glossary_term' = 'Baseline Cpk (Process Capability Index)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `baseline_yield_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Baseline Yield Target (%)');
@@ -2677,30 +2341,26 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER C
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `lithography_type` SET TAGS ('dbx_value_regex' = 'duv|euv|immersion|dry|ebeam');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Layer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `minimum_metal_pitch_nm` SET TAGS ('dbx_business_glossary_term' = 'Minimum Metal Pitch (nm)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `node_code` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `node_generation` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Generation');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `node_name` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `node_nm` SET TAGS ('dbx_business_glossary_term' = 'Node Nm');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `node_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `pdk_version` SET TAGS ('dbx_business_glossary_term' = 'PDK (Process Design Kit) Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `production_readiness_status` SET TAGS ('dbx_business_glossary_term' = 'Production Readiness Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Qualification Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Qualification Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `qualification_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|qualified|production_approved|failed|on_hold');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `ssot_owner_reference` SET TAGS ('dbx_business_glossary_term' = 'Ssot Owner Reference');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `ssot_owner_reference` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `supports_multi_patterning` SET TAGS ('dbx_business_glossary_term' = 'Supports Multi-Patterning Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `target_performance_improvement_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Performance Improvement (%)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `target_power_efficiency_improvement_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Power Efficiency Improvement (%)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `target_transistor_density_per_mm2` SET TAGS ('dbx_business_glossary_term' = 'Target Transistor Density (per mm²)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_technology_node` ALTER COLUMN `wavelength_nm` SET TAGS ('dbx_business_glossary_term' = 'Lithography Wavelength (nm)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` SET TAGS ('dbx_subdomain' = 'statistical_control');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `excursion_id` SET TAGS ('dbx_business_glossary_term' = 'Excursion Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -2741,6 +2401,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `measure
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_value_regex' = 'equipment|material|process|human|environmental|unknown');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_description` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Description');
@@ -2755,8 +2416,9 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `upper_c
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `yield_loss_mode` SET TAGS ('dbx_business_glossary_term' = 'Yield Loss Mode');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `yield_loss_mode` SET TAGS ('dbx_value_regex' = 'parametric|systematic|random|electrical|none');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` SET TAGS ('dbx_subdomain' = 'qualification_management');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` SET TAGS ('dbx_subdomain' = 'condition_parameters');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `doe_experiment_id` SET TAGS ('dbx_business_glossary_term' = 'Design of Experiments (DOE) Experiment ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -2808,142 +2470,27 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `wa
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `wafer_split_plan` SET TAGS ('dbx_business_glossary_term' = 'Wafer Split Plan');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`doe_experiment` ALTER COLUMN `yield_impact_percent` SET TAGS ('dbx_business_glossary_term' = 'Yield Impact Percent');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` SET TAGS ('dbx_subdomain' = 'qualification_management');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` SET TAGS ('dbx_association_edges' = 'process.process_process_flow,customer.account');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `flow_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Qualification - Process Flow Qualification Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Qualification - Account Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Qualification - Process Process Flow Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `achieved_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Achieved Yield Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `actual_cpk` SET TAGS ('dbx_business_glossary_term' = 'Actual Cpk');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `actual_yield_pct` SET TAGS ('dbx_business_glossary_term' = 'Actual Yield Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `actual_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Actual Yield Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `approval_signoff` SET TAGS ('dbx_business_glossary_term' = 'Approval Signoff');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `baseline_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Baseline Yield Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `customer_approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Required Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `defect_density_actual_per_cm2` SET TAGS ('dbx_business_glossary_term' = 'Defect Density Actual Per Cm2');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `defect_density_target_per_cm2` SET TAGS ('dbx_business_glossary_term' = 'Defect Density Target Per Cm2');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `disposition` SET TAGS ('dbx_business_glossary_term' = 'Disposition');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `environmental_condition` SET TAGS ('dbx_business_glossary_term' = 'Environmental Condition');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `failure_mode_summary` SET TAGS ('dbx_business_glossary_term' = 'Failure Mode Summary');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `lot_count` SET TAGS ('dbx_business_glossary_term' = 'Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Qual Completion Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qual_criteria` SET TAGS ('dbx_business_glossary_term' = 'Qual Criteria');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qual_lot_count` SET TAGS ('dbx_business_glossary_term' = 'Qual Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Qual Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_lot_count` SET TAGS ('dbx_business_glossary_term' = 'Qualification Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_method` SET TAGS ('dbx_business_glossary_term' = 'Qualification Method');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_name` SET TAGS ('dbx_business_glossary_term' = 'Qualification Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_notes` SET TAGS ('dbx_business_glossary_term' = 'Qualification Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_number` SET TAGS ('dbx_business_glossary_term' = 'Qualification Number');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_owner` SET TAGS ('dbx_business_glossary_term' = 'Qualification Owner');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_result` SET TAGS ('dbx_business_glossary_term' = 'Qualification Result');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_revision` SET TAGS ('dbx_business_glossary_term' = 'Qualification Revision');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_scope` SET TAGS ('dbx_business_glossary_term' = 'Qualification Scope');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualification_type` SET TAGS ('dbx_business_glossary_term' = 'Qualification Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualified_by` SET TAGS ('dbx_business_glossary_term' = 'Qualified By');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualified_date` SET TAGS ('dbx_business_glossary_term' = 'Qualified Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualified_lot_count` SET TAGS ('dbx_business_glossary_term' = 'Qualified Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `qualifying_engineer` SET TAGS ('dbx_business_glossary_term' = 'Qualifying Engineer');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `reliability_hours` SET TAGS ('dbx_business_glossary_term' = 'Reliability Hours');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `requalification_due_date` SET TAGS ('dbx_business_glossary_term' = 'Requalification Due Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `requalification_trigger` SET TAGS ('dbx_business_glossary_term' = 'Requalification Trigger');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Risk Level');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `sign_off_date` SET TAGS ('dbx_business_glossary_term' = 'Sign Off Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `sign_off_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Sign Off Engineer Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `statistical_confidence_level` SET TAGS ('dbx_business_glossary_term' = 'Statistical Confidence Level');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `target_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `target_cpk` SET TAGS ('dbx_business_glossary_term' = 'Target Cpk');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `target_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Yield');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `wafer_count` SET TAGS ('dbx_business_glossary_term' = 'Wafer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `yield_achieved_percent` SET TAGS ('dbx_business_glossary_term' = 'Yield Achieved Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `yield_actual` SET TAGS ('dbx_business_glossary_term' = 'Yield Actual');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `yield_target` SET TAGS ('dbx_business_glossary_term' = 'Yield Target');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow_qualification` ALTER COLUMN `yield_target_pct` SET TAGS ('dbx_business_glossary_term' = 'Yield Target Pct');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` SET TAGS ('dbx_subdomain' = 'qualification_management');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` SET TAGS ('dbx_subdomain' = 'flow_management');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` SET TAGS ('dbx_association_edges' = 'process.process_process_step,supply.supplier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Process Supply Agreement Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `sourcing_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Contract Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_end_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement End Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_business_glossary_term' = 'Agreement Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Agreement Number');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Agreement Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Agreement Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `agreement_type` SET TAGS ('dbx_business_glossary_term' = 'Agreement Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `capacity_allocation_pct` SET TAGS ('dbx_business_glossary_term' = 'Capacity Allocation Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `capacity_commitment` SET TAGS ('dbx_business_glossary_term' = 'Capacity Commitment');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `capacity_reservation` SET TAGS ('dbx_business_glossary_term' = 'Capacity Reservation');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `capacity_reservation_pct` SET TAGS ('dbx_business_glossary_term' = 'Capacity Reservation Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_capacity_pct` SET TAGS ('dbx_business_glossary_term' = 'Committed Capacity Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_capacity_percent` SET TAGS ('dbx_business_glossary_term' = 'Committed Capacity Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_volume` SET TAGS ('dbx_business_glossary_term' = 'Committed Volume');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_volume_units` SET TAGS ('dbx_business_glossary_term' = 'Committed Volume Units');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_volume_wafers` SET TAGS ('dbx_business_glossary_term' = 'Committed Volume Wafers');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `committed_wafer_volume` SET TAGS ('dbx_business_glossary_term' = 'Committed Wafer Volume');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Supplyagreement - Supply Agreement Id');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Supplyagreement - Process Process Step Id');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplyagreement - Supplier Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Created At');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `currency` SET TAGS ('dbx_business_glossary_term' = 'Currency');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `lead_time_weeks` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Weeks');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `min_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Min Order Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `price_per_wafer` SET TAGS ('dbx_business_glossary_term' = 'Price Per Wafer');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `price_terms` SET TAGS ('dbx_business_glossary_term' = 'Price Terms');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `pricing_terms` SET TAGS ('dbx_business_glossary_term' = 'Pricing Terms');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `process_supply_agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Process Supply Agreement Status');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `renewal_clause` SET TAGS ('dbx_business_glossary_term' = 'Renewal Clause');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `renewal_terms` SET TAGS ('dbx_business_glossary_term' = 'Renewal Terms');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `signed_by` SET TAGS ('dbx_business_glossary_term' = 'Signed By');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `take_or_pay_flag` SET TAGS ('dbx_business_glossary_term' = 'Take Or Pay Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `termination_clause` SET TAGS ('dbx_business_glossary_term' = 'Termination Clause');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `terms_notes` SET TAGS ('dbx_business_glossary_term' = 'Terms Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Updated At');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `wafer_price_usd` SET TAGS ('dbx_business_glossary_term' = 'Wafer Price Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_supply_agreement` ALTER COLUMN `yield_commitment_percent` SET TAGS ('dbx_business_glossary_term' = 'Yield Commitment Percent');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` SET TAGS ('dbx_subdomain' = 'flow_definition');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` SET TAGS ('dbx_ssot_owner' = 'site_map');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `process_site_map_id` SET TAGS ('dbx_business_glossary_term' = 'Site Map Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `equipment_site_map_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Site Map Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
@@ -2958,6 +2505,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `data_classification` SET TAGS ('dbx_business_glossary_term' = 'Data Classification');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `process_site_map_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `is_primary_site` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Site');
@@ -2976,10 +2524,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Manager Phone');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `measurement_site_count` SET TAGS ('dbx_business_glossary_term' = 'Measurement Site Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
@@ -2987,29 +2531,19 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `security_level` SET TAGS ('dbx_business_glossary_term' = 'Security Level');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_code` SET TAGS ('dbx_business_glossary_term' = 'Site Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_count` SET TAGS ('dbx_business_glossary_term' = 'Site Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_map_code` SET TAGS ('dbx_business_glossary_term' = 'Site Map Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_map_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_map_name` SET TAGS ('dbx_business_glossary_term' = 'Site Map Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_map_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_name` SET TAGS ('dbx_business_glossary_term' = 'Site Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `site_type` SET TAGS ('dbx_business_glossary_term' = 'Site Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `process_site_map_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `sub_region` SET TAGS ('dbx_business_glossary_term' = 'Sub Region');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_site_map` ALTER COLUMN `wafer_size_mm` SET TAGS ('dbx_business_glossary_term' = 'Wafer Size Mm');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` SET TAGS ('dbx_subdomain' = 'statistical_control');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` SET TAGS ('dbx_ssot_owner' = 'spc_control_plan');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `process_spc_control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Plan Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `primary_authoritative_spc_control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Authoritative Spc Control Plan Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `primary_authoritative_spc_control_plan_id` SET TAGS ('dbx_ssot_reference' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Spc Control Plan Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_plan_id` SET TAGS ('dbx_ssot_owner_ref' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `capability_index_cp_k` SET TAGS ('dbx_business_glossary_term' = 'Capability Index Cp K');
@@ -3017,13 +2551,11 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_chart_type` SET TAGS ('dbx_business_glossary_term' = 'Control Chart Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Lower');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Upper');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Control Plan Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Control Plan Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `control_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Control Plan Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `data_source` SET TAGS ('dbx_business_glossary_term' = 'Data Source');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `deprecation_date` SET TAGS ('dbx_business_glossary_term' = 'Deprecation Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `deprecation_reason` SET TAGS ('dbx_business_glossary_term' = 'Deprecation Reason');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `process_spc_control_plan_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `equipment_identifier` SET TAGS ('dbx_business_glossary_term' = 'Equipment Identifier');
@@ -3032,24 +2564,21 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `lot_size` SET TAGS ('dbx_business_glossary_term' = 'Lot Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `measurement_frequency` SET TAGS ('dbx_business_glossary_term' = 'Measurement Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `measurement_name` SET TAGS ('dbx_business_glossary_term' = 'Measurement Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `measurement_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `plan_code` SET TAGS ('dbx_business_glossary_term' = 'Plan Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Plan Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Plan Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `process_step` SET TAGS ('dbx_business_glossary_term' = 'Process Step');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Review Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `rule_set_name` SET TAGS ('dbx_business_glossary_term' = 'Rule Set Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `rule_set_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Rule Set Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `sampling_rate_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Sampling Rate Per Hour');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `spc_control_plan_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `spc_control_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `ssot_owner_reference` SET TAGS ('dbx_business_glossary_term' = 'Ssot Owner Reference');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `ssot_owner_reference` SET TAGS ('dbx_ssot_reference' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `process_spc_control_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `technology_node_nm` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Nm');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `tolerance_lower` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Lower');
@@ -3059,28 +2588,23 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `wafer_size_mm` SET TAGS ('dbx_business_glossary_term' = 'Wafer Size Mm');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`process_spc_control_plan` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` SET TAGS ('dbx_subdomain' = 'statistical_control');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `metrology_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Metrology Plan Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `superseded_metrology_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Metrology Plan Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `superseded_metrology_plan_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `metrology_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Metrology Plan Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `metrology_plan_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `frequency_per_day` SET TAGS ('dbx_business_glossary_term' = 'Frequency Per Day');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `measurement_category` SET TAGS ('dbx_business_glossary_term' = 'Measurement Category');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `measurement_parameter` SET TAGS ('dbx_business_glossary_term' = 'Measurement Parameter');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `measurement_tool` SET TAGS ('dbx_business_glossary_term' = 'Measurement Tool');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `metrology_type` SET TAGS ('dbx_business_glossary_term' = 'Metrology Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `metrology_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Metrology Plan Name');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `plan_code` SET TAGS ('dbx_business_glossary_term' = 'Plan Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Plan Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Plan Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `process_step` SET TAGS ('dbx_business_glossary_term' = 'Process Step');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
@@ -3090,14 +2614,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `ta
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_plan` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` SET TAGS ('dbx_subdomain' = 'statistical_control');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Sampling Plan Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `superseded_sampling_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Sampling Plan Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `superseded_sampling_plan_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Sampling Plan Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `compliance_regulation` SET TAGS ('dbx_business_glossary_term' = 'Compliance Regulation');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `control_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Lower');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `control_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Upper');
@@ -3105,37 +2627,30 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `cre
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_plan_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `last_executed_by` SET TAGS ('dbx_business_glossary_term' = 'Last Executed By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `last_executed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Executed Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `lot_size` SET TAGS ('dbx_business_glossary_term' = 'Lot Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Sampling Plan Name');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `operator` SET TAGS ('dbx_business_glossary_term' = 'Operator');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `plan_code` SET TAGS ('dbx_business_glossary_term' = 'Plan Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Plan Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Plan Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Revision Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sample_frequency` SET TAGS ('dbx_business_glossary_term' = 'Sample Frequency');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sample_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Sample Rate Percent');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_method` SET TAGS ('dbx_business_glossary_term' = 'Sampling Method');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `sampling_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Sampling Rate Percent');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `target_metric` SET TAGS ('dbx_business_glossary_term' = 'Target Metric');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `technology_node` SET TAGS ('dbx_business_glossary_term' = 'Technology Node');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`sampling_plan` ALTER COLUMN `wafer_size_mm` SET TAGS ('dbx_business_glossary_term' = 'Wafer Size Mm');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` SET TAGS ('dbx_subdomain' = 'flow_definition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` SET TAGS ('dbx_subdomain' = 'inspection_metrology');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_point_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Point Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `process_step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `upstream_inspection_point_id` SET TAGS ('dbx_business_glossary_term' = 'Upstream Inspection Point Id');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `upstream_inspection_point_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Classification');
@@ -3145,136 +2660,22 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `equipment_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `equipment_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_frequency` SET TAGS ('dbx_business_glossary_term' = 'Inspection Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_method` SET TAGS ('dbx_business_glossary_term' = 'Inspection Method');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_point_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_type` SET TAGS ('dbx_business_glossary_term' = 'Inspection Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `last_calibrated_date` SET TAGS ('dbx_business_glossary_term' = 'Last Calibrated Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Location');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `measurement_type` SET TAGS ('dbx_business_glossary_term' = 'Measurement Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_point_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_point_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `process_stage` SET TAGS ('dbx_business_glossary_term' = 'Process Stage');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `sampling_frequency` SET TAGS ('dbx_business_glossary_term' = 'Sampling Frequency');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `inspection_point_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `tolerance_lower` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Lower');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `tolerance_upper` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Upper');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit Of Measure');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`inspection_point` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` SET TAGS ('dbx_table_name' = 'cooling_process_flow');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Process Flow Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Org Unit Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `baseline_energy_consumption_kwh` SET TAGS ('dbx_business_glossary_term' = 'Baseline Energy Consumption Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `closed_loop_recirculation_flag` SET TAGS ('dbx_business_glossary_term' = 'Closed Loop Recirculation Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `co2_reduction_kg` SET TAGS ('dbx_business_glossary_term' = 'Co2 Reduction Kg');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cool_optimization_enabled` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cool_optimization_mode` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Mode');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cool_optimization_objective` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Objective');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `coolant_recovery_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Coolant Recovery Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `coolant_type` SET TAGS ('dbx_business_glossary_term' = 'Coolant Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_stage_count` SET TAGS ('dbx_business_glossary_term' = 'Cooling Stage Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_step_count` SET TAGS ('dbx_business_glossary_term' = 'Cooling Step Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `cooling_strategy` SET TAGS ('dbx_business_glossary_term' = 'Cooling Strategy');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `energy_efficiency_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Energy Efficiency Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `energy_savings_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Energy Savings Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `estimated_energy_savings_kwh` SET TAGS ('dbx_business_glossary_term' = 'Estimated Energy Savings Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `flow_code` SET TAGS ('dbx_business_glossary_term' = 'Flow Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `flow_description` SET TAGS ('dbx_business_glossary_term' = 'Flow Description');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `flow_name` SET TAGS ('dbx_business_glossary_term' = 'Flow Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `flow_revision` SET TAGS ('dbx_business_glossary_term' = 'Flow Revision');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `flow_status` SET TAGS ('dbx_business_glossary_term' = 'Flow Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `is_baseline_flow` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Flow');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `optimization_method` SET TAGS ('dbx_business_glossary_term' = 'Optimization Method');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `optimization_objective` SET TAGS ('dbx_business_glossary_term' = 'Optimization Objective');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `optimized_energy_consumption_kwh` SET TAGS ('dbx_business_glossary_term' = 'Optimized Energy Consumption Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `primary_coolant_type` SET TAGS ('dbx_business_glossary_term' = 'Primary Coolant Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `target_energy_savings_kwh` SET TAGS ('dbx_business_glossary_term' = 'Target Energy Savings Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `target_exit_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Target Exit Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `total_coolant_consumption_lpm` SET TAGS ('dbx_business_glossary_term' = 'Total Coolant Consumption Lpm');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `total_coolant_flow_lpm` SET TAGS ('dbx_business_glossary_term' = 'Total Coolant Flow Lpm');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `total_cooling_step_count` SET TAGS ('dbx_business_glossary_term' = 'Total Cooling Step Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `waste_elimination_strategy` SET TAGS ('dbx_business_glossary_term' = 'Waste Elimination Strategy');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `waste_heat_recovery_efficiency_percent` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Efficiency Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `waste_heat_recovery_enabled` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `waste_heat_recovery_target_kwh` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Target Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_process_flow` ALTER COLUMN `waste_reduction_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Waste Reduction Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` SET TAGS ('dbx_subdomain' = 'equipment_conditions');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` SET TAGS ('dbx_table_name' = 'cooling_condition');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_condition_id` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `fabrication_technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Technology Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `substance_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Substance Inventory Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `backside_helium_pressure_torr` SET TAGS ('dbx_business_glossary_term' = 'Backside Helium Pressure Torr');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `chiller_setpoint_celsius` SET TAGS ('dbx_business_glossary_term' = 'Chiller Setpoint Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `condition_code` SET TAGS ('dbx_business_glossary_term' = 'Condition Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `condition_name` SET TAGS ('dbx_business_glossary_term' = 'Condition Name');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cool_optimization_enabled` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cool_optimization_mode` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Mode');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cool_optimization_strategy` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Strategy');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cool_optimization_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_flow_rate_lpm` SET TAGS ('dbx_business_glossary_term' = 'Coolant Flow Rate Lpm');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_inlet_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Coolant Inlet Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_outlet_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Coolant Outlet Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_recirculation_flag` SET TAGS ('dbx_business_glossary_term' = 'Coolant Recirculation Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_recovery_percent` SET TAGS ('dbx_business_glossary_term' = 'Coolant Recovery Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_recycle_percent` SET TAGS ('dbx_business_glossary_term' = 'Coolant Recycle Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `coolant_type` SET TAGS ('dbx_business_glossary_term' = 'Coolant Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_method` SET TAGS ('dbx_business_glossary_term' = 'Cooling Method');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_rate_celsius_per_minute` SET TAGS ('dbx_business_glossary_term' = 'Cooling Rate Celsius Per Minute');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_rate_celsius_per_second` SET TAGS ('dbx_business_glossary_term' = 'Cooling Rate Celsius Per Second');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Cooling Time Seconds');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `cooling_condition_description` SET TAGS ('dbx_business_glossary_term' = 'Cooling Condition Description');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `energy_consumption_kwh` SET TAGS ('dbx_business_glossary_term' = 'Energy Consumption Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `energy_efficiency_ratio` SET TAGS ('dbx_business_glossary_term' = 'Energy Efficiency Ratio');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `energy_efficiency_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Energy Efficiency Target Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `heat_load_watts` SET TAGS ('dbx_business_glossary_term' = 'Heat Load Watts');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `inlet_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Inlet Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `is_baseline_condition` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Condition');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `optimization_achieved_percent` SET TAGS ('dbx_business_glossary_term' = 'Optimization Achieved Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `optimization_status` SET TAGS ('dbx_business_glossary_term' = 'Optimization Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `outlet_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Outlet Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Date');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `target_chuck_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Target Chuck Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `target_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Target Temperature Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `temperature_tolerance_celsius` SET TAGS ('dbx_business_glossary_term' = 'Temperature Tolerance Celsius');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_coolant_volume_liters` SET TAGS ('dbx_business_glossary_term' = 'Waste Coolant Volume Liters');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_disposal_classification` SET TAGS ('dbx_business_glossary_term' = 'Waste Disposal Classification');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_elimination_method` SET TAGS ('dbx_business_glossary_term' = 'Waste Elimination Method');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_heat_recovered_kwh` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovered Kwh');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_heat_recovery_enabled` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_heat_recovery_flag` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`cooling_condition` ALTER COLUMN `waste_reduction_percent` SET TAGS ('dbx_business_glossary_term' = 'Waste Reduction Percent');

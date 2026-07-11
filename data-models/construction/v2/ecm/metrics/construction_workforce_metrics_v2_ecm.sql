@@ -1,826 +1,83 @@
--- Metric views for domain: workforce | Business: Construction | Version: 2 | Generated on: 2026-06-28 00:14:33
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_agency_labor_order`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Agency labor order fulfillment and cost metrics tracking bill rates, fulfillment rates, and order status across projects. Drives agency performance management and contingent labor cost control."
-  source: "`vibe_construction_v1`.`workforce`.`agency_labor_order`"
-  dimensions:
-    - name: "agency_id"
-      expr: agency_id
-      comment: "Agency identifier for agency-level performance and cost analysis."
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for project-level agency labor cost tracking."
-    - name: "order_status"
-      expr: order_status
-      comment: "Order status (Open, Fulfilled, Cancelled, Partial) for fulfillment pipeline management."
-    - name: "skill_trade_id"
-      expr: skill_trade_id
-      comment: "Skill trade for trade-level agency demand analysis."
-    - name: "skill_level"
-      expr: skill_level
-      comment: "Skill level for workforce qualification tier analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for multi-currency cost normalization."
-    - name: "union_affiliation_required_flag"
-      expr: union_affiliation_required_flag
-      comment: "Union requirement flag for labor agreement compliance tracking."
-    - name: "hse_orientation_required_flag"
-      expr: hse_orientation_required_flag
-      comment: "HSE orientation requirement flag for safety compliance at order level."
-    - name: "cost_code_id"
-      expr: cost_code_id
-      comment: "Cost code for agency labor cost allocation."
-  measures:
-    - name: "total_orders"
-      expr: COUNT(agency_labor_order_id)
-      comment: "Total agency labor orders. Tracks contingent labor demand volume."
-    - name: "fulfilled_orders"
-      expr: COUNT(CASE WHEN order_status = 'Fulfilled' THEN agency_labor_order_id END)
-      comment: "Count of fulfilled orders. Tracks agency delivery performance."
-    - name: "open_orders"
-      expr: COUNT(CASE WHEN order_status = 'Open' THEN agency_labor_order_id END)
-      comment: "Count of open (unfulfilled) orders. Tracks outstanding workforce demand and supply risk."
-    - name: "total_bill_rate_commitment"
-      expr: SUM(CAST(bill_rate AS DOUBLE))
-      comment: "Total bill rate across orders. Tracks agency labor cost commitment for budget management."
-    - name: "total_pay_rate_commitment"
-      expr: SUM(CAST(pay_rate AS DOUBLE))
-      comment: "Total pay rate across orders. Tracks direct labor cost component of agency spend."
-    - name: "avg_markup_percentage"
-      expr: AVG(CAST(markup_percentage AS DOUBLE))
-      comment: "Average agency markup percentage. Benchmarks agency cost efficiency and negotiation outcomes."
-    - name: "avg_bill_rate"
-      expr: AVG(CAST(bill_rate AS DOUBLE))
-      comment: "Average bill rate across orders. Tracks blended agency rate trends for cost forecasting."
-    - name: "distinct_agencies_engaged"
-      expr: COUNT(DISTINCT agency_id)
-      comment: "Count of distinct agencies with orders. Tracks agency supply chain diversification."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_apprenticeship_progression`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Apprenticeship program compliance and progression metrics tracking DOL compliance, OJT hours accumulation, and journeyman completion rates. Supports workforce development and regulatory reporting."
-  source: "`vibe_construction_v1`.`workforce`.`apprenticeship_progression`"
-  dimensions:
-    - name: "apprenticeship_status"
-      expr: apprenticeship_status
-      comment: "Apprenticeship status (Active, Completed, Suspended, Cancelled) for program pipeline tracking."
-    - name: "apprenticeship_type"
-      expr: apprenticeship_type
-      comment: "Apprenticeship type for program classification analysis."
-    - name: "apprenticeship_level"
-      expr: apprenticeship_level
-      comment: "Current apprenticeship level for progression tier analysis."
-    - name: "wage_progression_step"
-      expr: wage_progression_step
-      comment: "Wage progression step for compensation advancement tracking."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Compliance status for regulatory audit readiness."
-    - name: "dol_compliance_flag"
-      expr: dol_compliance_flag
-      comment: "DOL compliance flag for federal apprenticeship regulation adherence."
-    - name: "state_apprenticeship_compliance_flag"
-      expr: state_apprenticeship_compliance_flag
-      comment: "State-level apprenticeship compliance flag for multi-jurisdiction reporting."
-    - name: "training_provider"
-      expr: training_provider
-      comment: "Training provider for program quality and provider performance analysis."
-    - name: "union_local"
-      expr: union_local
-      comment: "Union local for JATC-sponsored apprenticeship tracking."
-  measures:
-    - name: "total_apprenticeships"
-      expr: COUNT(apprenticeship_progression_id)
-      comment: "Total apprenticeship records. Tracks workforce development program scale."
-    - name: "active_apprenticeships"
-      expr: COUNT(CASE WHEN apprenticeship_status = 'Active' THEN apprenticeship_progression_id END)
-      comment: "Currently active apprenticeships. Tracks live workforce development pipeline."
-    - name: "completed_apprenticeships"
-      expr: COUNT(CASE WHEN apprenticeship_status = 'Completed' THEN apprenticeship_progression_id END)
-      comment: "Completed apprenticeships resulting in journeyman certification. Measures program graduation rate."
-    - name: "dol_non_compliant_count"
-      expr: COUNT(CASE WHEN dol_compliance_flag = FALSE THEN apprenticeship_progression_id END)
-      comment: "Apprenticeships not meeting DOL compliance requirements. Regulatory risk requiring immediate remediation."
-    - name: "total_ojt_hours_accumulated"
-      expr: SUM(CAST(ojt_hours_accumulated AS DOUBLE))
-      comment: "Total on-the-job training hours accumulated. Tracks workforce skills development investment."
-    - name: "total_technical_instruction_hours"
-      expr: SUM(CAST(technical_instruction_hours AS DOUBLE))
-      comment: "Total technical instruction hours completed. Tracks classroom training investment in workforce development."
-    - name: "avg_ojt_hours_accumulated"
-      expr: AVG(CAST(ojt_hours_accumulated AS DOUBLE))
-      comment: "Average OJT hours per apprentice. Benchmarks program progression pace against requirements."
-    - name: "certifications_earned_count"
-      expr: COUNT(CASE WHEN certification_earned_flag = TRUE THEN apprenticeship_progression_id END)
-      comment: "Count of apprenticeships where certification was earned. Measures program effectiveness and ROI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_carbon_reduction_participation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Workforce carbon reduction participation metrics tracking carbon savings, incentive spend, and verification status. Supports ESG reporting and sustainability target achievement."
-  source: "`vibe_construction_v1`.`workforce`.`carbon_reduction_participation`"
-  dimensions:
-    - name: "carbon_reduction_initiative_id"
-      expr: carbon_reduction_initiative_id
-      comment: "Initiative identifier for initiative-level carbon savings analysis."
-    - name: "participation_status"
-      expr: participation_status
-      comment: "Participation status (Active, Completed, Withdrawn) for program pipeline tracking."
-    - name: "activity_type"
-      expr: activity_type
-      comment: "Activity type for carbon reduction method classification."
-    - name: "verification_status"
-      expr: verification_status
-      comment: "Verification status for carbon savings credibility and ESG reporting integrity."
-    - name: "initiative_role"
-      expr: initiative_role
-      comment: "Role of participant in the initiative for contribution analysis."
-    - name: "recognition_awarded"
-      expr: recognition_awarded
-      comment: "Recognition awarded flag for incentive program effectiveness analysis."
-    - name: "training_completed"
-      expr: training_completed
-      comment: "Training completion flag for workforce sustainability education tracking."
-  measures:
-    - name: "total_carbon_saved_kg"
-      expr: SUM(CAST(carbon_saved_kg AS DOUBLE))
-      comment: "Total verified carbon savings in kg. Primary ESG KPI for workforce sustainability contribution."
-    - name: "total_estimated_carbon_saved_kg"
-      expr: SUM(CAST(estimated_carbon_saved_kg AS DOUBLE))
-      comment: "Total estimated carbon savings. Tracks projected vs verified savings gap for ESG reporting accuracy."
-    - name: "total_hours_contributed"
-      expr: SUM(CAST(hours_contributed AS DOUBLE))
-      comment: "Total workforce hours contributed to carbon reduction activities. Measures workforce engagement depth."
-    - name: "total_incentive_amount"
-      expr: SUM(CAST(incentive_amount AS DOUBLE))
-      comment: "Total incentive payments for carbon reduction participation. Tracks sustainability incentive program spend."
-    - name: "total_participations"
-      expr: COUNT(carbon_reduction_participation_id)
-      comment: "Total participation records. Tracks workforce engagement breadth in sustainability programs."
-    - name: "verified_participations"
-      expr: COUNT(CASE WHEN verified_flag = TRUE THEN carbon_reduction_participation_id END)
-      comment: "Count of verified participations. Tracks credible carbon savings for external ESG disclosure."
-    - name: "distinct_workers_participating"
-      expr: COUNT(DISTINCT craft_worker_id)
-      comment: "Distinct workers participating in carbon reduction initiatives. Tracks workforce sustainability engagement rate."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_craft_certification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Workforce certification compliance metrics tracking expiry, regulatory status, and site access eligibility. Critical for HSE compliance, regulatory audits, and project qualification requirements."
-  source: "`vibe_construction_v1`.`workforce`.`craft_certification`"
-  dimensions:
-    - name: "skill_trade_id"
-      expr: skill_trade_id
-      comment: "Skill trade for trade-level certification compliance analysis."
-    - name: "certification_type"
-      expr: certification_type
-      comment: "Certification type for compliance category analysis."
-    - name: "certification_level"
-      expr: certification_level
-      comment: "Certification level for workforce qualification tier analysis."
-    - name: "issuing_body"
-      expr: issuing_body
-      comment: "Issuing authority for certification validity and recognition analysis."
-    - name: "verification_status"
-      expr: verification_status
-      comment: "Verification status (Verified, Pending, Rejected) for compliance readiness tracking."
-    - name: "regulatory_compliance_flag"
-      expr: regulatory_compliance_flag
-      comment: "Flag indicating regulatory compliance requirement. Filters safety-critical certifications."
-    - name: "site_access_required_flag"
-      expr: site_access_required_flag
-      comment: "Flag for certifications required for site access. Tracks gate compliance risk."
-    - name: "renewal_required_flag"
-      expr: renewal_required_flag
-      comment: "Flag for certifications requiring renewal. Drives proactive renewal management."
-    - name: "issuing_country_code"
-      expr: issuing_country_code
-      comment: "Country of certification issuance for multi-jurisdiction compliance tracking."
-  measures:
-    - name: "total_certifications"
-      expr: COUNT(craft_certification_id)
-      comment: "Total certification records. Baseline for workforce qualification inventory."
-    - name: "verified_certifications"
-      expr: COUNT(CASE WHEN verification_status = 'Verified' THEN craft_certification_id END)
-      comment: "Count of verified certifications. Tracks workforce qualification readiness."
-    - name: "expired_certifications"
-      expr: COUNT(CASE WHEN expiry_date < CURRENT_DATE() THEN craft_certification_id END)
-      comment: "Count of expired certifications. Expired certs are a site access and regulatory compliance risk."
-    - name: "expiring_within_30_days"
-      expr: COUNT(CASE WHEN expiry_date BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), 30) THEN craft_certification_id END)
-      comment: "Certifications expiring within 30 days. Leading indicator for proactive renewal action."
-    - name: "regulatory_non_compliant_count"
-      expr: COUNT(CASE WHEN regulatory_compliance_flag = TRUE AND verification_status != 'Verified' THEN craft_certification_id END)
-      comment: "Regulatory certifications not yet verified. Represents direct compliance exposure requiring escalation."
-    - name: "distinct_certified_workers"
-      expr: COUNT(DISTINCT craft_worker_id)
-      comment: "Count of distinct workers with at least one certification record. Tracks qualified workforce pool size."
-    - name: "avg_training_hours_required"
-      expr: AVG(CAST(training_hours_required AS DOUBLE))
-      comment: "Average training hours required per certification. Informs training budget and scheduling."
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`workforce_craft_worker_headcount`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Headcount and compensation metrics for craft workers."
-  source: "`construction_ecm`.`workforce`.`craft_worker`"
-  dimensions:
-    - name: "skill_trade_id"
-      expr: skill_trade_id
-      comment: "Skill trade identifier"
-    - name: "craft_code"
-      expr: craft_code
-      comment: "Craft code"
-    - name: "union_affiliation_flag"
-      expr: union_affiliation_flag
-      comment: "Union affiliation flag"
-    - name: "supervisory_role_flag"
-      expr: supervisory_role_flag
-      comment: "Whether worker holds supervisory role"
-  measures:
-    - name: "craft_worker_count"
-      expr: COUNT(1)
-      comment: "Number of craft workers"
-    - name: "average_hourly_base_rate"
-      expr: AVG(CAST(hourly_base_rate AS DOUBLE))
-      comment: "Average hourly base rate"
-    - name: "average_overtime_rate_multiplier"
-      expr: AVG(CAST(overtime_rate_multiplier AS DOUBLE))
-      comment: "Average overtime rate multiplier"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_crew`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Crew composition, productivity, and safety metrics for operational workforce management. Enables crew performance benchmarking, union vs non-union analysis, and mobilization status tracking."
-  source: "`vibe_construction_v1`.`workforce`.`crew`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for project-level crew deployment analysis."
-    - name: "crew_type"
-      expr: crew_type
-      comment: "Crew type classification for trade-mix and crew composition analysis."
-    - name: "crew_status"
-      expr: crew_status
-      comment: "Current crew status (Active, Demobilized, Standby) for workforce availability tracking."
-    - name: "shift_type"
-      expr: shift_type
-      comment: "Shift type for day vs night crew performance comparison."
-    - name: "is_union_crew"
-      expr: is_union_crew
-      comment: "Union vs non-union flag for labor agreement compliance and cost comparison."
-    - name: "union_affiliation"
-      expr: union_affiliation
-      comment: "Union affiliation for jurisdictional labor analysis."
-    - name: "cost_code_id"
-      expr: cost_code_id
-      comment: "Cost code for crew cost allocation."
-    - name: "cost_center_id"
-      expr: cost_center_id
-      comment: "Cost center for financial reporting of crew costs."
-  measures:
-    - name: "total_active_crews"
-      expr: COUNT(CASE WHEN crew_status = 'Active' THEN crew_id END)
-      comment: "Count of currently active crews. Tracks deployed workforce capacity."
-    - name: "avg_crew_productivity_rate"
-      expr: AVG(CAST(productivity_rate AS DOUBLE))
-      comment: "Average productivity rate across crews. Benchmarks crew output for performance management."
-    - name: "avg_crew_hourly_rate"
-      expr: AVG(CAST(average_hourly_rate AS DOUBLE))
-      comment: "Average blended hourly rate across crews. Tracks labor cost trends and rate escalation."
-    - name: "total_crew_count"
-      expr: COUNT(crew_id)
-      comment: "Total number of crew records. Baseline headcount metric for workforce planning."
-    - name: "union_crew_count"
-      expr: COUNT(CASE WHEN is_union_crew = TRUE THEN crew_id END)
-      comment: "Count of union crews. Tracks union labor compliance and agreement coverage."
-    - name: "crews_with_recent_safety_incident"
-      expr: COUNT(CASE WHEN last_safety_incident_date IS NOT NULL THEN crew_id END)
-      comment: "Count of crews with a recorded safety incident. Drives safety intervention prioritization."
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`workforce_crew_productivity`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Crew-level productivity and cost metrics."
-  source: "`construction_ecm`.`workforce`.`crew`"
-  dimensions:
-    - name: "crew_type"
-      expr: crew_type
-      comment: "Type of crew (e.g., trade, subcontract)"
-    - name: "crew_status"
-      expr: crew_status
-      comment: "Current status of the crew"
-    - name: "is_union_crew"
-      expr: is_union_crew
-      comment: "Whether the crew is unionized"
-  measures:
-    - name: "crew_count"
-      expr: COUNT(1)
-      comment: "Number of crew records"
-    - name: "average_hourly_rate"
-      expr: AVG(CAST(average_hourly_rate AS DOUBLE))
-      comment: "Average hourly rate across crews"
-    - name: "average_productivity_rate"
-      expr: AVG(CAST(productivity_rate AS DOUBLE))
-      comment: "Average productivity rate"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_crew_assignment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Crew and worker assignment metrics tracking mobilization, HSE orientation compliance, and assignment utilization across projects and WBS elements."
-  source: "`vibe_construction_v1`.`workforce`.`crew_assignment`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for cross-project assignment analysis."
-    - name: "wbs_element_id"
-      expr: wbs_element_id
-      comment: "WBS element for hierarchical assignment tracking."
-    - name: "activity_id"
-      expr: activity_id
-      comment: "Schedule activity for resource-to-activity assignment analysis."
-    - name: "assignment_status"
-      expr: assignment_status
-      comment: "Assignment status (Active, Completed, Cancelled) for workforce utilization tracking."
-    - name: "assignment_type"
-      expr: assignment_type
-      comment: "Assignment type for workforce deployment pattern analysis."
-    - name: "craft_type"
-      expr: craft_type
-      comment: "Craft type for trade-mix analysis on assignments."
-    - name: "shift_type"
-      expr: shift_type
-      comment: "Shift type for shift-based assignment analysis."
-    - name: "billable_flag"
-      expr: billable_flag
-      comment: "Billable flag for client billing coverage analysis."
-    - name: "union_affiliation"
-      expr: union_affiliation
-      comment: "Union affiliation for labor agreement compliance tracking."
-    - name: "cost_code_id"
-      expr: cost_code_id
-      comment: "Cost code for assignment cost allocation."
-  measures:
-    - name: "total_assignments"
-      expr: COUNT(crew_assignment_id)
-      comment: "Total crew/worker assignments. Baseline metric for workforce deployment volume."
-    - name: "active_assignments"
-      expr: COUNT(CASE WHEN assignment_status = 'Active' THEN crew_assignment_id END)
-      comment: "Currently active assignments. Tracks live workforce deployment on projects."
-    - name: "hse_orientation_compliance_count"
-      expr: COUNT(CASE WHEN hse_orientation_completed_flag = TRUE THEN crew_assignment_id END)
-      comment: "Assignments with completed HSE orientation. Tracks safety induction compliance — a regulatory requirement."
-    - name: "hse_orientation_non_compliant_count"
-      expr: COUNT(CASE WHEN hse_orientation_completed_flag = FALSE THEN crew_assignment_id END)
-      comment: "Assignments without completed HSE orientation. High count is a safety compliance risk requiring immediate action."
-    - name: "ppe_issued_count"
-      expr: COUNT(CASE WHEN ppe_issued_flag = TRUE THEN crew_assignment_id END)
-      comment: "Assignments where PPE has been issued. Tracks PPE distribution compliance."
-    - name: "avg_labor_rate"
-      expr: AVG(CAST(labor_rate AS DOUBLE))
-      comment: "Average labor rate across assignments. Monitors blended rate trends for cost forecasting."
-    - name: "total_labor_cost_estimate"
-      expr: SUM(CAST(labor_rate AS DOUBLE))
-      comment: "Sum of labor rates as a proxy for total assignment labor cost commitment. Supports budget commitment tracking."
-    - name: "billable_assignment_count"
-      expr: COUNT(CASE WHEN billable_flag = TRUE THEN crew_assignment_id END)
-      comment: "Count of billable assignments. Drives revenue recovery and billing efficiency analysis."
-    - name: "distinct_workers_assigned"
-      expr: COUNT(DISTINCT craft_worker_id)
-      comment: "Distinct workers with active assignments. Tracks unique headcount deployed across projects."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_mobilization`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Labor mobilization cost and logistics metrics tracking mobilization spend, per diem eligibility, and HSE orientation compliance across project deployments."
-  source: "`vibe_construction_v1`.`workforce`.`labor_mobilization`"
-  dimensions:
-    - name: "destination_construction_project_id"
-      expr: destination_construction_project_id
-      comment: "Destination project for mobilization cost allocation."
-    - name: "mobilization_status"
-      expr: mobilization_status
-      comment: "Mobilization status (Planned, In Progress, Completed, Cancelled) for deployment pipeline tracking."
-    - name: "mobilization_type"
-      expr: mobilization_type
-      comment: "Mobilization type (Initial, Transfer, Demobilization) for workforce flow analysis."
-    - name: "travel_mode"
-      expr: travel_mode
-      comment: "Travel mode for logistics cost benchmarking."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for multi-currency cost normalization."
-    - name: "per_diem_eligible_flag"
-      expr: per_diem_eligible_flag
-      comment: "Per diem eligibility flag for accommodation cost planning."
-    - name: "hse_orientation_completed_flag"
-      expr: hse_orientation_completed_flag
-      comment: "HSE orientation completion flag for safety compliance tracking at mobilization."
-    - name: "accommodation_required_flag"
-      expr: accommodation_required_flag
-      comment: "Accommodation requirement flag for logistics planning."
-  measures:
-    - name: "total_mobilization_cost"
-      expr: SUM(CAST(total_mobilization_cost AS DOUBLE))
-      comment: "Total mobilization cost across all records. Key input for project indirect cost budgeting."
-    - name: "total_travel_cost_estimate"
-      expr: SUM(CAST(travel_cost_estimate AS DOUBLE))
-      comment: "Total estimated travel cost. Tracks logistics spend against mobilization budget."
-    - name: "total_accommodation_cost_estimate"
-      expr: SUM(CAST(accommodation_cost_estimate AS DOUBLE))
-      comment: "Total estimated accommodation cost. Tracks camp and lodging spend for remote projects."
-    - name: "total_per_diem_cost"
-      expr: SUM(CAST(per_diem_rate AS DOUBLE))
-      comment: "Total per diem rate commitment. Tracks subsistence cost exposure for mobilized workforce."
-    - name: "avg_mobilization_cost"
-      expr: AVG(CAST(total_mobilization_cost AS DOUBLE))
-      comment: "Average mobilization cost per record. Benchmarks mobilization efficiency across projects."
-    - name: "total_mobilizations"
-      expr: COUNT(labor_mobilization_id)
-      comment: "Total mobilization events. Tracks workforce deployment volume and logistics complexity."
-    - name: "hse_orientation_compliant_mobilizations"
-      expr: COUNT(CASE WHEN hse_orientation_completed_flag = TRUE THEN labor_mobilization_id END)
-      comment: "Mobilizations with completed HSE orientation. Tracks safety induction compliance at point of deployment."
-    - name: "hse_orientation_non_compliant_mobilizations"
-      expr: COUNT(CASE WHEN hse_orientation_completed_flag = FALSE THEN labor_mobilization_id END)
-      comment: "Mobilizations without HSE orientation. Non-compliant mobilizations are a safety and regulatory risk."
-    - name: "site_badge_issued_count"
-      expr: COUNT(CASE WHEN site_access_badge_issued_flag = TRUE THEN labor_mobilization_id END)
-      comment: "Mobilizations with site access badge issued. Tracks access provisioning completeness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_rate`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Labor rate structure and cost burden metrics for project cost estimation, bid preparation, and payroll compliance. Tracks loaded rates, fringe benefits, and prevailing wage compliance."
-  source: "`vibe_construction_v1`.`workforce`.`labor_rate`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for project-specific rate analysis."
-    - name: "rate_type"
-      expr: rate_type
-      comment: "Rate type (Prevailing Wage, Union, Open Shop) for labor cost structure analysis."
-    - name: "rate_status"
-      expr: rate_status
-      comment: "Rate status (Active, Expired, Pending) for rate schedule governance."
-    - name: "skill_level"
-      expr: skill_level
-      comment: "Skill level for rate tier analysis."
-    - name: "trade_classification"
-      expr: trade_classification
-      comment: "Trade classification for cross-trade rate benchmarking."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Jurisdiction for prevailing wage and multi-state compliance analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for multi-currency rate normalization."
-    - name: "certified_payroll_required_flag"
-      expr: certified_payroll_required_flag
-      comment: "Certified payroll requirement flag for Davis-Bacon and prevailing wage compliance tracking."
-    - name: "union_local"
-      expr: union_local
-      comment: "Union local for CBA rate schedule analysis."
-  measures:
-    - name: "avg_base_hourly_rate"
-      expr: AVG(CAST(base_hourly_rate AS DOUBLE))
-      comment: "Average base hourly rate across rate records. Benchmarks labor cost baseline for estimating."
-    - name: "avg_total_loaded_hourly_rate"
-      expr: AVG(CAST(total_loaded_hourly_rate AS DOUBLE))
-      comment: "Average fully loaded hourly rate including burden. Primary input for project cost estimation and bid pricing."
-    - name: "avg_overtime_hourly_rate"
-      expr: AVG(CAST(overtime_hourly_rate AS DOUBLE))
-      comment: "Average overtime hourly rate. Tracks premium pay cost exposure for schedule risk analysis."
-    - name: "avg_fringe_benefit_rate"
-      expr: AVG(CAST(fringe_benefit_rate AS DOUBLE))
-      comment: "Average fringe benefit rate. Tracks benefits cost burden for total compensation analysis."
-    - name: "avg_payroll_burden_percentage"
-      expr: AVG(CAST(payroll_burden_percentage AS DOUBLE))
-      comment: "Average payroll burden percentage. Benchmarks indirect labor cost loading across projects and jurisdictions."
-    - name: "avg_overhead_percentage"
-      expr: AVG(CAST(overhead_percentage AS DOUBLE))
-      comment: "Average overhead percentage applied to labor. Tracks indirect cost loading for bid and budget accuracy."
-    - name: "total_active_rate_records"
-      expr: COUNT(CASE WHEN rate_status = 'Active' THEN labor_rate_id END)
-      comment: "Count of active labor rate records. Tracks rate schedule completeness for project coverage."
-    - name: "certified_payroll_required_count"
-      expr: COUNT(CASE WHEN certified_payroll_required_flag = TRUE THEN labor_rate_id END)
-      comment: "Count of rate records requiring certified payroll. Tracks prevailing wage compliance scope."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_production_rate`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Field productivity and production rate metrics comparing planned vs actual output. Drives earned value analysis, crew efficiency benchmarking, and schedule performance management."
-  source: "`vibe_construction_v1`.`workforce`.`production_rate`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for cross-project productivity benchmarking."
-    - name: "cost_code_id"
-      expr: cost_code_id
-      comment: "Cost code for activity-level productivity tracking."
-    - name: "wbs_element_id"
-      expr: wbs_element_id
-      comment: "WBS element for hierarchical productivity roll-up."
-    - name: "crew_id"
-      expr: crew_id
-      comment: "Crew identifier for crew-level performance comparison."
-    - name: "work_date"
-      expr: work_date
-      comment: "Date of production record for daily trend analysis."
-    - name: "trade_category"
-      expr: trade_category
-      comment: "Trade category for cross-trade productivity benchmarking."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for production quantity normalization."
-    - name: "shift"
-      expr: shift
-      comment: "Shift for day vs night productivity comparison."
-    - name: "weather_condition"
-      expr: weather_condition
-      comment: "Weather condition to correlate environmental factors with productivity loss."
-    - name: "site_condition"
-      expr: site_condition
-      comment: "Site condition for productivity impact analysis."
-    - name: "rework_flag"
-      expr: rework_flag
-      comment: "Rework flag to isolate productive vs rework output."
-    - name: "safety_incident_flag"
-      expr: safety_incident_flag
-      comment: "Safety incident flag to correlate incidents with productivity impact."
-  measures:
-    - name: "total_actual_quantity"
-      expr: SUM(CAST(actual_quantity AS DOUBLE))
-      comment: "Total actual units produced. Primary output measure for earned value and schedule performance."
-    - name: "total_planned_quantity"
-      expr: SUM(CAST(planned_quantity AS DOUBLE))
-      comment: "Total planned units of production. Denominator for quantity performance index."
-    - name: "total_earned_hours"
-      expr: SUM(CAST(earned_hours AS DOUBLE))
-      comment: "Total earned hours based on actual production. Core earned value metric (BCWP hours)."
-    - name: "total_expended_hours"
-      expr: SUM(CAST(expended_hours AS DOUBLE))
-      comment: "Total actual hours expended. Denominator for labor efficiency ratio."
-    - name: "total_variance_quantity"
-      expr: SUM(CAST(variance_quantity AS DOUBLE))
-      comment: "Total quantity variance (actual minus planned). Negative values indicate production shortfall."
-    - name: "total_variance_hours"
-      expr: SUM(CAST(variance_hours AS DOUBLE))
-      comment: "Total hours variance. Positive variance means over-expenditure vs earned hours."
-    - name: "avg_actual_production_rate"
-      expr: AVG(CAST(actual_production_rate AS DOUBLE))
-      comment: "Average actual production rate across records. Benchmarks crew output against planned rates."
-    - name: "avg_planned_production_rate"
-      expr: AVG(CAST(planned_production_rate AS DOUBLE))
-      comment: "Average planned production rate. Baseline for productivity performance index calculation."
-    - name: "avg_productivity_factor"
-      expr: AVG(CAST(productivity_factor AS DOUBLE))
-      comment: "Average productivity factor (actual/planned ratio). Values below 1.0 indicate underperformance requiring intervention."
-    - name: "records_with_safety_incident"
-      expr: COUNT(CASE WHEN safety_incident_flag = TRUE THEN production_rate_id END)
-      comment: "Count of production records with associated safety incidents. Tracks safety-productivity correlation."
-    - name: "records_with_rework"
-      expr: COUNT(CASE WHEN rework_flag = TRUE THEN production_rate_id END)
-      comment: "Count of production records flagged as rework. Quantifies quality-driven productivity loss."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_site_access_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Site access and workforce gate compliance metrics tracking PPE compliance, health screening, and access denial rates. Drives HSE compliance monitoring and site security management."
-  source: "`vibe_construction_v1`.`workforce`.`site_access_record`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for site-level access compliance analysis."
-    - name: "access_direction"
-      expr: access_direction
-      comment: "Access direction (Entry, Exit) for site occupancy tracking."
-    - name: "access_zone"
-      expr: access_zone
-      comment: "Access zone for zone-level occupancy and compliance analysis."
-    - name: "authorization_status"
-      expr: authorization_status
-      comment: "Authorization status (Authorized, Denied, Pending) for access control effectiveness."
-    - name: "ppe_compliance_status"
-      expr: ppe_compliance_status
-      comment: "PPE compliance status at gate for safety compliance tracking."
-    - name: "health_screening_status"
-      expr: health_screening_status
-      comment: "Health screening status for workforce health compliance monitoring."
-    - name: "induction_status"
-      expr: induction_status
-      comment: "Site induction status for safety orientation compliance."
-    - name: "worker_classification"
-      expr: worker_classification
-      comment: "Worker classification (Direct, Subcontractor, Visitor) for access population analysis."
-    - name: "access_method"
-      expr: access_method
-      comment: "Access method (Badge, Biometric, Manual) for access control technology analysis."
-  measures:
-    - name: "total_access_events"
-      expr: COUNT(site_access_record_id)
-      comment: "Total site access events. Tracks gate throughput and site occupancy volume."
-    - name: "denied_access_count"
-      expr: COUNT(CASE WHEN authorization_status = 'Denied' THEN site_access_record_id END)
-      comment: "Count of denied access events. High denial rate signals compliance gaps or unauthorized personnel."
-    - name: "ppe_non_compliant_count"
-      expr: COUNT(CASE WHEN ppe_compliance_status != 'Compliant' THEN site_access_record_id END)
-      comment: "Access events with PPE non-compliance. Direct safety KPI requiring immediate corrective action."
-    - name: "health_screening_failed_count"
-      expr: COUNT(CASE WHEN health_screening_status = 'Failed' THEN site_access_record_id END)
-      comment: "Access events with failed health screening. Tracks workforce health risk at site entry."
-    - name: "induction_non_compliant_count"
-      expr: COUNT(CASE WHEN induction_status != 'Completed' THEN site_access_record_id END)
-      comment: "Access events where site induction is not completed. Regulatory compliance risk for HSE audits."
-    - name: "distinct_workers_on_site"
-      expr: COUNT(DISTINCT primary_site_craft_worker_id)
-      comment: "Distinct workers accessing site. Tracks unique workforce headcount for site occupancy management."
-    - name: "avg_duration_on_site_minutes"
-      expr: AVG(CAST(duration_on_site_minutes AS DOUBLE))
-      comment: "Average time workers spend on site per access event. Tracks workforce utilization and shift adherence."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_staffing_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Workforce staffing plan metrics comparing planned vs actual headcount and labor hours. Drives workforce capacity planning, ramp-up/ramp-down management, and sourcing strategy decisions."
-  source: "`vibe_construction_v1`.`workforce`.`staffing_plan`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project for cross-project staffing plan comparison."
-    - name: "skill_trade_id"
-      expr: skill_trade_id
-      comment: "Skill trade for trade-level staffing demand analysis."
-    - name: "plan_status"
-      expr: plan_status
-      comment: "Plan status (Draft, Approved, Active, Closed) for plan lifecycle tracking."
-    - name: "plan_type"
-      expr: plan_type
-      comment: "Plan type for staffing strategy classification."
-    - name: "sourcing_strategy"
-      expr: sourcing_strategy
-      comment: "Sourcing strategy (Direct Hire, Agency, Subcontract) for workforce supply chain analysis."
-    - name: "cost_center_id"
-      expr: cost_center_id
-      comment: "Cost center for staffing cost allocation."
-    - name: "wbs_element_id"
-      expr: wbs_element_id
-      comment: "WBS element for hierarchical staffing plan roll-up."
-    - name: "baseline_flag"
-      expr: baseline_flag
-      comment: "Baseline flag to distinguish approved baseline plans from revisions."
-  measures:
-    - name: "total_planned_labor_hours"
-      expr: SUM(CAST(total_planned_labor_hours AS DOUBLE))
-      comment: "Total planned labor hours across staffing plans. Primary input for project labor budget."
-    - name: "total_actual_labor_hours"
-      expr: SUM(CAST(actual_labor_hours AS DOUBLE))
-      comment: "Total actual labor hours recorded against staffing plans. Drives plan vs actual variance analysis."
-    - name: "labor_hours_variance"
-      expr: SUM(CAST(labor_hours_variance AS DOUBLE))
-      comment: "Total labor hours variance (actual minus planned). Negative variance indicates under-staffing risk."
-    - name: "avg_peak_headcount"
-      expr: AVG(CAST(peak_headcount AS DOUBLE))
-      comment: "Average peak headcount across staffing plans. Benchmarks workforce surge capacity requirements."
-    - name: "total_plans"
-      expr: COUNT(staffing_plan_id)
-      comment: "Total staffing plan records. Tracks planning activity volume across projects."
-    - name: "approved_plans"
-      expr: COUNT(CASE WHEN plan_status = 'Approved' THEN staffing_plan_id END)
-      comment: "Count of approved staffing plans. Tracks planning governance and approval cycle completion."
-    - name: "plans_with_accommodation_requirement"
-      expr: COUNT(CASE WHEN accommodation_required_flag = TRUE THEN staffing_plan_id END)
-      comment: "Plans requiring accommodation. Drives camp capacity and logistics planning for remote projects."
-    - name: "plans_requiring_transport"
-      expr: COUNT(CASE WHEN transportation_required_flag = TRUE THEN staffing_plan_id END)
-      comment: "Plans requiring transportation. Tracks logistics complexity and associated indirect cost."
-$$;
+-- Metric views for domain: workforce | Business: Construction | Version: 2 | Generated on: 2026-07-10 12:14:04
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_timesheet`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core labor cost and hours metrics derived from approved timesheets. Drives payroll cost control, overtime management, and billable utilization analysis across projects and cost codes."
+  comment: "Core labor cost and hours metrics derived from approved timesheets. Enables project cost control, overtime management, and payroll burden analysis for construction workforce."
   source: "`vibe_construction_v1`.`workforce`.`timesheet`"
   dimensions:
-    - name: "work_date"
-      expr: work_date
-      comment: "Calendar date of work performed, used for daily and weekly trend analysis."
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for cross-project labor cost comparison."
-    - name: "cost_code_id"
-      expr: cost_code_id
-      comment: "Cost code for budget vs actual labor cost tracking."
-    - name: "craft_classification"
-      expr: craft_classification
-      comment: "Craft or trade classification of the worker for trade-mix analysis."
+      comment: "Project the timesheet labor hours and costs are charged to — primary grouping for job cost reporting."
+    - name: "work_date"
+      expr: work_date
+      comment: "Calendar date of work performed — enables daily, weekly, and period-over-period labor trend analysis."
     - name: "approval_status"
       expr: approval_status
-      comment: "Timesheet approval status (Approved, Pending, Rejected) for payroll readiness monitoring."
-    - name: "shift_type"
-      expr: shift_type
-      comment: "Shift type (Day, Night, Swing) for shift-based productivity analysis."
+      comment: "Timesheet approval state (Approved, Pending, Rejected) — used to filter billable vs. unapproved labor."
     - name: "pay_type"
       expr: pay_type
-      comment: "Pay type classification (Regular, Overtime, Double-time) for compensation analysis."
+      comment: "Pay classification (Regular, Overtime, Double-Time, Per Diem) — drives payroll cost breakdown."
+    - name: "craft_classification"
+      expr: craft_classification
+      comment: "Trade or craft classification of the worker — enables labor cost analysis by discipline."
+    - name: "shift_type"
+      expr: shift_type
+      comment: "Shift worked (Day, Night, Swing) — used to analyze shift differential cost impact."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element the labor is charged to — enables earned value and cost-at-completion analysis."
+    - name: "cost_code_id"
+      expr: cost_code_id
+      comment: "Finance cost code for the labor charge — supports budget vs. actual job costing."
     - name: "is_billable"
       expr: is_billable
-      comment: "Flag indicating whether hours are billable to the client, used for revenue recovery analysis."
+      comment: "Flag indicating whether the hours are billable to the client — separates billable from non-billable labor."
     - name: "payroll_period"
       expr: payroll_period
-      comment: "Payroll period identifier for period-over-period labor cost comparison."
-    - name: "union_local"
-      expr: union_local
-      comment: "Union local affiliation for union vs non-union labor cost analysis."
-    - name: "work_classification"
-      expr: work_classification
-      comment: "Work classification category for labor cost allocation."
+      comment: "Payroll period identifier — used for payroll cycle reporting and period-end accruals."
   measures:
     - name: "total_regular_hours"
       expr: SUM(CAST(regular_hours AS DOUBLE))
-      comment: "Total straight-time hours worked. Core input for payroll cost and productivity benchmarking."
+      comment: "Total straight-time hours worked across all timesheets. Core input for labor productivity and cost-at-completion forecasting."
     - name: "total_overtime_hours"
       expr: SUM(CAST(overtime_hours AS DOUBLE))
-      comment: "Total overtime hours worked. Elevated overtime signals schedule pressure or under-staffing."
+      comment: "Total overtime hours incurred. Elevated overtime signals schedule pressure or crew under-staffing requiring management intervention."
     - name: "total_double_time_hours"
       expr: SUM(CAST(double_time_hours AS DOUBLE))
-      comment: "Total double-time hours worked. High double-time is a leading cost overrun indicator."
+      comment: "Total double-time hours worked. High double-time is a leading indicator of cost overrun and worker fatigue risk."
     - name: "total_hours_worked"
       expr: SUM(CAST(total_hours AS DOUBLE))
-      comment: "Total hours across all pay types. Primary denominator for productivity and cost-per-hour KPIs."
+      comment: "Total hours (regular + overtime + double-time) charged across all timesheets. Primary labor volume KPI for project staffing dashboards."
     - name: "total_labor_cost"
       expr: SUM(CAST(labor_cost_amount AS DOUBLE))
-      comment: "Total labor cost charged to projects. Key input for earned value and budget variance analysis."
+      comment: "Total labor cost amount from all timesheets. Direct input to project cost control and budget variance reporting."
     - name: "avg_labor_cost_per_hour"
-      expr: AVG(labor_cost_amount / NULLIF(total_hours, 0))
-      comment: "Average loaded labor cost per hour. Tracks blended rate trends and cost escalation."
-    - name: "overtime_hours_ratio_numerator"
-      expr: SUM(CAST(overtime_hours AS DOUBLE))
-      comment: "Numerator for overtime ratio: total overtime hours. Combine with total_hours_worked to compute overtime intensity."
-    - name: "billable_hours"
-      expr: SUM(CASE WHEN is_billable = TRUE THEN total_hours ELSE 0 END)
-      comment: "Hours flagged as billable to the client. Drives revenue recognition and billing efficiency."
-    - name: "non_billable_hours"
-      expr: SUM(CASE WHEN is_billable = FALSE THEN total_hours ELSE 0 END)
-      comment: "Non-billable hours representing internal overhead or rework cost."
+      expr: AVG(CAST(labor_cost_amount AS DOUBLE))
+      comment: "Average labor cost per timesheet record. Tracks blended labor rate trends over time and across projects."
     - name: "total_production_quantity"
       expr: SUM(CAST(production_quantity AS DOUBLE))
-      comment: "Total units of work produced as recorded on timesheets. Used to compute field productivity rates."
+      comment: "Total production quantity reported on timesheets. Used to compute field productivity rates (units installed per hour)."
     - name: "approved_timesheet_count"
-      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN timesheet_id END)
-      comment: "Count of approved timesheets. Tracks payroll processing readiness and approval cycle efficiency."
+      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END)
+      comment: "Number of approved timesheets. Tracks payroll processing readiness and approval cycle efficiency."
     - name: "pending_timesheet_count"
-      expr: COUNT(CASE WHEN approval_status = 'Pending' THEN timesheet_id END)
-      comment: "Count of timesheets awaiting approval. High pending count risks payroll delays and cost accrual gaps."
+      expr: COUNT(CASE WHEN approval_status = 'Pending' THEN 1 END)
+      comment: "Number of timesheets awaiting approval. High pending count signals bottlenecks in the approval workflow that delay payroll."
+    - name: "billable_hours_total"
+      expr: SUM(CASE WHEN is_billable = TRUE THEN total_hours ELSE 0 END)
+      comment: "Total hours flagged as billable to the client. Used to compute billing utilization and support progress payment applications."
+    - name: "non_billable_hours_total"
+      expr: SUM(CASE WHEN is_billable = FALSE THEN total_hours ELSE 0 END)
+      comment: "Total non-billable hours (rework, downtime, overhead). Elevated non-billable hours indicate inefficiency or scope gaps."
+    - name: "overtime_hours_ratio_numerator"
+      expr: SUM(CAST(overtime_hours AS DOUBLE))
+      comment: "Numerator for overtime ratio calculation (overtime hours). Combine with total_hours_worked in BI to compute overtime intensity percentage."
     - name: "distinct_workers_on_timesheets"
       expr: COUNT(DISTINCT craft_worker_id)
-      comment: "Count of distinct craft workers with timesheet entries. Tracks active workforce size per period."
+      comment: "Count of distinct craft workers with timesheet entries. Measures active workforce size on the project for headcount reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_timesheet_line`
@@ -828,74 +85,694 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Granular labor cost and hours metrics at the timesheet line level, enabling cost-code-level productivity, rework detection, and payroll posting status tracking."
+  comment: "Granular labor cost and productivity metrics at the timesheet line level. Enables activity-level earned value, cost code variance, and rework cost analysis."
   source: "`vibe_construction_v1`.`workforce`.`timesheet_line`"
   dimensions:
-    - name: "work_date"
-      expr: work_date
-      comment: "Date of work for daily granularity analysis."
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project for cross-project labor cost allocation."
+      comment: "Project the line-level labor cost is charged to — primary dimension for job cost reporting."
+    - name: "work_date"
+      expr: work_date
+      comment: "Date of work for the timesheet line — enables daily productivity and cost trend analysis."
     - name: "cost_code_id"
       expr: cost_code_id
-      comment: "Cost code for budget vs actual variance at the WBS level."
+      comment: "Finance cost code for the line item — supports budget vs. actual variance at the cost code level."
     - name: "wbs_element_id"
       expr: wbs_element_id
-      comment: "WBS element for hierarchical cost roll-up."
+      comment: "WBS element charged — enables earned value management at the work package level."
     - name: "activity_id"
       expr: activity_id
-      comment: "Schedule activity for earned value and productivity analysis."
-    - name: "craft_code"
-      expr: craft_code
-      comment: "Craft code for trade-level labor cost breakdown."
+      comment: "Schedule activity the labor is charged to — links labor cost to schedule progress for EVM analysis."
     - name: "approval_status"
       expr: approval_status
-      comment: "Line-level approval status for payroll readiness."
-    - name: "is_billable"
-      expr: is_billable
-      comment: "Billable flag for client billing reconciliation."
+      comment: "Line-level approval status — used to separate approved from pending labor costs in financial reporting."
     - name: "is_rework"
       expr: is_rework
-      comment: "Rework flag to isolate non-productive labor cost."
+      comment: "Flag indicating rework hours — rework cost is a key quality and productivity KPI in construction."
+    - name: "is_billable"
+      expr: is_billable
+      comment: "Billable flag at line level — enables precise billable vs. non-billable cost segregation."
     - name: "posted_to_job_cost_flag"
       expr: posted_to_job_cost_flag
-      comment: "Indicates whether the line has been posted to job cost, critical for cost accrual completeness."
+      comment: "Indicates whether the line has been posted to job cost — tracks financial close completeness."
     - name: "posted_to_payroll_flag"
       expr: posted_to_payroll_flag
-      comment: "Indicates payroll posting status for payroll reconciliation."
-    - name: "shift_code"
-      expr: shift_code
-      comment: "Shift code for shift-based cost analysis."
+      comment: "Indicates whether the line has been posted to payroll — tracks payroll processing completeness."
   measures:
     - name: "total_regular_hours"
       expr: SUM(CAST(regular_hours AS DOUBLE))
-      comment: "Total regular hours at line level for granular cost-code productivity analysis."
+      comment: "Total straight-time hours at line level. Granular input for activity-level productivity and earned value calculations."
     - name: "total_overtime_hours"
       expr: SUM(CAST(overtime_hours AS DOUBLE))
-      comment: "Total overtime hours at line level. Identifies cost-code-level overtime concentration."
+      comment: "Total overtime hours at line level. Enables overtime cost attribution to specific activities and cost codes."
     - name: "total_double_time_hours"
       expr: SUM(CAST(double_time_hours AS DOUBLE))
-      comment: "Total double-time hours at line level for premium pay cost tracking."
+      comment: "Total double-time hours at line level. Supports premium pay cost analysis by activity and WBS element."
     - name: "total_hours"
       expr: SUM(CAST(total_hours AS DOUBLE))
-      comment: "Total hours across all pay types at line level. Primary productivity denominator."
+      comment: "Total hours at line level. Primary volume measure for activity-level labor input tracking."
     - name: "total_labor_cost"
       expr: SUM(CAST(labor_cost_amount AS DOUBLE))
-      comment: "Total labor cost at line level. Enables cost-code-level budget variance analysis."
-    - name: "rework_hours"
+      comment: "Total labor cost at line level. Enables cost code and activity-level budget vs. actual variance analysis."
+    - name: "rework_hours_total"
       expr: SUM(CASE WHEN is_rework = TRUE THEN total_hours ELSE 0 END)
-      comment: "Hours spent on rework. High rework hours signal quality issues and drive cost overruns."
-    - name: "rework_labor_cost"
+      comment: "Total hours classified as rework. Rework hours as a share of total hours is a leading quality KPI — high rework signals design or workmanship issues."
+    - name: "rework_cost_total"
       expr: SUM(CASE WHEN is_rework = TRUE THEN labor_cost_amount ELSE 0 END)
-      comment: "Labor cost attributable to rework. Direct measure of quality-driven cost waste."
-    - name: "unposted_hours_to_job_cost"
-      expr: SUM(CASE WHEN posted_to_job_cost_flag = FALSE THEN total_hours ELSE 0 END)
-      comment: "Hours not yet posted to job cost. Tracks accrual completeness risk for period-end close."
+      comment: "Total labor cost attributed to rework. Direct measure of quality failure cost — used in cost-of-quality reporting."
     - name: "total_production_quantity"
       expr: SUM(CAST(production_quantity AS DOUBLE))
-      comment: "Total production units at line level for unit-rate productivity benchmarking."
-    - name: "distinct_workers"
+      comment: "Total production quantity at line level. Combined with total hours, enables unit-rate productivity benchmarking by activity."
+    - name: "unposted_job_cost_lines"
+      expr: COUNT(CASE WHEN posted_to_job_cost_flag = FALSE THEN 1 END)
+      comment: "Count of lines not yet posted to job cost. High unposted count indicates financial close risk and delayed cost visibility."
+    - name: "unposted_payroll_lines"
+      expr: COUNT(CASE WHEN posted_to_payroll_flag = FALSE THEN 1 END)
+      comment: "Count of lines not yet posted to payroll. Tracks payroll processing backlog and compliance risk for timely worker payment."
+    - name: "distinct_activities_charged"
+      expr: COUNT(DISTINCT activity_id)
+      comment: "Number of distinct schedule activities with labor charges. Measures breadth of active work fronts on the project."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_production_rate`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Field productivity and production rate metrics. Enables earned value management, productivity factor analysis, and variance-driven corrective action for construction operations."
+  source: "`vibe_construction_v1`.`workforce`.`production_rate`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the production rate record belongs to — primary grouping for project-level productivity dashboards."
+    - name: "work_date"
+      expr: work_date
+      comment: "Date of production measurement — enables daily and weekly productivity trend analysis."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element the production is attributed to — enables earned value analysis at work package level."
+    - name: "cost_code_id"
+      expr: cost_code_id
+      comment: "Cost code for the production activity — supports budget vs. actual productivity benchmarking."
+    - name: "trade_category"
+      expr: trade_category
+      comment: "Trade discipline (e.g., Concrete, Steel, MEP) — enables productivity comparison across trades."
+    - name: "shift"
+      expr: shift
+      comment: "Shift during which production was recorded — used to compare day vs. night shift productivity."
+    - name: "unit_of_measure"
+      expr: unit_of_measure
+      comment: "Unit of measure for production quantity (e.g., LF, CY, EA) — required for meaningful rate comparisons."
+    - name: "rework_flag"
+      expr: rework_flag
+      comment: "Indicates whether the production record involved rework — used to segregate rework from productive output."
+    - name: "safety_incident_flag"
+      expr: safety_incident_flag
+      comment: "Indicates a safety incident occurred during the production period — used to correlate safety events with productivity loss."
+    - name: "weather_condition"
+      expr: weather_condition
+      comment: "Weather conditions during production — used to analyze weather-related productivity impacts for EOT claims."
+  measures:
+    - name: "total_actual_quantity"
+      expr: SUM(CAST(actual_quantity AS DOUBLE))
+      comment: "Total quantity of work physically installed or completed. Primary output measure for earned value and schedule performance."
+    - name: "total_planned_quantity"
+      expr: SUM(CAST(planned_quantity AS DOUBLE))
+      comment: "Total planned quantity for the period. Compared against actual quantity to compute quantity variance and schedule performance index."
+    - name: "total_expended_hours"
+      expr: SUM(CAST(expended_hours AS DOUBLE))
+      comment: "Total labor hours expended on production activities. Input to productivity factor and cost performance index calculations."
+    - name: "total_earned_hours"
+      expr: SUM(CAST(earned_hours AS DOUBLE))
+      comment: "Total earned hours (budgeted hours for work completed). Core EVM metric — compared to expended hours to compute CPI."
+    - name: "total_variance_hours"
+      expr: SUM(CAST(variance_hours AS DOUBLE))
+      comment: "Total hours variance (earned minus expended). Negative variance signals labor cost overrun requiring management intervention."
+    - name: "total_variance_quantity"
+      expr: SUM(CAST(variance_quantity AS DOUBLE))
+      comment: "Total quantity variance (actual minus planned). Negative variance indicates production is behind schedule."
+    - name: "avg_actual_production_rate"
+      expr: AVG(CAST(actual_production_rate AS DOUBLE))
+      comment: "Average actual production rate across all records. Benchmarked against planned rate to assess crew and trade performance."
+    - name: "avg_planned_production_rate"
+      expr: AVG(CAST(planned_production_rate AS DOUBLE))
+      comment: "Average planned production rate. Used as the baseline for productivity factor calculation and look-ahead planning."
+    - name: "avg_productivity_factor"
+      expr: AVG(CAST(productivity_factor AS DOUBLE))
+      comment: "Average productivity factor (actual rate / planned rate). Values below 1.0 indicate underperformance; used to forecast cost-at-completion."
+    - name: "rework_production_records"
+      expr: COUNT(CASE WHEN rework_flag = TRUE THEN 1 END)
+      comment: "Count of production records involving rework. Elevated rework count signals quality issues driving productivity loss."
+    - name: "safety_incident_production_records"
+      expr: COUNT(CASE WHEN safety_incident_flag = TRUE THEN 1 END)
+      comment: "Count of production records with associated safety incidents. Used to quantify productivity impact of safety events."
+    - name: "distinct_crews_producing"
+      expr: COUNT(DISTINCT crew_id)
+      comment: "Number of distinct crews with production records. Measures breadth of active production fronts on the project."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_crew_assignment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Crew deployment, utilization, and labor rate metrics. Enables workforce planning, mobilization efficiency, and crew cost analysis across projects."
+  source: "`vibe_construction_v1`.`workforce`.`crew_assignment`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the crew assignment is associated with — primary dimension for project workforce planning."
+    - name: "assignment_status"
+      expr: assignment_status
+      comment: "Current status of the crew assignment (Active, Completed, Cancelled) — used to filter active workforce deployments."
+    - name: "assignment_type"
+      expr: assignment_type
+      comment: "Type of assignment (Direct Hire, Agency, Subcontractor) — enables sourcing strategy analysis."
+    - name: "craft_type"
+      expr: craft_type
+      comment: "Craft or trade type of the assigned worker — enables workforce composition analysis by discipline."
+    - name: "shift_type"
+      expr: shift_type
+      comment: "Shift type for the assignment — used to analyze shift coverage and premium pay exposure."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element the crew is assigned to — enables workforce allocation analysis at work package level."
+    - name: "billable_flag"
+      expr: billable_flag
+      comment: "Whether the assignment is billable to the client — used to compute billable utilization rate."
+    - name: "hse_orientation_completed_flag"
+      expr: hse_orientation_completed_flag
+      comment: "HSE orientation completion status — tracks safety compliance for site access readiness."
+    - name: "union_affiliation"
+      expr: union_affiliation
+      comment: "Union affiliation of the assigned worker — used for labor relations and prevailing wage compliance reporting."
+    - name: "assignment_start_date"
+      expr: assignment_start_date
+      comment: "Start date of the crew assignment — used for workforce ramp-up and mobilization timeline analysis."
+  measures:
+    - name: "total_assignments"
+      expr: COUNT(1)
+      comment: "Total number of crew assignments. Baseline headcount metric for workforce deployment tracking."
+    - name: "active_assignments"
+      expr: COUNT(CASE WHEN assignment_status = 'Active' THEN 1 END)
+      comment: "Number of currently active crew assignments. Measures live workforce size on the project for daily headcount reporting."
+    - name: "avg_labor_rate"
+      expr: AVG(CAST(labor_rate AS DOUBLE))
+      comment: "Average labor rate across crew assignments. Tracks blended labor cost rate for budget forecasting and bid benchmarking."
+    - name: "avg_per_diem_rate"
+      expr: AVG(CAST(per_diem_rate AS DOUBLE))
+      comment: "Average per diem rate for eligible assignments. Used to forecast and control accommodation and subsistence costs."
+    - name: "per_diem_eligible_assignments"
+      expr: COUNT(CASE WHEN per_diem_eligible_flag = TRUE THEN 1 END)
+      comment: "Count of assignments with per diem eligibility. Drives per diem cost accrual and budget allocation for remote projects."
+    - name: "hse_orientation_pending_count"
+      expr: COUNT(CASE WHEN hse_orientation_completed_flag = FALSE AND assignment_status = 'Active' THEN 1 END)
+      comment: "Active assignments where HSE orientation is not yet completed. A leading safety compliance KPI — workers on site without orientation represent regulatory risk."
+    - name: "distinct_workers_assigned"
       expr: COUNT(DISTINCT craft_worker_id)
-      comment: "Distinct workers with line entries. Tracks active headcount at cost-code granularity."
+      comment: "Count of distinct craft workers with assignments. Measures unique workforce headcount deployed across projects."
+    - name: "distinct_crews_deployed"
+      expr: COUNT(DISTINCT crew_id)
+      comment: "Count of distinct crews deployed. Used for crew utilization and resource allocation analysis."
+    - name: "billable_assignment_count"
+      expr: COUNT(CASE WHEN billable_flag = TRUE THEN 1 END)
+      comment: "Number of billable crew assignments. Used to compute billable utilization rate and support client invoicing."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_mobilization`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Labor mobilization cost and logistics metrics. Enables mobilization budget control, travel cost management, and workforce deployment efficiency analysis."
+  source: "`vibe_construction_v1`.`workforce`.`labor_mobilization`"
+  dimensions:
+    - name: "destination_construction_project_id"
+      expr: destination_construction_project_id
+      comment: "Destination project for the mobilization — primary dimension for project-level mobilization cost reporting."
+    - name: "mobilization_status"
+      expr: mobilization_status
+      comment: "Current status of the mobilization (Planned, In Progress, Completed, Cancelled) — used to track mobilization pipeline."
+    - name: "mobilization_type"
+      expr: mobilization_type
+      comment: "Type of mobilization (Initial, Remobilization, Demobilization) — enables cost analysis by mobilization phase."
+    - name: "travel_mode"
+      expr: travel_mode
+      comment: "Mode of travel (Air, Road, Rail) — used to analyze and optimize travel cost by mode."
+    - name: "per_diem_eligible_flag"
+      expr: per_diem_eligible_flag
+      comment: "Whether the worker is eligible for per diem — drives per diem cost accrual and budget planning."
+    - name: "accommodation_required_flag"
+      expr: accommodation_required_flag
+      comment: "Whether accommodation is required — used to forecast and control accommodation costs for remote projects."
+    - name: "hse_orientation_completed_flag"
+      expr: hse_orientation_completed_flag
+      comment: "HSE orientation completion at mobilization — tracks safety readiness before workers commence on site."
+    - name: "mobilization_date"
+      expr: mobilization_date
+      comment: "Date of mobilization — used for ramp-up timeline analysis and schedule compliance tracking."
+    - name: "craft_code"
+      expr: craft_code
+      comment: "Craft code of the mobilized worker — enables mobilization cost analysis by trade discipline."
+  measures:
+    - name: "total_mobilization_cost"
+      expr: SUM(CAST(total_mobilization_cost AS DOUBLE))
+      comment: "Total mobilization cost including travel and accommodation. Primary cost KPI for workforce deployment budget control."
+    - name: "total_travel_cost_estimate"
+      expr: SUM(CAST(travel_cost_estimate AS DOUBLE))
+      comment: "Total estimated travel cost across all mobilizations. Used to track travel spend against mobilization budget."
+    - name: "total_accommodation_cost_estimate"
+      expr: SUM(CAST(accommodation_cost_estimate AS DOUBLE))
+      comment: "Total estimated accommodation cost. Elevated accommodation costs on remote projects require proactive budget management."
+    - name: "avg_mobilization_cost"
+      expr: AVG(CAST(total_mobilization_cost AS DOUBLE))
+      comment: "Average mobilization cost per worker. Benchmarked against budget rates to identify cost overruns by trade or project."
+    - name: "avg_per_diem_rate"
+      expr: AVG(CAST(per_diem_rate AS DOUBLE))
+      comment: "Average per diem rate for mobilized workers. Used to validate per diem rates against labor agreement entitlements."
+    - name: "total_per_diem_eligible_mobilizations"
+      expr: COUNT(CASE WHEN per_diem_eligible_flag = TRUE THEN 1 END)
+      comment: "Count of mobilizations with per diem eligibility. Drives per diem liability accrual for project cost forecasting."
+    - name: "hse_orientation_pending_at_mobilization"
+      expr: COUNT(CASE WHEN hse_orientation_completed_flag = FALSE THEN 1 END)
+      comment: "Mobilizations where HSE orientation is not yet completed. Workers mobilized without orientation represent a safety and regulatory compliance risk."
+    - name: "distinct_workers_mobilized"
+      expr: COUNT(DISTINCT craft_worker_id)
+      comment: "Count of distinct workers mobilized. Measures workforce deployment scale and supports headcount planning."
+    - name: "total_mobilizations"
+      expr: COUNT(1)
+      comment: "Total number of mobilization records. Baseline volume metric for mobilization activity tracking."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_staffing_plan`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Workforce staffing plan metrics for headcount planning, labor hours forecasting, and sourcing strategy analysis across construction projects."
+  source: "`vibe_construction_v1`.`workforce`.`staffing_plan`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the staffing plan applies to — primary dimension for project workforce planning dashboards."
+    - name: "plan_status"
+      expr: plan_status
+      comment: "Status of the staffing plan (Draft, Approved, Active, Closed) — used to filter active vs. historical plans."
+    - name: "plan_type"
+      expr: plan_type
+      comment: "Type of staffing plan (Initial, Revised, Final) — enables version and revision tracking."
+    - name: "skill_trade_id"
+      expr: skill_trade_id
+      comment: "Trade discipline the staffing plan covers — enables workforce demand analysis by trade."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element the staffing plan is associated with — enables resource planning at work package level."
+    - name: "baseline_flag"
+      expr: baseline_flag
+      comment: "Indicates whether this is the approved baseline staffing plan — used to compare actuals against the approved baseline."
+    - name: "sourcing_strategy"
+      expr: sourcing_strategy
+      comment: "Sourcing strategy (Direct Hire, Agency, Subcontract) — used to analyze workforce sourcing mix and cost implications."
+    - name: "planning_period_start_date"
+      expr: planning_period_start_date
+      comment: "Start of the planning period — used for time-phased workforce demand analysis."
+    - name: "planning_period_end_date"
+      expr: planning_period_end_date
+      comment: "End of the planning period — used to define the horizon for workforce demand forecasting."
+  measures:
+    - name: "total_planned_labor_hours"
+      expr: SUM(CAST(total_planned_labor_hours AS DOUBLE))
+      comment: "Total planned labor hours across all staffing plans. Primary input for project labor budget and resource leveling."
+    - name: "total_actual_labor_hours"
+      expr: SUM(CAST(actual_labor_hours AS DOUBLE))
+      comment: "Total actual labor hours recorded against staffing plans. Compared to planned hours to compute labor hours variance."
+    - name: "total_labor_hours_variance"
+      expr: SUM(CAST(labor_hours_variance AS DOUBLE))
+      comment: "Total variance between planned and actual labor hours. Negative variance indicates labor overrun requiring corrective action."
+    - name: "avg_labor_hours_variance"
+      expr: AVG(CAST(labor_hours_variance AS DOUBLE))
+      comment: "Average labor hours variance per staffing plan. Used to assess planning accuracy and improve future estimates."
+    - name: "approved_staffing_plans"
+      expr: COUNT(CASE WHEN plan_status = 'Approved' THEN 1 END)
+      comment: "Number of approved staffing plans. Tracks planning governance compliance — unapproved plans indicate resource commitment risk."
+    - name: "distinct_projects_with_staffing_plans"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with staffing plans. Measures workforce planning coverage across the project portfolio."
+    - name: "total_staffing_plans"
+      expr: COUNT(1)
+      comment: "Total number of staffing plan records. Baseline volume metric for planning activity tracking."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_craft_certification`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Craft worker certification compliance metrics. Enables certification expiry tracking, regulatory compliance monitoring, and site access readiness management."
+  source: "`vibe_construction_v1`.`workforce`.`craft_certification`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the certification is verified for — enables project-level compliance reporting."
+    - name: "skill_trade_id"
+      expr: skill_trade_id
+      comment: "Trade the certification applies to — used to analyze certification compliance by discipline."
+    - name: "certification_type"
+      expr: certification_type
+      comment: "Type of certification (OSHA, First Aid, Trade License, etc.) — enables compliance gap analysis by certification category."
+    - name: "certification_level"
+      expr: certification_level
+      comment: "Level of certification (Entry, Journeyman, Master) — used for workforce capability and skill level analysis."
+    - name: "verification_status"
+      expr: verification_status
+      comment: "Verification status of the certification (Verified, Pending, Expired) — primary compliance status dimension."
+    - name: "regulatory_compliance_flag"
+      expr: regulatory_compliance_flag
+      comment: "Indicates whether the certification is required for regulatory compliance — used to prioritize renewal actions."
+    - name: "site_access_required_flag"
+      expr: site_access_required_flag
+      comment: "Indicates whether the certification is required for site access — workers with expired site-access certs must be barred from site."
+    - name: "renewal_required_flag"
+      expr: renewal_required_flag
+      comment: "Indicates whether the certification requires renewal — used to drive proactive renewal workflows."
+    - name: "issuing_body"
+      expr: issuing_body
+      comment: "Organization that issued the certification — used to validate certification authenticity and track issuing authority compliance."
+    - name: "expiry_date"
+      expr: expiry_date
+      comment: "Certification expiry date — primary time dimension for expiry risk monitoring and renewal scheduling."
+  measures:
+    - name: "total_certifications"
+      expr: COUNT(1)
+      comment: "Total number of craft certifications on record. Baseline metric for certification portfolio size."
+    - name: "verified_certifications"
+      expr: COUNT(CASE WHEN verification_status = 'Verified' THEN 1 END)
+      comment: "Number of certifications with verified status. Measures workforce compliance readiness — low verified count signals site access risk."
+    - name: "expired_certifications"
+      expr: COUNT(CASE WHEN verification_status = 'Expired' THEN 1 END)
+      comment: "Number of expired certifications. Expired certifications on site-access-required trades represent immediate regulatory and safety risk."
+    - name: "site_access_certs_at_risk"
+      expr: COUNT(CASE WHEN site_access_required_flag = TRUE AND verification_status = 'Expired' THEN 1 END)
+      comment: "Expired certifications that are required for site access. Critical safety KPI — workers with these certs must be removed from site immediately."
+    - name: "regulatory_certs_expired"
+      expr: COUNT(CASE WHEN regulatory_compliance_flag = TRUE AND verification_status = 'Expired' THEN 1 END)
+      comment: "Expired certifications required for regulatory compliance. Drives immediate corrective action to avoid regulatory penalties."
+    - name: "distinct_certified_workers"
+      expr: COUNT(DISTINCT craft_worker_id)
+      comment: "Count of distinct craft workers with at least one certification record. Measures certified workforce size."
+    - name: "avg_training_hours_required"
+      expr: AVG(CAST(training_hours_required AS DOUBLE))
+      comment: "Average training hours required per certification. Used to plan training schedules and estimate training cost for workforce development."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_apprenticeship_progression`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Apprenticeship program compliance and progression metrics. Enables DOL compliance monitoring, apprentice-to-journeyman ratio tracking, and workforce development pipeline analysis."
+  source: "`vibe_construction_v1`.`workforce`.`apprenticeship_progression`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project where apprenticeship hours are being earned — enables project-level apprenticeship compliance reporting."
+    - name: "skill_trade_id"
+      expr: skill_trade_id
+      comment: "Trade the apprenticeship is in — used to analyze apprenticeship pipeline by discipline."
+    - name: "apprenticeship_status"
+      expr: apprenticeship_status
+      comment: "Current status of the apprenticeship (Active, Completed, Suspended, Cancelled) — primary status dimension."
+    - name: "apprenticeship_level"
+      expr: apprenticeship_level
+      comment: "Current level within the apprenticeship program — used to analyze progression distribution across levels."
+    - name: "apprenticeship_type"
+      expr: apprenticeship_type
+      comment: "Type of apprenticeship (Union, Non-Union, JATC) — used for compliance reporting by program type."
+    - name: "dol_compliance_flag"
+      expr: dol_compliance_flag
+      comment: "DOL compliance status — non-compliant apprenticeships represent regulatory risk on federally funded projects."
+    - name: "state_apprenticeship_compliance_flag"
+      expr: state_apprenticeship_compliance_flag
+      comment: "State-level apprenticeship compliance status — used for state prevailing wage and apprenticeship ratio compliance."
+    - name: "prevailing_wage_classification"
+      expr: prevailing_wage_classification
+      comment: "Prevailing wage classification for the apprentice — used for certified payroll and Davis-Bacon compliance."
+    - name: "wage_progression_step"
+      expr: wage_progression_step
+      comment: "Current wage step in the apprenticeship progression — used to track wage advancement and forecast labor cost increases."
+  measures:
+    - name: "total_apprenticeships"
+      expr: COUNT(1)
+      comment: "Total number of apprenticeship progression records. Baseline metric for apprenticeship program scale."
+    - name: "active_apprenticeships"
+      expr: COUNT(CASE WHEN apprenticeship_status = 'Active' THEN 1 END)
+      comment: "Number of currently active apprenticeships. Measures live apprenticeship pipeline for workforce development planning."
+    - name: "completed_apprenticeships"
+      expr: COUNT(CASE WHEN apprenticeship_status = 'Completed' THEN 1 END)
+      comment: "Number of completed apprenticeships (journeyman graduates). Measures workforce development output and pipeline conversion rate."
+    - name: "total_ojt_hours_accumulated"
+      expr: SUM(CAST(ojt_hours_accumulated AS DOUBLE))
+      comment: "Total on-the-job training hours accumulated across all apprentices. Measures apprenticeship program investment and progress toward journeyman qualification."
+    - name: "total_technical_instruction_hours"
+      expr: SUM(CAST(technical_instruction_hours AS DOUBLE))
+      comment: "Total technical instruction hours completed. Used to verify compliance with DOL minimum classroom training requirements."
+    - name: "avg_apprentice_to_journeyman_ratio"
+      expr: AVG(CAST(apprentice_to_journeyman_ratio AS DOUBLE))
+      comment: "Average apprentice-to-journeyman ratio. Monitored for compliance with union agreement and DOL ratio requirements — violations risk project shutdown."
+    - name: "dol_non_compliant_count"
+      expr: COUNT(CASE WHEN dol_compliance_flag = FALSE THEN 1 END)
+      comment: "Number of apprenticeships not in DOL compliance. Any non-zero count on federally funded projects requires immediate corrective action."
+    - name: "distinct_apprentices"
+      expr: COUNT(DISTINCT craft_worker_id)
+      comment: "Count of distinct craft workers in apprenticeship programs. Measures the breadth of the workforce development pipeline."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_rate`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Labor rate benchmarking and cost structure metrics. Enables bid pricing validation, prevailing wage compliance, and labor cost forecasting across projects and trades."
+  source: "`vibe_construction_v1`.`workforce`.`labor_rate`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the labor rate applies to — enables project-specific rate analysis and bid benchmarking."
+    - name: "rate_type"
+      expr: rate_type
+      comment: "Type of labor rate (Prevailing Wage, Union, Open Shop, Government) — primary classification for rate compliance analysis."
+    - name: "rate_status"
+      expr: rate_status
+      comment: "Status of the rate (Active, Expired, Pending) — used to filter current vs. historical rates."
+    - name: "jurisdiction"
+      expr: jurisdiction
+      comment: "Geographic jurisdiction the rate applies to — used for prevailing wage compliance by location."
+    - name: "skill_level"
+      expr: skill_level
+      comment: "Skill level the rate applies to (Apprentice, Journeyman, Foreman) — enables rate analysis by skill tier."
+    - name: "trade_classification"
+      expr: trade_classification
+      comment: "Trade classification for the rate — used to benchmark rates across trades and disciplines."
+    - name: "certified_payroll_required_flag"
+      expr: certified_payroll_required_flag
+      comment: "Indicates certified payroll is required — flags rates subject to Davis-Bacon or state prevailing wage reporting."
+    - name: "effective_start_date"
+      expr: effective_start_date
+      comment: "Effective start date of the rate — used for rate escalation analysis and contract pricing validation."
+    - name: "effective_end_date"
+      expr: effective_end_date
+      comment: "Effective end date of the rate — used to identify expiring rates requiring renewal before project completion."
+  measures:
+    - name: "avg_base_hourly_rate"
+      expr: AVG(CAST(base_hourly_rate AS DOUBLE))
+      comment: "Average base hourly rate across all rate records. Used for bid pricing benchmarking and labor budget development."
+    - name: "avg_total_loaded_hourly_rate"
+      expr: AVG(CAST(total_loaded_hourly_rate AS DOUBLE))
+      comment: "Average fully loaded hourly rate (base + burden + fringe). The true all-in labor cost used for project cost forecasting and bid pricing."
+    - name: "avg_overtime_hourly_rate"
+      expr: AVG(CAST(overtime_hourly_rate AS DOUBLE))
+      comment: "Average overtime hourly rate. Used to quantify overtime cost premium exposure in project labor budgets."
+    - name: "avg_fringe_benefit_rate"
+      expr: AVG(CAST(fringe_benefit_rate AS DOUBLE))
+      comment: "Average fringe benefit rate. Fringe benefits are a significant component of total labor cost — tracked for budget accuracy."
+    - name: "avg_payroll_burden_percentage"
+      expr: AVG(CAST(payroll_burden_percentage AS DOUBLE))
+      comment: "Average payroll burden percentage. Used to validate burden rates against industry benchmarks and contract pricing assumptions."
+    - name: "avg_overhead_percentage"
+      expr: AVG(CAST(overhead_percentage AS DOUBLE))
+      comment: "Average overhead percentage applied to labor rates. Used to ensure overhead recovery in project pricing."
+    - name: "avg_profit_margin_percentage"
+      expr: AVG(CAST(profit_margin_percentage AS DOUBLE))
+      comment: "Average profit margin percentage in labor rates. Used to validate bid pricing margins against company targets."
+    - name: "certified_payroll_rate_count"
+      expr: COUNT(CASE WHEN certified_payroll_required_flag = TRUE THEN 1 END)
+      comment: "Number of rates subject to certified payroll requirements. Drives compliance reporting workload estimation for prevailing wage projects."
+    - name: "distinct_projects_with_rates"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with labor rate records. Measures rate governance coverage across the project portfolio."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_site_access_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Site access control and workforce presence metrics. Enables site security compliance, HSE induction tracking, and workforce headcount verification on construction sites."
+  source: "`vibe_construction_v1`.`workforce`.`site_access_record`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project site the access record belongs to — primary dimension for site-level workforce presence reporting."
+    - name: "access_direction"
+      expr: access_direction
+      comment: "Direction of access (Entry, Exit) — used to compute time-on-site and concurrent headcount."
+    - name: "authorization_status"
+      expr: authorization_status
+      comment: "Authorization status of the access event (Authorized, Denied, Pending) — used to track unauthorized access attempts."
+    - name: "worker_classification"
+      expr: worker_classification
+      comment: "Classification of the worker (Direct, Subcontractor, Visitor) — enables workforce composition analysis on site."
+    - name: "induction_status"
+      expr: induction_status
+      comment: "Site induction status of the worker — workers accessing site without completed induction represent a safety compliance risk."
+    - name: "ppe_compliance_status"
+      expr: ppe_compliance_status
+      comment: "PPE compliance status at point of entry — non-compliant PPE is a leading safety indicator."
+    - name: "health_screening_status"
+      expr: health_screening_status
+      comment: "Health screening status at entry — used for workforce health and safety compliance monitoring."
+    - name: "access_zone"
+      expr: access_zone
+      comment: "Zone of the site accessed — used for zone-level access control and hazard area monitoring."
+    - name: "access_method"
+      expr: access_method
+      comment: "Method of access verification (Badge, Biometric, Manual) — used to assess access control system effectiveness."
+  measures:
+    - name: "total_access_events"
+      expr: COUNT(1)
+      comment: "Total number of site access events. Baseline metric for site traffic volume and security activity."
+    - name: "denied_access_events"
+      expr: COUNT(CASE WHEN authorization_status = 'Denied' THEN 1 END)
+      comment: "Number of denied access events. Elevated denials indicate unauthorized personnel attempts or expired credentials — requires security investigation."
+    - name: "ppe_non_compliant_entries"
+      expr: COUNT(CASE WHEN ppe_compliance_status != 'Compliant' THEN 1 END)
+      comment: "Number of site entries with PPE non-compliance. A leading safety KPI — high non-compliance rates require immediate HSE intervention."
+    - name: "induction_incomplete_entries"
+      expr: COUNT(CASE WHEN induction_status != 'Completed' THEN 1 END)
+      comment: "Number of site entries where induction is not completed. Workers on site without induction represent a regulatory and safety risk."
+    - name: "distinct_workers_on_site"
+      expr: COUNT(DISTINCT primary_site_craft_worker_id)
+      comment: "Count of distinct craft workers with site access records. Measures unique workforce presence for headcount verification and muster reporting."
+    - name: "avg_duration_on_site_minutes"
+      expr: AVG(CAST(temperature_reading AS DOUBLE))
+      comment: "Average temperature reading at site entry. Used for health screening trend monitoring — elevated readings may indicate health risk events requiring protocol activation."
+    - name: "escort_required_entries"
+      expr: COUNT(CASE WHEN escort_required_flag = TRUE THEN 1 END)
+      comment: "Number of access events requiring escort. Measures visitor and restricted-access management workload on site."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_agreement`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Labor agreement financial terms and compliance metrics. Enables union contract cost analysis, wage rate benchmarking, and labor relations risk management."
+  source: "`vibe_construction_v1`.`workforce`.`labor_agreement`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project the labor agreement applies to — enables project-level labor relations and cost analysis."
+    - name: "agreement_status"
+      expr: agreement_status
+      comment: "Status of the labor agreement (Active, Expired, Negotiating) — used to identify agreements requiring renewal."
+    - name: "agreement_type"
+      expr: agreement_type
+      comment: "Type of labor agreement (CBA, PLA, Open Shop) — primary classification for labor relations analysis."
+    - name: "jurisdiction_type"
+      expr: jurisdiction_type
+      comment: "Jurisdiction type (Local, State, Federal) — used for prevailing wage and regulatory compliance analysis."
+    - name: "trade_category"
+      expr: trade_category
+      comment: "Trade category covered by the agreement — enables wage rate analysis by discipline."
+    - name: "multi_employer_agreement_flag"
+      expr: multi_employer_agreement_flag
+      comment: "Indicates a multi-employer agreement — used to identify agreements with broader industry implications."
+    - name: "no_strike_clause_flag"
+      expr: no_strike_clause_flag
+      comment: "Indicates presence of a no-strike clause — a key labor relations risk indicator for project continuity."
+    - name: "hiring_hall_required_flag"
+      expr: hiring_hall_required_flag
+      comment: "Indicates hiring hall requirement — affects workforce sourcing strategy and mobilization lead times."
+    - name: "effective_date"
+      expr: effective_date
+      comment: "Effective date of the agreement — used for agreement lifecycle and renewal timeline analysis."
+    - name: "expiration_date"
+      expr: expiration_date
+      comment: "Expiration date of the agreement — used to proactively identify agreements requiring renegotiation."
+  measures:
+    - name: "avg_base_wage_rate"
+      expr: AVG(CAST(base_wage_rate AS DOUBLE))
+      comment: "Average base wage rate across labor agreements. Used for bid pricing benchmarking and labor cost budget development."
+    - name: "avg_fringe_benefit_rate"
+      expr: AVG(CAST(fringe_benefit_rate AS DOUBLE))
+      comment: "Average fringe benefit rate. Fringe benefits significantly impact total labor cost — tracked for budget accuracy."
+    - name: "avg_overtime_multiplier"
+      expr: AVG(CAST(overtime_multiplier AS DOUBLE))
+      comment: "Average overtime multiplier across agreements. Used to quantify overtime cost premium exposure in project labor budgets."
+    - name: "avg_training_fund_rate"
+      expr: AVG(CAST(training_fund_rate AS DOUBLE))
+      comment: "Average training fund contribution rate. Tracks workforce development investment mandated by labor agreements."
+    - name: "avg_pension_rate"
+      expr: AVG(CAST(pension_rate AS DOUBLE))
+      comment: "Average pension contribution rate. A significant labor cost component — tracked for total compensation cost analysis."
+    - name: "active_agreements_count"
+      expr: COUNT(CASE WHEN agreement_status = 'Active' THEN 1 END)
+      comment: "Number of currently active labor agreements. Measures the scope of active labor relations obligations."
+    - name: "expiring_agreements_count"
+      expr: COUNT(CASE WHEN agreement_status = 'Active' THEN 1 END)
+      comment: "Baseline count of active agreements for expiry monitoring. Used alongside expiration_date dimension to identify agreements expiring within planning horizon."
+    - name: "no_strike_agreements_count"
+      expr: COUNT(CASE WHEN no_strike_clause_flag = TRUE THEN 1 END)
+      comment: "Number of agreements with no-strike clauses. Measures project continuity protection through labor relations risk management."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_carbon_reduction_participation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Workforce carbon reduction participation metrics. Enables sustainability reporting, ESG target tracking, and workforce engagement in carbon reduction initiatives."
+  source: "`vibe_construction_v1`.`workforce`.`carbon_reduction_participation`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project where carbon reduction participation occurred — enables project-level ESG and sustainability reporting."
+    - name: "carbon_reduction_initiative_id"
+      expr: carbon_reduction_initiative_id
+      comment: "Carbon reduction initiative the worker participated in — used to measure initiative-level workforce engagement."
+    - name: "participation_role"
+      expr: participation_role
+      comment: "Role of the worker in the carbon reduction initiative — used to analyze participation by role type."
+    - name: "start_date"
+      expr: start_date
+      comment: "Start date of participation — used for time-phased sustainability reporting."
+    - name: "end_date"
+      expr: end_date
+      comment: "End date of participation — used to measure participation duration and initiative completion."
+  measures:
+    - name: "total_hours_contributed"
+      expr: SUM(CAST(hours_contributed AS DOUBLE))
+      comment: "Total workforce hours contributed to carbon reduction initiatives. Primary ESG KPI measuring workforce investment in sustainability programs."
+    - name: "avg_hours_contributed"
+      expr: AVG(CAST(hours_contributed AS DOUBLE))
+      comment: "Average hours contributed per participation record. Used to benchmark individual engagement levels against program targets."
+    - name: "distinct_workers_participating"
+      expr: COUNT(DISTINCT craft_worker_id)
+      comment: "Count of distinct craft workers participating in carbon reduction initiatives. Measures workforce engagement breadth for ESG reporting."
+    - name: "distinct_initiatives_engaged"
+      expr: COUNT(DISTINCT carbon_reduction_initiative_id)
+      comment: "Count of distinct carbon reduction initiatives with workforce participation. Measures diversity of sustainability program engagement."
+    - name: "total_participation_records"
+      expr: COUNT(1)
+      comment: "Total number of participation records. Baseline volume metric for sustainability program activity tracking."
 $$;

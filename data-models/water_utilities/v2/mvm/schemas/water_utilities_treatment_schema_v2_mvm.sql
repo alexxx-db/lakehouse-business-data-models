@@ -1,722 +1,829 @@
 -- Schema for Domain: treatment | Business: Water_Utilities | Version: v2_mvm
--- Generated on: 2026-07-02 05:00:55
+-- Generated on: 2026-07-10 20:15:28
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_water_utilities_v1`.`treatment` COMMENT 'Authoritative domain for all water treatment and purification operations at WTPs and WWTPs. Owns process data for coagulation, filtration, disinfection (UV, chlorination, RO, UF, MF, GAC), CT compliance, chemical dosing, and finished water production. Integrates with SCADA/OSIsoft PI Historian for real-time process control and MOR regulatory submissions.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`facility` (
-    `facility_id` BIGINT COMMENT 'Unique identifier for the facility referenced by each facility record in the treatment domain.',
-    `regulatory_agency_id` BIGINT COMMENT 'Unique identifier for the regulatory agency referenced by each facility record in the treatment domain.',
-    `water_source_id` BIGINT COMMENT 'Foreign key linking to treatment.water_source. Business justification: A water treatment facility draws from a primary water source (surface water intake, groundwater well, purchased interconnection). The facility table currently stores source_water_type, primary_source_',
-    `address` STRING COMMENT 'The address for the facility.',
-    `address_city` STRING COMMENT 'The address city of the facility.',
-    `address_line` STRING COMMENT 'The address line value recorded for each facility in the treatment domain.',
-    `address_line1` STRING COMMENT 'First line of the street address for the facility (address line1).',
-    `address_line2` STRING COMMENT 'The address line2 value recorded for each facility in the treatment domain.',
-    `address_line_1` STRING COMMENT 'The address line 1 value recorded for each facility in the treatment domain.',
-    `address_line_2` STRING COMMENT 'The address line 2 value recorded for each facility in the treatment domain.',
-    `address_state` STRING COMMENT 'The address state value recorded for each facility in the treatment domain.',
-    `address_zip` STRING COMMENT 'The address zip value recorded for each facility in the treatment domain.',
-    `annual_energy_consumption_kwh` DECIMAL(18,2) COMMENT 'The annual energy consumption kwh value recorded for each facility in the treatment domain.',
-    `annual_energy_kwh` DECIMAL(18,2) COMMENT 'The annual energy kwh value recorded for each facility in the treatment domain.',
-    `annual_operating_cost_usd` DECIMAL(18,2) COMMENT 'The annual operating cost usd value recorded for each facility in the treatment domain.',
-    `asset_condition_rating` STRING COMMENT 'The asset condition rating value recorded for each facility in the treatment domain.',
-    `average_daily_flow_mgd` DECIMAL(18,2) COMMENT 'The average daily flow mgd value recorded for each facility in the treatment domain.',
-    `average_daily_production_mgd` DECIMAL(18,2) COMMENT 'The average daily production mgd value recorded for each facility in the treatment domain.',
-    `awia_erp_certification_date` DATE COMMENT 'The awia erp certification date associated with each facility record in the treatment domain.',
-    `awia_risk_assessment_date` DATE COMMENT 'The awia risk assessment date associated with each facility record in the treatment domain.',
-    `backup_power_available` BOOLEAN COMMENT 'The backup power available value recorded for each facility in the treatment domain.',
-    `backup_power_capacity_kw` DECIMAL(18,2) COMMENT 'The backup power capacity kw value recorded for each facility in the treatment domain.',
-    `chemical_storage_capacity_tons` DECIMAL(18,2) COMMENT 'The chemical storage capacity tons value recorded for each facility in the treatment domain.',
-    `city` STRING COMMENT 'The city component of the address for each facility record.',
-    `facility_code` STRING COMMENT 'The facility code value recorded for each facility in the treatment domain.',
-    `commission_date` DATE COMMENT 'The commission date associated with each facility record in the treatment domain.',
-    `commissioned_date` DATE COMMENT 'The commissioned date associated with each facility record in the treatment domain.',
-    `commissioning_date` DATE COMMENT 'The commissioning date associated with each facility record in the treatment domain.',
-    `country` STRING COMMENT 'The country component of the address for each facility record.',
-    `country_code` STRING COMMENT 'The country code value recorded for each facility in the treatment domain.',
-    `county` STRING COMMENT 'The county component of the address for each facility record.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp associated with each facility record in the treatment domain.',
-    `current_avg_flow_mgd` DECIMAL(18,2) COMMENT 'The current avg flow mgd value recorded for each facility in the treatment domain.',
-    `current_capacity_mgd` DECIMAL(18,2) COMMENT 'The current capacity mgd value recorded for each facility in the treatment domain.',
-    `current_flow_mgd` DECIMAL(18,2) COMMENT 'The current flow mgd value recorded for each facility in the treatment domain.',
-    `data_source_system` STRING COMMENT 'The data source system value recorded for each facility in the treatment domain.',
-    `decommission_date` DATE COMMENT 'The decommission date associated with each facility record in the treatment domain.',
-    `decommissioned_date` DATE COMMENT 'The decommissioned date associated with each facility record in the treatment domain.',
-    `decommissioning_date` DATE COMMENT 'The decommissioning date associated with each facility record in the treatment domain.',
-    `design_capacity_mgd` DECIMAL(18,2) COMMENT 'The design capacity mgd value recorded for each facility in the treatment domain.',
-    `disinfection_method` STRING COMMENT 'The disinfection method value recorded for each facility in the treatment domain.',
-    `disinfection_type` STRING COMMENT 'The disinfection type value recorded for each facility in the treatment domain.',
-    `ecm_mvm_depth_reconciliation_note` STRING COMMENT 'ECM attribute depth reconciled to match or exceed MVM (prior ecm_depth=2, mvm_depth=5). ECM now carries the full backbone attribute set. Ref: OSIsoft PI Historian.',
-    `ecological_receptor_present_flag` BOOLEAN COMMENT 'The ecological receptor present flag value recorded for each facility in the treatment domain.',
-    `elevation_ft` DECIMAL(18,2) COMMENT 'The elevation ft value recorded for each facility in the treatment domain.',
-    `elevation_m` DECIMAL(18,2) COMMENT 'The elevation m value recorded for each facility in the treatment domain.',
-    `email_address` STRING COMMENT 'The email address value recorded for each facility in the treatment domain.',
-    `emergency_contact_name` STRING COMMENT 'The emergency contact name used to identify each facility record in the treatment domain.',
-    `emergency_contact_phone` STRING COMMENT 'The emergency contact phone value recorded for each facility in the treatment domain.',
-    `emergency_generator_flag` BOOLEAN COMMENT 'The emergency generator flag value recorded for each facility in the treatment domain.',
-    `emergency_response_plan_date` DATE COMMENT 'The emergency response plan date associated with each facility record in the treatment domain.',
-    `emergency_storage_days` DECIMAL(18,2) COMMENT 'The emergency storage days value recorded for each facility in the treatment domain.',
-    `energy_consumption_kwh_per_ml` DECIMAL(18,2) COMMENT 'The energy consumption kwh per ml value recorded for each facility in the treatment domain.',
-    `energy_intensity_kwh_per_mg` DECIMAL(18,2) COMMENT 'The energy intensity kwh per mg value recorded for each facility in the treatment domain.',
-    `energy_intensity_kwh_per_ml` DECIMAL(18,2) COMMENT 'The energy intensity kwh per ml value recorded for each facility in the treatment domain.',
-    `energy_source` STRING COMMENT 'The energy source value recorded for each facility in the treatment domain.',
-    `exposure_pathway_context` STRING COMMENT 'The exposure pathway context value recorded for each facility in the treatment domain.',
-    `facility_status` STRING COMMENT 'The facility status value recorded for each facility in the treatment domain.',
-    `facility_type` STRING COMMENT 'The facility type value recorded for each facility in the treatment domain.',
-    `fluoridation_flag` BOOLEAN COMMENT 'The fluoridation flag value recorded for each facility in the treatment domain.',
-    `gac_vessel_count` STRING COMMENT 'The gac vessel count value recorded for each facility in the treatment domain.',
-    `has_backup_power` BOOLEAN COMMENT 'Boolean flag indicating whether the has backup power condition applies to the facility record.',
-    `human_exposure_pathway_risk` STRING COMMENT 'The human exposure pathway risk value recorded for each facility in the treatment domain.',
-    `ion_exchange_train_count` STRING COMMENT 'The ion exchange train count value recorded for each facility in the treatment domain.',
-    `is_active` BOOLEAN COMMENT 'Boolean flag indicating whether the is active condition applies to the facility record.',
-    `is_emergency_backup` BOOLEAN COMMENT 'Boolean flag indicating whether the is emergency backup condition applies to the facility record.',
-    `is_emergency_interconnect` BOOLEAN COMMENT 'Boolean flag indicating whether the is emergency interconnect condition applies to the facility record.',
-    `is_wholesale_supplier` BOOLEAN COMMENT 'Boolean flag indicating whether the is wholesale supplier condition applies to the facility record.',
-    `last_expansion_date` DATE COMMENT 'The last expansion date associated with each facility record in the treatment domain.',
-    `last_major_rehab_year` STRING COMMENT 'The last major rehab year value recorded for each facility in the treatment domain.',
-    `last_major_upgrade_date` DATE COMMENT 'The last major upgrade date associated with each facility record in the treatment domain.',
-    `last_major_upgrade_year` STRING COMMENT 'The last major upgrade year value recorded for each facility in the treatment domain.',
-    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate (decimal degrees) of the facility location.',
-    `lims_facility_code` STRING COMMENT 'The lims facility code value recorded for each facility in the treatment domain.',
-    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate (decimal degrees) of the facility location.',
-    `maximo_location_code` STRING COMMENT 'The maximo location code value recorded for each facility in the treatment domain.',
-    `modified_timestamp` TIMESTAMP COMMENT 'The modified timestamp associated with each facility record in the treatment domain.',
-    `multimedia_filter_count` STRING COMMENT 'The multimedia filter count value recorded for each facility in the treatment domain.',
-    `facility_name` STRING COMMENT 'The facility name used to identify each facility record in the treatment domain.',
-    `notes` STRING COMMENT 'The notes value recorded for each facility in the treatment domain.',
-    `npdes_permit_number` STRING COMMENT 'The npdes permit number value recorded for each facility in the treatment domain.',
-    `number_of_treatment_trains` STRING COMMENT 'The number of treatment trains value recorded for each facility in the treatment domain.',
-    `ontology_class_uri` STRING COMMENT 'The ontology class uri value recorded for each facility in the treatment domain.',
-    `operating_authority` STRING COMMENT 'The operating authority value recorded for each facility in the treatment domain.',
-    `operating_permit_number` STRING COMMENT 'The operating permit number value recorded for each facility in the treatment domain.',
-    `operating_status` STRING COMMENT 'The operating status value recorded for each facility in the treatment domain.',
-    `operational_capacity_mgd` DECIMAL(18,2) COMMENT 'The operational capacity mgd value recorded for each facility in the treatment domain.',
-    `operational_status` STRING COMMENT 'The operational status value recorded for each facility in the treatment domain.',
-    `operator_certification_class` STRING COMMENT 'The operator certification class value recorded for each facility in the treatment domain.',
-    `operator_certification_grade_required` STRING COMMENT 'The operator certification grade required value recorded for each facility in the treatment domain.',
-    `operator_certification_level` STRING COMMENT 'The operator certification level value recorded for each facility in the treatment domain.',
-    `operator_class_required` STRING COMMENT 'The operator class required value recorded for each facility in the treatment domain.',
-    `operator_in_charge` DECIMAL(18,2) COMMENT 'The operator in charge value recorded for each facility in the treatment domain.',
-    `operator_license_number` STRING COMMENT 'The operator license number value recorded for each facility in the treatment domain.',
-    `operator_name` STRING COMMENT 'The operator name used to identify each facility record in the treatment domain.',
-    `operator_organization` STRING COMMENT 'The operator organization value recorded for each facility in the treatment domain.',
-    `owner_entity` STRING COMMENT 'The owner entity value recorded for each facility in the treatment domain.',
-    `owner_organization` STRING COMMENT 'The owner organization value recorded for each facility in the treatment domain.',
-    `ownership_type` STRING COMMENT 'The ownership type value recorded for each facility in the treatment domain.',
-    `peak_capacity_mgd` DECIMAL(18,2) COMMENT 'The peak capacity mgd value recorded for each facility in the treatment domain.',
-    `peak_daily_flow_mgd` DECIMAL(18,2) COMMENT 'The peak daily flow mgd value recorded for each facility in the treatment domain.',
-    `peak_design_flow_mgd` DECIMAL(18,2) COMMENT 'The peak design flow mgd value recorded for each facility in the treatment domain.',
-    `permit_expiration_date` DATE COMMENT 'The permit expiration date associated with each facility record in the treatment domain.',
-    `permit_number` STRING COMMENT 'The permit number value recorded for each facility in the treatment domain.',
-    `permitted_capacity_mgd` DECIMAL(18,2) COMMENT 'The permitted capacity mgd value recorded for each facility in the treatment domain.',
-    `pfas_treatment_capable_flag` BOOLEAN COMMENT 'The pfas treatment capable flag value recorded for each facility in the treatment domain.',
-    `phone_number` STRING COMMENT 'The phone number value recorded for each facility in the treatment domain.',
-    `pi_server_name` STRING COMMENT 'The pi server name used to identify each facility record in the treatment domain.',
-    `population_served` STRING COMMENT 'The population served value recorded for each facility in the treatment domain.',
-    `postal_code` STRING COMMENT 'The postal code component of the address for each facility record.',
-    `primacy_agency_code` STRING COMMENT 'The primacy agency code value recorded for each facility in the treatment domain.',
-    `primary_disinfection_method` STRING COMMENT 'The primary disinfection method value recorded for each facility in the treatment domain.',
-    `primary_treatment_process` STRING COMMENT 'The primary treatment process value recorded for each facility in the treatment domain.',
-    `pwsid` STRING COMMENT 'The pwsid value recorded for each facility in the treatment domain.',
-    `rated_capacity_mgd` DECIMAL(18,2) COMMENT 'The rated capacity mgd value recorded for each facility in the treatment domain.',
-    `record_status` STRING COMMENT 'The record status value recorded for each facility in the treatment domain.',
-    `region_code` STRING COMMENT 'The region code value recorded for each facility in the treatment domain.',
-    `regulatory_region` STRING COMMENT 'The regulatory region value recorded for each facility in the treatment domain.',
-    `regulatory_standard_layer` STRING COMMENT 'The regulatory standard layer value recorded for each facility in the treatment domain.',
-    `residuals_handling_method` STRING COMMENT 'The residuals handling method value recorded for each facility in the treatment domain.',
-    `risk_resilience_assessment_date` DATE COMMENT 'The risk resilience assessment date associated with each facility record in the treatment domain.',
-    `scada_system_code` STRING COMMENT 'The scada system code value recorded for each facility in the treatment domain.',
-    `scada_system_name` STRING COMMENT 'The scada system name used to identify each facility record in the treatment domain.',
-    `scada_system_type` STRING COMMENT 'The scada system type value recorded for each facility in the treatment domain.',
-    `service_area_population` STRING COMMENT 'The service area population value recorded for each facility in the treatment domain.',
-    `service_connections_count` STRING COMMENT 'The service connections count value recorded for each facility in the treatment domain.',
-    `service_population` BIGINT COMMENT 'The service population value recorded for each facility in the treatment domain.',
-    `site_area_acres` DECIMAL(18,2) COMMENT 'The site area acres value recorded for each facility in the treatment domain.',
-    `state_code` STRING COMMENT 'The state code value recorded for each facility in the treatment domain.',
-    `state_primacy_agency` STRING COMMENT 'The state primacy agency value recorded for each facility in the treatment domain.',
-    `state_province` STRING COMMENT 'The state province value recorded for each facility in the treatment domain.',
-    `street_address` STRING COMMENT 'The street address value recorded for each facility in the treatment domain.',
-    `treatment_capacity_mgd` DECIMAL(18,2) COMMENT 'The treatment capacity mgd value recorded for each facility in the treatment domain.',
-    `treatment_class` STRING COMMENT 'The treatment class value recorded for each facility in the treatment domain.',
-    `treatment_process_type` STRING COMMENT 'The treatment process type value recorded for each facility in the treatment domain.',
-    `treatment_technology` STRING COMMENT 'The treatment technology value recorded for each facility in the treatment domain.',
-    `treatment_technology_primary` STRING COMMENT 'The treatment technology primary value recorded for each facility in the treatment domain.',
-    `treatment_technology_type` STRING COMMENT 'The treatment technology type value recorded for each facility in the treatment domain.',
-    `treatment_type` STRING COMMENT 'The treatment type value recorded for each facility in the treatment domain.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp associated with each facility record in the treatment domain.',
-    `year_built` STRING COMMENT 'The year built value recorded for each facility in the treatment domain.',
-    `year_constructed` STRING COMMENT 'The year constructed value recorded for each facility in the treatment domain.',
-    `zip_code` STRING COMMENT 'The zip code value recorded for each facility in the treatment domain.',
+    `facility_id` BIGINT COMMENT 'Primary key for facility',
     CONSTRAINT pk_facility PRIMARY KEY(`facility_id`)
-) COMMENT 'Water treatment plant or facility master record. Stores facility-level attributes including design capacity, treatment technology, regulatory identifiers (PWSID), SCADA integration points, operator certification requirements, and AWIA risk assessment dates. Central entity for treatment operations, compliance reporting (MOR/DMR), and asset management integration (Maximo location). References EPA SDWA, AWIA Section 2013.';
+) COMMENT 'Master record for each Water Treatment Plant (WTP) or Wastewater Treatment Plant (WWTP) facility. Captures facility identity, design capacity (MGD), treatment technology type (conventional, membrane, RO, UV, GAC), regulatory permit numbers, NPDES permit references, operational status, geographic location, and service area. This is the authoritative facility master for the treatment domain.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` (
-    `process_unit_id` BIGINT COMMENT 'Unique identifier for the process unit. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Parent treatment facility. Ref: OSIsoft PI Historian.',
-    `location_id` BIGINT COMMENT 'Foreign key linking to asset.location. Business justification: Process units occupy specific physical locations within the facility location hierarchy (filter gallery, pump room, chemical building). Linking to asset.location enables GIS-based asset management, lo',
-    `baffling_factor` DECIMAL(18,2) COMMENT 'Baffling factor for CT calculations. Ref: OSIsoft PI Historian.',
-    `bed_volumes_treated` DECIMAL(18,2) COMMENT 'The bed volumes treated value recorded for each process unit in the treatment domain.',
-    `capacity_rating` DECIMAL(18,2) COMMENT 'The capacity rating value recorded for each process unit in the treatment domain.',
-    `capacity_units` STRING COMMENT 'The capacity units value recorded for each process unit in the treatment domain.',
-    `process_unit_code` STRING COMMENT 'The process unit code value recorded for each process unit in the treatment domain.',
-    `commission_date` DATE COMMENT 'The commission date associated with each process unit record in the treatment domain.',
-    `commissioned_date` DATE COMMENT 'The commissioned date associated with each process unit record in the treatment domain.',
-    `commissioning_date` DATE COMMENT 'The commissioning date associated with each process unit record in the treatment domain.',
-    `condition_rating` STRING COMMENT 'The condition rating value recorded for each process unit in the treatment domain.',
-    `condition_score` DECIMAL(18,2) COMMENT 'The condition score value recorded for each process unit in the treatment domain.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp. Ref: OSIsoft PI Historian.',
-    `criticality_score` DECIMAL(18,2) COMMENT 'The criticality score value recorded for each process unit in the treatment domain.',
-    `cumulative_volume_treated_mg` DECIMAL(18,2) COMMENT 'The cumulative volume treated mg value recorded for each process unit in the treatment domain.',
-    `decommission_date` DATE COMMENT 'The decommission date associated with each process unit record in the treatment domain.',
-    `design_capacity_gpm` DECIMAL(18,2) COMMENT 'Design capacity in gallons per minute. Ref: OSIsoft PI Historian.',
-    `design_capacity_mgd` DECIMAL(18,2) COMMENT 'The design capacity mgd value recorded for each process unit in the treatment domain.',
-    `design_detention_time_min` DECIMAL(18,2) COMMENT 'The design detention time min value recorded for each process unit in the treatment domain.',
-    `design_flow_mgd` DECIMAL(18,2) COMMENT 'The design flow mgd value recorded for each process unit in the treatment domain.',
-    `design_flow_rate_mgd` DECIMAL(18,2) COMMENT 'The design flow rate mgd value recorded for each process unit in the treatment domain.',
-    `design_log_removal_credit` DECIMAL(18,2) COMMENT 'The design log removal credit value recorded for each process unit in the treatment domain.',
-    `detention_time_minutes` DECIMAL(18,2) COMMENT 'Theoretical detention time in minutes. Ref: OSIsoft PI Historian.',
-    `energy_consumption_kwh_per_mg` DECIMAL(18,2) COMMENT 'The energy consumption kwh per mg value recorded for each process unit in the treatment domain.',
-    `expected_useful_life_years` STRING COMMENT 'The expected useful life years value recorded for each process unit in the treatment domain.',
-    `gac_media_type` STRING COMMENT 'The gac media type value recorded for each process unit in the treatment domain.',
-    `hydraulic_loading_rate_gpm_sqft` DECIMAL(18,2) COMMENT 'Hydraulic loading rate in GPM per square foot. Ref: OSIsoft PI Historian.',
-    `hydraulic_retention_time_min` DECIMAL(18,2) COMMENT 'The hydraulic retention time min value recorded for each process unit in the treatment domain.',
-    `in_service_flag` BOOLEAN COMMENT 'The in service flag value recorded for each process unit in the treatment domain.',
-    `install_date` DATE COMMENT 'The install date associated with each process unit record in the treatment domain.',
-    `installation_date` DATE COMMENT 'Date unit was installed. Ref: OSIsoft PI Historian.',
-    `installed_date` DATE COMMENT 'The installed date associated with each process unit record in the treatment domain.',
-    `is_active` BOOLEAN COMMENT 'Boolean flag indicating whether the is active condition applies to the process unit record.',
-    `is_online` BOOLEAN COMMENT 'Boolean flag indicating whether the is online condition applies to the process unit record.',
-    `is_redundant` BOOLEAN COMMENT 'Boolean flag indicating whether the is redundant condition applies to the process unit record.',
-    `is_redundant_unit` BOOLEAN COMMENT 'Boolean flag indicating whether the is redundant unit condition applies to the process unit record.',
-    `is_standby` BOOLEAN COMMENT 'Boolean flag indicating whether the is standby condition applies to the process unit record.',
-    `ix_resin_type` STRING COMMENT 'The ix resin type value recorded for each process unit in the treatment domain.',
-    `last_backwash_date` DATE COMMENT 'The last backwash date associated with each process unit record in the treatment domain.',
-    `last_inspection_date` DATE COMMENT 'The last inspection date associated with each process unit record in the treatment domain.',
-    `last_maintenance_date` DATE COMMENT 'The last maintenance date associated with each process unit record in the treatment domain.',
-    `last_rehabilitation_date` DATE COMMENT 'The last rehabilitation date associated with each process unit record in the treatment domain.',
-    `location_description` STRING COMMENT 'The location description value recorded for each process unit in the treatment domain.',
-    `maintenance_zone` STRING COMMENT 'The maintenance zone value recorded for each process unit in the treatment domain.',
-    `manufacturer` STRING COMMENT 'The manufacturer value recorded for each process unit in the treatment domain.',
-    `maximo_asset_number` STRING COMMENT 'IBM Maximo asset number.',
-    `media_depth_inches` DECIMAL(18,2) COMMENT 'The media depth inches value recorded for each process unit in the treatment domain.',
-    `media_depth_m` DECIMAL(18,2) COMMENT 'The media depth m value recorded for each process unit in the treatment domain.',
-    `media_type` STRING COMMENT 'Filter media type if applicable. Ref: OSIsoft PI Historian.',
-    `membrane_type` STRING COMMENT 'The membrane type value recorded for each process unit in the treatment domain.',
-    `model_number` STRING COMMENT 'The model number value recorded for each process unit in the treatment domain.',
-    `process_unit_name` STRING COMMENT 'The process unit name used to identify each process unit record in the treatment domain.',
-    `next_inspection_date` DATE COMMENT 'The next inspection date associated with each process unit record in the treatment domain.',
-    `notes` STRING COMMENT 'The notes value recorded for each process unit in the treatment domain.',
-    `ontology_concept_code` STRING COMMENT 'The ontology concept code value recorded for each process unit in the treatment domain.',
-    `operational_status` STRING COMMENT 'Current operational status. Ref: OSIsoft PI Historian.',
-    `pfas_removal_efficiency_pct` DECIMAL(18,2) COMMENT 'The pfas removal efficiency pct value recorded for each process unit in the treatment domain.',
-    `pi_element_path` STRING COMMENT 'The pi element path value recorded for each process unit in the treatment domain.',
-    `pi_tag_prefix` STRING COMMENT 'The pi tag prefix value recorded for each process unit in the treatment domain.',
-    `process_stage` STRING COMMENT 'The process stage value recorded for each process unit in the treatment domain.',
-    `process_stage_order` STRING COMMENT 'The process stage order value recorded for each process unit in the treatment domain.',
-    `process_type` STRING COMMENT 'The process type value recorded for each process unit in the treatment domain.',
-    `process_unit_status` STRING COMMENT 'The process unit status value recorded for each process unit in the treatment domain.',
-    `process_unit_type` STRING COMMENT 'The process unit type value recorded for each process unit in the treatment domain.',
-    `rated_capacity` DECIMAL(18,2) COMMENT 'The rated capacity value recorded for each process unit in the treatment domain.',
-    `rated_capacity_mgd` DECIMAL(18,2) COMMENT 'The rated capacity mgd value recorded for each process unit in the treatment domain.',
-    `rated_flow_rate_mgd` DECIMAL(18,2) COMMENT 'The rated flow rate mgd value recorded for each process unit in the treatment domain.',
-    `record_status` STRING COMMENT 'The record status value recorded for each process unit in the treatment domain.',
-    `redundancy_level` STRING COMMENT 'The redundancy level value recorded for each process unit in the treatment domain.',
-    `regulatory_unit_code` STRING COMMENT 'The regulatory unit code value recorded for each process unit in the treatment domain.',
-    `scada_system_code` STRING COMMENT 'The scada system code value recorded for each process unit in the treatment domain.',
-    `scada_tag_prefix` STRING COMMENT 'The scada tag prefix value recorded for each process unit in the treatment domain.',
-    `serial_number` STRING COMMENT 'The serial number value recorded for each process unit in the treatment domain.',
-    `surface_area_sqft` DECIMAL(18,2) COMMENT 'Surface area in square feet. Ref: OSIsoft PI Historian.',
-    `technology_category` STRING COMMENT 'The technology category value recorded for each process unit in the treatment domain.',
-    `treatment_stage` STRING COMMENT 'The treatment stage value recorded for each process unit in the treatment domain.',
-    `treatment_technology` STRING COMMENT 'Treatment technology employed by unit. Ref: OSIsoft PI Historian.',
-    `treatment_technology_code` STRING COMMENT 'The treatment technology code value recorded for each process unit in the treatment domain.',
-    `treatment_technology_type` STRING COMMENT 'The treatment technology type value recorded for each process unit in the treatment domain.',
-    `treatment_train_number` STRING COMMENT 'The treatment train number value recorded for each process unit in the treatment domain.',
-    `unit_code` STRING COMMENT 'The unit code value recorded for each process unit in the treatment domain.',
-    `unit_name` STRING COMMENT 'Name of the process unit. Ref: OSIsoft PI Historian.',
-    `unit_number` STRING COMMENT 'The unit number value recorded for each process unit in the treatment domain.',
-    `unit_type` STRING COMMENT 'Type of process unit (filter, clarifier, etc.). Ref: OSIsoft PI Historian.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp. Ref: OSIsoft PI Historian.',
-    `uv_lamp_count` STRING COMMENT 'The uv lamp count value recorded for each process unit in the treatment domain.',
-    `vendor` STRING COMMENT 'The vendor value recorded for each process unit in the treatment domain.',
-    `vendor_name` STRING COMMENT 'The vendor name used to identify each process unit record in the treatment domain.',
-    `volume_gallons` DECIMAL(18,2) COMMENT 'The volume gallons value recorded for each process unit in the treatment domain.',
-    `volume_mg` DECIMAL(18,2) COMMENT 'The volume mg value recorded for each process unit in the treatment domain.',
+    `process_unit_id` BIGINT COMMENT 'Primary key for process_unit',
+    `facility_id` BIGINT COMMENT 'add column facility_id (BIGINT) with FK to treatment.facility.facility_id - process units physically exist within treatment facilities and this fundamental relationship is missing',
+    `location_id` BIGINT COMMENT 'Foreign key linking to asset.location. Business justification: Process units occupy specific physical locations within treatment facilities (e.g., Filter Gallery, Chemical Building). asset.location provides the spatial hierarchy for maintenance routing, safety pl',
+    `sampling_point_id` BIGINT COMMENT 'Foreign key linking to quality.quality_sampling_point. Business justification: Each treatment process unit (clarifier, disinfection unit, softener) has an associated effluent quality sampling point for process control and regulatory monitoring. SCADA integration and process opti',
     CONSTRAINT pk_process_unit PRIMARY KEY(`process_unit_id`)
-) COMMENT 'Individual treatment process unit within a facility (filter, clarifier, membrane train, UV reactor, contact basin). Stores unit-specific design parameters (capacity, media type, surface area, hydraulic loading rate, detention time, baffling factor), operational status, and asset identifiers (Maximo asset number). Used for process control, performance monitoring, and maintenance scheduling.';
+) COMMENT 'Defines the treatment process units and stages configured at each WTP/WWTP facility. Captures process unit type (coagulation, flocculation, sedimentation, filtration, chlorination, UV disinfection, RO, UF, MF, GAC, ozonation, biological treatment), process sequence order, design flow rate (GPM/MGD), operational parameters, and associated SCADA tag references in OSIsoft PI Historian. Serves as the process configuration master for treatment operations.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` (
-    `process_reading_id` BIGINT COMMENT 'Unique identifier for the process reading. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `installation_id` BIGINT COMMENT 'Unique identifier for the meter installation referenced by each process reading record in the treatment domain.',
-    `process_unit_id` BIGINT COMMENT 'Process unit generating the reading. Ref: OSIsoft PI Historian.',
-    `registry_id` BIGINT COMMENT 'Unique identifier for the registry referenced by each process reading record in the treatment domain.',
-    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Process readings flagged as regulatory exceedances (is_regulatory_exceedance=true) or DMR-reportable (dmr_reporting_flag=true) must reference the specific regulatory requirement (MCL, treatment techni',
-    `alarm_state` STRING COMMENT 'Alarm state if applicable. Ref: OSIsoft PI Historian.',
-    `batch_number` STRING COMMENT 'The batch number value recorded for each process reading in the treatment domain.',
-    `calibration_due_date` DATE COMMENT 'The calibration due date associated with each process reading record in the treatment domain.',
-    `compression_applied` BOOLEAN COMMENT 'The compression applied value recorded for each process reading in the treatment domain.',
-    `ct_required` DOUBLE COMMENT 'The ct required value recorded for each process reading in the treatment domain.',
-    `ct_value` DOUBLE COMMENT 'The ct value value recorded for each process reading in the treatment domain.',
-    `dmr_reporting_flag` BOOLEAN COMMENT 'The dmr reporting flag value recorded for each process reading in the treatment domain.',
-    `engineering_unit` STRING COMMENT 'Unit of measure. Ref: OSIsoft PI Historian.',
-    `high_range_limit` DOUBLE COMMENT 'The high range limit value recorded for each process reading in the treatment domain.',
-    `ingestion_timestamp` TIMESTAMP COMMENT 'The ingestion timestamp associated with each process reading record in the treatment domain.',
-    `is_manual_entry` BOOLEAN COMMENT 'Indicates if reading was manually entered. Ref: OSIsoft PI Historian.',
-    `is_regulatory_exceedance` BOOLEAN COMMENT 'Boolean flag indicating whether the is regulatory exceedance condition applies to the process reading record.',
-    `last_calibration_date` DATE COMMENT 'The last calibration date associated with each process reading record in the treatment domain.',
-    `location_description` STRING COMMENT 'The location description value recorded for each process reading in the treatment domain.',
-    `low_range_limit` DOUBLE COMMENT 'The low range limit value recorded for each process reading in the treatment domain.',
-    `measured_value` DOUBLE COMMENT 'Measured value. Ref: OSIsoft PI Historian.',
-    `mor_reporting_flag` BOOLEAN COMMENT 'Indicates if reading is included in MOR. Ref: OSIsoft PI Historian.',
-    `ontology_class_uri` STRING COMMENT 'The ontology class uri value recorded for each process reading in the treatment domain.',
-    `parameter_type` STRING COMMENT 'Type of parameter measured. Ref: OSIsoft PI Historian.',
-    `pi_server_name` STRING COMMENT 'The pi server name used to identify each process reading record in the treatment domain.',
-    `process_stage` STRING COMMENT 'The process stage value recorded for each process reading in the treatment domain.',
-    `quality_flag` BOOLEAN COMMENT 'Data quality flag. Ref: OSIsoft PI Historian.',
-    `raw_value` DOUBLE COMMENT 'The raw value value recorded for each process reading in the treatment domain.',
-    `reading_date` DATE COMMENT 'The reading date associated with each process reading record in the treatment domain.',
-    `reading_status` STRING COMMENT 'The reading status value recorded for each process reading in the treatment domain.',
-    `reading_timestamp` TIMESTAMP COMMENT 'Timestamp of the reading. Ref: OSIsoft PI Historian.',
-    `regulatory_limit_type` STRING COMMENT 'The regulatory limit type value recorded for each process reading in the treatment domain.',
-    `regulatory_limit_value` DOUBLE COMMENT 'The regulatory limit value value recorded for each process reading in the treatment domain.',
-    `sample_interval_seconds` STRING COMMENT 'The sample interval seconds value recorded for each process reading in the treatment domain.',
-    `scada_system_code` BIGINT COMMENT 'The scada system code value recorded for each process reading in the treatment domain.',
-    `source_tag_name` STRING COMMENT 'The source tag name used to identify each process reading record in the treatment domain.',
-    `substitution_reason` STRING COMMENT 'The substitution reason value recorded for each process reading in the treatment domain.',
-    `treatment_process_type` STRING COMMENT 'The treatment process type value recorded for each process reading in the treatment domain.',
-    `validated_timestamp` TIMESTAMP COMMENT 'The validated timestamp associated with each process reading record in the treatment domain.',
+    `process_reading_id` BIGINT COMMENT 'Unique surrogate identifier for each process reading record in the silver-layer curated telemetry dataset. Primary key for the process_reading data product.',
+    `facility_id` BIGINT COMMENT 'Reference to the treatment facility (Water Treatment Plant or Wastewater Treatment Plant) where this process reading was generated. Links to the facility master record for site-level aggregation and regulatory reporting.',
+    `filter_unit_id` BIGINT COMMENT 'Foreign key linking to treatment.filter_unit. Business justification: Process readings from SCADA/PI Historian frequently originate from filter units (turbidity post-filter, pressure drop across media, backwash flow rate). Linking process_reading to filter_unit enables ',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: process_reading captures regulatory_limit_type, regulatory_limit_value, and is_regulatory_exceedance — these are evaluated against specific regulatory requirements (SWTR, LT2ESWTR). Operators and comp',
+    `sampling_point_id` BIGINT COMMENT 'Reference to the physical instrument or sensor asset (e.g., flow meter, pressure transducer, turbidimeter, pH probe, chlorine analyzer) that generated this reading. Links to the asset management record in IBM Maximo for calibration tracking, maintenance history, and instrument lifecycle management.',
+    `alarm_state` STRING COMMENT 'The SCADA alarm state associated with this reading at the time of capture. Reflects the process control alarm condition: normal (within operational bounds), low_alarm (below low setpoint), high_alarm (above high setpoint), low_low_alarm (critical low condition), high_high_alarm (critical high condition), sensor_fault (instrument malfunction detected). Used for operational response and incident tracking.. Valid values are `normal|low_alarm|high_alarm|low_low_alarm|high_high_alarm|sensor_fault`',
+    `batch_number` STRING COMMENT 'The data pipeline batch or job run identifier associated with the ingestion of this process reading into the Databricks Lakehouse silver layer. Used for ETL traceability, reprocessing identification, and data pipeline audit. Enables identification of all records loaded in a specific pipeline execution.',
+    `calibration_due_date` DATE COMMENT 'The date by which the instrument generating this reading is due for its next calibration verification. Sourced from the IBM Maximo asset management calibration schedule. Readings captured after the calibration_due_date may require additional quality review. Supports instrument reliability and regulatory compliance for monitoring equipment.',
+    `compression_applied` BOOLEAN COMMENT 'Indicates whether OSIsoft PI Historian exception and compression algorithms were applied to this data point before archiving. When True, the stored value may represent a compressed/exception-filtered point rather than a raw scan value. Important for understanding data density and potential gaps in high-frequency process data.',
+    `ct_required` DOUBLE COMMENT 'The minimum CT (Contact Time for Disinfection) value in mg·min/L required by the EPA Surface Water Treatment Rule (SWTR) for the applicable disinfectant, temperature, and pH conditions at this facility. Used to calculate CT compliance ratio (ct_value / ct_required) for regulatory reporting. Null for non-disinfection parameters.',
+    `ct_value` DOUBLE COMMENT 'The calculated CT (Contact Time for Disinfection) value in mg·min/L for disinfection process readings. CT is the product of disinfectant residual concentration (mg/L) and contact time (minutes), used to demonstrate compliance with the Surface Water Treatment Rule (SWTR) inactivation requirements for Giardia and viruses. Applicable only to disinfection process stage readings; null for non-disinfection parameters.',
+    `dmr_reporting_flag` BOOLEAN COMMENT 'Indicates whether this process reading is designated for inclusion in the Discharge Monitoring Report (DMR) submitted to the EPA or state agency under the facilitys NPDES permit. True for effluent quality readings at WWTPs that must be reported on the DMR. Enables automated DMR data extraction.',
+    `engineering_unit` STRING COMMENT 'The unit of measurement associated with the measured_value field. Follows industry-standard engineering unit notation used in SCADA and PI Historian configurations. Common values include MGD (Million Gallons per Day), GPM (Gallons per Minute), PSI (Pounds per Square Inch), NTU (Nephelometric Turbidity Units), pH, mg/L (milligrams per Liter), and °C (degrees Celsius). [ENUM-REF-CANDIDATE: MGD|GPM|PSI|NTU|pH|mg/L|°C|%|mV|kW|gal|ft|ft/s|ppm|ppb|mS/cm|MPN/100mL — promote to reference product]',
+    `high_range_limit` DOUBLE COMMENT 'The maximum operational range limit for this process parameter as configured in the SCADA/PI Historian system. Values above this threshold may indicate sensor malfunction, process upset, or out-of-range conditions. Used in data quality validation and alarm management.',
+    `ingestion_timestamp` TIMESTAMP COMMENT 'The date and time when this process reading record was ingested into the Databricks Lakehouse silver layer from the source system (OSIsoft PI Historian or SCADA). Distinct from reading_timestamp (the real-world event time). Used for data pipeline latency monitoring and ETL audit trails.',
+    `is_manual_entry` BOOLEAN COMMENT 'Indicates whether this process reading was manually entered by a licensed operator rather than automatically captured by the SCADA/PI Historian system. True for manual readings (e.g., grab sample results, field measurements, backup readings during SCADA outages). Required for data integrity auditing and regulatory compliance documentation under EPA SDWA.',
+    `is_regulatory_exceedance` BOOLEAN COMMENT 'Indicates whether the measured_value exceeds the applicable regulatory_limit_value for this process parameter. True when the reading constitutes a regulatory violation requiring notification, corrective action, and reporting under SDWA or NPDES permit conditions. Critical flag for compliance monitoring and MOR/DMR generation.',
+    `last_calibration_date` DATE COMMENT 'The date of the most recent calibration verification performed on the instrument generating this reading. Sourced from IBM Maximo calibration records. Used to assess measurement reliability and support regulatory documentation of monitoring equipment maintenance.',
+    `location_description` STRING COMMENT 'A human-readable description of the physical location within the treatment facility where this measurement point is installed (e.g., Filter Gallery - Filter 3 Effluent, Clearwell Inlet, UV Reactor Train 2 Outlet). Supplements the tag_id with a plain-language location reference for operator use and regulatory documentation.',
+    `low_range_limit` DOUBLE COMMENT 'The minimum operational range limit for this process parameter as configured in the SCADA/PI Historian system. Values below this threshold may indicate sensor malfunction, process upset, or out-of-range conditions. Used in data quality validation and alarm management.',
+    `measured_value` DOUBLE COMMENT 'The principal numeric measurement captured at the process control point. Represents the raw or lightly-conditioned sensor reading as stored in OSIsoft PI Historian. Units are defined by the engineering_unit field. Examples: flow rate in MGD or GPM, pressure in PSI, turbidity in NTU, pH value, chlorine residual in mg/L, temperature in degrees Celsius.',
+    `mor_reporting_flag` BOOLEAN COMMENT 'Indicates whether this process reading is designated for inclusion in the Monthly Operating Report (MOR) submitted to the state primacy agency. True for readings that represent regulatory compliance monitoring points required under the facilitys operating permit. Enables automated MOR data extraction from the silver layer.',
+    `parameter_type` STRING COMMENT 'The category of process parameter being measured. Classifies the reading into a standard measurement type for cross-facility analytics and regulatory reporting. Examples: flow (volumetric flow rate), pressure (hydraulic pressure), turbidity (particle measurement in NTU), pH (acidity/alkalinity), chlorine_residual (disinfectant residual in mg/L), temperature (process temperature), chemical_feed_rate (dosing rate). [ENUM-REF-CANDIDATE: flow|pressure|turbidity|pH|chlorine_residual|temperature|chemical_feed_rate|level|conductivity|dissolved_oxygen|TOC|UV_transmittance|BOD|COD|TSS|TDS — promote to reference product]',
+    `pi_server_name` STRING COMMENT 'The name of the OSIsoft PI Historian server instance from which this reading was sourced. Water utilities may operate multiple PI servers across different facilities or regions. Used for data lineage, source system reconciliation, and multi-server federation queries.',
+    `process_stage` STRING COMMENT 'The treatment process stage at which this reading was captured. Identifies the position within the treatment train for process control and regulatory compliance tracking. Key stages include intake (raw water source), coagulation, flocculation, sedimentation, filtration, disinfection (UV/chlorination/RO/UF/MF/GAC), finished_water (post-treatment), and distribution_entry (point of entry to distribution network). [ENUM-REF-CANDIDATE: intake|coagulation|flocculation|sedimentation|filtration|disinfection|finished_water|distribution_entry|wastewater_influent|secondary_treatment|tertiary_treatment|wastewater_effluent — promote to reference product]',
+    `quality_flag` BOOLEAN COMMENT 'The OSIsoft PI Historian data quality status code associated with this reading. Indicates the reliability and validity of the measured value. Good indicates a valid, reliable reading. Bad indicates a sensor fault or communication failure. Uncertain indicates the value may be unreliable. Substituted indicates a manually entered or interpolated value. Shutdown indicates the process unit was offline. ConfigError indicates a tag configuration issue.',
+    `raw_value` DOUBLE COMMENT 'The unprocessed, unconditioned sensor output value as received directly from the SCADA/PI Historian system before any silver-layer transformations, scaling, or quality adjustments. Preserved for audit and reconciliation against the source system. May differ from measured_value if scaling, offset correction, or substitution was applied.',
+    `reading_date` DATE COMMENT 'The calendar date (yyyy-MM-dd) on which this process reading was recorded. Derived from reading_timestamp for partitioning, daily aggregation, and regulatory reporting purposes. Stored as a separate DATE column to support efficient date-based partitioning in the Databricks Lakehouse and daily compliance reporting.',
+    `reading_status` STRING COMMENT 'The silver-layer curation lifecycle status of this process reading record. raw indicates the record has been ingested but not yet validated. validated indicates the record has passed data quality checks. rejected indicates the record failed validation rules. substituted indicates the value was replaced by an operator-approved substitute. archived indicates the record has been moved to long-term storage.. Valid values are `raw|validated|rejected|substituted|archived`',
+    `reading_timestamp` TIMESTAMP COMMENT 'The precise date and time (with timezone offset) at which the process measurement was recorded by the SCADA/PI Historian system. This is the principal real-world event time for the observation, stored in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Distinct from ingestion or audit timestamps.',
+    `regulatory_limit_type` STRING COMMENT 'The type of regulatory standard that the regulatory_limit_value represents. MCL (Maximum Contaminant Level) is the enforceable standard under SDWA. MCLG (Maximum Contaminant Level Goal) is the non-enforceable health goal. action_level applies to Lead and Copper Rule Revisions (LCRR). permit_limit applies to NPDES discharge permits. treatment_technique applies where no MCL is set but a treatment method is required.. Valid values are `MCL|MCLG|action_level|permit_limit|treatment_technique|none`',
+    `regulatory_limit_value` DOUBLE COMMENT 'The applicable regulatory threshold (MCL, MCLG, or permit limit) for this process parameter as defined by the EPA or state primacy agency. For example, the MCL for turbidity is 1 NTU (0.3 NTU for filtered systems), and the MCL for total trihalomethanes (THMs) is 0.080 mg/L. Used for real-time compliance monitoring and MOR/DMR reporting.',
+    `sample_interval_seconds` STRING COMMENT 'The configured sampling or scan interval in seconds at which this PI tag is polled or archived by the OSIsoft PI Historian system. Common intervals include 1 second (continuous process), 60 seconds (1-minute averages), 900 seconds (15-minute averages), and 3600 seconds (hourly averages). Used for time-series aggregation and data completeness assessment.',
+    `scada_system_code` BIGINT COMMENT 'Reference to the SCADA (Supervisory Control and Data Acquisition) system instance that collected and transmitted this process reading. Identifies the specific PLC, RTU, or HMI node in the control network. Used for source system traceability and SCADA infrastructure management.',
+    `source_tag_name` STRING COMMENT 'The original PI tag name or SCADA point name as it exists in the source system (OSIsoft PI Historian or SCADA). Preserved for data lineage and reconciliation purposes. May differ from the normalized tag_id if tag renaming or aliasing has occurred during silver-layer curation.',
+    `substitution_reason` STRING COMMENT 'The reason code explaining why the measured_value was substituted or manually overridden from the raw_value. Applicable when reading_status is substituted or quality_flag is Substituted. Required for regulatory audit trails under EPA SDWA data integrity requirements. Null when no substitution was applied.. Valid values are `sensor_malfunction|communication_failure|calibration_adjustment|manual_correction|scheduled_maintenance|none`',
+    `treatment_process_type` STRING COMMENT 'The specific treatment technology or process type associated with this reading. Identifies the treatment method for process-specific analytics and compliance reporting. Values include conventional (coagulation/flocculation/sedimentation), UV (Ultraviolet Disinfection), chlorination, RO (Reverse Osmosis), UF (Ultrafiltration), MF (Microfiltration), GAC (Granular Activated Carbon), ozonation, softening, and ion_exchange. [ENUM-REF-CANDIDATE: conventional|UV|chlorination|RO|UF|MF|GAC|ozonation|softening|ion_exchange|biological|membrane_bioreactor — promote to reference product]',
+    `validated_timestamp` TIMESTAMP COMMENT 'The date and time when this process reading record was validated and promoted to validated status in the silver layer. Null if the record has not yet been validated or was rejected. Supports data quality audit trails and SLA monitoring for data availability.',
     CONSTRAINT pk_process_reading PRIMARY KEY(`process_reading_id`)
-) COMMENT 'Time-series operational reading from a treatment process unit or instrument. Captures measured values (flow, pressure, chemical residual, turbidity, pH, temperature), quality flags, alarm states, CT calculations, and regulatory compliance indicators. Sourced from SCADA/PI Historian or manual operator entry. Used for MOR/DMR reporting, process optimization, and compliance verification.';
+) COMMENT 'Time-series operational readings from SCADA/OSIsoft PI Historian for treatment process control points. Each record captures a sensor tag ID, timestamp, measured value, engineering unit (MGD, GPM, PSI, NTU, pH, mg/L, mW/cm², °C), quality flag, and source system. Includes all instrumented process telemetry: flow rates, pressures, turbidity, pH, chlorine residual, chemical feed rates, UV intensity/dose, and temperature. Serves as the silver-layer curated telemetry store for treatment operations, process trending, alarm validation, and regulatory compliance verification.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` (
-    `chemical_dose_event_id` BIGINT COMMENT 'Unique identifier for the dose event. Ref: OSIsoft PI Historian.',
-    `chemical_id` BIGINT COMMENT 'Chemical dosed. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `process_unit_id` BIGINT COMMENT 'Process unit where chemical was dosed. Ref: OSIsoft PI Historian.',
-    `chemical_mass_applied_kg` DECIMAL(18,2) COMMENT 'Total chemical mass applied in kg. Ref: OSIsoft PI Historian.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp. Ref: OSIsoft PI Historian.',
-    `ct_compliance_flag` BOOLEAN COMMENT 'Indicates if CT compliance was achieved. Ref: OSIsoft PI Historian.',
-    `dose_end_timestamp` TIMESTAMP COMMENT 'Dose event end timestamp. Ref: OSIsoft PI Historian.',
-    `dose_rate_mg_per_l` DECIMAL(18,2) COMMENT 'Chemical dose rate in mg/L. Ref: OSIsoft PI Historian.',
-    `dose_start_timestamp` TIMESTAMP COMMENT 'Dose event start timestamp. Ref: OSIsoft PI Historian.',
-    `post_dose_residual_mg_per_l` DECIMAL(18,2) COMMENT 'Measured residual after dosing in mg/L. Ref: OSIsoft PI Historian.',
-    `target_residual_mg_per_l` DECIMAL(18,2) COMMENT 'Target chemical residual in mg/L. Ref: OSIsoft PI Historian.',
-    `water_flow_rate_mgd` DECIMAL(18,2) COMMENT 'Water flow rate during dosing in MGD. Ref: OSIsoft PI Historian.',
+    `chemical_dose_event_id` BIGINT COMMENT 'Unique surrogate identifier for each chemical dosing event record in the treatment domain. Primary key for the chemical_dose_event data product.',
+    `pressure_zone_id` BIGINT COMMENT 'Foreign key linking to distribution.pressure_zone. Business justification: Booster disinfection programs dose chemicals to maintain CT compliance within specific pressure zones. Regulatory CT tracking and disinfection residual reporting (DMR) require linking each dose event ',
+    `chemical_inventory_id` BIGINT COMMENT 'Reference to the chemical substance master record (e.g., chlorine, alum, polymer, lime, caustic soda, fluoride, potassium permanganate, sodium hypochlorite, GAC). Links to the chemical inventory/supply chain product catalog.',
+    `facility_id` BIGINT COMMENT 'Reference to the Water Treatment Plant (WTP) or Wastewater Treatment Plant (WWTP) facility where the dosing event occurred. Links to the treatment facility master record.',
+    `process_unit_id` BIGINT COMMENT 'Reference to the specific treatment process unit (e.g., coagulation basin, filter, chlorine contact chamber, RO train) where the chemical was dosed. Sourced from IBM Maximo Asset Management (CMMS) asset registry.',
+    `process_reading_id` BIGINT COMMENT 'Foreign key linking to treatment.process_alarm. Business justification: Chemical dose events may be triggered by process alarms (e.g., low chlorine residual alarm triggers automatic dosing). The dose_trigger_type field indicates whether dosing was alarm-triggered. This FK',
+    `registry_id` BIGINT COMMENT 'Reference to the dosing pump asset used to inject the chemical, as registered in IBM Maximo CMMS. Enables pump performance tracking, maintenance scheduling, and dose accuracy auditing.',
+    `regulatory_agency_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_agency. Business justification: Chemical dose events are aggregated and reported in Monthly Operating Reports (MOR). The mor_reporting_period string on chemical_dose_event should be replaced by FK to the mor_submission that includes',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: chemical_dose_event tracks ct_compliance_flag, ct_required_mg_min_per_l, mcl_limit_mg_per_l, and regulatory_event_flag — all evaluated against specific regulatory requirements (Surface Water Treatment',
+    `storage_tank_id` BIGINT COMMENT 'Foreign key linking to distribution.storage_tank. Business justification: Chemical dosing events during commissioning validate treatment process performance before operational acceptance. Regulatory approval requires documented chemical dose testing during startup. Links do',
+    `water_sample_id` BIGINT COMMENT 'Foreign key linking to quality.water_sample. Business justification: Operators collect verification samples after chemical dosing (chlorine, fluoride) to confirm target residuals achieved. Links dose event to lab confirmation sample for regulatory compliance documentat',
+    `work_order_id` BIGINT COMMENT 'Reference to the IBM Maximo work order or SAP PM maintenance order associated with this dosing event, if the dosing was performed as part of a scheduled or corrective maintenance activity.',
+    `chemical_concentration_pct` DECIMAL(18,2) COMMENT 'The concentration of the chemical solution as dosed, expressed as a percentage (e.g., 12.5% sodium hypochlorite, 48% alum solution). Required for accurate mass-to-volume conversion and chemical inventory reconciliation.',
+    `chemical_mass_applied_kg` DECIMAL(18,2) COMMENT 'Total mass of active chemical ingredient applied during the dosing event, expressed in kilograms. Calculated from volume and concentration for solid or concentrated liquid chemicals. Used for regulatory reporting and chemical cost accounting.',
+    `chemical_type` STRING COMMENT 'Functional classification of the chemical dosed. Used for cost allocation by treatment function, regulatory reporting by chemical category, and chemical consumption analytics. [ENUM-REF-CANDIDATE: disinfectant|coagulant|flocculant|pH_adjustment|fluoridation|oxidant|corrosion_inhibitor|adsorbent — promote to reference product]',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this chemical dose event record was first created in the Silver Layer data product, either via SCADA/PI Historian integration or manual entry. Supports data lineage, audit trail, and Silver Layer ingestion tracking.',
+    `ct_compliance_flag` BOOLEAN COMMENT 'Indicates whether the dosing event achieved the required CT value for regulatory disinfection compliance (True = compliant, False = non-compliant). Used for automated MOR/DMR compliance reporting and regulatory violation tracking.',
+    `ct_required_mg_min_per_l` DECIMAL(18,2) COMMENT 'The minimum CT value required by EPA Surface Water Treatment Rule (SWTR) for the applicable temperature and pH conditions to achieve required log inactivation credits. Compared against ct_value_mg_min_per_l for compliance determination.',
+    `ct_value_mg_min_per_l` DECIMAL(18,2) COMMENT 'The calculated CT (Contact Time for Disinfection) value in mg·min/L, representing the product of disinfectant residual concentration and contact time. Required for Surface Water Treatment Rule (SWTR) compliance and Giardia/virus inactivation credit calculations.',
+    `dbp_formation_risk_flag` BOOLEAN COMMENT 'Indicates whether the dosing event parameters (dose rate, TOC level, temperature, pH) present an elevated risk of Disinfection Byproduct (DBP) formation, specifically Trihalomethanes (THM) and Haloacetic Acids (HAA5). Supports proactive DBP compliance management.',
+    `dose_end_timestamp` TIMESTAMP COMMENT 'The exact date and time when the chemical dosing event concluded. Used with dose_start_timestamp to calculate dosing duration and total chemical volume applied. Sourced from SCADA/OSIsoft PI Historian.',
+    `dose_event_number` STRING COMMENT 'Externally-known business identifier for the chemical dosing event, typically sourced from OSIsoft PI Historian or SCADA event log (e.g., CDE-2024-00123). Used for cross-system traceability and regulatory audit trails.',
+    `dose_event_status` STRING COMMENT 'Current lifecycle status of the chemical dosing event record. completed indicates normal termination; aborted indicates operator-interrupted dosing; failed indicates pump or system failure; pending_review indicates the record requires QA validation before regulatory submission.. Valid values are `completed|in_progress|aborted|failed|pending_review`',
+    `dose_rate_mg_per_l` DECIMAL(18,2) COMMENT 'The chemical dose rate expressed in milligrams per liter (mg/L) of water treated. This is the primary dosing metric used for regulatory compliance verification, CT calculations, and comparison against Maximum Contaminant Level (MCL) limits.',
+    `dose_start_timestamp` TIMESTAMP COMMENT 'The exact date and time (ISO 8601 with timezone offset) when the chemical dosing event commenced, as recorded by SCADA/OSIsoft PI Historian. This is the principal real-world event timestamp for regulatory CT (Contact Time) compliance calculations.',
+    `dose_trigger_type` STRING COMMENT 'Indicates what initiated the dosing event: automatic SCADA/PLC control loop, manual operator action, scheduled dosing program, alarm response (e.g., low residual alarm), or regulatory requirement (e.g., CT compliance mandate).. Valid values are `automatic_scada|manual_operator|scheduled|alarm_response|regulatory_requirement`',
+    `dosing_method` STRING COMMENT 'The method by which the chemical was applied: continuous (steady-state pump injection), batch (fixed volume addition), slug (rapid high-concentration dose), or intermittent (cyclic on/off dosing). Affects dose efficacy calculations and regulatory reporting.. Valid values are `continuous|batch|slug|intermittent`',
+    `dosing_pump_code` BIGINT COMMENT 'Reference to the dosing pump asset used to inject the chemical, as registered in IBM Maximo CMMS. Enables pump performance tracking, maintenance scheduling, and dose accuracy auditing.',
+    `event_dose_cost_usd` DECIMAL(18,2) COMMENT 'The total chemical cost in USD for this dosing event, calculated as chemical_mass_applied_kg multiplied by unit_cost_per_kg. Used for per-event cost allocation, treatment cost-per-MGD analytics, and OPEX reporting in SAP FI/CO.',
+    `operator_notes` STRING COMMENT 'Free-text field for the licensed operator to record observations, anomalies, equipment issues, or contextual information about the dosing event (e.g., pump cavitation observed, manual override due to analyzer failure). Supports operational audit trail and incident investigation.',
+    `post_dose_residual_mg_per_l` DECIMAL(18,2) COMMENT 'Actual measured residual concentration of the target parameter (e.g., free chlorine residual, pH) after the dosing event. Critical for CT compliance verification, MCL compliance, and dose efficacy reporting in Monthly Operating Reports (MOR).',
+    `pre_dose_residual_mg_per_l` DECIMAL(18,2) COMMENT 'Measured concentration of the target parameter (e.g., chlorine residual, pH) immediately before the dosing event commenced. Provides baseline for dose efficacy assessment and regulatory compliance documentation.',
+    `pump_flow_rate_gpm` DECIMAL(18,2) COMMENT 'The dosing pump flow rate in Gallons per Minute (GPM) during the event, as recorded by SCADA/OSIsoft PI Historian via the pump tag. Used for pump calibration verification and dose accuracy auditing.',
+    `pump_scada_tag` STRING COMMENT 'The OSIsoft PI Historian or SCADA tag identifier for the dosing pump instrument (e.g., WTP1.PUMP.CL2.FLOW.001). Enables direct linkage to real-time process data in PI Historian for trend analysis and audit trail verification.',
+    `regulatory_event_flag` BOOLEAN COMMENT 'Indicates whether this dosing event is subject to regulatory reporting requirements (True = must be included in MOR, DMR, or CCR submissions). Enables automated filtering of reportable events for EPA and state primacy agency compliance reporting.',
+    `target_dose_rate_mg_per_l` DECIMAL(18,2) COMMENT 'The planned or setpoint dose rate in mg/L as configured in the SCADA/PLC control system or operator dosing schedule. Compared against actual dose_rate_mg_per_l to assess dosing accuracy and control loop performance.',
+    `target_parameter` STRING COMMENT 'The water quality parameter that the dosing event is intended to control or achieve (e.g., free_chlorine_residual, turbidity, pH, fluoride_level, TOC, PFAS, BOD, TSS). Links dosing events to water quality outcomes for efficacy analysis.',
+    `target_residual_mg_per_l` DECIMAL(18,2) COMMENT 'The desired or regulatory-required residual concentration of the target parameter after dosing. Compared against post_dose_residual_mg_per_l to determine compliance status. Derived from MCL/MCLG standards or internal treatment targets.',
+    `treatment_process_stage` STRING COMMENT 'The stage in the water treatment process where the chemical was dosed. [ENUM-REF-CANDIDATE: pre_treatment|coagulation|flocculation|sedimentation|filtration|disinfection|post_treatment|distribution — promote to reference product]',
+    `turbidity_ntu` DECIMAL(18,2) COMMENT 'Water turbidity in Nephelometric Turbidity Units (NTU) at the dosing point during the event. Turbidity affects disinfection efficacy and is a key regulatory parameter under the Surface Water Treatment Rule (SWTR). Sourced from SCADA or LIMS.',
+    `unit_cost_per_kg` DECIMAL(18,2) COMMENT 'The unit cost of the chemical in USD per kilogram at the time of the dosing event, sourced from SAP MM purchase order pricing. Used for chemical cost allocation per dosing event and OPEX analytics. Classified as confidential due to supplier contract pricing sensitivity.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this chemical dose event record was last modified, including QA review updates, operator corrections, or regulatory annotation changes. Supports data lineage and audit trail requirements.',
+    `volume_applied_l` DECIMAL(18,2) COMMENT 'Total volume of chemical solution applied during the dosing event, expressed in liters. Used for chemical inventory consumption tracking, cost allocation, and procurement planning in SAP MM.',
+    `water_flow_rate_mgd` DECIMAL(18,2) COMMENT 'The water flow rate in Million Gallons per Day (MGD) at the dosing point during the event, as recorded by SCADA/OSIsoft PI Historian. Used to validate dose rate calculations and for CT compliance verification.',
+    `water_ph` DECIMAL(18,2) COMMENT 'The pH (Potential of Hydrogen) of the water at the dosing point during the event. Critical for CT compliance calculations (CT requirements vary with pH for chlorine disinfection), DBP formation potential, and corrosion control under LCRR.',
+    `water_temperature_c` DECIMAL(18,2) COMMENT 'Water temperature in degrees Celsius at the dosing point during the event. Critical input for CT compliance calculations (CT requirements vary with temperature) and for chemical reaction rate modeling.',
     CONSTRAINT pk_chemical_dose_event PRIMARY KEY(`chemical_dose_event_id`)
-) COMMENT 'Chemical dosing event record capturing coagulant, disinfectant, pH adjustment, or other chemical application. Stores dose rate, mass applied, concentration, CT compliance, DBP formation risk, pump flow rate, target residual, and cost. Links to chemical inventory, process unit, operator, and water quality parameters. Used for regulatory reporting, cost allocation, and process control.';
-
-CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` (
-    `ct_compliance_record_id` BIGINT COMMENT 'Unique identifier for CT compliance record. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `process_unit_id` BIGINT COMMENT 'Contact basin or process unit. Ref: OSIsoft PI Historian.',
-    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: CT compliance records demonstrate log inactivation credits required by specific rules (SWTR, LT2ESWTR). Operators and compliance staff must trace each CT calculation to the governing regulatory requir',
-    `baffling_factor` DECIMAL(18,2) COMMENT 'Baffling factor applied. Ref: OSIsoft PI Historian.',
-    `calculation_timestamp` TIMESTAMP COMMENT 'Timestamp of CT calculation. Ref: OSIsoft PI Historian.',
-    `compliance_status` STRING COMMENT 'Compliance status (compliant, non-compliant). Ref: OSIsoft PI Historian.',
-    `contact_time_min` DECIMAL(18,2) COMMENT 'Contact time in minutes. Ref: OSIsoft PI Historian.',
-    `ct_calculated` DECIMAL(18,2) COMMENT 'Calculated CT value. Ref: OSIsoft PI Historian.',
-    `ct_ratio` DECIMAL(18,2) COMMENT 'Ratio of calculated to required CT. Ref: OSIsoft PI Historian.',
-    `ct_required` DECIMAL(18,2) COMMENT 'Required CT value from EPA tables. Ref: OSIsoft PI Historian.',
-    `disinfectant_concentration` DECIMAL(18,2) COMMENT 'Disinfectant concentration in mg/L. Ref: OSIsoft PI Historian.',
-    `disinfectant_type` STRING COMMENT 'Type of disinfectant (chlorine, chloramine, etc.). Ref: OSIsoft PI Historian.',
-    `log_inactivation_achieved` DECIMAL(18,2) COMMENT 'Log inactivation credit achieved. Ref: OSIsoft PI Historian.',
-    `operator_verified` BOOLEAN COMMENT 'Indicates if operator verified calculation. Ref: OSIsoft PI Historian.',
-    `ph_value` DECIMAL(18,2) COMMENT 'Water pH during CT calculation. Ref: OSIsoft PI Historian.',
-    `target_organism` STRING COMMENT 'Target pathogen (Giardia, Cryptosporidium, virus). Ref: OSIsoft PI Historian.',
-    `temperature_c` DECIMAL(18,2) COMMENT 'Water temperature in Celsius. Ref: OSIsoft PI Historian.',
-    CONSTRAINT pk_ct_compliance_record PRIMARY KEY(`ct_compliance_record_id`)
-) COMMENT 'Contact time (CT) disinfection compliance record per EPA SWTR/LT2ESWTR. Calculates CT value (disinfectant concentration × contact time), compares to required CT from EPA tables based on pH, temperature, target organism (Giardia, Cryptosporidium, virus), and verifies log inactivation credit. Includes baffling factor, T10 basis, and operator verification. Used for MOR reporting and regulatory compliance.';
+) COMMENT 'Records each chemical dosing event at a treatment process unit, capturing chemical type (chlorine, alum, polymer, lime, caustic soda, fluoride, potassium permanganate, sodium hypochlorite), dose rate (mg/L), volume applied, target parameter, actual measured residual, dosing pump tag, operator ID, and timestamp. Supports chemical consumption tracking, cost allocation, and regulatory dose compliance verification.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` (
-    `finished_water_production_id` BIGINT COMMENT 'Unique identifier for production record. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `avg_production_rate_gpm` DECIMAL(18,2) COMMENT 'Average production rate in GPM. Ref: OSIsoft PI Historian.',
-    `backwash_volume_mg` DECIMAL(18,2) COMMENT 'Backwash water volume in MG. Ref: OSIsoft PI Historian.',
-    `cl2_residual_avg_mg_l` DECIMAL(18,2) COMMENT 'Average chlorine residual in mg/L. Ref: OSIsoft PI Historian.',
-    `data_quality_flag` BOOLEAN COMMENT 'The data quality flag value recorded for each finished water production in the treatment domain.',
-    `filter_to_waste_volume_mg` DECIMAL(18,2) COMMENT 'Filter-to-waste volume in MG. Ref: OSIsoft PI Historian.',
-    `finished_water_volume_mg` DECIMAL(18,2) COMMENT 'Finished water volume in MG. Ref: OSIsoft PI Historian.',
-    `peak_production_rate_gpm` DECIMAL(18,2) COMMENT 'Peak production rate in GPM. Ref: OSIsoft PI Historian.',
-    `ph_avg` DECIMAL(18,2) COMMENT 'Average pH. Ref: OSIsoft PI Historian.',
-    `plant_efficiency_ratio` DECIMAL(18,2) COMMENT 'Plant efficiency ratio (finished / source). Ref: OSIsoft PI Historian.',
-    `production_date` DATE COMMENT 'Date of production. Ref: OSIsoft PI Historian.',
-    `source_water_volume_mg` DECIMAL(18,2) COMMENT 'Source water intake volume in MG. Ref: OSIsoft PI Historian.',
-    `turbidity_avg_ntu` DECIMAL(18,2) COMMENT 'Average finished water turbidity in NTU. Ref: OSIsoft PI Historian.',
-    `turbidity_max_ntu` DECIMAL(18,2) COMMENT 'Maximum finished water turbidity in NTU. Ref: OSIsoft PI Historian.',
+    `finished_water_production_id` BIGINT COMMENT 'Unique surrogate identifier for each finished water production record at the Water Treatment Plant (WTP). Primary key for this entity. Entity role: TRANSACTION_HEADER — represents a discrete daily/shift-level production event with a clear lifecycle.',
+    `pump_station_id` BIGINT COMMENT 'Foreign key linking to distribution.pump_station. Business justification: Finished water is pumped into distribution via specific pump stations. Essential for tracking the physical handoff between treatment and distribution, hydraulic modeling, and water quality tracing. Op',
+    `pressure_zone_id` BIGINT COMMENT 'Foreign key linking to distribution.pressure_zone. Business justification: Finished water production is delivered into specific pressure zones. Critical for hydraulic balance, demand forecasting, NRW analysis, and MOR reporting. Distribution operators must track which zone r',
+    `facility_id` BIGINT COMMENT 'Reference to the Water Treatment Plant (WTP) facility where this production record was generated. Serves as the PARTY_REFERENCE / MASTER_RESOURCE reference for TRANSACTION_HEADER role, linking production data to the specific treatment facility. Used for multi-plant production aggregation and facility-level reporting.',
+    `meter_id` BIGINT COMMENT 'Foreign key linking to metering.metering_meter. Business justification: Finished water production records must reference the bulk production meter at the plant outlet. This link supports DMR regulatory reporting, production volume reconciliation, and meter calibration aud',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to service.territory. Business justification: Production records during commissioning/startup track new facility performance against design capacity. Project closeout requires demonstration of design flow rate achievement. Links production data t',
+    `treatment_permit_id` BIGINT COMMENT 'Foreign key linking to treatment.treatment_permit. Business justification: Each finished water production record is governed by a specific treatment permit that defines permitted flow limits, CT requirements, turbidity limits, and DMR/MOR reporting obligations. Linking finis',
+    `water_source_id` BIGINT COMMENT 'Foreign key linking to treatment.water_source. Business justification: Finished water production records should reference the primary water source being treated during that production period. This enables source-to-tap traceability — linking raw water quality characteris',
+    `approved_timestamp` TIMESTAMP COMMENT 'Timestamp when this production record was approved by the supervising operator for MOR reporting (yyyy-MM-ddTHH:mm:ss.SSSXXX). Supports audit trail requirements and regulatory submission deadline tracking.',
+    `avg_production_rate_gpm` DECIMAL(18,2) COMMENT 'Average finished water production flow rate during this production period, measured in Gallons per Minute (GPM). Derived from SCADA/OSIsoft PI Historian flow meter data. Used for hydraulic loading analysis, pump performance monitoring, and comparison against design flow rates.',
+    `backwash_volume_mg` DECIMAL(18,2) COMMENT 'Volume of water used specifically for filter backwash operations during this production period, measured in Million Gallons (MG). A sub-component of plant operations water. Tracked separately for filter performance monitoring and optimization of backwash frequency and duration.',
+    `chemical_dosing_event` BOOLEAN COMMENT 'Indicates whether any unplanned or emergency chemical dosing event occurred during this production period (True = yes, False = no). Flags records requiring additional review in LIMS or SCADA systems. Supports operational exception reporting and chemical usage variance analysis.',
+    `cl2_residual_avg_mg_l` DECIMAL(18,2) COMMENT 'Average free chlorine residual concentration in finished water at the WTP effluent during this production period, measured in milligrams per liter (mg/L). Must meet the minimum residual disinfectant level of 0.2 mg/L at the point of entry to the distribution system. Critical for disinfection compliance and MOR reporting.',
+    `cl2_residual_min_mg_l` DECIMAL(18,2) COMMENT 'Minimum free chlorine residual concentration recorded in finished water during this production period, measured in milligrams per liter (mg/L). Tracked to identify potential disinfection deficiency events. Any reading below 0.2 mg/L triggers regulatory notification requirements.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this production record was first created in the system (yyyy-MM-ddTHH:mm:ss.SSSXXX). Serves as the RECORD_AUDIT_CREATED category for TRANSACTION_HEADER role. Used for data lineage and audit trail.',
+    `ct_achieved_mg_min_l` DECIMAL(18,2) COMMENT 'Actual disinfection Contact Time (CT) value achieved during this production period, expressed in mg·min/L (disinfectant concentration × contact time). Must meet or exceed the CT required for 3-log Giardia and 4-log virus inactivation under the Surface Water Treatment Rule (SWTR). A critical regulatory compliance metric reported in MOR submissions.',
+    `ct_required_mg_min_l` DECIMAL(18,2) COMMENT 'Minimum required disinfection Contact Time (CT) value for this production period based on source water temperature and pH, expressed in mg·min/L. Determined from EPA CT tables for the applicable disinfectant. Stored alongside achieved CT to enable direct compliance gap analysis without recalculation.',
+    `data_quality_flag` BOOLEAN COMMENT 'Quality flag indicating the reliability of the production data in this record. GOOD indicates validated sensor/meter data; SUSPECT indicates data that may be erroneous pending investigation; ESTIMATED indicates values estimated due to meter failure or outage; MISSING indicates data gaps; CORRECTED indicates values that have been manually corrected from original readings. Aligns with OSIsoft PI Historian data quality coding conventions.',
+    `design_capacity_mgd` DECIMAL(18,2) COMMENT 'Permitted design treatment capacity of the WTP for this production period, measured in Million Gallons per Day (MGD). Captured at the record level to support capacity utilization calculations even if the plants permitted capacity changes over time. Used for regulatory capacity compliance reporting.',
+    `disinfection_method` STRING COMMENT 'Primary disinfection technology used during this production period. CHLORINATION uses free chlorine; UV uses Ultraviolet (UV) disinfection; CHLORAMINATION uses combined chlorine (chloramines); OZONATION uses ozone; COMBINED uses multiple methods. Determines applicable CT requirements and DBP formation potential.. Valid values are `CHLORINATION|UV|CHLORAMINATION|OZONATION|COMBINED`',
+    `filter_to_waste_volume_mg` DECIMAL(18,2) COMMENT 'Volume of water discharged to waste during filter ripening (filter-to-waste) operations following backwash, measured in Million Gallons (MG). A sub-component of plant operations water. Tracked for regulatory compliance with turbidity control requirements and water loss accounting.',
+    `finished_water_volume_mg` DECIMAL(18,2) COMMENT 'Total volume of finished (treated) water produced by the WTP during this production period, measured in Million Gallons (MG). This is the primary production output metric used in MOR reporting, water balance calculations, and capacity utilization analysis. Sourced from SCADA/OSIsoft PI Historian clearwell/effluent flow meters.',
+    `fluoride_avg_mg_l` DECIMAL(18,2) COMMENT 'Average fluoride concentration in finished water during this production period, measured in milligrams per liter (mg/L). The EPA Maximum Contaminant Level (MCL) for fluoride is 4.0 mg/L; the secondary standard is 2.0 mg/L. The optimal fluoridation level recommended by HHS is 0.7 mg/L. Reported in MOR and Consumer Confidence Report (CCR).',
+    `notes` STRING COMMENT 'Free-text field for operator or supervisor notes related to this production record. Used to document unusual operating conditions, equipment issues, source water quality events, regulatory exceedances, or other contextual information relevant to MOR reporting and operational review.',
+    `peak_production_rate_gpm` DECIMAL(18,2) COMMENT 'Maximum instantaneous finished water production flow rate recorded during this production period, measured in Gallons per Minute (GPM). Sourced from SCADA/OSIsoft PI Historian. Used for peak demand analysis, pump sizing validation, and hydraulic capacity planning.',
+    `ph_avg` DECIMAL(18,2) COMMENT 'Average pH (Potential of Hydrogen) of finished water at the WTP effluent during this production period. Optimal range is typically 7.0–8.5 for corrosion control compliance under the Lead and Copper Rule Revisions (LCRR). Critical for disinfection effectiveness (CT compliance) and distribution system corrosion control.',
+    `plant_efficiency_ratio` DECIMAL(18,2) COMMENT 'Ratio of finished water volume produced to source water volume intake, expressed as a decimal (e.g., 0.9250 = 92.50% efficiency). Calculated as finished_water_volume_mg / source_water_volume_mg. A key operational Key Performance Indicator (KPI) for WTP performance benchmarking and water loss identification. Stored as a raw ratio to support analytics without recalculation.',
+    `plant_ops_water_volume_mg` DECIMAL(18,2) COMMENT 'Total volume of finished water consumed for internal plant operations during this production period, measured in Million Gallons (MG). Includes filter backwash water, filter-to-waste volumes, and other in-plant process uses. Used in water balance accounting and plant efficiency calculations.',
+    `production_date` DATE COMMENT 'Calendar date on which the finished water production occurred (yyyy-MM-dd). The principal real-world event date for this production record. Used as the primary time dimension for MOR reporting, water balance calculations, and daily production trend analysis. Serves as the BUSINESS_EVENT_TIMESTAMP category for TRANSACTION_HEADER role.',
+    `production_record_number` STRING COMMENT 'Externally-known business identifier for this production record, used in Monthly Operating Reports (MOR) and regulatory submissions. Format: WTP-PRD-YYYY-MM-DD-SHIFT. Serves as the BUSINESS_IDENTIFIER category for TRANSACTION_HEADER role.. Valid values are `^WTP-PRD-[0-9]{4}-[0-9]{2}-[0-9]{2}-[A-Z0-9]{4}$`',
+    `production_status` STRING COMMENT 'Current lifecycle state of the production record workflow. draft indicates data entry in progress; submitted indicates sent for supervisor review; approved indicates validated and accepted for MOR reporting; rejected indicates returned for correction; superseded indicates replaced by a corrected record. Serves as the LIFECYCLE_STATUS category for TRANSACTION_HEADER role.. Valid values are `draft|submitted|approved|rejected|superseded`',
+    `regulatory_exceedance` BOOLEAN COMMENT 'Indicates whether any water quality parameter exceeded its Maximum Contaminant Level (MCL) or treatment technique requirement during this production period (True = exceedance occurred, False = all parameters within limits). Triggers mandatory regulatory notification and public notice requirements under SDWA.',
+    `scada_data_source` STRING COMMENT 'Identifies the primary data source for the volumetric and quality measurements in this production record. PI_HISTORIAN indicates automated ingestion from OSIsoft PI Historian; MANUAL_ENTRY indicates operator-entered data; SCADA_DCS indicates direct SCADA/DCS system feed; AMI indicates Advanced Metering Infrastructure; HYBRID indicates a combination of automated and manual sources. Supports data lineage and quality confidence scoring.. Valid values are `PI_HISTORIAN|MANUAL_ENTRY|SCADA_DCS|AMI|HYBRID`',
+    `shift_code` STRING COMMENT 'Operational shift during which this production record applies. DAY typically covers 06:00–14:00, EVENING covers 14:00–22:00, NIGHT covers 22:00–06:00, and FULL_DAY represents a consolidated 24-hour daily record. Used for shift-level production analysis and operator accountability.. Valid values are `DAY|EVENING|NIGHT|FULL_DAY`',
+    `shift_end_timestamp` TIMESTAMP COMMENT 'Exact timestamp when the production shift ended (yyyy-MM-ddTHH:mm:ss.SSSXXX). Used to precisely bound the production measurement window for SCADA/OSIsoft PI Historian data integration and shift-level volume reconciliation.',
+    `shift_start_timestamp` TIMESTAMP COMMENT 'Exact timestamp when the production shift began (yyyy-MM-ddTHH:mm:ss.SSSXXX). Used to precisely bound the production measurement window for SCADA/OSIsoft PI Historian data integration and shift-level volume reconciliation.',
+    `source_water_volume_mg` DECIMAL(18,2) COMMENT 'Total volume of raw source water drawn into the WTP during this production period, measured in Million Gallons (MG). Used as the input denominator for plant efficiency ratio calculations and water balance accounting. Sourced from SCADA/OSIsoft PI Historian intake flow meters.',
+    `temperature_avg_c` DECIMAL(18,2) COMMENT 'Average temperature of finished water at the WTP effluent during this production period, measured in degrees Celsius (°C). Temperature affects disinfection Contact Time (CT) calculations, chlorine decay rates, and distribution system water quality. Sourced from SCADA/OSIsoft PI Historian.',
+    `toc_avg_mg_l` DECIMAL(18,2) COMMENT 'Average Total Organic Carbon (TOC) concentration in finished water during this production period, measured in milligrams per liter (mg/L). TOC is a precursor to Disinfection Byproducts (DBPs) including Trihalomethanes (THMs) and Haloacetic Acids (HAA5). Monitored for Stage 2 Disinfectants and Disinfection Byproducts Rule (DBPR) compliance.',
+    `treatment_process_type` STRING COMMENT 'Primary treatment process technology employed at the WTP for this production record. CONVENTIONAL includes coagulation/flocculation/sedimentation/filtration; DIRECT_FILTRATION omits sedimentation; MEMBRANE includes Reverse Osmosis (RO), Ultrafiltration (UF), or Microfiltration (MF); SOFTENING includes lime softening; GROUNDWATER includes well-based supply with disinfection only.. Valid values are `CONVENTIONAL|DIRECT_FILTRATION|MEMBRANE|SOFTENING|GROUNDWATER`',
+    `turbidity_avg_ntu` DECIMAL(18,2) COMMENT 'Average turbidity of finished water measured at the WTP effluent during this production period, in Nephelometric Turbidity Units (NTU). Must comply with the Surface Water Treatment Rule (SWTR) maximum of 0.3 NTU in 95% of monthly samples. Primary finished water quality summary metric for MOR reporting.',
+    `turbidity_max_ntu` DECIMAL(18,2) COMMENT 'Maximum turbidity value recorded in finished water at the WTP effluent during this production period, in Nephelometric Turbidity Units (NTU). The regulatory Maximum Contaminant Level (MCL) for turbidity is 1 NTU. Tracked separately from average to identify peak exceedance events for regulatory reporting.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this production record was last modified (yyyy-MM-ddTHH:mm:ss.SSSXXX). Serves as the RECORD_AUDIT_UPDATED category for TRANSACTION_HEADER role. Tracks data corrections and supervisor approvals.',
+    `volume_pumped_to_distribution_mg` DECIMAL(18,2) COMMENT 'Total volume of finished water pumped from the WTP clearwell into the distribution network during this production period, measured in Million Gallons (MG). Distinct from finished water produced — the difference represents storage changes. Critical for water balance and Non-Revenue Water (NRW) calculations.',
     CONSTRAINT pk_finished_water_production PRIMARY KEY(`finished_water_production_id`)
-) COMMENT 'Daily or shift-level finished water production summary. Aggregates total volume produced, source water intake, backwash/filter-to-waste losses, plant efficiency ratio, average/peak production rates, and key water quality parameters (turbidity, chlorine residual, pH, fluoride, TOC). Used for MOR reporting, water audit (AWWA M36), capacity planning, and regulatory compliance verification.';
+) COMMENT 'Daily and shift-level finished water production records for each WTP. Captures production date, shift, total volume produced (MG), volume pumped to distribution (MG), volume used for plant operations (backwash, filter-to-waste), source water volume intake (MG), plant efficiency ratio, and finished water quality summary (turbidity, chlorine residual, pH, fluoride). Primary record for MOR production reporting and water balance calculations.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` (
-    `source_water_intake_id` BIGINT COMMENT 'Unique identifier for intake event. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `water_source_id` BIGINT COMMENT 'Source water body or well. Ref: OSIsoft PI Historian.',
-    `conductivity_us_per_cm` DECIMAL(18,2) COMMENT 'Conductivity in µS/cm. Ref: OSIsoft PI Historian.',
-    `data_quality_flag` BOOLEAN COMMENT 'The data quality flag value recorded for each source water intake in the treatment domain.',
-    `flow_rate_gpm` DECIMAL(18,2) COMMENT 'Intake flow rate in GPM. Ref: OSIsoft PI Historian.',
-    `intake_timestamp` TIMESTAMP COMMENT 'Timestamp of intake event. Ref: OSIsoft PI Historian.',
-    `permit_compliance_status` STRING COMMENT 'Withdrawal permit compliance status. Ref: OSIsoft PI Historian.',
-    `ph_level` DECIMAL(18,2) COMMENT 'Raw water pH. Ref: OSIsoft PI Historian.',
-    `source_type` STRING COMMENT 'Source type (surface, groundwater). Ref: OSIsoft PI Historian.',
-    `temperature_c` DECIMAL(18,2) COMMENT 'Raw water temperature in Celsius. Ref: OSIsoft PI Historian.',
-    `toc_mg_per_l` DECIMAL(18,2) COMMENT 'Total organic carbon in mg/L. Ref: OSIsoft PI Historian.',
-    `turbidity_ntu` DECIMAL(18,2) COMMENT 'Raw water turbidity in NTU. Ref: OSIsoft PI Historian.',
-    `volume_withdrawn_mg` DECIMAL(18,2) COMMENT 'Volume withdrawn in MG. Ref: OSIsoft PI Historian.',
+    `source_water_intake_id` BIGINT COMMENT 'Unique surrogate identifier for each source water intake event record in the Water Treatment Plant (WTP) operations system. Primary key for this entity.',
+    `meter_id` BIGINT COMMENT 'Foreign key linking to metering.metering_meter. Business justification: Source water intake records track permitted withdrawal volumes measured by a specific intake flow meter. This FK links the withdrawal record to the metering asset, supporting permit compliance verific',
+    `facility_id` BIGINT COMMENT 'Identifier referencing the Water Treatment Plant (WTP) that received the raw water intake. Links to the facility master record.',
+    `treatment_permit_id` BIGINT COMMENT 'Identifier referencing the regulatory water withdrawal permit under which this intake event was authorized. Links to the permit master record for compliance tracking.',
+    `water_source_id` BIGINT COMMENT 'Identifier referencing the specific raw water source body or groundwater well from which water was withdrawn. Links to the water source master record (e.g., river, reservoir, aquifer, well).',
+    `algae_count_cells_per_ml` DECIMAL(18,2) COMMENT 'Algae cell count in raw water at intake, measured in cells per milliliter (cells/mL). Elevated algae counts indicate potential for taste and odor issues, cyanotoxin presence, and increased treatment chemical demand. Triggers source water protection alerts and treatment process modifications.',
+    `conductivity_us_per_cm` DECIMAL(18,2) COMMENT 'Electrical conductivity of raw water at intake, measured in microsiemens per centimeter (µS/cm). Serves as a proxy indicator for Total Dissolved Solids (TDS) concentration and overall ionic strength of the source water. Used to assess suitability for treatment processes such as Reverse Osmosis (RO).',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this source water intake record was first created in the system, in ISO 8601 format yyyy-MM-ddTHH:mm:ss.SSSXXX. Supports audit trail requirements and data lineage tracking in the Databricks Silver Layer.',
+    `data_quality_flag` BOOLEAN COMMENT 'Quality assurance flag indicating the reliability and validation status of the intake event data. validated indicates data has passed QA/QC review; provisional indicates data is pending final validation; suspect indicates potential measurement anomaly requiring investigation; invalid indicates data has been rejected; estimated indicates values were estimated.',
+    `data_source` STRING COMMENT 'Identifies the originating system or method by which the intake event data was captured. scada_pi_historian indicates automated capture from OSIsoft PI Historian; manual_entry indicates operator-entered data; lims indicates data sourced from the Laboratory Information Management System; estimated indicates values were estimated due to meter failure.. Valid values are `scada_pi_historian|manual_entry|lims|ami_platform|estimated`',
+    `dissolved_oxygen_mg_per_l` DECIMAL(18,2) COMMENT 'Dissolved oxygen concentration in raw water at intake, measured in milligrams per liter (mg/L). Indicates biological health of the source water body and potential for anaerobic conditions that can release iron, manganese, and hydrogen sulfide, affecting treatment requirements.',
+    `flow_rate_gpm` DECIMAL(18,2) COMMENT 'Average flow rate of raw water intake during the event, expressed in Gallons Per Minute (GPM). Captured from SCADA/OSIsoft PI Historian flow meter readings at the intake pump station. Used for hydraulic modeling and pump performance analysis.',
+    `gis_latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate of the raw water intake point in decimal degrees (WGS84). Used for spatial analysis, GIS mapping of intake locations, and source water protection zone delineation in Esri ArcGIS.',
+    `gis_longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the raw water intake point in decimal degrees (WGS84). Used for spatial analysis, GIS mapping of intake locations, and source water protection zone delineation in Esri ArcGIS.',
+    `intake_end_timestamp` TIMESTAMP COMMENT 'Date and time at which the raw water intake event concluded. Used with intake_timestamp to calculate duration and total volume withdrawn during the event.',
+    `intake_event_number` STRING COMMENT 'Externally-known business identifier for the intake event, used in operational logs, regulatory submissions, and Monthly Operating Reports (MOR). Format: SWI-{YYYY}-{NNNNNN}.. Valid values are `^SWI-[0-9]{4}-[0-9]{6}$`',
+    `intake_method` STRING COMMENT 'Method by which raw water was conveyed from the source to the treatment facility. gravity indicates flow by gravity through an intake channel or conduit; pumped indicates mechanical pumping; combined indicates both methods; emergency_bypass indicates use of an emergency intake route.. Valid values are `gravity|pumped|combined|emergency_bypass`',
+    `intake_screen_condition` STRING COMMENT 'Operational condition of the intake screening equipment (bar screens, traveling screens) at the time of the intake event. Blocked or bypassed screens affect flow rates and may allow debris into the treatment process, impacting downstream equipment and water quality.. Valid values are `normal|partially_blocked|blocked|bypassed|maintenance`',
+    `intake_status` STRING COMMENT 'Current lifecycle status of the intake event record. active indicates intake is in progress; completed indicates the event concluded normally; suspended indicates intake was halted due to quality or operational issue; cancelled indicates the event was voided; pending_review indicates the record requires quality assurance review.. Valid values are `active|completed|suspended|cancelled|pending_review`',
+    `intake_timestamp` TIMESTAMP COMMENT 'The principal real-world date and time at which the raw water intake event commenced, as recorded by the SCADA/OSIsoft PI Historian system at the intake pump station. Conforms to ISO 8601 format yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `mor_reporting_period` STRING COMMENT 'The regulatory Monthly Operating Report (MOR) reporting period (YYYY-MM) to which this intake event belongs. Used to aggregate intake volumes and quality data for submission to State Drinking Water Programs and Primacy Agencies.. Valid values are `^[0-9]{4}-(0[1-9]|1[0-2])$`',
+    `notes` STRING COMMENT 'Free-text operational notes recorded by the plant operator regarding the intake event, including any anomalies, equipment issues, unusual source water conditions, or actions taken. Supports operational log requirements and regulatory audit trails.',
+    `number_of_pumps_active` STRING COMMENT 'Count of intake pumps operating simultaneously during the intake event. Used for energy consumption analysis, pump performance benchmarking, and maintenance scheduling in IBM Maximo CMMS.',
+    `permit_compliance_status` STRING COMMENT 'Compliance status of this intake event relative to the applicable water withdrawal permit limits. compliant indicates volume is within permit limits; non_compliant indicates a permit exceedance requiring regulatory notification; approaching_limit indicates volume is within 90% of the permit limit; under_review indicates compliance determination is pending.. Valid values are `compliant|non_compliant|approaching_limit|under_review|exempt`',
+    `permit_daily_limit_mg` DECIMAL(18,2) COMMENT 'Maximum daily volume of raw water authorized for withdrawal under the applicable water withdrawal permit, expressed in Million Gallons (MG). Used to assess compliance status against actual volume withdrawn.',
+    `ph_level` DECIMAL(18,2) COMMENT 'pH (Potential of Hydrogen) of raw water at the point of intake, measured on the standard 0-14 scale. Influences coagulation efficiency, disinfection effectiveness, and corrosion control treatment. Monitored per Lead and Copper Rule Revisions (LCRR) requirements.',
+    `pump_station_operating_pressure_psi` DECIMAL(18,2) COMMENT 'Operating pressure at the intake pump station during the intake event, measured in Pounds per Square Inch (PSI). Monitored via SCADA to ensure pumps operate within design parameters and to detect potential main breaks or pressure anomalies.',
+    `raw_water_color_cpu` DECIMAL(18,2) COMMENT 'Apparent color of raw water at intake, measured in Color Units (CPU) using the platinum-cobalt standard. High color values indicate elevated natural organic matter (NOM) and humic substances, which are precursors to Disinfection Byproducts (DBP) including Trihalomethanes (THM) and Haloacetic Acids (HAA5).',
+    `source_type` STRING COMMENT 'Classification of the raw water source type. Determines applicable treatment processes, regulatory monitoring requirements, and source water assessment protocols under SDWA. [ENUM-REF-CANDIDATE: surface_water|groundwater|purchased_water|recycled_water|brackish_water|other — promote to reference product]. Valid values are `surface_water|groundwater|purchased_water|recycled_water|brackish_water|other`',
+    `source_water_alert_active` BOOLEAN COMMENT 'Indicates whether an active source water quality alert or advisory was in effect at the time of this intake event (e.g., algal bloom advisory, upstream contamination notice, drought restriction). When True, triggers enhanced monitoring protocols and treatment process review.',
+    `source_water_protection_zone` STRING COMMENT 'Designation of the source water protection zone or wellhead protection area associated with this intake point, as defined in the utilitys Source Water Assessment and Protection (SWAP) program. Used for land use management and contamination risk assessment.',
+    `tds_mg_per_l` DECIMAL(18,2) COMMENT 'Total Dissolved Solids (TDS) concentration of raw water at intake, measured in milligrams per liter (mg/L). Indicates overall mineral content and salinity of the source water. Drives decisions on treatment technology selection including Reverse Osmosis (RO) and ion exchange.',
+    `temperature_c` DECIMAL(18,2) COMMENT 'Temperature of raw water at the point of intake, measured in degrees Celsius. Affects disinfection Contact Time (CT) calculations, chemical dosing rates, biological activity, and seasonal treatment process adjustments.',
+    `toc_mg_per_l` DECIMAL(18,2) COMMENT 'Total Organic Carbon (TOC) concentration of raw water at intake, measured in milligrams per liter (mg/L). Critical parameter for predicting Disinfection Byproduct (DBP) formation potential including Trihalomethanes (THM) and Haloacetic Acids (HAA5). Drives treatment process adjustments.',
+    `turbidity_ntu` DECIMAL(18,2) COMMENT 'Turbidity of raw water at the point of intake, measured in Nephelometric Turbidity Units (NTU). A key raw water quality parameter that drives coagulation chemical dosing decisions and treatment process optimization. Captured at intake via inline turbidimeter or LIMS sample.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this source water intake record was most recently modified, in ISO 8601 format yyyy-MM-ddTHH:mm:ss.SSSXXX. Tracks data corrections, QA/QC updates, and regulatory review amendments. Supports audit trail and data lineage requirements.',
+    `upstream_event_description` STRING COMMENT 'Free-text description of any known upstream events or conditions that may affect raw water quality at the time of intake (e.g., upstream spill, agricultural runoff, upstream WWTP discharge, construction activity). Supports source water protection program documentation.',
+    `volume_withdrawn_mg` DECIMAL(18,2) COMMENT 'Total volume of raw water withdrawn during the intake event, expressed in Million Gallons (MG). This is the principal quantitative measurement for the intake event, used for permit compliance, production planning, and Non-Revenue Water (NRW) calculations.',
+    `weather_condition` STRING COMMENT 'Prevailing weather condition at the time of the intake event. Weather conditions significantly influence raw water quality parameters (turbidity spikes during storm events, algae blooms during drought/heat). Used for source water quality trend analysis and treatment process correlation. [ENUM-REF-CANDIDATE: clear|rain|heavy_rain|storm|snow|drought|flood_event — promote to reference product]',
     CONSTRAINT pk_source_water_intake PRIMARY KEY(`source_water_intake_id`)
-) COMMENT 'Source water withdrawal event or reading. Captures volume withdrawn, flow rate, raw water quality (turbidity, TOC, pH, temperature, conductivity, dissolved oxygen, algae count), intake method, pump station status, permit compliance, and upstream event alerts. Used for source water protection, treatment process adjustment, and withdrawal permit compliance.';
+) COMMENT 'Records raw water intake events from surface water or groundwater sources. Captures intake date/time, source water body or well ID, volume withdrawn (MG), raw water quality parameters at intake (turbidity NTU, TOC mg/L, temperature, pH, conductivity, algae count), intake pump station ID, withdrawal permit limit, and compliance status. Supports source water protection program and intake optimization.';
+
+CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` (
+    `chemical_inventory_id` BIGINT COMMENT 'Unique surrogate identifier for each chemical inventory record in the water treatment facility. Primary key for the chemical_inventory data product.',
+    `chemical_chemical_inventory_id` BIGINT COMMENT 'Foreign key linking to treatment.chemical. Business justification: Chemical inventory should reference the chemical master table for authoritative chemical properties (NSF certification, regulatory status, dose limits, storage requirements). The chemical_inventory ta',
+    `facility_id` BIGINT COMMENT 'Reference to the water treatment or wastewater treatment plant (WTP/WWTP) where this chemical inventory record is maintained. Links to the facility master record.',
+    `process_unit_id` BIGINT COMMENT 'Foreign key linking to treatment.process_unit. Business justification: Chemical inventory records include a dosing_point string attribute that describes where the chemical is applied in the treatment process. Normalizing this to a FK to process_unit replaces the free-tex',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: chemical_inventory has is_epcra_reportable, is_rmp_regulated, and tier2_reporting_year — these flags correspond directly to specific regulatory requirements (EPCRA Tier II, EPA RMP). Linking to regula',
+    `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Chemical inventory management requires precise physical location tracking within facilities for safety compliance (EPCRA Tier II reporting), emergency response planning, and operational logistics. Sto',
+    `registry_id` BIGINT COMMENT 'Foreign key linking to asset.registry. Business justification: Chemical storage vessels (bulk chlorine tanks, fluoride day tanks) are capital assets registered in the asset registry for RMP/EPCRA compliance, condition assessment, and maintenance scheduling. Role ',
+    `average_daily_usage` DECIMAL(18,2) COMMENT 'Average quantity of the chemical consumed per day at the facility, expressed in the designated unit of measure. Calculated from historical dosing records and used to estimate days of supply remaining and optimize reorder frequency.',
+    `avg_quantity_in_year` DECIMAL(18,2) COMMENT 'Average daily quantity of the chemical present at the facility during the Tier II reporting year, expressed in the designated unit of measure. Required field for OSHA EPCRA Section 312 Tier II annual report submission.',
+    `container_identifier` STRING COMMENT 'Unique identifier or tag number assigned to the specific storage tank or container holding this chemical (e.g., T-101, DRUM-045). Used for physical asset tracking, maintenance records in IBM Maximo, and OSHA Tier II site maps.',
+    `days_of_supply` DECIMAL(18,2) COMMENT 'Estimated number of days the current quantity on hand will last based on average daily usage. Provides an operational indicator for procurement urgency and treatment process continuity risk management.',
+    `expiration_date` DATE COMMENT 'Manufacturer-specified expiration or shelf-life date for the chemical lot. Chemicals used beyond expiration may degrade in efficacy, impacting treatment performance and regulatory compliance. Triggers disposal or replacement workflows.',
+    `hazmat_class` STRING COMMENT 'DOT hazardous materials classification code for the chemical (e.g., Class 8 Corrosive, Class 2.3 Toxic Gas, Class 5.1 Oxidizer). Required for transportation compliance, emergency response planning, and OSHA Tier II reporting.',
+    `inventory_status` STRING COMMENT 'Current lifecycle status of the chemical inventory record indicating whether the chemical is actively in use, on order, depleted, quarantined due to quality concerns, expired, or discontinued from use at the facility.. Valid values are `active|on_order|depleted|quarantined|expired|discontinued`',
+    `is_epcra_reportable` BOOLEAN COMMENT 'Indicates whether this chemical meets the threshold quantity for mandatory reporting under EPCRA Section 312 (Tier II) to state and local emergency planning committees. True if the chemical is an Extremely Hazardous Substance (EHS) or meets reporting thresholds.',
+    `is_rmp_regulated` BOOLEAN COMMENT 'Indicates whether this chemical is a regulated substance under EPA Risk Management Program (RMP) rules (40 CFR Part 68). True if the chemical is listed and stored above the threshold quantity, requiring an RMP plan submission.',
+    `last_delivery_date` DATE COMMENT 'Date of the most recent chemical delivery received at the facility. Used to track supply chain cadence, validate inventory levels, and support procurement planning.',
+    `last_physical_count_date` DATE COMMENT 'Date of the most recent physical inventory count or verification performed at the storage location. Required for inventory accuracy audits and OSHA Tier II annual reporting reconciliation.',
+    `last_physical_count_quantity` DECIMAL(18,2) COMMENT 'Actual quantity recorded during the most recent physical inventory count, expressed in the designated unit of measure. Used to reconcile system quantity against physical stock and identify discrepancies.',
+    `lot_number` STRING COMMENT 'Manufacturer or supplier-assigned lot or batch number for the chemical delivery. Enables traceability for quality incidents, product recalls, and treatment process investigations.',
+    `max_quantity_in_year` DECIMAL(18,2) COMMENT 'Maximum quantity of the chemical present at the facility at any point during the Tier II reporting year, expressed in the designated unit of measure. Required field for OSHA EPCRA Section 312 Tier II annual report submission.',
+    `max_storage_capacity` DECIMAL(18,2) COMMENT 'Maximum allowable quantity of the chemical that can be stored at the facility location, expressed in the designated unit of measure. Governed by OSHA PSM thresholds, EPA RMP requirements, and local fire codes. Used for OSHA Tier II reporting.',
+    `maximo_item_number` STRING COMMENT 'Item number assigned to this chemical in IBM Maximo Asset Management (CMMS) storeroom inventory. Enables cross-referencing between the lakehouse chemical inventory and the operational CMMS for work order material consumption tracking.',
+    `nfpa_fire_rating` STRING COMMENT 'NFPA 704 flammability hazard rating for the chemical on a scale of 0 (will not burn) to 4 (extremely flammable). Used for fire safety planning, storage segregation requirements, and emergency response.',
+    `nfpa_health_rating` STRING COMMENT 'NFPA 704 health hazard rating for the chemical on a scale of 0 (minimal hazard) to 4 (deadly). Used for emergency response planning, worker safety training, and facility hazard communication.',
+    `nfpa_reactivity_rating` STRING COMMENT 'NFPA 704 instability/reactivity hazard rating for the chemical on a scale of 0 (stable) to 4 (may detonate). Critical for chemical storage segregation, incompatibility management, and emergency response planning.',
+    `purchase_order_number` STRING COMMENT 'SAP purchase order number associated with the most recent or active procurement of this chemical. Supports procurement traceability and accounts payable reconciliation.',
+    `quantity_on_hand` DECIMAL(18,2) COMMENT 'Current physical quantity of the chemical available in storage at the facility, expressed in the designated unit of measure (lbs or gallons). Updated after each delivery receipt and physical count. Critical for treatment process continuity and procurement planning.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this chemical inventory record was first created in the system, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Supports audit trail and data lineage requirements.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this chemical inventory record, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Used for change tracking, data freshness monitoring, and audit compliance.',
+    `reorder_point` DECIMAL(18,2) COMMENT 'Minimum quantity threshold at which a replenishment purchase order should be triggered to prevent stockout and ensure uninterrupted treatment operations. Expressed in the same unit of measure as quantity_on_hand.',
+    `safety_stock_quantity` DECIMAL(18,2) COMMENT 'Buffer quantity of chemical maintained above the reorder point to protect against supply chain disruptions, delivery delays, or unexpected demand spikes. Expressed in the same unit of measure as quantity_on_hand.',
+    `sap_material_number` STRING COMMENT 'SAP ERP material master number assigned to this chemical in the MM module. Enables traceability between the lakehouse silver layer and SAP procurement, goods receipt, and inventory management transactions.',
+    `sds_reference_number` STRING COMMENT 'Document reference number or identifier for the Safety Data Sheet (SDS) associated with this chemical, as required by OSHA Hazard Communication Standard (HazCom). Links to the SDS document management system for emergency response and worker safety.',
+    `sds_revision_date` DATE COMMENT 'Date of the most current revision of the Safety Data Sheet (SDS) on file for this chemical. OSHA requires SDS documents to be current; outdated SDS may indicate a compliance gap.',
+    `storage_container_type` STRING COMMENT 'Type of storage vessel or container used to hold the chemical at the facility (e.g., bulk tank, day tank, drum, cylinder, tote, bag). Relevant for spill response planning, OSHA Tier II, and maintenance scheduling. [ENUM-REF-CANDIDATE: bulk_tank|day_tank|drum|cylinder|tote|bag|other — 7 candidates stripped; promote to reference product]',
+    `storage_temperature_max_c` DECIMAL(18,2) COMMENT 'Maximum allowable storage temperature for the chemical in degrees Celsius, as specified in the SDS. Exceeding this threshold may cause chemical degradation, hazardous reactions, or loss of treatment efficacy.',
+    `storage_temperature_min_c` DECIMAL(18,2) COMMENT 'Minimum allowable storage temperature for the chemical in degrees Celsius, as specified in the SDS. Ensures chemical integrity and prevents hazardous reactions due to improper storage conditions.',
+    `supplier_part_number` STRING COMMENT 'Vendor-assigned part or catalog number for this chemical product as used in purchase orders and delivery documentation. Facilitates accurate procurement and receiving.',
+    `tier2_reporting_year` STRING COMMENT 'Calendar year for which this chemical inventory record is applicable for OSHA EPCRA Section 312 Tier II annual hazardous chemical inventory reporting. Supports annual regulatory submission to state and local emergency planning committees.',
+    `unit_cost` DECIMAL(18,2) COMMENT 'Cost per unit of measure for the chemical as established in the most recent purchase order or contract. Used for chemical cost tracking, OPEX budgeting, and treatment cost-per-gallon calculations. Expressed in USD.',
+    `unit_of_measure` STRING COMMENT 'Standard unit of measure used to quantify the chemical inventory (e.g., lbs for dry chemicals, gallons for liquid chemicals). Must be consistent with procurement orders and dosing calculations.. Valid values are `lbs|gallons|kg|liters|tons|cylinders`',
+    CONSTRAINT pk_chemical_inventory PRIMARY KEY(`chemical_inventory_id`)
+) COMMENT 'Tracks on-site chemical inventory levels at each treatment facility. Captures chemical name, CAS number, storage tank or container ID, current quantity on hand (lbs/gallons), unit of measure, reorder point, maximum storage capacity, last delivery date, last physical count date, and safety data sheet (SDS) reference. Supports chemical procurement planning, OSHA Tier II reporting, and treatment process continuity.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` (
-    `treatment_permit_id` BIGINT COMMENT 'Unique identifier for treatment permit. Ref: OSIsoft PI Historian.',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `regulatory_agency_id` BIGINT COMMENT 'Regulatory agency reference. Ref: OSIsoft PI Historian.',
-    `effective_date` DATE COMMENT 'Permit effective date. Ref: OSIsoft PI Historian.',
-    `expiration_date` DATE COMMENT 'Permit expiration date. Ref: OSIsoft PI Historian.',
-    `issuing_agency` STRING COMMENT 'Issuing regulatory agency. Ref: OSIsoft PI Historian.',
-    `permit_number` STRING COMMENT 'Permit number. Ref: OSIsoft PI Historian.',
-    `permit_type` STRING COMMENT 'Permit type (operating, construction, etc.). Ref: OSIsoft PI Historian.',
-    `permitted_capacity_mgd` DECIMAL(18,2) COMMENT 'Permitted capacity in MGD. Ref: OSIsoft PI Historian.',
+    `treatment_permit_id` BIGINT COMMENT 'Unique surrogate identifier for the treatment operating permit record in the Silver Layer lakehouse. Primary key for the treatment_permit data product.',
+    `compliance_permit_id` BIGINT COMMENT '',
+    `facility_id` BIGINT COMMENT 'Reference to the treatment facility (Water Treatment Plant or Wastewater Treatment Plant) to which this permit is issued. Links the permit to its regulated facility.',
+    `regulatory_agency_id` BIGINT COMMENT 'Reference to the regulatory agency that issued this permit (e.g., EPA Region, State Primacy Agency, State Environmental Department). Used for compliance tracking and correspondence routing.',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: A treatment permit is issued to implement specific regulatory requirements (SDWA, NPDES). Permit managers need to trace which regulatory requirement a permit implements for renewal, compliance schedul',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to service.territory. Business justification: Treatment permits are issued under state primacy agency jurisdiction scoped to a service territory. Territory-level compliance dashboards and permit renewal tracking require this direct link. treatmen',
+    `biosolids_permit_flag` BOOLEAN COMMENT 'Indicates whether this permit includes authorization for biosolids or residuals management (land application, incineration, or landfill disposal). Relevant for WWTPs subject to EPA 40 CFR Part 503 biosolids regulations.',
+    `bod_limit_mg_l` DECIMAL(18,2) COMMENT 'Permitted maximum concentration of Biochemical Oxygen Demand (BOD) in treated effluent, expressed in milligrams per liter (mg/L). A primary indicator of organic pollution load in wastewater discharge. Used for DMR compliance evaluation.',
+    `chlorine_residual_limit_mg_l` DECIMAL(18,2) COMMENT 'Minimum or maximum permitted chlorine residual concentration in finished water or treated effluent, expressed in mg/L. For drinking water, a minimum residual is required at the point of entry to the distribution system. For NPDES discharge, a maximum may be set to protect aquatic life.',
+    `compliance_schedule_end_date` DATE COMMENT 'The final date by which the facility must achieve full compliance with all permit limits per the regulatory-approved compliance schedule. Null if no compliance schedule is in effect. Used to track CIP project milestones and regulatory commitments.',
+    `compliance_schedule_flag` BOOLEAN COMMENT 'Indicates whether the permit includes a formal compliance schedule (a regulatory-approved timeline for achieving permit limits that the facility cannot currently meet). True triggers tracking of interim milestones and final compliance dates in the compliance management system.',
+    `ct_requirement_mg_min_l` DECIMAL(18,2) COMMENT 'Minimum required CT (Contact Time) value for disinfection as specified in the permit, expressed in mg·min/L (product of disinfectant concentration and contact time). CT compliance is a core Surface Water Treatment Rule requirement for Giardia and virus inactivation credit.',
+    `dmr_submission_method` STRING COMMENT 'The required or preferred method for submitting Discharge Monitoring Reports (DMRs) or Monthly Operating Reports (MORs) to the regulatory agency. NetDMR is the EPAs electronic DMR system; eDMR refers to state-specific electronic systems; paper and state_portal are alternatives.. Valid values are `NetDMR|eDMR|paper|state_portal`',
+    `document_reference` STRING COMMENT 'Document management system reference, file path, or URL pointing to the official permit document, fact sheet, and associated attachments stored in the enterprise document repository. Enables direct access to the authoritative permit text for compliance review.',
+    `effective_date` DATE COMMENT 'The date on which the permit conditions become legally binding and enforceable. May differ from the issue date if a grace period or administrative continuance applies.',
+    `expiration_date` DATE COMMENT 'The date on which the permit term expires. Triggers renewal workflow and compliance calendar alerts. Under administrative continuance provisions, operations may continue under the expired permit while renewal is pending.',
+    `facility_type` STRING COMMENT 'Classification of the treatment facility covered by this permit. Water Treatment Plant (WTP) produces finished drinking water; Wastewater Treatment Plant (WWTP) or Sewage Treatment Plant (STP) treats and discharges wastewater; pump_station may hold ancillary permits; combined covers co-located facilities.. Valid values are `WTP|WWTP|STP|pump_station|combined`',
+    `haa5_mcl_ug_l` DECIMAL(18,2) COMMENT 'Maximum Contaminant Level (MCL) for Haloacetic Acids (HAA5) as specified in the permit or applicable regulatory standard, expressed in micrograms per liter (µg/L). The EPA MCL for HAA5 is 60 µg/L. A key Disinfection Byproduct (DBP) compliance parameter for drinking water permits.',
+    `issue_date` DATE COMMENT 'The date on which the regulatory agency formally issued or reissued the permit. Marks the start of the current permit term and is used to calculate permit age and renewal lead times.',
+    `last_inspection_date` DATE COMMENT 'Date of the most recent regulatory compliance inspection conducted by the issuing agency or primacy agency at the permitted facility. Used to track inspection frequency, prepare for upcoming inspections, and assess compliance standing.',
+    `monitoring_frequency` STRING COMMENT 'Required frequency of effluent or finished water quality monitoring as specified in the permit. Drives the sampling schedule in the LIMS and the reporting calendar for DMR/MOR submissions. Represents the most frequent monitoring requirement across all parameters.. Valid values are `daily|weekly|monthly|quarterly|semi_annual|annual`',
+    `next_inspection_date` DATE COMMENT 'Anticipated or scheduled date of the next regulatory compliance inspection. Supports proactive compliance preparation and internal audit scheduling. May be estimated based on inspection frequency requirements.',
+    `notes` STRING COMMENT 'Free-text field for additional operational notes, regulatory correspondence summaries, internal compliance observations, or context not captured in structured fields. Used by compliance staff to document permit history, agency communications, and action items.',
+    `npdes_major_minor_class` STRING COMMENT 'EPA classification of the NPDES permit as major or minor based on facility size, discharge volume, and potential environmental impact. Major facilities are subject to more stringent oversight, mandatory DMR reporting, and EPA inspection priorities. Applicable only to NPDES permit types.. Valid values are `major|minor`',
+    `permit_category` STRING COMMENT 'Indicates whether the permit is an individual permit (facility-specific terms and conditions), a general permit (covers a category of similar dischargers), or an emergency permit (temporary authorization). Determines the regulatory review process and compliance obligations.. Valid values are `individual|general|emergency`',
+    `permit_name` STRING COMMENT 'Descriptive name or title of the permit as assigned by the issuing agency or used internally (e.g., City Water Treatment Plant NPDES Discharge Permit, Regional WTP Drinking Water Operating Permit). Supports human-readable identification in compliance registers and reports.',
+    `permit_number` STRING COMMENT 'Externally-assigned permit number as issued by the regulatory authority (e.g., NPDES permit number, state drinking water operating permit number). This is the official identifier used in all regulatory correspondence, DMRs, MORs, and CCRs.',
+    `permit_status` STRING COMMENT 'Current lifecycle status of the permit. Active indicates the permit is in force; pending_renewal indicates the renewal application has been submitted and the permit is administratively continued; expired indicates the permit term has lapsed without renewal; suspended or revoked indicates regulatory action has been taken.. Valid values are `active|expired|pending_renewal|suspended|revoked|draft`',
+    `permit_type` STRING COMMENT 'Classification of the permit by regulatory program. NPDES governs wastewater discharge under the Clean Water Act; drinking_water_operating governs WTP operations under SDWA; air_emission covers process air releases; residuals_management covers biosolids/sludge disposal; industrial_pretreatment covers IUP programs; stormwater covers MS4 or industrial stormwater. [ENUM-REF-CANDIDATE: NPDES|drinking_water_operating|air_emission|residuals_management|industrial_pretreatment|stormwater|other — promote to reference product]. Valid values are `NPDES|drinking_water_operating|air_emission|residuals_management|industrial_pretreatment|stormwater`',
+    `permitted_avg_flow_mgd` DECIMAL(18,2) COMMENT 'Monthly average flow rate authorized under this permit in Million Gallons per Day (MGD). Distinct from the peak daily limit; used for long-term capacity planning and average-basis compliance evaluation in DMR submissions.',
+    `permitted_flow_mgd` DECIMAL(18,2) COMMENT 'Maximum daily flow rate authorized under this permit, expressed in Million Gallons per Day (MGD). This is the principal quantitative limit governing facility capacity and is used for capacity planning, compliance monitoring, and MOR/DMR reporting.',
+    `pfas_monitoring_required` BOOLEAN COMMENT 'Indicates whether the permit requires monitoring for Per- and Polyfluoroalkyl Substances (PFAS) compounds. Reflects EPAs PFAS Action Plan and emerging state-level PFAS MCLs. Drives LIMS sampling plan configuration and CCR disclosure requirements.',
+    `ph_limit_max` DECIMAL(18,2) COMMENT 'Maximum permitted pH value for treated effluent or finished water as specified in the permit. Used alongside ph_limit_min to define the acceptable pH range for compliance monitoring and corrosion control program evaluation.',
+    `ph_limit_min` DECIMAL(18,2) COMMENT 'Minimum permitted pH value for treated effluent or finished water as specified in the permit. pH is a key indicator of water chemistry and corrosion control. Typically 6.0–9.0 for NPDES effluent; 6.5–8.5 for drinking water under SDWA.',
+    `receiving_water_body` STRING COMMENT 'Name of the surface water body (river, lake, estuary, or ocean) designated as the receiving water for permitted discharges (e.g., Ohio River, Lake Michigan). Required for NPDES permits; used in water quality impact assessments and antidegradation analysis.',
+    `renewal_application_date` DATE COMMENT 'The date on which the permit renewal application was submitted to the issuing regulatory agency. NPDES regulations typically require submission at least 180 days before expiration. Used to verify timely renewal and administrative continuance eligibility.',
+    `renewal_status` STRING COMMENT 'Current status of the permit renewal process. Tracks progression from initial application through agency review to final determination. Supports compliance calendar management and regulatory relationship tracking.. Valid values are `not_started|application_submitted|under_review|approved|denied`',
+    `reporting_frequency` STRING COMMENT 'Required frequency for submitting compliance reports (DMRs, MORs, or equivalent) to the regulatory agency as specified in the permit. Drives the compliance reporting calendar and submission deadlines tracked in the MOR submission workflow.. Valid values are `monthly|quarterly|semi_annual|annual`',
+    `special_conditions` STRING COMMENT 'Narrative description of any special conditions, schedules of compliance, best management practices (BMPs), or additional requirements imposed by the regulatory agency beyond standard effluent limitations. Examples include PFAS monitoring requirements, CSO long-term control plan milestones, or LCRR service line inventory obligations.',
+    `term_years` STRING COMMENT 'Duration of the permit in years as specified by the issuing agency. NPDES permits are typically issued for 5-year terms; state drinking water operating permits may vary. Used for renewal planning and compliance scheduling.',
+    `tss_limit_mg_l` DECIMAL(18,2) COMMENT 'Permitted maximum concentration of Total Suspended Solids (TSS) in treated effluent, expressed in milligrams per liter (mg/L). Core secondary treatment standard for WWTP NPDES compliance. Used in DMR reporting and effluent quality monitoring.',
+    `tthm_mcl_ug_l` DECIMAL(18,2) COMMENT 'Maximum Contaminant Level (MCL) for Total Trihalomethanes (TTHMs) as specified in the permit or applicable regulatory standard, expressed in micrograms per liter (µg/L). The EPA MCL for TTHMs is 80 µg/L. A key Disinfection Byproduct (DBP) compliance parameter for drinking water permits.',
+    `turbidity_limit_ntu` DECIMAL(18,2) COMMENT 'Maximum permitted turbidity of finished water or treated effluent in Nephelometric Turbidity Units (NTU). For WTPs, the Surface Water Treatment Rule requires combined filter effluent turbidity not to exceed 0.3 NTU in 95% of measurements. Critical for MCL compliance.',
+    `violation_count_active` STRING COMMENT 'Number of currently unresolved permit violations (effluent limit exceedances, reporting violations, or schedule of compliance violations) associated with this permit. Sourced from the regulatory agencys compliance tracking system. Used for compliance risk scoring and executive reporting.',
     CONSTRAINT pk_treatment_permit PRIMARY KEY(`treatment_permit_id`)
-) COMMENT 'Treatment facility operating permit (SDWA, state primacy agency). Stores permit number, issuing agency, effective/expiration dates, permitted capacity, treatment technology requirements, monitoring schedules, and special conditions. Links to facility, permit conditions, and compliance violations. Used for permit renewal tracking and compliance management.';
-
-CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` (
-    `chemical_id` BIGINT COMMENT 'Unique identifier for chemical. Ref: OSIsoft PI Historian.',
-    `cas_number` STRING COMMENT 'CAS registry number. Ref: OSIsoft PI Historian.',
-    `chemical_type` STRING COMMENT 'Chemical type (coagulant, disinfectant, etc.). Ref: OSIsoft PI Historian.',
-    `concentration_pct` DECIMAL(18,2) COMMENT 'Concentration percentage. Ref: OSIsoft PI Historian.',
-    `density_lb_per_gal` DECIMAL(18,2) COMMENT 'Density in lb/gal. Ref: OSIsoft PI Historian.',
-    `chemical_name` STRING COMMENT 'Chemical name. Ref: OSIsoft PI Historian.',
-    `nsf_ansi_60_certified` BOOLEAN COMMENT 'NSF/ANSI 60 certification status. Ref: OSIsoft PI Historian.',
-    `sds_document_url` STRING COMMENT 'Safety data sheet URL. Ref: OSIsoft PI Historian.',
-    `unit_of_measure` STRING COMMENT 'Unit of measure. Ref: OSIsoft PI Historian.',
-    CONSTRAINT pk_chemical PRIMARY KEY(`chemical_id`)
-) COMMENT 'Treatment chemical master record. Defines chemical name, type (coagulant, disinfectant, pH adjuster, corrosion inhibitor), CAS number, concentration, density, safety classification, SDS reference, approved vendors, unit of measure, and typical dose range. Used for inventory management, dose event recording, and safety compliance.';
+) COMMENT 'Master record of operating permits governing treatment facility operations. Captures permit type (NPDES, state drinking water operating permit, air permit, residuals permit), permit number, issuing regulatory agency, issue date, expiration date, permitted flow limits (MGD), effluent/finished water quality limits, special conditions, renewal status, and associated facility. Authoritative permit register for the treatment domain supporting compliance management.';
 
 CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` (
-    `water_source_id` BIGINT COMMENT 'Unique identifier for water source. Ref: OSIsoft PI Historian.',
-    `capacity_mgd` DECIMAL(18,2) COMMENT 'Source capacity in MGD. Ref: OSIsoft PI Historian.',
-    `latitude` DECIMAL(18,2) COMMENT 'Latitude. Ref: OSIsoft PI Historian.',
-    `longitude` DECIMAL(18,2) COMMENT 'Longitude. Ref: OSIsoft PI Historian.',
-    `protection_zone` STRING COMMENT 'Source water protection zone. Ref: OSIsoft PI Historian.',
-    `source_name` STRING COMMENT 'Source name. Ref: OSIsoft PI Historian.',
-    `source_type` STRING COMMENT 'Source type (surface, groundwater, purchased). Ref: OSIsoft PI Historian.',
-    `vulnerability_assessment_date` DATE COMMENT 'Vulnerability assessment date. Ref: OSIsoft PI Historian.',
-    `water_rights_permit_number` STRING COMMENT 'Water rights permit number. Ref: OSIsoft PI Historian.',
+    `water_source_id` BIGINT COMMENT 'Primary key for water_source',
+    `compliance_permit_id` BIGINT COMMENT 'add column compliance_permit_id (BIGINT) with FK to compliance.compliance_permit.compliance_permit_id - water sources are regulated under source water protection permits',
+    `parent_water_source_id` BIGINT COMMENT 'Self-referencing FK on water_source (parent_water_source_id)',
+    `territory_id` BIGINT COMMENT 'Foreign key linking to service.territory. Business justification: Source water protection programs, drought contingency plans, and water supply planning are all territory-scoped. Regulators and planners need to know which service territory each water source supplies',
+    `acquisition_date` DATE COMMENT 'Date the water source was acquired or brought into service.',
+    `capacity_mgd` DECIMAL(18,2) COMMENT 'Design maximum water production capacity in million gallons per day.',
+    `country` STRING COMMENT 'Three‑letter ISO country code of the water source location.',
+    `decommission_date` DATE COMMENT 'Date the water source was retired or taken out of service, if applicable.',
+    `depth_ft` DECIMAL(18,2) COMMENT 'Typical depth of the water source (e.g., well depth).',
+    `elevation_ft` DECIMAL(18,2) COMMENT 'Surface elevation of the water source above mean sea level.',
+    `inspection_frequency_days` STRING COMMENT 'Number of days between routine inspections.',
+    `is_protected_area` BOOLEAN COMMENT 'Indicates whether the source lies within a legally protected environmental area.',
+    `jurisdiction` STRING COMMENT 'Regulatory jurisdiction governing the water source.',
+    `last_inspection_date` DATE COMMENT 'Most recent date a regulatory or internal inspection was performed.',
+    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude of the water source location.',
+    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the water source location.',
+    `municipality` STRING COMMENT 'Municipality where the water source is located.',
+    `water_source_name` STRING COMMENT 'Human‑readable name of the water source (e.g., River X, Reservoir Y).',
+    `next_inspection_due` DATE COMMENT 'Scheduled date for the next required inspection.',
+    `source_code` STRING COMMENT 'External code or identifier used for regulatory filings and operational systems.',
+    `source_conductivity_us` DECIMAL(18,2) COMMENT 'Electrical conductivity of source water in microsiemens per centimeter.',
+    `source_owner` STRING COMMENT 'Organization or agency that owns the water source.',
+    `source_ph` DECIMAL(18,2) COMMENT 'Typical pH measurement of the source water.',
+    `source_regulatory_status` STRING COMMENT 'Current compliance status with applicable water‑quality regulations.',
+    `source_remarks` STRING COMMENT 'Free‑form notes or comments about the water source.',
+    `source_salinity_psu` DECIMAL(18,2) COMMENT 'Typical salinity of the source water in Practical Salinity Units.',
+    `source_temperature_c` DECIMAL(18,2) COMMENT 'Typical temperature of the water at the source.',
+    `source_turbidity_ntu` DECIMAL(18,2) COMMENT 'Typical turbidity of source water measured in Nephelometric Turbidity Units.',
+    `source_type` STRING COMMENT 'Classification of the water source by its origin.',
+    `state` STRING COMMENT 'State or province code for the water source location.',
+    `water_quality_class` STRING COMMENT 'Regulatory water‑quality classification for the source.',
+    `water_source_status` STRING COMMENT 'Current operational status of the water source.',
+    `watershed_name` STRING COMMENT 'Name of the watershed or basin that feeds the water source.',
     CONSTRAINT pk_water_source PRIMARY KEY(`water_source_id`)
-) COMMENT 'Source water master record (surface water intake, groundwater well, purchased water interconnection). Defines source type, location, capacity, water rights, protection zone, vulnerability assessment, and historical quality trends. Links to facility, intake events, and source water quality monitoring. Used for source water protection and treatment process planning.';
+) COMMENT 'Master reference table for water_source. Referenced by water_source_id.';
 
-CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` (
-    `discharge_point_id` BIGINT COMMENT 'Unique identifier for discharge point. Ref: OSIsoft PI Historian.',
-    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_permit. Business justification: Discharge points (backwash discharge, filter-to-waste, plant drain) operate under specific NPDES/discharge compliance permits distinct from treatment permits. Regulators and operators must know which ',
-    `facility_id` BIGINT COMMENT 'Treatment facility. Ref: OSIsoft PI Historian.',
-    `installation_id` BIGINT COMMENT 'Foreign key linking to metering.installation. Business justification: Discharge points (backwash, plant effluent) require metered volume tracking for NPDES permit compliance and discharge monitoring reports (DMRs). Linking discharge_point to its meter installation enabl',
-    `pipe_main_id` BIGINT COMMENT 'Foreign key linking to distribution.pipe_main. Business justification: A treatment facility discharge point physically connects to a distribution pipe main as the entry point of finished water into the network. This link is fundamental for hydraulic modeling, water quali',
-    `registry_id` BIGINT COMMENT 'Foreign key linking to asset.registry. Business justification: Discharge point outfall structures are physical assets requiring NPDES permit compliance inspections, condition assessments, and maintenance work orders. Linking discharge_point to asset registry enab',
-    `discharge_type` STRING COMMENT 'Discharge type (outfall, sewer, lagoon). Ref: OSIsoft PI Historian.',
-    `latitude` DECIMAL(18,2) COMMENT 'Latitude. Ref: OSIsoft PI Historian.',
-    `longitude` DECIMAL(18,2) COMMENT 'Longitude. Ref: OSIsoft PI Historian.',
-    `discharge_point_name` STRING COMMENT 'Discharge point name. Ref: OSIsoft PI Historian.',
-    `receiving_water_body` STRING COMMENT 'Receiving water body. Ref: OSIsoft PI Historian.',
-    CONSTRAINT pk_discharge_point PRIMARY KEY(`discharge_point_id`)
-) COMMENT 'Treatment residuals or backwash discharge point (outfall, sanitary sewer, lagoon). Defines discharge location, receiving water body, permit reference, flow measurement method, and monitoring requirements. Links to facility, discharge events, and effluent quality monitoring. Used for NPDES compliance and environmental reporting.';
+CREATE OR REPLACE TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` (
+    `filter_unit_id` BIGINT COMMENT 'Primary key for filter_unit',
+    `facility_id` BIGINT COMMENT 'Reference to the water treatment plant that houses the filter unit.',
+    `location_id` BIGINT COMMENT 'Reference to the physical location where the filter unit is installed.',
+    `meter_id` BIGINT COMMENT 'Foreign key linking to metering.metering_meter. Business justification: Each filter unit has a dedicated flow meter measuring influent/effluent for CT compliance and backwash scheduling. Linking filter_unit to its metering_meter supports filter performance monitoring, reg',
+    `paired_filter_unit_id` BIGINT COMMENT 'Self-referencing FK on filter_unit (paired_filter_unit_id)',
+    `process_unit_id` BIGINT COMMENT 'Foreign key linking to treatment.process_unit. Business justification: A filter unit is a specific physical asset that implements a filtration process stage within a treatment process unit (e.g., a rapid sand filter bank within the filtration process unit). Linking filte',
+    `calibration_date` DATE COMMENT 'Date the filter units measurement instruments were last calibrated.',
+    `calibration_status` STRING COMMENT 'Current calibration validity.',
+    `capacity_m3_per_hour` DECIMAL(18,2) COMMENT 'Maximum water flow the filter unit can handle, expressed in cubic meters per hour.',
+    `commissioning_date` DATE COMMENT 'Date the filter unit became operational.',
+    `compliance_ct_value_mg_per_l` DECIMAL(18,2) COMMENT 'Measured chlorine residual (CT) value for compliance, expressed in mg/L.',
+    `cost_usd` DECIMAL(18,2) COMMENT 'Acquisition cost of the filter unit in US dollars.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the filter unit record was first created in the system.',
+    `decommission_date` DATE COMMENT 'Date the filter unit was retired or removed from service.',
+    `disposal_date` DATE COMMENT 'Date the filter media was disposed of.',
+    `disposal_method` STRING COMMENT 'Method used to dispose of spent filter media.',
+    `filter_age_days` STRING COMMENT 'Number of days since the filter unit was first commissioned.',
+    `filter_condition` STRING COMMENT 'Overall health condition of the filter unit.',
+    `filter_efficiency_percent` DECIMAL(18,2) COMMENT 'Measured removal efficiency of the filter unit expressed as a percentage.',
+    `filter_media_type` STRING COMMENT 'Material used as the filtering media.',
+    `filter_type` STRING COMMENT 'Category of filter technology used.',
+    `flow_rate_m3_per_hour` DECIMAL(18,2) COMMENT 'Current operational flow rate through the filter unit.',
+    `inspection_status` STRING COMMENT 'Result of the latest inspection.',
+    `installation_date` DATE COMMENT 'Date the filter unit was installed at the plant.',
+    `is_critical` BOOLEAN COMMENT 'Indicates whether the filter unit is critical to plant operation.',
+    `is_remote_monitored` BOOLEAN COMMENT 'True if the filter unit is monitored via a remote SCADA/IoT system.',
+    `last_inspection_date` DATE COMMENT 'Date of the most recent physical inspection.',
+    `last_maintenance_date` DATE COMMENT 'Date the most recent maintenance was performed.',
+    `maintenance_interval_days` STRING COMMENT 'Planned number of days between routine maintenance activities.',
+    `maintenance_status` STRING COMMENT 'Current status of the maintenance schedule.',
+    `manufacturer` STRING COMMENT 'Company that manufactured the filter unit.',
+    `media_grade` STRING COMMENT 'Specification grade of the filter media (e.g., size, purity).',
+    `model_number` STRING COMMENT 'Model designation provided by the manufacturer.',
+    `filter_unit_name` STRING COMMENT 'Human‑readable name of the filter unit.',
+    `next_maintenance_date` DATE COMMENT 'Scheduled date for the upcoming maintenance.',
+    `notes` STRING COMMENT 'Free‑form comments or observations about the filter unit.',
+    `operational_status` STRING COMMENT 'Current operational state of the filter unit.',
+    `pressure_drop_kpa` DECIMAL(18,2) COMMENT 'Measured pressure drop across the filter unit in kilopascals.',
+    `remote_monitoring_system` STRING COMMENT 'Name of the system providing remote monitoring data.',
+    `replacement_part_number` STRING COMMENT 'Part number for the filter media or components used in replacements.',
+    `serial_number` STRING COMMENT 'Unique serial number stamped on the filter unit.',
+    `unit_code` STRING COMMENT 'Business identifier or code assigned to the filter unit.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the filter unit record.',
+    `warranty_expiration_date` DATE COMMENT 'Date the manufacturers warranty ends.',
+    CONSTRAINT pk_filter_unit PRIMARY KEY(`filter_unit_id`)
+) COMMENT 'Master reference table for filter_unit. Referenced by filter_unit_id.';
 
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ADD CONSTRAINT `fk_treatment_facility_water_source_id` FOREIGN KEY (`water_source_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`water_source`(`water_source_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ADD CONSTRAINT `fk_treatment_process_unit_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ADD CONSTRAINT `fk_treatment_process_reading_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ADD CONSTRAINT `fk_treatment_process_reading_process_unit_id` FOREIGN KEY (`process_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_unit`(`process_unit_id`);
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ADD CONSTRAINT `fk_treatment_chemical_dose_event_chemical_id` FOREIGN KEY (`chemical_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`chemical`(`chemical_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ADD CONSTRAINT `fk_treatment_process_reading_filter_unit_id` FOREIGN KEY (`filter_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`filter_unit`(`filter_unit_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ADD CONSTRAINT `fk_treatment_chemical_dose_event_chemical_inventory_id` FOREIGN KEY (`chemical_inventory_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`chemical_inventory`(`chemical_inventory_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ADD CONSTRAINT `fk_treatment_chemical_dose_event_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ADD CONSTRAINT `fk_treatment_chemical_dose_event_process_unit_id` FOREIGN KEY (`process_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_unit`(`process_unit_id`);
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ADD CONSTRAINT `fk_treatment_ct_compliance_record_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ADD CONSTRAINT `fk_treatment_ct_compliance_record_process_unit_id` FOREIGN KEY (`process_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_unit`(`process_unit_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ADD CONSTRAINT `fk_treatment_chemical_dose_event_process_reading_id` FOREIGN KEY (`process_reading_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_reading`(`process_reading_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ADD CONSTRAINT `fk_treatment_finished_water_production_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ADD CONSTRAINT `fk_treatment_finished_water_production_treatment_permit_id` FOREIGN KEY (`treatment_permit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`treatment_permit`(`treatment_permit_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ADD CONSTRAINT `fk_treatment_finished_water_production_water_source_id` FOREIGN KEY (`water_source_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`water_source`(`water_source_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ADD CONSTRAINT `fk_treatment_source_water_intake_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ADD CONSTRAINT `fk_treatment_source_water_intake_treatment_permit_id` FOREIGN KEY (`treatment_permit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`treatment_permit`(`treatment_permit_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ADD CONSTRAINT `fk_treatment_source_water_intake_water_source_id` FOREIGN KEY (`water_source_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`water_source`(`water_source_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ADD CONSTRAINT `fk_treatment_chemical_inventory_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ADD CONSTRAINT `fk_treatment_chemical_inventory_process_unit_id` FOREIGN KEY (`process_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_unit`(`process_unit_id`);
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ADD CONSTRAINT `fk_treatment_treatment_permit_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ADD CONSTRAINT `fk_treatment_discharge_point_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ADD CONSTRAINT `fk_treatment_water_source_parent_water_source_id` FOREIGN KEY (`parent_water_source_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`water_source`(`water_source_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ADD CONSTRAINT `fk_treatment_filter_unit_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`facility`(`facility_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ADD CONSTRAINT `fk_treatment_filter_unit_paired_filter_unit_id` FOREIGN KEY (`paired_filter_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`filter_unit`(`filter_unit_id`);
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ADD CONSTRAINT `fk_treatment_filter_unit_process_unit_id` FOREIGN KEY (`process_unit_id`) REFERENCES `vibe_water_utilities_v1`.`treatment`.`process_unit`(`process_unit_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_water_utilities_v1`.`treatment` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_water_utilities_v1`.`treatment` SET TAGS ('dbx_domain' = 'treatment');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` SET TAGS ('dbx_subdomain' = 'facility_operations');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_city` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line_1` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line_2` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_state` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_state` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_zip` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `address_zip` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `ecm_mvm_depth_reconciliation_note` SET TAGS ('dbx_business_glossary_term' = 'ECM/MVM Depth Reconciliation');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `ecm_mvm_depth_reconciliation_note` SET TAGS ('dbx_metadata' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `ecm_mvm_depth_reconciliation_note` SET TAGS ('dbx_ecm_depth_reconciled' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `ecm_mvm_depth_reconciliation_note` SET TAGS ('dbx_ecm_mvm_reconciliation' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `number_of_treatment_trains` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `number_of_treatment_trains` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `operator_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `operator_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `pfas_treatment_capable_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `pfas_treatment_capable_flag` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `primary_treatment_process` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `primary_treatment_process` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `street_address` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `street_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_capacity_mgd` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_capacity_mgd` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_class` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_class` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology_primary` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology_primary` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `treatment_technology_type` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `zip_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `zip_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`facility` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Identifier');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` SET TAGS ('dbx_subdomain' = 'facility_operations');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit Identifier');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Location Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `baffling_factor` SET TAGS ('dbx_business_glossary_term' = 'Baffling Factor');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_audit' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `design_capacity_gpm` SET TAGS ('dbx_business_glossary_term' = 'Design Capacity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `detention_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Detention Time');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `hydraulic_loading_rate_gpm_sqft` SET TAGS ('dbx_business_glossary_term' = 'Hydraulic Loading Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `maximo_asset_number` SET TAGS ('dbx_business_glossary_term' = 'Maximo Asset Number');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `maximo_asset_number` SET TAGS ('dbx_integration' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `media_type` SET TAGS ('dbx_business_glossary_term' = 'Media Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `surface_area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Surface Area');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_stage` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_stage` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology` SET TAGS ('dbx_business_glossary_term' = 'Treatment Technology');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology_code` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_technology_type` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_train_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `treatment_train_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `unit_name` SET TAGS ('dbx_business_glossary_term' = 'Unit Name');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `unit_type` SET TAGS ('dbx_business_glossary_term' = 'Unit Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_audit' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_unit` ALTER COLUMN `sampling_point_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Sampling Point Id (Foreign Key)');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` SET TAGS ('dbx_subdomain' = 'process_monitoring');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` SET TAGS ('dbx_subdomain' = 'operational_processing');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `process_reading_id` SET TAGS ('dbx_business_glossary_term' = 'Process Reading ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `process_reading_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_FK' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `filter_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Filter Unit Id (Foreign Key)');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `sampling_point_id` SET TAGS ('dbx_business_glossary_term' = 'Instrument ID');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `alarm_state` SET TAGS ('dbx_business_glossary_term' = 'Alarm State');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `alarm_state` SET TAGS ('dbx_value_regex' = 'normal|low_alarm|high_alarm|low_low_alarm|high_high_alarm|sensor_fault');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `alarm_state` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Ingestion Batch Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `calibration_due_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Due Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `compression_applied` SET TAGS ('dbx_business_glossary_term' = 'Compression Applied');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `ct_required` SET TAGS ('dbx_business_glossary_term' = 'Required Contact Time (CT) Value');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `ct_value` SET TAGS ('dbx_business_glossary_term' = 'Contact Time (CT) Value');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `dmr_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Discharge Monitoring Report (DMR) Reporting Flag');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `engineering_unit` SET TAGS ('dbx_business_glossary_term' = 'Engineering Unit');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `is_manual_entry` SET TAGS ('dbx_business_glossary_term' = 'Manual Entry');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `high_range_limit` SET TAGS ('dbx_business_glossary_term' = 'High Range Limit');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `ingestion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Ingestion Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `is_manual_entry` SET TAGS ('dbx_business_glossary_term' = 'Is Manual Entry');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `is_regulatory_exceedance` SET TAGS ('dbx_business_glossary_term' = 'Is Regulatory Exceedance');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `last_calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Last Calibration Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `location_description` SET TAGS ('dbx_business_glossary_term' = 'Location Description');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `low_range_limit` SET TAGS ('dbx_business_glossary_term' = 'Low Range Limit');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `measured_value` SET TAGS ('dbx_business_glossary_term' = 'Measured Value');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `mor_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'MOR Reporting');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `mor_reporting_flag` SET TAGS ('dbx_regulatory' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `mor_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Monthly Operating Report (MOR) Reporting Flag');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `parameter_type` SET TAGS ('dbx_business_glossary_term' = 'Parameter Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `pi_server_name` SET TAGS ('dbx_business_glossary_term' = 'PI Server Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `pi_server_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `process_stage` SET TAGS ('dbx_business_glossary_term' = 'Process Stage');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Quality Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `raw_value` SET TAGS ('dbx_business_glossary_term' = 'Raw Value');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `reading_date` SET TAGS ('dbx_business_glossary_term' = 'Reading Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `reading_status` SET TAGS ('dbx_business_glossary_term' = 'Reading Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `reading_status` SET TAGS ('dbx_value_regex' = 'raw|validated|rejected|substituted|archived');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `reading_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Reading Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `reading_timestamp` SET TAGS ('dbx_timeseries' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `regulatory_limit_type` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Limit Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `regulatory_limit_type` SET TAGS ('dbx_value_regex' = 'MCL|MCLG|action_level|permit_limit|treatment_technique|none');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `regulatory_limit_value` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Limit Value');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `sample_interval_seconds` SET TAGS ('dbx_business_glossary_term' = 'Sample Interval (Seconds)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `scada_system_code` SET TAGS ('dbx_business_glossary_term' = 'SCADA System ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `source_tag_name` SET TAGS ('dbx_business_glossary_term' = 'Source Tag Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `source_tag_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `substitution_reason` SET TAGS ('dbx_business_glossary_term' = 'Substitution Reason');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `substitution_reason` SET TAGS ('dbx_value_regex' = 'sensor_malfunction|communication_failure|calibration_adjustment|manual_correction|scheduled_maintenance|none');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_business_glossary_term' = 'Treatment Process Type');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`process_reading` ALTER COLUMN `validated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Validated Timestamp');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` SET TAGS ('dbx_subdomain' = 'process_monitoring');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` SET TAGS ('dbx_subdomain' = 'operational_processing');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_dose_event_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical Dose Event ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_dose_event_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_mass_applied_kg` SET TAGS ('dbx_business_glossary_term' = 'Mass Applied');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_audit' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `ct_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'CT Compliance');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `ct_compliance_flag` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dose End');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_end_timestamp` SET TAGS ('dbx_timeseries' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_rate_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Dose Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dose Start');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_start_timestamp` SET TAGS ('dbx_timeseries' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `post_dose_residual_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Post-Dose Residual');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `target_residual_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Target Residual');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `water_flow_rate_mgd` SET TAGS ('dbx_business_glossary_term' = 'Flow Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` SET TAGS ('dbx_subdomain' = 'process_monitoring');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_compliance_record_id` SET TAGS ('dbx_business_glossary_term' = 'CT Compliance Record ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_compliance_record_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `baffling_factor` SET TAGS ('dbx_business_glossary_term' = 'Baffling Factor');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `calculation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Calculation Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `calculation_timestamp` SET TAGS ('dbx_timeseries' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `compliance_status` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `contact_time_min` SET TAGS ('dbx_business_glossary_term' = 'Contact Time');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_calculated` SET TAGS ('dbx_business_glossary_term' = 'CT Calculated');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_ratio` SET TAGS ('dbx_business_glossary_term' = 'CT Ratio');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_required` SET TAGS ('dbx_business_glossary_term' = 'CT Required');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ct_required` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `disinfectant_concentration` SET TAGS ('dbx_business_glossary_term' = 'Disinfectant Concentration');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `disinfectant_type` SET TAGS ('dbx_business_glossary_term' = 'Disinfectant Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `log_inactivation_achieved` SET TAGS ('dbx_business_glossary_term' = 'Log Inactivation Achieved');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `operator_verified` SET TAGS ('dbx_business_glossary_term' = 'Operator Verified');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `ph_value` SET TAGS ('dbx_business_glossary_term' = 'pH');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `target_organism` SET TAGS ('dbx_business_glossary_term' = 'Target Organism');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`ct_compliance_record` ALTER COLUMN `temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Temperature');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `pressure_zone_id` SET TAGS ('dbx_business_glossary_term' = 'Pressure Zone Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Water Treatment Plant (WTP) ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `process_reading_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Alarm Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `registry_id` SET TAGS ('dbx_business_glossary_term' = 'Dosing Pump ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `regulatory_agency_id` SET TAGS ('dbx_business_glossary_term' = 'Mor Submission Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `storage_tank_id` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Activity Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `water_sample_id` SET TAGS ('dbx_business_glossary_term' = 'Verification Sample Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_concentration_pct` SET TAGS ('dbx_business_glossary_term' = 'Chemical Solution Concentration (%)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_mass_applied_kg` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mass Applied (kg)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `chemical_type` SET TAGS ('dbx_business_glossary_term' = 'Chemical Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `ct_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Contact Time (CT) Compliance Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `ct_required_mg_min_per_l` SET TAGS ('dbx_business_glossary_term' = 'Required Contact Time (CT) Value (mg·min/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `ct_value_mg_min_per_l` SET TAGS ('dbx_business_glossary_term' = 'Contact Time (CT) Value (mg·min/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dbp_formation_risk_flag` SET TAGS ('dbx_business_glossary_term' = 'Disinfection Byproduct (DBP) Formation Risk Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dose End Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_event_number` SET TAGS ('dbx_business_glossary_term' = 'Dose Event Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_event_status` SET TAGS ('dbx_business_glossary_term' = 'Dose Event Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_event_status` SET TAGS ('dbx_value_regex' = 'completed|in_progress|aborted|failed|pending_review');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_rate_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Dose Rate (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dose Start Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_trigger_type` SET TAGS ('dbx_business_glossary_term' = 'Dose Trigger Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dose_trigger_type` SET TAGS ('dbx_value_regex' = 'automatic_scada|manual_operator|scheduled|alarm_response|regulatory_requirement');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dosing_method` SET TAGS ('dbx_business_glossary_term' = 'Dosing Method');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dosing_method` SET TAGS ('dbx_value_regex' = 'continuous|batch|slug|intermittent');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `dosing_pump_code` SET TAGS ('dbx_business_glossary_term' = 'Dosing Pump ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `event_dose_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Dosing Event Chemical Cost (USD)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `event_dose_cost_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `operator_notes` SET TAGS ('dbx_business_glossary_term' = 'Operator Notes');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `post_dose_residual_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Post-Dose Residual (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `pre_dose_residual_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Pre-Dose Residual (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `pump_flow_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Pump Flow Rate (GPM)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `pump_scada_tag` SET TAGS ('dbx_business_glossary_term' = 'Dosing Pump SCADA Tag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `regulatory_event_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Event Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `target_dose_rate_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Target Dose Rate (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `target_parameter` SET TAGS ('dbx_business_glossary_term' = 'Target Treatment Parameter');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `target_residual_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Target Residual (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `treatment_process_stage` SET TAGS ('dbx_business_glossary_term' = 'Treatment Process Stage');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `treatment_process_stage` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `treatment_process_stage` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `turbidity_ntu` SET TAGS ('dbx_business_glossary_term' = 'Turbidity (NTU)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `unit_cost_per_kg` SET TAGS ('dbx_business_glossary_term' = 'Chemical Unit Cost per Kilogram (USD)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `unit_cost_per_kg` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `volume_applied_l` SET TAGS ('dbx_business_glossary_term' = 'Chemical Volume Applied (Liters)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `water_flow_rate_mgd` SET TAGS ('dbx_business_glossary_term' = 'Water Flow Rate (MGD)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `water_ph` SET TAGS ('dbx_business_glossary_term' = 'Water pH (Potential of Hydrogen)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_dose_event` ALTER COLUMN `water_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Water Temperature (°C)');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` SET TAGS ('dbx_subdomain' = 'process_monitoring');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` SET TAGS ('dbx_subdomain' = 'operational_processing');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `finished_water_production_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Water Production ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `finished_water_production_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `avg_production_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Average Production Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `backwash_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Backwash Volume');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `cl2_residual_avg_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Average Chlorine Residual');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `cl2_residual_avg_mg_l` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `filter_to_waste_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Filter to Waste Volume');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `finished_water_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Finished Water Volume');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `peak_production_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Peak Production Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `ph_avg` SET TAGS ('dbx_business_glossary_term' = 'Average pH');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `plant_efficiency_ratio` SET TAGS ('dbx_business_glossary_term' = 'Plant Efficiency');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `pump_station_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Pump Station Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `pressure_zone_id` SET TAGS ('dbx_business_glossary_term' = 'Pressure Zone Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Water Treatment Plant (WTP) ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `meter_id` SET TAGS ('dbx_business_glossary_term' = 'Production Metering Meter Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Cip Project Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Permit Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Approval Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `avg_production_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Average Production Rate (GPM)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `backwash_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Filter Backwash Volume (MG)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `chemical_dosing_event` SET TAGS ('dbx_business_glossary_term' = 'Chemical Dosing Event Indicator');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `cl2_residual_avg_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Average Chlorine Residual (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `cl2_residual_min_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Minimum Chlorine Residual (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `ct_achieved_mg_min_l` SET TAGS ('dbx_business_glossary_term' = 'Disinfection Contact Time Achieved (CT) (mg·min/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `ct_required_mg_min_l` SET TAGS ('dbx_business_glossary_term' = 'Required Disinfection Contact Time (CT) (mg·min/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `design_capacity_mgd` SET TAGS ('dbx_business_glossary_term' = 'WTP Design Capacity (MGD)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `disinfection_method` SET TAGS ('dbx_business_glossary_term' = 'Primary Disinfection Method');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `disinfection_method` SET TAGS ('dbx_value_regex' = 'CHLORINATION|UV|CHLORAMINATION|OZONATION|COMBINED');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `filter_to_waste_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Filter-to-Waste Volume (MG)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `finished_water_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Finished Water Volume Produced (MG)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `fluoride_avg_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Average Fluoride Concentration (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Production Record Notes');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `peak_production_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Peak Production Rate (GPM)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `ph_avg` SET TAGS ('dbx_business_glossary_term' = 'Average Finished Water pH');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `plant_efficiency_ratio` SET TAGS ('dbx_business_glossary_term' = 'Plant Efficiency Ratio');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `plant_ops_water_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Plant Operations Water Volume (MG)');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_date` SET TAGS ('dbx_business_glossary_term' = 'Production Date');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_date` SET TAGS ('dbx_timeseries' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `source_water_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Source Water Volume');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_avg_ntu` SET TAGS ('dbx_business_glossary_term' = 'Average Turbidity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_avg_ntu` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_max_ntu` SET TAGS ('dbx_business_glossary_term' = 'Max Turbidity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_max_ntu` SET TAGS ('dbx_regulatory' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_record_number` SET TAGS ('dbx_business_glossary_term' = 'Production Record Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_record_number` SET TAGS ('dbx_value_regex' = '^WTP-PRD-[0-9]{4}-[0-9]{2}-[0-9]{2}-[A-Z0-9]{4}$');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_status` SET TAGS ('dbx_business_glossary_term' = 'Production Record Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `production_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|superseded');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `regulatory_exceedance` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Exceedance Indicator');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `scada_data_source` SET TAGS ('dbx_business_glossary_term' = 'SCADA Data Source');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `scada_data_source` SET TAGS ('dbx_value_regex' = 'PI_HISTORIAN|MANUAL_ENTRY|SCADA_DCS|AMI|HYBRID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `shift_code` SET TAGS ('dbx_business_glossary_term' = 'Production Shift Code');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `shift_code` SET TAGS ('dbx_value_regex' = 'DAY|EVENING|NIGHT|FULL_DAY');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `shift_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Shift End Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `shift_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Shift Start Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `source_water_volume_mg` SET TAGS ('dbx_business_glossary_term' = 'Source Water Intake Volume (MG)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `temperature_avg_c` SET TAGS ('dbx_business_glossary_term' = 'Average Finished Water Temperature (°C)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `toc_avg_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Average Total Organic Carbon (TOC) (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_business_glossary_term' = 'Treatment Process Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_value_regex' = 'CONVENTIONAL|DIRECT_FILTRATION|MEMBRANE|SOFTENING|GROUNDWATER');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `treatment_process_type` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_avg_ntu` SET TAGS ('dbx_business_glossary_term' = 'Finished Water Average Turbidity (NTU)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `turbidity_max_ntu` SET TAGS ('dbx_business_glossary_term' = 'Finished Water Maximum Turbidity (NTU)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`finished_water_production` ALTER COLUMN `volume_pumped_to_distribution_mg` SET TAGS ('dbx_business_glossary_term' = 'Volume Pumped to Distribution (MG)');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` SET TAGS ('dbx_subdomain' = 'process_monitoring');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` SET TAGS ('dbx_subdomain' = 'operational_processing');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_water_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Source Water Intake ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_water_intake_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `water_source_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `conductivity_us_per_cm` SET TAGS ('dbx_business_glossary_term' = 'Conductivity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `flow_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Flow Rate');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Intake Timestamp');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_timestamp` SET TAGS ('dbx_timeseries' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `permit_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Permit Compliance');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `permit_compliance_status` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `ph_level` SET TAGS ('dbx_business_glossary_term' = 'pH');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Source Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Temperature');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `toc_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'TOC');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `turbidity_ntu` SET TAGS ('dbx_business_glossary_term' = 'Turbidity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `volume_withdrawn_mg` SET TAGS ('dbx_business_glossary_term' = 'Volume Withdrawn');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `meter_id` SET TAGS ('dbx_business_glossary_term' = 'Intake Metering Meter Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Water Treatment Plant (WTP) ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Withdrawal Permit ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `algae_count_cells_per_ml` SET TAGS ('dbx_business_glossary_term' = 'Algae Cell Count (cells/mL)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `conductivity_us_per_cm` SET TAGS ('dbx_business_glossary_term' = 'Raw Water Conductivity (µS/cm) - Microsiemens per Centimeter');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `data_source` SET TAGS ('dbx_business_glossary_term' = 'Data Source');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `data_source` SET TAGS ('dbx_value_regex' = 'scada_pi_historian|manual_entry|lims|ami_platform|estimated');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `dissolved_oxygen_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Dissolved Oxygen (DO) Concentration (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `flow_rate_gpm` SET TAGS ('dbx_business_glossary_term' = 'Flow Rate (GPM) - Gallons Per Minute');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_latitude` SET TAGS ('dbx_business_glossary_term' = 'Intake Point GIS Latitude');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_longitude` SET TAGS ('dbx_business_glossary_term' = 'Intake Point GIS Longitude');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `gis_longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Intake End Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_event_number` SET TAGS ('dbx_business_glossary_term' = 'Source Water Intake Event Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_event_number` SET TAGS ('dbx_value_regex' = '^SWI-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_method` SET TAGS ('dbx_business_glossary_term' = 'Intake Method');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_method` SET TAGS ('dbx_value_regex' = 'gravity|pumped|combined|emergency_bypass');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_screen_condition` SET TAGS ('dbx_business_glossary_term' = 'Intake Screen Condition');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_screen_condition` SET TAGS ('dbx_value_regex' = 'normal|partially_blocked|blocked|bypassed|maintenance');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_status` SET TAGS ('dbx_business_glossary_term' = 'Intake Event Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_status` SET TAGS ('dbx_value_regex' = 'active|completed|suspended|cancelled|pending_review');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `intake_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Intake Event Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `mor_reporting_period` SET TAGS ('dbx_business_glossary_term' = 'Monthly Operating Report (MOR) Reporting Period');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `mor_reporting_period` SET TAGS ('dbx_value_regex' = '^[0-9]{4}-(0[1-9]|1[0-2])$');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Intake Event Notes');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `number_of_pumps_active` SET TAGS ('dbx_business_glossary_term' = 'Number of Active Intake Pumps');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `permit_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Permit Compliance Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `permit_compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|approaching_limit|under_review|exempt');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `permit_daily_limit_mg` SET TAGS ('dbx_business_glossary_term' = 'Permit Daily Withdrawal Limit (MG) - Million Gallons');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `ph_level` SET TAGS ('dbx_business_glossary_term' = 'Raw Water pH (Potential of Hydrogen) Level');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `pump_station_operating_pressure_psi` SET TAGS ('dbx_business_glossary_term' = 'Pump Station Operating Pressure (PSI) - Pounds per Square Inch');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `raw_water_color_cpu` SET TAGS ('dbx_business_glossary_term' = 'Raw Water Color (CPU) - Color Units');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Source Water Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_type` SET TAGS ('dbx_value_regex' = 'surface_water|groundwater|purchased_water|recycled_water|brackish_water|other');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_water_alert_active` SET TAGS ('dbx_business_glossary_term' = 'Source Water Alert Active Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `source_water_protection_zone` SET TAGS ('dbx_business_glossary_term' = 'Source Water Protection Zone');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `tds_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Total Dissolved Solids (TDS) Concentration (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Raw Water Temperature (Celsius)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `toc_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Total Organic Carbon (TOC) Concentration (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `turbidity_ntu` SET TAGS ('dbx_business_glossary_term' = 'Raw Water Turbidity (NTU) - Nephelometric Turbidity Units');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `upstream_event_description` SET TAGS ('dbx_business_glossary_term' = 'Upstream Event Description');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `volume_withdrawn_mg` SET TAGS ('dbx_business_glossary_term' = 'Volume Withdrawn (MG) - Million Gallons');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`source_water_intake` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition at Intake');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `chemical_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical Inventory ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `chemical_chemical_inventory_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Storage Asset Location Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `registry_id` SET TAGS ('dbx_business_glossary_term' = 'Storage Asset Registry Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `average_daily_usage` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Usage');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `avg_quantity_in_year` SET TAGS ('dbx_business_glossary_term' = 'Average Quantity in Reporting Year');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `container_identifier` SET TAGS ('dbx_business_glossary_term' = 'Storage Container Identifier');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `days_of_supply` SET TAGS ('dbx_business_glossary_term' = 'Days of Supply');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Chemical Expiration Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `hazmat_class` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Materials (HAZMAT) Class');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `inventory_status` SET TAGS ('dbx_business_glossary_term' = 'Inventory Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `inventory_status` SET TAGS ('dbx_value_regex' = 'active|on_order|depleted|quarantined|expired|discontinued');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `is_epcra_reportable` SET TAGS ('dbx_business_glossary_term' = 'Emergency Planning and Community Right-to-Know Act (EPCRA) Reportable Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `is_rmp_regulated` SET TAGS ('dbx_business_glossary_term' = 'Risk Management Program (RMP) Regulated Substance Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `last_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Last Delivery Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `last_physical_count_date` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `last_physical_count_quantity` SET TAGS ('dbx_business_glossary_term' = 'Last Physical Count Quantity');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Chemical Lot Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `max_quantity_in_year` SET TAGS ('dbx_business_glossary_term' = 'Maximum Quantity in Reporting Year');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `max_storage_capacity` SET TAGS ('dbx_business_glossary_term' = 'Maximum Storage Capacity');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `maximo_item_number` SET TAGS ('dbx_business_glossary_term' = 'IBM Maximo Item Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_fire_rating` SET TAGS ('dbx_business_glossary_term' = 'National Fire Protection Association (NFPA) Fire Hazard Rating');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_health_rating` SET TAGS ('dbx_business_glossary_term' = 'National Fire Protection Association (NFPA) Health Hazard Rating');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_health_rating` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_health_rating` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_health_rating` SET TAGS ('dbx_pii_ssn' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `nfpa_reactivity_rating` SET TAGS ('dbx_business_glossary_term' = 'National Fire Protection Association (NFPA) Reactivity Hazard Rating');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `purchase_order_number` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `quantity_on_hand` SET TAGS ('dbx_business_glossary_term' = 'Quantity On Hand');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `reorder_point` SET TAGS ('dbx_business_glossary_term' = 'Reorder Point');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `safety_stock_quantity` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Quantity');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `sap_material_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Material Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `sds_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Safety Data Sheet (SDS) Reference Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `sds_revision_date` SET TAGS ('dbx_business_glossary_term' = 'Safety Data Sheet (SDS) Revision Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `storage_container_type` SET TAGS ('dbx_business_glossary_term' = 'Storage Container Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `storage_temperature_max_c` SET TAGS ('dbx_business_glossary_term' = 'Maximum Storage Temperature (Celsius)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `storage_temperature_min_c` SET TAGS ('dbx_business_glossary_term' = 'Minimum Storage Temperature (Celsius)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `supplier_part_number` SET TAGS ('dbx_business_glossary_term' = 'Supplier Part Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `tier2_reporting_year` SET TAGS ('dbx_business_glossary_term' = 'OSHA Tier II Reporting Year');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `unit_cost` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical_inventory` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'lbs|gallons|kg|liters|tons|cylinders');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` SET TAGS ('dbx_subdomain' = 'facility_operations');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` SET TAGS ('dbx_subdomain' = 'facility_management');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Permit ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_PK' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `treatment_permit_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `regulatory_agency_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Agency');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `regulatory_agency_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `issuing_agency` SET TAGS ('dbx_business_glossary_term' = 'Issuing Agency');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `issuing_agency` SET TAGS ('dbx_regulatory' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_ssot_owner' = 'compliance.compliance_permit');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `regulatory_agency_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Agency ID');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `biosolids_permit_flag` SET TAGS ('dbx_business_glossary_term' = 'Biosolids/Residuals Permit Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `bod_limit_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Biochemical Oxygen Demand (BOD) Effluent Limit (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `chlorine_residual_limit_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Chlorine Residual Limit (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `compliance_schedule_end_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Schedule End Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `compliance_schedule_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Schedule Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `ct_requirement_mg_min_l` SET TAGS ('dbx_business_glossary_term' = 'Contact Time (CT) Disinfection Requirement (mg·min/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `dmr_submission_method` SET TAGS ('dbx_business_glossary_term' = 'Discharge Monitoring Report (DMR) Submission Method');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `dmr_submission_method` SET TAGS ('dbx_value_regex' = 'NetDMR|eDMR|paper|state_portal');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `document_reference` SET TAGS ('dbx_business_glossary_term' = 'Permit Document Reference');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Effective Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Expiration Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `facility_type` SET TAGS ('dbx_business_glossary_term' = 'Facility Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `facility_type` SET TAGS ('dbx_value_regex' = 'WTP|WWTP|STP|pump_station|combined');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `haa5_mcl_ug_l` SET TAGS ('dbx_business_glossary_term' = 'Haloacetic Acids (HAA5) Maximum Contaminant Level (MCL) (µg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Issue Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Regulatory Inspection Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Frequency');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_value_regex' = 'daily|weekly|monthly|quarterly|semi_annual|annual');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `next_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Regulatory Inspection Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Permit Notes');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `npdes_major_minor_class` SET TAGS ('dbx_business_glossary_term' = 'National Pollutant Discharge Elimination System (NPDES) Major/Minor Classification');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `npdes_major_minor_class` SET TAGS ('dbx_value_regex' = 'major|minor');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_category` SET TAGS ('dbx_business_glossary_term' = 'Permit Category');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_category` SET TAGS ('dbx_value_regex' = 'individual|general|emergency');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_name` SET TAGS ('dbx_business_glossary_term' = 'Permit Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_number` SET TAGS ('dbx_business_glossary_term' = 'Permit Number');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_number` SET TAGS ('dbx_regulatory' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_status` SET TAGS ('dbx_business_glossary_term' = 'Permit Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_status` SET TAGS ('dbx_value_regex' = 'active|expired|pending_renewal|suspended|revoked|draft');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_type` SET TAGS ('dbx_business_glossary_term' = 'Permit Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permitted_capacity_mgd` SET TAGS ('dbx_business_glossary_term' = 'Permitted Capacity');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` SET TAGS ('dbx_subdomain' = 'process_monitoring');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `chemical_id` SET TAGS ('dbx_business_glossary_term' = 'Chemical ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `chemical_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `cas_number` SET TAGS ('dbx_business_glossary_term' = 'CAS Number');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `chemical_type` SET TAGS ('dbx_business_glossary_term' = 'Chemical Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `concentration_pct` SET TAGS ('dbx_business_glossary_term' = 'Concentration');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `density_lb_per_gal` SET TAGS ('dbx_business_glossary_term' = 'Density');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `chemical_name` SET TAGS ('dbx_business_glossary_term' = 'Chemical Name');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `nsf_ansi_60_certified` SET TAGS ('dbx_business_glossary_term' = 'NSF/ANSI 60 Certified');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `nsf_ansi_60_certified` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `sds_document_url` SET TAGS ('dbx_business_glossary_term' = 'SDS Document');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`chemical` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permit_type` SET TAGS ('dbx_value_regex' = 'NPDES|drinking_water_operating|air_emission|residuals_management|industrial_pretreatment|stormwater');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permitted_avg_flow_mgd` SET TAGS ('dbx_business_glossary_term' = 'Permitted Average Flow (Million Gallons per Day)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `permitted_flow_mgd` SET TAGS ('dbx_business_glossary_term' = 'Permitted Flow (Million Gallons per Day)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `pfas_monitoring_required` SET TAGS ('dbx_business_glossary_term' = 'Per- and Polyfluoroalkyl Substances (PFAS) Monitoring Required Flag');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `ph_limit_max` SET TAGS ('dbx_business_glossary_term' = 'pH (Potential of Hydrogen) Maximum Limit');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `ph_limit_min` SET TAGS ('dbx_business_glossary_term' = 'pH (Potential of Hydrogen) Minimum Limit');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `receiving_water_body` SET TAGS ('dbx_business_glossary_term' = 'Receiving Water Body');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `renewal_application_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Application Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `renewal_status` SET TAGS ('dbx_business_glossary_term' = 'Renewal Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `renewal_status` SET TAGS ('dbx_value_regex' = 'not_started|application_submitted|under_review|approved|denied');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Reporting Frequency');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi_annual|annual');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `special_conditions` SET TAGS ('dbx_business_glossary_term' = 'Special Permit Conditions');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `term_years` SET TAGS ('dbx_business_glossary_term' = 'Permit Term (Years)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `tss_limit_mg_l` SET TAGS ('dbx_business_glossary_term' = 'Total Suspended Solids (TSS) Effluent Limit (mg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `tthm_mcl_ug_l` SET TAGS ('dbx_business_glossary_term' = 'Total Trihalomethane (TTHM) Maximum Contaminant Level (MCL) (µg/L)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `turbidity_limit_ntu` SET TAGS ('dbx_business_glossary_term' = 'Turbidity Limit (Nephelometric Turbidity Units)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`treatment_permit` ALTER COLUMN `violation_count_active` SET TAGS ('dbx_business_glossary_term' = 'Active Permit Violation Count');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` SET TAGS ('dbx_subdomain' = 'facility_operations');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `capacity_mgd` SET TAGS ('dbx_business_glossary_term' = 'Capacity');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Water Source Identifier');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `parent_water_source_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Water Source Id');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `parent_water_source_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `acquisition_date` SET TAGS ('dbx_business_glossary_term' = 'Acquisition Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `capacity_mgd` SET TAGS ('dbx_business_glossary_term' = 'Capacity Mgd');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `country` SET TAGS ('dbx_business_glossary_term' = 'Country');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `country` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `depth_ft` SET TAGS ('dbx_business_glossary_term' = 'Depth Ft');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `elevation_ft` SET TAGS ('dbx_business_glossary_term' = 'Elevation Ft');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `inspection_frequency_days` SET TAGS ('dbx_business_glossary_term' = 'Inspection Frequency Days');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `is_protected_area` SET TAGS ('dbx_business_glossary_term' = 'Is Protected Area');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `jurisdiction` SET TAGS ('dbx_business_glossary_term' = 'Jurisdiction');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `latitude` SET TAGS ('dbx_GIS' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `longitude` SET TAGS ('dbx_GIS' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `protection_zone` SET TAGS ('dbx_business_glossary_term' = 'Protection Zone');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_name` SET TAGS ('dbx_business_glossary_term' = 'Source Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `municipality` SET TAGS ('dbx_business_glossary_term' = 'Municipality');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `next_inspection_due` SET TAGS ('dbx_business_glossary_term' = 'Next Inspection Due');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_code` SET TAGS ('dbx_business_glossary_term' = 'Source Code');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_conductivity_us` SET TAGS ('dbx_business_glossary_term' = 'Source Conductivity Us');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_owner` SET TAGS ('dbx_business_glossary_term' = 'Source Owner');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_ph` SET TAGS ('dbx_business_glossary_term' = 'Source Ph');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_regulatory_status` SET TAGS ('dbx_business_glossary_term' = 'Source Regulatory Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_remarks` SET TAGS ('dbx_business_glossary_term' = 'Source Remarks');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_salinity_psu` SET TAGS ('dbx_business_glossary_term' = 'Source Salinity Psu');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Source Temperature C');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_turbidity_ntu` SET TAGS ('dbx_business_glossary_term' = 'Source Turbidity Ntu');
 ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Source Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `vulnerability_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Assessment Date');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_rights_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Water Rights Permit');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_rights_permit_number` SET TAGS ('dbx_regulatory' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` SET TAGS ('dbx_subdomain' = 'facility_operations');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `discharge_point_id` SET TAGS ('dbx_business_glossary_term' = 'Discharge Point ID');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `discharge_point_id` SET TAGS ('dbx_PK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Permit Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `facility_id` SET TAGS ('dbx_FK' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `installation_id` SET TAGS ('dbx_business_glossary_term' = 'Installation Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `pipe_main_id` SET TAGS ('dbx_business_glossary_term' = 'Pipe Main Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `registry_id` SET TAGS ('dbx_business_glossary_term' = 'Registry Id (Foreign Key)');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `discharge_type` SET TAGS ('dbx_business_glossary_term' = 'Discharge Type');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `latitude` SET TAGS ('dbx_GIS' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `longitude` SET TAGS ('dbx_GIS' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `discharge_point_name` SET TAGS ('dbx_business_glossary_term' = 'Discharge Point Name');
-ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`discharge_point` ALTER COLUMN `receiving_water_body` SET TAGS ('dbx_business_glossary_term' = 'Receiving Water Body');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'State');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `state` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_quality_class` SET TAGS ('dbx_business_glossary_term' = 'Water Quality Class');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `water_source_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `watershed_name` SET TAGS ('dbx_business_glossary_term' = 'Watershed Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`water_source` ALTER COLUMN `watershed_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Filter Unit Identifier');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Location Id');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `meter_id` SET TAGS ('dbx_business_glossary_term' = 'Metering Meter Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `paired_filter_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Paired Filter Unit Id');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `paired_filter_unit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `process_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Process Unit Id (Foreign Key)');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `capacity_m3_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Capacity M3 Per Hour');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `commissioning_date` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `compliance_ct_value_mg_per_l` SET TAGS ('dbx_business_glossary_term' = 'Compliance Ct Value Mg Per L');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Cost Usd');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `disposal_date` SET TAGS ('dbx_business_glossary_term' = 'Disposal Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `disposal_method` SET TAGS ('dbx_business_glossary_term' = 'Disposal Method');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_age_days` SET TAGS ('dbx_business_glossary_term' = 'Filter Age Days');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_condition` SET TAGS ('dbx_business_glossary_term' = 'Filter Condition');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_efficiency_percent` SET TAGS ('dbx_business_glossary_term' = 'Filter Efficiency Percent');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_media_type` SET TAGS ('dbx_business_glossary_term' = 'Filter Media Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_type` SET TAGS ('dbx_business_glossary_term' = 'Filter Type');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `flow_rate_m3_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Flow Rate M3 Per Hour');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `inspection_status` SET TAGS ('dbx_business_glossary_term' = 'Inspection Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `is_remote_monitored` SET TAGS ('dbx_business_glossary_term' = 'Is Remote Monitored');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `last_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Last Maintenance Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `maintenance_interval_days` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Interval Days');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `maintenance_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `media_grade` SET TAGS ('dbx_business_glossary_term' = 'Media Grade');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_unit_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `filter_unit_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `next_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Maintenance Date');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `pressure_drop_kpa` SET TAGS ('dbx_business_glossary_term' = 'Pressure Drop Kpa');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `remote_monitoring_system` SET TAGS ('dbx_business_glossary_term' = 'Remote Monitoring System');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `replacement_part_number` SET TAGS ('dbx_business_glossary_term' = 'Replacement Part Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `unit_code` SET TAGS ('dbx_business_glossary_term' = 'Unit Code');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_water_utilities_v1`.`treatment`.`filter_unit` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');

@@ -1,62 +1,86 @@
--- Metric views for domain: supply | Business: Ngo | Version: 2 | Generated on: 2026-07-03 06:15:30
+-- Metric views for domain: supply | Business: Ngo | Version: 2 | Generated on: 2026-07-10 20:18:10
 
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_procurement_request`
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_inventory_balance`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic procurement pipeline metrics tracking request volumes, cost estimates, urgency distribution, and approval cycle efficiency to steer sourcing decisions and budget planning."
-  source: "`vibe_ngo_v1`.`supply`.`procurement_request`"
+  comment: "Strategic inventory health metrics tracking stock availability, utilisation, and valuation across warehouses and commodities. Enables supply chain managers and executives to monitor pipeline adequacy, identify stock-out risk, and optimise pre-positioning of humanitarian supplies."
+  source: "`vibe_ngo_v1`.`supply`.`inventory_balance`"
   dimensions:
-    - name: "request_status"
-      expr: request_status
-      comment: "Current lifecycle status of the procurement request (e.g. Draft, Submitted, Approved, Rejected) for pipeline stage analysis."
-    - name: "request_type"
-      expr: request_type
-      comment: "Type of procurement request (e.g. goods, services, works) enabling category-level spend analysis."
-    - name: "urgency_level"
-      expr: urgency_level
-      comment: "Urgency classification of the request (e.g. Routine, Urgent, Emergency) for prioritisation and resource allocation."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency in which the estimated cost is denominated, enabling multi-currency spend analysis."
-    - name: "request_month"
-      expr: DATE_TRUNC('month', request_date)
-      comment: "Calendar month the request was raised, used for trend and seasonality analysis."
-    - name: "approval_level_required"
-      expr: approval_level_required
-      comment: "Approval authority level required for the request, indicating governance complexity."
-    - name: "local_procurement_preference"
-      expr: local_procurement_preference
-      comment: "Flag indicating whether local sourcing is preferred, supporting localisation strategy tracking."
-    - name: "compliance_check_required"
-      expr: compliance_check_required
-      comment: "Flag indicating whether a compliance check is mandatory, used for regulatory oversight reporting."
+    - name: "warehouse_id"
+      expr: warehouse_id
+      comment: "Warehouse identifier — primary grouping axis for geographic stock analysis."
+    - name: "commodity_id"
+      expr: commodity_id
+      comment: "Commodity identifier — enables per-item stock health analysis."
+    - name: "country_code"
+      expr: country_code
+      comment: "ISO country code of the warehouse location — supports country-level pipeline reporting."
+    - name: "pipeline_status"
+      expr: pipeline_status
+      comment: "Current pipeline status of the stock (e.g. In Pipeline, Confirmed, At Risk) — critical for supply planning."
+    - name: "storage_condition"
+      expr: storage_condition
+      comment: "Storage condition category (e.g. Ambient, Cold Chain) — relevant for cold-chain compliance monitoring."
+    - name: "donor_restriction_flag"
+      expr: donor_restriction_flag
+      comment: "Indicates whether stock is donor-restricted — affects allocation flexibility."
+    - name: "in_kind_donation_flag"
+      expr: in_kind_donation_flag
+      comment: "Indicates whether stock originated from an in-kind donation — important for donor reporting."
+    - name: "snapshot_date"
+      expr: snapshot_date
+      comment: "Date of the inventory snapshot — enables trend analysis over time."
+    - name: "expiration_date"
+      expr: expiration_date
+      comment: "Expiry date of the batch — used to identify near-expiry stock requiring urgent distribution."
+    - name: "award_id"
+      expr: award_id
+      comment: "Grant award identifier — enables stock tracking by funding source."
+    - name: "intervention_id"
+      expr: intervention_id
+      comment: "Program intervention identifier — links stock to specific humanitarian response activities."
   measures:
-    - name: "total_procurement_requests"
-      expr: COUNT(1)
-      comment: "Total number of procurement requests raised; baseline volume KPI for pipeline sizing and workload management."
-    - name: "total_estimated_cost_usd"
-      expr: SUM(CAST(estimated_total_cost AS DOUBLE))
-      comment: "Sum of estimated total costs across all procurement requests; primary spend-pipeline indicator for budget holders."
-    - name: "avg_estimated_unit_cost"
-      expr: AVG(CAST(estimated_unit_cost AS DOUBLE))
-      comment: "Average estimated unit cost per procurement request line; benchmarks unit pricing against market rates."
-    - name: "total_quantity_requested"
-      expr: SUM(CAST(quantity_requested AS DOUBLE))
-      comment: "Total quantity of goods or services requested across all procurement requests; drives demand forecasting."
-    - name: "approved_requests_count"
-      expr: COUNT(CASE WHEN request_status = 'Approved' THEN 1 END)
-      comment: "Number of procurement requests that have been approved; measures throughput of the approval pipeline."
-    - name: "rejected_requests_count"
-      expr: COUNT(CASE WHEN request_status = 'Rejected' THEN 1 END)
-      comment: "Number of procurement requests rejected; high rejection rates signal quality or compliance issues upstream."
-    - name: "emergency_requests_count"
-      expr: COUNT(CASE WHEN urgency_level = 'Emergency' THEN 1 END)
-      comment: "Count of emergency-classified procurement requests; elevated levels indicate supply chain stress or planning gaps."
-    - name: "avg_days_to_required_delivery"
-      expr: AVG(CAST(DATEDIFF(required_delivery_date, request_date) AS DOUBLE))
-      comment: "Average lead time window (days) between request date and required delivery date; informs procurement scheduling and vendor SLA setting."
+    - name: "total_quantity_on_hand"
+      expr: SUM(CAST(quantity_on_hand AS DOUBLE))
+      comment: "Total physical stock on hand across all selected warehouses and commodities. Core pipeline adequacy KPI used in supply reviews and donor reporting."
+    - name: "total_quantity_available"
+      expr: SUM(CAST(quantity_available AS DOUBLE))
+      comment: "Total quantity available for allocation (on-hand minus reserved and quarantined). Directly drives distribution planning decisions."
+    - name: "total_quantity_reserved"
+      expr: SUM(CAST(quantity_reserved AS DOUBLE))
+      comment: "Total quantity reserved for planned distributions. High reservation rates signal upcoming dispatch activity."
+    - name: "total_quantity_quarantined"
+      expr: SUM(CAST(quantity_quarantined AS DOUBLE))
+      comment: "Total quantity held in quarantine pending quality clearance. Elevated quarantine levels indicate quality or compliance risk."
+    - name: "total_quantity_in_transit"
+      expr: SUM(CAST(quantity_in_transit AS DOUBLE))
+      comment: "Total quantity currently in transit between warehouses or to distribution points. Key for pipeline visibility."
+    - name: "total_stock_valuation_usd"
+      expr: SUM(CAST(total_valuation AS DOUBLE))
+      comment: "Total monetary value of inventory on hand. Used by finance and donors to assess asset exposure and pipeline investment."
+    - name: "avg_unit_cost_usd"
+      expr: AVG(CAST(unit_cost AS DOUBLE))
+      comment: "Average unit cost across inventory records. Benchmarks procurement efficiency and informs budget forecasting."
+    - name: "stock_utilisation_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_reserved AS DOUBLE)) / NULLIF(SUM(CAST(quantity_on_hand AS DOUBLE)), 0), 2)
+      comment: "Percentage of on-hand stock that is reserved for distribution. High utilisation indicates strong demand alignment; very low rates may signal over-stocking or planning gaps."
+    - name: "quarantine_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_quarantined AS DOUBLE)) / NULLIF(SUM(CAST(quantity_on_hand AS DOUBLE)), 0), 2)
+      comment: "Percentage of on-hand stock in quarantine. A rising quarantine rate signals quality or supplier issues requiring immediate investigation."
+    - name: "stock_below_reorder_level_count"
+      expr: COUNT(CASE WHEN quantity_on_hand < reorder_level AND reorder_level > 0 THEN 1 END)
+      comment: "Number of inventory records where on-hand quantity has fallen below the reorder threshold. Directly triggers procurement action to prevent stock-outs."
+    - name: "stock_above_maximum_count"
+      expr: COUNT(CASE WHEN quantity_on_hand > maximum_stock_level AND maximum_stock_level > 0 THEN 1 END)
+      comment: "Number of inventory records where stock exceeds the maximum level. Indicates over-stocking risk, potential wastage, and tied-up capital."
+    - name: "distinct_commodities_in_stock"
+      expr: COUNT(DISTINCT commodity_id)
+      comment: "Number of distinct commodities with active inventory balances. Measures breadth of supply pipeline coverage."
+    - name: "distinct_warehouses_with_stock"
+      expr: COUNT(DISTINCT warehouse_id)
+      comment: "Number of distinct warehouses holding stock. Indicates geographic distribution of the supply pipeline."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_purchase_order`
@@ -64,67 +88,88 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Purchase order financial and operational metrics covering committed spend, delivery performance, procurement method mix, and vendor payment exposure to support financial governance and supply chain oversight."
+  comment: "Procurement performance metrics covering order volume, spend, lead times, and process compliance. Enables procurement managers and finance teams to monitor purchasing efficiency, vendor performance, and budget utilisation."
   source: "`vibe_ngo_v1`.`supply`.`purchase_order`"
   dimensions:
     - name: "po_status"
       expr: po_status
-      comment: "Current status of the purchase order (e.g. Open, Closed, Cancelled) for pipeline and commitment tracking."
+      comment: "Current status of the purchase order (e.g. Draft, Approved, Received, Cancelled) — primary lifecycle dimension."
     - name: "po_type"
       expr: po_type
-      comment: "Type of purchase order (e.g. Standard, Framework, Emergency) enabling procurement strategy analysis."
+      comment: "Type of purchase order (e.g. Standard, Emergency, Framework) — differentiates procurement modalities."
     - name: "procurement_method"
       expr: procurement_method
-      comment: "Procurement method used (e.g. Open Tender, Direct Procurement, Framework Agreement) for compliance and value-for-money reporting."
+      comment: "Procurement method used (e.g. Open Tender, Direct Procurement, Framework Agreement) — critical for compliance reporting."
     - name: "commodity_category"
       expr: commodity_category
-      comment: "Category of goods or services procured; enables spend analysis by commodity type."
+      comment: "Category of commodities being procured — enables spend analysis by supply category."
     - name: "currency_code"
       expr: currency_code
-      comment: "Transaction currency of the purchase order for multi-currency financial reporting."
-    - name: "po_month"
-      expr: DATE_TRUNC('month', po_date)
-      comment: "Calendar month the purchase order was issued; used for spend trend and budget burn-rate analysis."
+      comment: "Transaction currency — required for multi-currency spend analysis."
     - name: "emergency_flag"
       expr: emergency_flag
-      comment: "Indicates whether the PO was raised under emergency conditions; tracks unplanned procurement spend."
-    - name: "goods_receipt_status"
-      expr: goods_receipt_status
-      comment: "Status of goods receipt against the PO; identifies open commitments and delivery gaps."
-    - name: "incoterm"
-      expr: incoterm
-      comment: "International commercial terms governing delivery responsibility; affects logistics cost allocation."
+      comment: "Indicates whether the PO was raised under emergency procurement procedures — key for compliance and cost analysis."
+    - name: "vendor_id"
+      expr: vendor_id
+      comment: "Vendor identifier — enables vendor-level spend and performance analysis."
+    - name: "country_office_id"
+      expr: country_office_id
+      comment: "Country office that raised the PO — supports geographic spend analysis."
+    - name: "fund_id"
+      expr: fund_id
+      comment: "Donor fund identifier — links procurement spend to funding sources."
     - name: "approval_workflow_status"
       expr: approval_workflow_status
-      comment: "Current approval workflow status of the PO; tracks governance compliance and bottlenecks."
+      comment: "Current approval workflow status — identifies bottlenecks in the procurement approval process."
+    - name: "goods_receipt_status"
+      expr: goods_receipt_status
+      comment: "Goods receipt status on the PO — tracks fulfilment completion."
+    - name: "incoterm"
+      expr: incoterm
+      comment: "Incoterm governing delivery responsibility — affects total landed cost analysis."
+    - name: "po_date"
+      expr: po_date
+      comment: "Date the purchase order was raised — primary time dimension for trend analysis."
+    - name: "intervention_id"
+      expr: intervention_id
+      comment: "Program intervention identifier — links procurement to specific humanitarian activities."
   measures:
-    - name: "total_purchase_orders"
+    - name: "total_po_count"
       expr: COUNT(1)
-      comment: "Total number of purchase orders issued; baseline volume metric for procurement activity."
-    - name: "total_committed_spend"
+      comment: "Total number of purchase orders. Baseline volume metric for procurement workload and throughput analysis."
+    - name: "total_procurement_spend_usd"
       expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total committed spend across all purchase orders; primary financial exposure metric for budget management."
-    - name: "total_subtotal_amount"
-      expr: SUM(CAST(subtotal_amount AS DOUBLE))
-      comment: "Sum of pre-tax, pre-freight subtotals; used to isolate goods/services cost from logistics and tax."
-    - name: "total_freight_amount"
+      comment: "Total value of all purchase orders. Primary spend KPI used in budget utilisation and donor financial reporting."
+    - name: "total_freight_spend_usd"
       expr: SUM(CAST(freight_amount AS DOUBLE))
-      comment: "Total freight costs across all POs; key logistics cost driver for supply chain cost optimisation."
-    - name: "total_tax_amount"
+      comment: "Total freight costs across purchase orders. Logistics cost component used to assess transport efficiency and total landed cost."
+    - name: "total_tax_amount_usd"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax charges across all POs; required for financial reporting and tax compliance."
-    - name: "avg_po_value"
+      comment: "Total tax charges on purchase orders. Relevant for VAT recovery analysis and country-level cost benchmarking."
+    - name: "avg_po_value_usd"
       expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average purchase order value; benchmarks order sizing and identifies outliers requiring additional scrutiny."
+      comment: "Average value per purchase order. Benchmarks procurement scale and identifies outlier orders requiring review."
     - name: "emergency_po_count"
       expr: COUNT(CASE WHEN emergency_flag = TRUE THEN 1 END)
-      comment: "Number of emergency purchase orders; elevated counts signal reactive procurement and potential value-for-money risk."
+      comment: "Number of purchase orders raised under emergency procedures. High emergency PO rates indicate procurement planning gaps and typically carry cost premiums."
+    - name: "emergency_po_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN emergency_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of POs raised as emergency procurements. A key compliance and efficiency KPI — high rates signal reactive rather than planned procurement."
     - name: "avg_delivery_lead_time_days"
-      expr: AVG(CAST(DATEDIFF(actual_delivery_date, po_date) AS DOUBLE))
-      comment: "Average days from PO issuance to actual delivery; core vendor performance and supply chain efficiency KPI."
-    - name: "overdue_pos_count"
-      expr: COUNT(CASE WHEN actual_delivery_date > expected_delivery_date THEN 1 END)
-      comment: "Number of POs where actual delivery exceeded expected delivery date; measures vendor on-time delivery compliance."
+      expr: AVG(DATEDIFF(actual_delivery_date, po_date))
+      comment: "Average number of days from PO creation to actual delivery. Core procurement lead-time KPI used to assess vendor and logistics performance."
+    - name: "delivery_delay_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_delivery_date > expected_delivery_date THEN 1 END) / NULLIF(COUNT(CASE WHEN actual_delivery_date IS NOT NULL AND expected_delivery_date IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of POs where actual delivery exceeded the expected delivery date. Measures vendor and logistics reliability — directly impacts distribution planning."
+    - name: "pending_approval_po_count"
+      expr: COUNT(CASE WHEN approval_workflow_status NOT IN ('Approved', 'Completed', 'Cancelled') THEN 1 END)
+      comment: "Number of POs currently awaiting approval. Identifies bottlenecks in the procurement approval pipeline that delay supply delivery."
+    - name: "distinct_vendors_used"
+      expr: COUNT(DISTINCT vendor_id)
+      comment: "Number of distinct vendors engaged. Measures vendor base diversity — low counts may indicate single-source dependency risk."
+    - name: "freight_as_pct_of_total_spend"
+      expr: ROUND(100.0 * SUM(CAST(freight_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
+      comment: "Freight costs as a percentage of total procurement spend. High freight ratios indicate logistics inefficiency or remote delivery challenges."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_goods_receipt`
@@ -132,185 +177,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Goods receipt quality and quantity metrics tracking receipt accuracy, rejection rates, cold chain integrity, and inspection outcomes to govern inbound supply quality and vendor accountability."
+  comment: "Goods receipt quality and fulfilment metrics tracking quantity accuracy, rejection rates, inspection compliance, and cost at point of delivery. Enables supply chain and quality teams to monitor vendor delivery performance and identify systemic quality issues."
   source: "`vibe_ngo_v1`.`supply`.`goods_receipt`"
   dimensions:
-    - name: "receipt_status"
-      expr: receipt_status
-      comment: "Current status of the goods receipt (e.g. Pending, Accepted, Rejected) for inbound pipeline tracking."
-    - name: "quality_check_status"
-      expr: quality_check_status
-      comment: "Outcome of quality inspection at receipt; drives supplier quality scorecards."
-    - name: "inspection_status"
-      expr: inspection_status
-      comment: "Status of the formal inspection process for received goods; tracks compliance with quality protocols."
-    - name: "condition_on_arrival"
-      expr: condition_on_arrival
-      comment: "Physical condition of goods upon arrival; key indicator of transport and handling quality."
-    - name: "cold_chain_intact_flag"
-      expr: cold_chain_intact_flag
-      comment: "Whether the cold chain was maintained during transit; critical for vaccine and pharmaceutical supply integrity."
+    - name: "goods_receipt_status"
+      expr: goods_receipt_status
+      comment: "Status of the goods receipt (e.g. Pending, Accepted, Rejected, Partial) — primary lifecycle dimension."
+    - name: "commodity_id"
+      expr: commodity_id
+      comment: "Commodity received — enables quality analysis by item type."
+    - name: "vendor_id"
+      expr: vendor_id
+      comment: "Vendor who supplied the goods — core dimension for vendor performance scorecarding."
+    - name: "warehouse_id"
+      expr: warehouse_id
+      comment: "Receiving warehouse — enables location-level receipt analysis."
     - name: "discrepancy_flag"
       expr: discrepancy_flag
-      comment: "Indicates a quantity or quality discrepancy between ordered and received goods; triggers supplier dispute processes."
-    - name: "receipt_month"
-      expr: DATE_TRUNC('month', receipt_date)
-      comment: "Calendar month of goods receipt; used for inbound volume trend analysis."
+      comment: "Indicates whether a quantity or quality discrepancy was recorded at receipt — key quality signal."
+    - name: "inspection_status"
+      expr: inspection_status
+      comment: "Outcome of the quality inspection (e.g. Passed, Failed, Pending) — drives quality compliance reporting."
+    - name: "condition_on_arrival"
+      expr: condition_on_arrival
+      comment: "Physical condition of goods on arrival (e.g. Good, Damaged, Partial) — informs claims and vendor accountability."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the receipt transaction for financial reconciliation."
-    - name: "vvm_status_on_arrival"
-      expr: vvm_status_on_arrival
-      comment: "Vaccine Vial Monitor status at the time of receipt; critical quality indicator for vaccine cold chain compliance."
+      comment: "Currency of the receipt transaction — required for multi-currency cost analysis."
+    - name: "goods_receipt_date"
+      expr: goods_receipt_date
+      comment: "Date goods were received — primary time dimension for receipt trend analysis."
+    - name: "customs_cleared"
+      expr: customs_cleared
+      comment: "Whether customs clearance was completed — relevant for import compliance monitoring."
+    - name: "intervention_id"
+      expr: intervention_id
+      comment: "Program intervention linked to this receipt — connects supply delivery to programmatic outcomes."
   measures:
-    - name: "total_receipts"
-      expr: COUNT(1)
-      comment: "Total number of goods receipts processed; baseline inbound supply activity metric."
-    - name: "total_quantity_received"
-      expr: SUM(CAST(quantity_received AS DOUBLE))
-      comment: "Total quantity of goods received across all receipts; measures inbound supply volume."
-    - name: "total_quantity_rejected"
-      expr: SUM(CAST(quantity_rejected AS DOUBLE))
-      comment: "Total quantity of goods rejected at receipt; high values indicate supplier quality or cold chain failures."
     - name: "total_quantity_ordered"
       expr: SUM(CAST(quantity_ordered AS DOUBLE))
-      comment: "Total quantity ordered per receipt lines; used as denominator for fill-rate and receipt accuracy calculations."
-    - name: "total_receipt_cost"
+      comment: "Total quantity ordered across all receipts. Baseline for fulfilment rate calculation."
+    - name: "total_quantity_received"
+      expr: SUM(CAST(quantity_received AS DOUBLE))
+      comment: "Total quantity actually received. Core supply delivery KPI."
+    - name: "total_quantity_rejected"
+      expr: SUM(CAST(quantity_rejected AS DOUBLE))
+      comment: "Total quantity rejected at receipt due to quality or condition failures. Elevated rejection volumes signal vendor quality issues."
+    - name: "fulfilment_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_received AS DOUBLE)) / NULLIF(SUM(CAST(quantity_ordered AS DOUBLE)), 0), 2)
+      comment: "Percentage of ordered quantity successfully received. Primary vendor delivery performance KPI — shortfalls directly impact distribution capacity."
+    - name: "rejection_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(quantity_rejected AS DOUBLE)) / NULLIF(SUM(CAST(quantity_received AS DOUBLE)), 0), 2)
+      comment: "Percentage of received quantity rejected due to quality failures. A rising rejection rate triggers vendor review and may indicate systemic supply quality risk."
+    - name: "discrepancy_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN discrepancy_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of goods receipts with recorded discrepancies. High discrepancy rates indicate documentation, logistics, or vendor reliability issues."
+    - name: "total_receipt_cost_usd"
       expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all goods received; primary inbound spend metric for financial reconciliation."
-    - name: "total_freight_charges"
+      comment: "Total cost of goods received. Used for budget tracking and donor financial reporting."
+    - name: "total_freight_charges_usd"
       expr: SUM(CAST(freight_charges AS DOUBLE))
-      comment: "Total freight charges incurred on goods receipts; key logistics cost component for supply chain cost analysis."
-    - name: "avg_unit_cost"
+      comment: "Total freight charges incurred at receipt. Contributes to total landed cost analysis."
+    - name: "avg_unit_cost_usd"
       expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost of received goods; benchmarks against PO unit prices to detect pricing discrepancies."
-    - name: "receipts_with_discrepancy_count"
-      expr: COUNT(CASE WHEN discrepancy_flag = TRUE THEN 1 END)
-      comment: "Number of receipts with recorded discrepancies; drives supplier accountability and dispute resolution."
-    - name: "cold_chain_breach_count"
-      expr: COUNT(CASE WHEN cold_chain_intact_flag = FALSE THEN 1 END)
-      comment: "Number of receipts where cold chain integrity was not maintained; critical risk indicator for vaccine and pharmaceutical programmes."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_inventory_balance`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Inventory position and valuation metrics tracking stock availability, quarantine levels, transit quantities, and total asset value to support stock management, replenishment decisions, and donor reporting."
-  source: "`vibe_ngo_v1`.`supply`.`inventory_balance`"
-  dimensions:
-    - name: "country_code"
-      expr: country_code
-      comment: "Country where the inventory is held; enables geographic stock distribution analysis."
-    - name: "warehouse_location"
-      expr: warehouse_location
-      comment: "Physical location within the warehouse; supports granular stock positioning analysis."
-    - name: "storage_condition"
-      expr: storage_condition
-      comment: "Storage condition category (e.g. ambient, refrigerated, frozen); critical for cold chain inventory management."
-    - name: "pipeline_status"
-      expr: pipeline_status
-      comment: "Pipeline status of the inventory (e.g. In Pipeline, Available, Depleted); tracks supply readiness."
-    - name: "donor_restriction_flag"
-      expr: donor_restriction_flag
-      comment: "Indicates whether the stock is restricted to specific donor-funded programmes; affects allocation flexibility."
-    - name: "in_kind_donation_flag"
-      expr: in_kind_donation_flag
-      comment: "Indicates whether the inventory was received as an in-kind donation; required for donor reporting."
-    - name: "vvm_stage"
-      expr: vvm_stage
-      comment: "Vaccine Vial Monitor stage of the inventory batch; critical for vaccine usability and wastage management."
-    - name: "snapshot_month"
-      expr: DATE_TRUNC('month', snapshot_date)
-      comment: "Month of the inventory snapshot; enables period-over-period stock level trend analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the inventory valuation; required for multi-currency financial reporting."
-  measures:
-    - name: "total_quantity_on_hand"
-      expr: SUM(CAST(quantity_on_hand AS DOUBLE))
-      comment: "Total physical stock on hand across all inventory records; primary stock position KPI for replenishment decisions."
-    - name: "total_quantity_available"
-      expr: SUM(CAST(quantity_available AS DOUBLE))
-      comment: "Total quantity available for allocation (on hand minus reserved and quarantined); drives distribution planning."
-    - name: "total_quantity_reserved"
-      expr: SUM(CAST(quantity_reserved AS DOUBLE))
-      comment: "Total quantity reserved for pending orders; measures committed stock and allocation pipeline."
-    - name: "total_quantity_quarantined"
-      expr: SUM(CAST(quantity_quarantined AS DOUBLE))
-      comment: "Total quantity held in quarantine; elevated levels signal quality issues or cold chain failures requiring investigation."
-    - name: "total_quantity_in_transit"
-      expr: SUM(CAST(quantity_in_transit AS DOUBLE))
-      comment: "Total quantity currently in transit between warehouses or to distribution points; tracks pipeline supply flow."
-    - name: "total_inventory_valuation"
-      expr: SUM(CAST(total_valuation AS DOUBLE))
-      comment: "Total monetary value of inventory on hand; primary asset valuation metric for financial statements and donor reporting."
-    - name: "avg_unit_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost of inventory items; used for cost benchmarking and valuation consistency checks."
-    - name: "stock_below_reorder_level_count"
-      expr: COUNT(CASE WHEN quantity_on_hand < reorder_level THEN 1 END)
-      comment: "Number of inventory records where stock on hand is below the reorder threshold; triggers replenishment action."
-    - name: "stock_above_maximum_count"
-      expr: COUNT(CASE WHEN quantity_on_hand > maximum_stock_level THEN 1 END)
-      comment: "Number of inventory records where stock exceeds maximum levels; identifies overstock and wastage risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_stock_movement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Stock movement throughput and cost metrics tracking inbound, outbound, and transfer flows by type, commodity, and location to support supply chain visibility, loss detection, and logistics cost management."
-  source: "`vibe_ngo_v1`.`supply`.`stock_movement`"
-  dimensions:
-    - name: "movement_type"
-      expr: movement_type
-      comment: "Type of stock movement (e.g. Receipt, Issue, Transfer, Adjustment, Loss); fundamental dimension for supply flow analysis."
-    - name: "movement_status"
-      expr: movement_status
-      comment: "Current status of the stock movement (e.g. Pending, Completed, Cancelled); tracks pipeline completeness."
-    - name: "transport_mode"
-      expr: transport_mode
-      comment: "Mode of transport used for the movement (e.g. Road, Air, Sea); enables logistics cost and lead time analysis by mode."
-    - name: "quality_inspection_status"
-      expr: quality_inspection_status
-      comment: "Quality inspection outcome for the movement; tracks compliance with quality assurance protocols."
-    - name: "reason_code"
-      expr: reason_code
-      comment: "Coded reason for the stock movement (e.g. Expiry, Damage, Distribution); enables root cause analysis of losses."
-    - name: "in_kind_donation_flag"
-      expr: in_kind_donation_flag
-      comment: "Indicates whether the movement relates to in-kind donated goods; required for donor accountability reporting."
-    - name: "movement_month"
-      expr: DATE_TRUNC('month', movement_date)
-      comment: "Calendar month of the stock movement; used for throughput trend and seasonality analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the movement cost valuation for financial reporting."
-  measures:
-    - name: "total_movements"
-      expr: COUNT(1)
-      comment: "Total number of stock movements recorded; baseline throughput metric for supply chain activity monitoring."
-    - name: "total_quantity_moved"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total quantity of goods moved across all movement records; measures supply chain throughput volume."
-    - name: "total_movement_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all stock movements; primary logistics and handling cost KPI for supply chain financial management."
-    - name: "avg_unit_movement_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost per stock movement; benchmarks handling efficiency and identifies cost outliers."
-    - name: "loss_adjustment_count"
-      expr: COUNT(CASE WHEN movement_type IN ('Loss', 'Adjustment', 'Write-off') THEN 1 END)
-      comment: "Number of loss or adjustment movements; elevated counts signal wastage, theft, or inventory management failures."
-    - name: "total_loss_quantity"
-      expr: SUM(CASE WHEN movement_type IN ('Loss', 'Adjustment', 'Write-off') THEN CAST(quantity AS DOUBLE) ELSE 0 END)
-      comment: "Total quantity lost or written off; critical KPI for supply chain integrity and donor accountability."
-    - name: "distinct_commodities_moved"
-      expr: COUNT(DISTINCT commodity_id)
-      comment: "Number of distinct commodities with stock movements in the period; measures supply chain breadth and diversity."
+      comment: "Average unit cost at receipt. Benchmarks procurement pricing and identifies cost anomalies by vendor or commodity."
+    - name: "inspection_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN inspection_status IS NOT NULL AND inspection_status != 'Pending' THEN 1 END) / NULLIF(COUNT(CASE WHEN inspection_required = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of receipts requiring inspection that have a completed inspection outcome. Measures quality control process compliance."
+    - name: "distinct_vendors_delivering"
+      expr: COUNT(DISTINCT vendor_id)
+      comment: "Number of distinct vendors with goods receipts in the period. Measures active supplier base breadth."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_distribution_order`
@@ -318,256 +254,156 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Distribution order execution metrics tracking delivery performance, beneficiary reach, transport costs, and order fulfilment status to steer last-mile supply chain effectiveness and humanitarian response."
+  comment: "Last-mile distribution performance metrics tracking order volumes, delivery timeliness, beneficiary reach, and transport costs. Enables programme and logistics managers to monitor distribution effectiveness and identify operational bottlenecks."
   source: "`vibe_ngo_v1`.`supply`.`distribution_order`"
   dimensions:
-    - name: "order_status"
-      expr: order_status
-      comment: "Current status of the distribution order (e.g. Planned, Dispatched, Delivered, Cancelled); tracks fulfilment pipeline."
+    - name: "distribution_order_status"
+      expr: distribution_order_status
+      comment: "Current status of the distribution order (e.g. Planned, Dispatched, Delivered, Cancelled) — primary lifecycle dimension."
     - name: "distribution_type"
       expr: distribution_type
-      comment: "Type of distribution (e.g. Direct, Partner-led, Mobile); enables modality performance comparison."
+      comment: "Type of distribution (e.g. General Food Distribution, Targeted, Emergency) — key programmatic segmentation."
     - name: "transport_mode"
       expr: transport_mode
-      comment: "Mode of transport used for the distribution order; drives logistics cost and lead time analysis."
+      comment: "Mode of transport used (e.g. Road, Air, River) — enables logistics cost and efficiency analysis by modality."
     - name: "priority_level"
       expr: priority_level
-      comment: "Priority classification of the distribution order (e.g. Routine, Urgent, Emergency); supports triage and resource allocation."
+      comment: "Priority level of the distribution order — used to track emergency vs. routine distribution performance."
     - name: "emergency_response_flag"
       expr: emergency_response_flag
-      comment: "Indicates whether the order is part of an emergency response; tracks humanitarian surge capacity."
-    - name: "cold_chain_required_flag"
-      expr: cold_chain_required_flag
-      comment: "Indicates whether cold chain logistics are required; critical for vaccine and pharmaceutical distribution planning."
-    - name: "vaccine_distribution_flag"
-      expr: vaccine_distribution_flag
-      comment: "Indicates whether the order includes vaccine commodities; enables vaccine programme supply tracking."
-    - name: "order_month"
-      expr: DATE_TRUNC('month', order_date)
-      comment: "Calendar month the distribution order was placed; used for distribution volume trend analysis."
+      comment: "Indicates whether the order is part of an emergency response — critical for emergency operations reporting."
+    - name: "country_office_id"
+      expr: country_office_id
+      comment: "Country office responsible for the distribution — enables geographic performance comparison."
+    - name: "partner_org_id"
+      expr: partner_org_id
+      comment: "Implementing partner organisation — enables partner performance analysis."
+    - name: "intervention_id"
+      expr: intervention_id
+      comment: "Program intervention — links distribution activity to programmatic outcomes."
+    - name: "fund_id"
+      expr: fund_id
+      comment: "Donor fund — enables distribution cost tracking by funding source."
+    - name: "distribution_order_date"
+      expr: distribution_order_date
+      comment: "Date the distribution order was created — primary time dimension for trend analysis."
+    - name: "nfi_flag"
+      expr: nfi_flag
+      comment: "Indicates whether the order contains Non-Food Items — enables NFI vs. food distribution analysis."
+    - name: "medical_supplies_flag"
+      expr: medical_supplies_flag
+      comment: "Indicates whether the order contains medical supplies — enables health supply chain analysis."
+    - name: "in_kind_donation_flag"
+      expr: in_kind_donation_flag
+      comment: "Indicates whether the distribution involves in-kind donated commodities — relevant for donor reporting."
   measures:
     - name: "total_distribution_orders"
       expr: COUNT(1)
-      comment: "Total number of distribution orders; baseline metric for distribution activity and operational tempo."
-    - name: "total_quantity_distributed"
-      expr: SUM(CAST(total_quantity AS DOUBLE))
-      comment: "Total quantity of commodities distributed across all orders; primary output metric for programme delivery."
+      comment: "Total number of distribution orders. Baseline throughput metric for distribution operations."
     - name: "total_estimated_value_usd"
       expr: SUM(CAST(estimated_value_usd AS DOUBLE))
-      comment: "Total estimated value of distributed commodities in USD; measures programme delivery investment and donor accountability."
+      comment: "Total estimated value of commodities distributed. Primary financial KPI for programme spend and donor accountability."
     - name: "total_transport_cost_usd"
       expr: SUM(CAST(transport_cost_usd AS DOUBLE))
-      comment: "Total transport cost across all distribution orders; key logistics cost KPI for supply chain efficiency."
-    - name: "total_weight_kg"
+      comment: "Total transport costs incurred for distribution. Key logistics efficiency metric — high transport costs relative to commodity value indicate operational inefficiency."
+    - name: "total_quantity_distributed"
+      expr: SUM(CAST(total_quantity AS DOUBLE))
+      comment: "Total quantity of commodities dispatched across all distribution orders. Core programme output metric."
+    - name: "total_weight_distributed_kg"
       expr: SUM(CAST(total_weight_kg AS DOUBLE))
-      comment: "Total weight of goods distributed in kilograms; used for logistics capacity planning and transport cost benchmarking."
-    - name: "total_volume_m3"
+      comment: "Total weight of commodities distributed in kilograms. Used for logistics capacity planning and transport cost benchmarking."
+    - name: "total_volume_distributed_m3"
       expr: SUM(CAST(total_volume_m3 AS DOUBLE))
-      comment: "Total volume of goods distributed in cubic metres; drives warehouse and vehicle capacity planning."
-    - name: "on_time_delivery_count"
-      expr: COUNT(CASE WHEN actual_delivery_date <= scheduled_delivery_date THEN 1 END)
-      comment: "Number of distribution orders delivered on or before the scheduled date; measures last-mile delivery reliability."
+      comment: "Total volume of commodities distributed in cubic metres. Drives warehouse and transport capacity planning."
+    - name: "on_time_delivery_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_delivery_date <= scheduled_delivery_date THEN 1 END) / NULLIF(COUNT(CASE WHEN actual_delivery_date IS NOT NULL AND scheduled_delivery_date IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of distribution orders delivered on or before the scheduled date. Primary last-mile reliability KPI — directly impacts beneficiary access to assistance."
     - name: "avg_delivery_lead_time_days"
-      expr: AVG(CAST(DATEDIFF(actual_delivery_date, order_date) AS DOUBLE))
-      comment: "Average days from order placement to actual delivery; core last-mile supply chain performance KPI."
-    - name: "emergency_orders_count"
-      expr: COUNT(CASE WHEN emergency_response_flag = TRUE THEN 1 END)
-      comment: "Number of emergency response distribution orders; tracks humanitarian surge demand and reactive supply capacity."
+      expr: AVG(DATEDIFF(actual_delivery_date, distribution_order_date))
+      comment: "Average days from order creation to actual delivery. Measures end-to-end distribution cycle time — a key operational efficiency indicator."
+    - name: "transport_cost_per_unit_usd"
+      expr: ROUND(SUM(CAST(transport_cost_usd AS DOUBLE)) / NULLIF(SUM(CAST(total_quantity AS DOUBLE)), 0), 4)
+      comment: "Transport cost per unit of commodity distributed. Benchmarks logistics efficiency across corridors, modalities, and partners."
+    - name: "emergency_order_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN emergency_response_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of distribution orders classified as emergency response. High rates indicate reactive operations and may signal planning or pipeline gaps."
+    - name: "cancelled_order_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN distribution_order_status = 'Cancelled' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of distribution orders that were cancelled. Elevated cancellation rates indicate planning failures, security constraints, or access issues."
+    - name: "distinct_partners_distributing"
+      expr: COUNT(DISTINCT partner_org_id)
+      comment: "Number of distinct implementing partners executing distributions. Measures partner network breadth and dependency concentration."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_distribution_plan`
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_stock_movement`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Distribution planning metrics tracking planned coverage, budget allocation, beneficiary targets, and plan execution status to support programme design, resource mobilisation, and strategic coverage decisions."
-  source: "`vibe_ngo_v1`.`supply`.`distribution_plan`"
+  comment: "Stock movement velocity and quality metrics tracking commodity flows, loss rates, and transport efficiency. Enables supply chain managers to monitor stock turnover, identify losses, and assess logistics performance across the supply network."
+  source: "`vibe_ngo_v1`.`supply`.`stock_movement`"
   dimensions:
-    - name: "plan_status"
-      expr: plan_status
-      comment: "Current status of the distribution plan (e.g. Draft, Approved, Active, Completed); tracks planning pipeline maturity."
-    - name: "distribution_type"
-      expr: distribution_type
-      comment: "Type of distribution modality planned (e.g. Direct, Partner-led); enables modality mix analysis."
-    - name: "distribution_modality"
-      expr: distribution_modality
-      comment: "Specific distribution modality (e.g. Fixed Point, Mobile, Door-to-Door); informs operational design decisions."
-    - name: "geographic_coverage_country"
-      expr: geographic_coverage_country
-      comment: "Country covered by the distribution plan; enables geographic programme coverage analysis."
-    - name: "geographic_coverage_admin1"
-      expr: geographic_coverage_admin1
-      comment: "First administrative level (e.g. province/state) covered; supports sub-national coverage gap analysis."
-    - name: "beneficiary_category"
-      expr: beneficiary_category
-      comment: "Category of beneficiaries targeted (e.g. IDPs, Refugees, Host Community); enables equity and targeting analysis."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk classification of the distribution plan (e.g. Low, Medium, High); informs risk-adjusted resource allocation."
-    - name: "vaccine_campaign_flag"
-      expr: vaccine_campaign_flag
-      comment: "Indicates whether the plan is for a vaccine campaign; enables vaccine programme planning metrics."
-    - name: "planned_start_month"
-      expr: DATE_TRUNC('month', planned_start_date)
-      comment: "Planned start month of the distribution; used for programme pipeline and resource scheduling analysis."
-    - name: "coordination_cluster"
-      expr: coordination_cluster
-      comment: "Humanitarian coordination cluster the plan is aligned to (e.g. Health, Nutrition, Logistics); enables cluster-level reporting."
+    - name: "stock_movement_type"
+      expr: stock_movement_type
+      comment: "Type of stock movement (e.g. Receipt, Issue, Transfer, Adjustment, Loss) — primary classification for flow analysis."
+    - name: "stock_movement_status"
+      expr: stock_movement_status
+      comment: "Current status of the movement record — identifies pending or disputed movements."
+    - name: "commodity_id"
+      expr: commodity_id
+      comment: "Commodity being moved — enables per-item flow and loss analysis."
+    - name: "source_warehouse_id"
+      expr: source_warehouse_id
+      comment: "Origin warehouse — enables corridor-level flow analysis."
+    - name: "transport_mode"
+      expr: transport_mode
+      comment: "Mode of transport used for the movement — enables cost and efficiency analysis by modality."
+    - name: "reason_code"
+      expr: reason_code
+      comment: "Reason code for the movement (e.g. Distribution, Transfer, Damage, Expiry) — critical for loss categorisation."
+    - name: "quality_inspection_status"
+      expr: quality_inspection_status
+      comment: "Quality inspection outcome for the movement — tracks compliance with quality standards."
+    - name: "in_kind_donation_flag"
+      expr: in_kind_donation_flag
+      comment: "Indicates whether the movement involves in-kind donated stock — relevant for donor accountability."
+    - name: "partner_org_id"
+      expr: partner_org_id
+      comment: "Partner organisation associated with the movement — enables partner-level accountability."
+    - name: "award_id"
+      expr: award_id
+      comment: "Grant award linked to the movement — enables fund-level stock flow tracking."
+    - name: "stock_movement_date"
+      expr: stock_movement_date
+      comment: "Date of the stock movement — primary time dimension for velocity and trend analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the movement valuation — required for multi-currency cost analysis."
   measures:
-    - name: "total_distribution_plans"
-      expr: COUNT(1)
-      comment: "Total number of distribution plans; baseline metric for programme planning activity."
-    - name: "total_planned_quantity"
-      expr: SUM(CAST(planned_quantity AS DOUBLE))
-      comment: "Total quantity of commodities planned for distribution; primary supply demand signal for procurement and inventory planning."
-    - name: "total_estimated_budget"
-      expr: SUM(CAST(estimated_budget_amount AS DOUBLE))
-      comment: "Total estimated budget across all distribution plans; primary financial planning KPI for resource mobilisation."
-    - name: "total_target_beneficiaries"
-      expr: SUM(CAST(target_beneficiary_count_for_commodity AS DOUBLE))
-      comment: "Total number of beneficiaries targeted across all distribution plans; measures programme reach and coverage ambition."
-    - name: "total_estimated_volume_m3"
-      expr: SUM(CAST(estimated_total_volume_m3 AS DOUBLE))
-      comment: "Total estimated volume of commodities to be distributed; drives logistics and warehouse capacity planning."
-    - name: "total_estimated_weight_kg"
-      expr: SUM(CAST(estimated_total_weight_kg AS DOUBLE))
-      comment: "Total estimated weight of commodities to be distributed; informs transport fleet and load planning."
-    - name: "approved_plans_count"
-      expr: COUNT(CASE WHEN plan_status = 'Approved' THEN 1 END)
-      comment: "Number of distribution plans with approved status; measures planning pipeline readiness for execution."
-    - name: "high_risk_plans_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk distribution plans; triggers risk mitigation review and additional resource allocation."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_vendor`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Vendor qualification, performance, and risk metrics tracking prequalification status, performance scores, blacklist exposure, and cold chain capability to govern supplier selection and relationship management."
-  source: "`vibe_ngo_v1`.`supply`.`vendor`"
-  dimensions:
-    - name: "vendor_status"
-      expr: vendor_status
-      comment: "Current operational status of the vendor (e.g. Active, Suspended, Deregistered); primary vendor eligibility dimension."
-    - name: "vendor_type"
-      expr: vendor_type
-      comment: "Type of vendor (e.g. Manufacturer, Distributor, Transporter); enables category-specific performance analysis."
-    - name: "prequalification_status"
-      expr: prequalification_status
-      comment: "Vendor prequalification status (e.g. Prequalified, Pending, Expired); governs procurement eligibility."
-    - name: "performance_tier"
-      expr: performance_tier
-      comment: "Performance tier classification of the vendor (e.g. Tier 1, Tier 2, Tier 3); drives preferred vendor selection."
-    - name: "country_of_operation"
-      expr: country_of_operation
-      comment: "Country where the vendor primarily operates; enables geographic supplier base analysis."
-    - name: "cold_chain_certified_flag"
-      expr: cold_chain_certified_flag
-      comment: "Indicates whether the vendor holds cold chain certification; critical for vaccine and pharmaceutical procurement eligibility."
-    - name: "blacklist_flag"
-      expr: blacklist_flag
-      comment: "Indicates whether the vendor is currently blacklisted; mandatory compliance dimension for procurement governance."
-    - name: "who_pq_manufacturer_flag"
-      expr: who_pq_manufacturer_flag
-      comment: "Indicates whether the vendor is a WHO prequalified manufacturer; critical for vaccine and essential medicine procurement."
-    - name: "gmp_certification_flag"
-      expr: gmp_certification_flag
-      comment: "Indicates whether the vendor holds Good Manufacturing Practice certification; quality assurance governance dimension."
-  measures:
-    - name: "total_vendors"
-      expr: COUNT(1)
-      comment: "Total number of vendors in the supplier registry; baseline metric for supplier base size and diversity."
-    - name: "active_vendors_count"
-      expr: COUNT(CASE WHEN vendor_status = 'Active' THEN 1 END)
-      comment: "Number of currently active vendors; measures available supplier pool for procurement operations."
-    - name: "prequalified_vendors_count"
-      expr: COUNT(CASE WHEN prequalification_status = 'Prequalified' THEN 1 END)
-      comment: "Number of prequalified vendors; measures the qualified supplier pool available for competitive procurement."
-    - name: "blacklisted_vendors_count"
-      expr: COUNT(CASE WHEN blacklist_flag = TRUE THEN 1 END)
-      comment: "Number of blacklisted vendors; compliance KPI ensuring debarred suppliers are excluded from procurement."
-    - name: "avg_performance_score"
-      expr: AVG(CAST(last_performance_score AS DOUBLE))
-      comment: "Average vendor performance score across the supplier base; tracks overall supplier quality and relationship health."
-    - name: "cold_chain_certified_vendors_count"
-      expr: COUNT(CASE WHEN cold_chain_certified_flag = TRUE THEN 1 END)
-      comment: "Number of cold chain certified vendors; measures cold chain supplier capacity for vaccine and pharmaceutical programmes."
-    - name: "avg_payment_terms_days"
-      expr: AVG(CAST(payment_terms_days AS DOUBLE))
-      comment: "Average payment terms (days) across vendors; informs cash flow planning and working capital management."
-    - name: "avg_warehouse_capacity_sqm"
-      expr: AVG(CAST(warehouse_capacity_sqm AS DOUBLE))
-      comment: "Average warehouse capacity (sqm) of vendors with storage facilities; assesses vendor logistics infrastructure."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_warehouse`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Warehouse capacity, cold chain capability, and operational readiness metrics to support infrastructure planning, cold chain network assessment, and storage gap analysis for humanitarian supply operations."
-  source: "`vibe_ngo_v1`.`supply`.`warehouse`"
-  dimensions:
-    - name: "operational_status"
-      expr: operational_status
-      comment: "Current operational status of the warehouse (e.g. Active, Inactive, Under Renovation); tracks usable storage network."
-    - name: "facility_type"
-      expr: facility_type
-      comment: "Type of warehouse facility (e.g. Central, Regional, Field); enables tiered storage network analysis."
-    - name: "ownership_type"
-      expr: ownership_type
-      comment: "Ownership model of the warehouse (e.g. Owned, Leased, Partner); informs asset vs. cost strategy decisions."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country where the warehouse is located; enables geographic storage capacity distribution analysis."
-    - name: "admin_level_1"
-      expr: admin_level_1
-      comment: "First administrative level of the warehouse location; supports sub-national storage network planning."
-    - name: "temperature_controlled"
-      expr: temperature_controlled
-      comment: "Indicates whether the warehouse has temperature-controlled storage; critical for cold chain network mapping."
-    - name: "vaccine_storage_certified_flag"
-      expr: vaccine_storage_certified_flag
-      comment: "Indicates whether the warehouse is certified for vaccine storage; governs vaccine supply chain routing."
-    - name: "vaccine_storage_tier"
-      expr: vaccine_storage_tier
-      comment: "Vaccine storage tier classification (e.g. Tier 1, Tier 2); used for EPI cold chain network design."
-    - name: "hazmat_certified"
-      expr: hazmat_certified
-      comment: "Indicates whether the warehouse is certified for hazardous materials storage; required for certain commodity categories."
-    - name: "security_level"
-      expr: security_level
-      comment: "Security classification of the warehouse; informs risk assessment for high-value or sensitive commodity storage."
-  measures:
-    - name: "total_warehouses"
-      expr: COUNT(1)
-      comment: "Total number of warehouses in the network; baseline metric for storage infrastructure footprint."
-    - name: "total_storage_capacity_m3"
-      expr: SUM(CAST(storage_capacity_m3 AS DOUBLE))
-      comment: "Total storage capacity in cubic metres across all warehouses; primary infrastructure capacity KPI for supply chain planning."
-    - name: "total_cold_chain_capacity_liters"
-      expr: SUM(CAST(cold_chain_capacity_liters AS DOUBLE))
-      comment: "Total cold chain storage capacity in litres; critical KPI for vaccine and pharmaceutical supply chain network adequacy."
-    - name: "total_freezer_capacity_liters"
-      expr: SUM(CAST(freezer_capacity_liters AS DOUBLE))
-      comment: "Total freezer capacity in litres across the warehouse network; measures ultra-cold supply chain capability for mRNA vaccines."
-    - name: "total_ultra_cold_capacity_liters"
-      expr: SUM(CAST(ultra_cold_capacity_liters AS DOUBLE))
-      comment: "Total ultra-cold storage capacity in litres; measures network readiness for ultra-cold chain commodities."
-    - name: "avg_evm_score"
-      expr: AVG(CAST(evm_score AS DOUBLE))
-      comment: "Average Effective Vaccine Management (EVM) score across warehouses; measures cold chain system quality against WHO standards."
-    - name: "avg_cold_chain_functional_pct"
-      expr: AVG(CAST(cold_chain_functional_percentage AS DOUBLE))
-      comment: "Average percentage of cold chain equipment in functional condition; tracks cold chain operational readiness."
-    - name: "vaccine_certified_warehouses_count"
-      expr: COUNT(CASE WHEN vaccine_storage_certified_flag = TRUE THEN 1 END)
-      comment: "Number of vaccine-certified warehouses; measures certified cold chain storage node availability for EPI programmes."
-    - name: "active_warehouses_count"
-      expr: COUNT(CASE WHEN operational_status = 'Active' THEN 1 END)
-      comment: "Number of currently active warehouses; measures usable storage network capacity for operational planning."
+    - name: "total_quantity_moved"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity of commodities moved across all movement types. Baseline throughput metric for supply chain velocity."
+    - name: "total_movement_value_usd"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total value of stock movements. Used for financial reconciliation and donor asset accountability reporting."
+    - name: "avg_unit_cost_usd"
+      expr: AVG(CAST(unit_cost AS DOUBLE))
+      comment: "Average unit cost across stock movements. Benchmarks commodity pricing consistency across the supply chain."
+    - name: "loss_quantity"
+      expr: SUM(CASE WHEN stock_movement_type IN ('Loss', 'Damage', 'Expiry', 'Write-off') THEN quantity ELSE 0 END)
+      comment: "Total quantity lost through damage, expiry, or write-off. A critical accountability metric — high losses trigger investigation and corrective action."
+    - name: "loss_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN stock_movement_type IN ('Loss', 'Damage', 'Expiry', 'Write-off') THEN quantity ELSE 0 END) / NULLIF(SUM(CAST(quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of total stock moved that was lost, damaged, or written off. Key supply chain quality KPI — high loss rates directly reduce programme impact and donor confidence."
+    - name: "distinct_commodities_moved"
+      expr: COUNT(DISTINCT commodity_id)
+      comment: "Number of distinct commodities with stock movements in the period. Measures supply chain breadth and activity coverage."
+    - name: "distinct_movement_corridors"
+      expr: COUNT(DISTINCT source_warehouse_id)
+      comment: "Number of distinct origin warehouses with outbound movements. Indicates geographic distribution network activity."
+    - name: "avg_quantity_per_movement"
+      expr: AVG(CAST(quantity AS DOUBLE))
+      comment: "Average quantity per stock movement transaction. Benchmarks movement batch sizes — very small averages may indicate inefficient dispatch practices."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_waybill`
@@ -575,59 +411,201 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Waybill shipment tracking and logistics performance metrics covering delivery accuracy, cold chain compliance, discrepancy rates, and transport costs to govern last-mile logistics quality and accountability."
+  comment: "Shipment tracking and transport performance metrics covering delivery accuracy, discrepancy rates, and transport costs. Enables logistics managers to monitor carrier performance, route efficiency, and last-mile delivery reliability."
   source: "`vibe_ngo_v1`.`supply`.`waybill`"
   dimensions:
     - name: "shipment_status"
       expr: shipment_status
-      comment: "Current status of the shipment (e.g. In Transit, Delivered, Returned); tracks last-mile delivery pipeline."
+      comment: "Current status of the shipment (e.g. In Transit, Delivered, Delayed, Cancelled) — primary lifecycle dimension."
     - name: "shipment_type"
       expr: shipment_type
-      comment: "Type of shipment (e.g. Inbound, Outbound, Transfer); enables directional logistics flow analysis."
+      comment: "Type of shipment (e.g. Internal Transfer, Last Mile, Cross-border) — enables analysis by logistics modality."
     - name: "priority_level"
       expr: priority_level
-      comment: "Priority classification of the waybill shipment; supports triage and expediting decisions."
+      comment: "Priority level of the shipment — used to track emergency vs. routine delivery performance."
+    - name: "vendor_id"
+      expr: vendor_id
+      comment: "Transport vendor/carrier — enables carrier performance scorecarding."
+    - name: "origin_warehouse_id"
+      expr: origin_warehouse_id
+      comment: "Origin warehouse — enables corridor-level performance analysis."
+    - name: "country_office_id"
+      expr: country_office_id
+      comment: "Country office responsible for the shipment — supports geographic performance comparison."
     - name: "temperature_controlled_flag"
       expr: temperature_controlled_flag
-      comment: "Indicates whether the shipment required temperature-controlled transport; critical for cold chain compliance tracking."
-    - name: "vaccine_transport_flag"
-      expr: vaccine_transport_flag
-      comment: "Indicates whether the waybill covers vaccine transport; enables vaccine-specific logistics performance reporting."
+      comment: "Indicates whether the shipment required temperature-controlled transport — relevant for cold-chain compliance."
     - name: "hazardous_material_flag"
       expr: hazardous_material_flag
-      comment: "Indicates whether the shipment contains hazardous materials; required for regulatory compliance tracking."
-    - name: "seal_intact_flag"
-      expr: seal_intact_flag
-      comment: "Indicates whether the shipment seal was intact on arrival; key security and tamper-evidence indicator."
-    - name: "dispatch_month"
-      expr: DATE_TRUNC('month', dispatch_date)
-      comment: "Calendar month of shipment dispatch; used for logistics throughput trend analysis."
+      comment: "Indicates whether the shipment contains hazardous materials — relevant for compliance and risk reporting."
+    - name: "customs_clearance_required_flag"
+      expr: customs_clearance_required_flag
+      comment: "Indicates whether customs clearance was required — relevant for cross-border shipment analysis."
+    - name: "dispatch_date"
+      expr: dispatch_date
+      comment: "Date the shipment was dispatched — primary time dimension for trend analysis."
+    - name: "intervention_id"
+      expr: intervention_id
+      comment: "Program intervention linked to the shipment — connects logistics activity to programmatic outcomes."
   measures:
-    - name: "total_waybills"
+    - name: "total_shipments"
       expr: COUNT(1)
-      comment: "Total number of waybills processed; baseline logistics throughput metric."
+      comment: "Total number of waybills/shipments. Baseline logistics throughput metric."
     - name: "total_dispatched_quantity"
       expr: SUM(CAST(total_dispatched_quantity AS DOUBLE))
-      comment: "Total quantity dispatched across all waybills; measures outbound supply flow volume."
+      comment: "Total quantity dispatched across all shipments. Core supply delivery output metric."
     - name: "total_received_quantity"
       expr: SUM(CAST(total_received_quantity AS DOUBLE))
-      comment: "Total quantity received at destination across all waybills; measures actual delivery fulfilment."
+      comment: "Total quantity confirmed received at destination. Used to calculate in-transit losses."
     - name: "total_discrepancy_quantity"
       expr: SUM(CAST(discrepancy_quantity AS DOUBLE))
-      comment: "Total quantity discrepancy between dispatched and received; measures supply chain loss and accountability gaps."
-    - name: "total_transport_cost"
+      comment: "Total quantity discrepancy between dispatched and received. Elevated discrepancies indicate theft, damage, or documentation failures."
+    - name: "shipment_discrepancy_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(discrepancy_quantity AS DOUBLE)) / NULLIF(SUM(CAST(total_dispatched_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of dispatched quantity with recorded discrepancies at receipt. Key accountability KPI — high rates trigger investigation and may indicate diversion risk."
+    - name: "total_transport_cost_usd"
       expr: SUM(CAST(transport_cost_amount AS DOUBLE))
-      comment: "Total transport cost across all waybills; primary logistics expenditure KPI for cost efficiency analysis."
-    - name: "avg_distance_km"
-      expr: AVG(CAST(distance_km AS DOUBLE))
-      comment: "Average shipment distance in kilometres; used for transport cost per km benchmarking and route optimisation."
-    - name: "on_time_delivery_count"
-      expr: COUNT(CASE WHEN actual_delivery_date <= estimated_delivery_date THEN 1 END)
-      comment: "Number of waybills delivered on or before the estimated delivery date; measures carrier on-time performance."
-    - name: "seal_breach_count"
-      expr: COUNT(CASE WHEN seal_intact_flag = FALSE THEN 1 END)
-      comment: "Number of shipments with broken seals on arrival; critical security and supply integrity KPI."
-    - name: "waybills_with_discrepancy_count"
-      expr: COUNT(CASE WHEN discrepancy_quantity > 0 THEN 1 END)
-      comment: "Number of waybills with a recorded quantity discrepancy; measures supply chain loss frequency for accountability reporting."
+      comment: "Total transport cost across all shipments. Primary logistics spend KPI used in cost-efficiency analysis."
+    - name: "transport_cost_per_km_usd"
+      expr: ROUND(SUM(CAST(transport_cost_amount AS DOUBLE)) / NULLIF(SUM(CAST(distance_km AS DOUBLE)), 0), 4)
+      comment: "Transport cost per kilometre. Benchmarks route and carrier efficiency — high cost-per-km may indicate inefficient routing or premium carrier use."
+    - name: "on_time_delivery_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_delivery_date <= estimated_delivery_date THEN 1 END) / NULLIF(COUNT(CASE WHEN actual_delivery_date IS NOT NULL AND estimated_delivery_date IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of shipments delivered on or before the estimated delivery date. Primary carrier reliability KPI."
+    - name: "avg_transit_time_days"
+      expr: AVG(DATEDIFF(actual_delivery_date, dispatch_date))
+      comment: "Average transit time in days from dispatch to delivery. Benchmarks route and corridor efficiency."
+    - name: "receipt_signature_capture_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN receipt_signature_captured_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shipments with a captured delivery signature. Measures last-mile accountability compliance — low rates indicate documentation gaps that expose the organisation to audit risk."
+    - name: "distinct_carriers_used"
+      expr: COUNT(DISTINCT vendor_id)
+      comment: "Number of distinct transport vendors used. Measures carrier base diversity and single-source dependency risk."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_vendor`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Vendor registry and performance metrics tracking supplier qualification status, performance scores, and risk flags. Enables procurement and compliance teams to manage vendor risk, monitor prequalification currency, and maintain a high-quality supplier base."
+  source: "`vibe_ngo_v1`.`supply`.`vendor`"
+  dimensions:
+    - name: "vendor_status"
+      expr: vendor_status
+      comment: "Current status of the vendor (e.g. Active, Suspended, Blacklisted, Inactive) — primary risk classification."
+    - name: "vendor_type"
+      expr: vendor_type
+      comment: "Type of vendor (e.g. Supplier, Transporter, Service Provider) — enables category-level analysis."
+    - name: "prequalification_status"
+      expr: prequalification_status
+      comment: "Vendor prequalification status — critical for procurement compliance; only prequalified vendors should receive contracts."
+    - name: "performance_tier"
+      expr: performance_tier
+      comment: "Performance tier classification (e.g. Preferred, Standard, Probation) — used for vendor stratification and contract allocation."
+    - name: "country_of_operation"
+      expr: country_of_operation
+      comment: "Country where the vendor operates — enables geographic vendor base analysis."
+    - name: "blacklist_flag"
+      expr: blacklist_flag
+      comment: "Indicates whether the vendor is blacklisted — critical compliance and risk flag."
+    - name: "gmp_certification_flag"
+      expr: gmp_certification_flag
+      comment: "Indicates whether the vendor holds Good Manufacturing Practice certification — relevant for pharmaceutical and food supply procurement."
+    - name: "commodity_categories"
+      expr: commodity_categories
+      comment: "Commodity categories the vendor supplies — enables supply category coverage analysis."
+  measures:
+    - name: "total_active_vendors"
+      expr: COUNT(CASE WHEN vendor_status = 'Active' THEN 1 END)
+      comment: "Number of currently active vendors. Baseline metric for supplier base size and procurement capacity."
+    - name: "blacklisted_vendor_count"
+      expr: COUNT(CASE WHEN blacklist_flag = TRUE THEN 1 END)
+      comment: "Number of blacklisted vendors. A compliance KPI — any procurement from blacklisted vendors represents a critical control failure."
+    - name: "prequalification_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN prequalification_status = 'Approved' THEN 1 END) / NULLIF(COUNT(CASE WHEN vendor_status = 'Active' THEN 1 END), 0), 2)
+      comment: "Percentage of active vendors with current approved prequalification. Measures procurement compliance — low rates indicate risk of contracting with unvetted suppliers."
+    - name: "avg_vendor_performance_score"
+      expr: AVG(CAST(last_performance_score AS DOUBLE))
+      comment: "Average vendor performance score across the supplier base. Tracks overall supply base quality — declining scores trigger vendor development or replacement actions."
+    - name: "high_performing_vendor_count"
+      expr: COUNT(CASE WHEN performance_tier = 'Preferred' THEN 1 END)
+      comment: "Number of vendors classified in the preferred/high-performance tier. Measures the depth of the high-quality supplier pool available for strategic procurement."
+    - name: "prequalification_expiry_risk_count"
+      expr: COUNT(CASE WHEN prequalification_expiry_date <= DATE_ADD(CURRENT_DATE(), 90) AND prequalification_status = 'Approved' THEN 1 END)
+      comment: "Number of approved vendors whose prequalification expires within 90 days. Proactive risk metric — enables timely renewal to avoid procurement disruption."
+    - name: "distinct_countries_covered"
+      expr: COUNT(DISTINCT country_of_operation)
+      comment: "Number of distinct countries where active vendors operate. Measures geographic supply base coverage — critical for assessing procurement reach in field operations."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_distribution_plan`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Distribution planning metrics tracking plan coverage, budget adequacy, risk levels, and approval compliance. Enables programme managers and planners to assess planning quality, identify high-risk plans, and monitor budget alignment across distribution activities."
+  source: "`vibe_ngo_v1`.`supply`.`distribution_plan`"
+  dimensions:
+    - name: "distribution_plan_status"
+      expr: distribution_plan_status
+      comment: "Current status of the distribution plan (e.g. Draft, Approved, Active, Completed, Cancelled) — primary lifecycle dimension."
+    - name: "distribution_type"
+      expr: distribution_type
+      comment: "Type of distribution (e.g. General Food Distribution, Targeted, Emergency) — key programmatic segmentation."
+    - name: "distribution_modality"
+      expr: distribution_modality
+      comment: "Distribution modality (e.g. In-Kind, Cash, Voucher) — critical for programme design and donor reporting."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level assigned to the plan (e.g. Low, Medium, High, Critical) — drives prioritisation and oversight intensity."
+    - name: "geographic_coverage_country"
+      expr: geographic_coverage_country
+      comment: "Country of distribution — primary geographic dimension."
+    - name: "beneficiary_category"
+      expr: beneficiary_category
+      comment: "Category of beneficiaries targeted (e.g. Refugees, IDPs, Host Community) — enables population-level analysis."
+    - name: "coordination_cluster"
+      expr: coordination_cluster
+      comment: "Humanitarian coordination cluster (e.g. Food Security, Nutrition, NFI) — enables cluster-level planning analysis."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Funding source for the plan — links distribution planning to donor commitments."
+    - name: "country_office_id"
+      expr: country_office_id
+      comment: "Country office responsible for the plan — enables geographic performance comparison."
+    - name: "planned_start_date"
+      expr: planned_start_date
+      comment: "Planned start date of the distribution — primary time dimension for planning horizon analysis."
+    - name: "approval_required_flag"
+      expr: approval_required_flag
+      comment: "Indicates whether the plan requires formal approval — relevant for governance compliance monitoring."
+  measures:
+    - name: "total_distribution_plans"
+      expr: COUNT(1)
+      comment: "Total number of distribution plans. Baseline planning activity metric."
+    - name: "total_estimated_budget_usd"
+      expr: SUM(CAST(estimated_budget_amount AS DOUBLE))
+      comment: "Total estimated budget across all distribution plans. Primary financial planning KPI used in resource allocation and donor pipeline reporting."
+    - name: "total_estimated_weight_kg"
+      expr: SUM(CAST(estimated_total_weight_kg AS DOUBLE))
+      comment: "Total estimated weight of commodities to be distributed. Drives logistics capacity planning and transport procurement."
+    - name: "total_estimated_volume_m3"
+      expr: SUM(CAST(estimated_total_volume_m3 AS DOUBLE))
+      comment: "Total estimated volume of commodities to be distributed. Used for warehouse and transport capacity planning."
+    - name: "high_risk_plan_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN risk_level IN ('High', 'Critical') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of distribution plans classified as high or critical risk. Elevated rates signal operational environment deterioration and require management escalation."
+    - name: "plan_approval_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_required_flag = TRUE AND distribution_plan_status = 'Approved' THEN 1 END) / NULLIF(COUNT(CASE WHEN approval_required_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of plans requiring approval that have been formally approved. Measures governance compliance — unapproved active plans represent a control risk."
+    - name: "plan_execution_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_start_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN distribution_plan_status = 'Approved' THEN 1 END), 0), 2)
+      comment: "Percentage of approved plans that have commenced execution. Low execution rates indicate implementation bottlenecks or access constraints."
+    - name: "avg_plan_duration_days"
+      expr: AVG(DATEDIFF(planned_end_date, planned_start_date))
+      comment: "Average planned duration of distribution plans in days. Benchmarks planning horizon and identifies unusually short or long distribution cycles."
+    - name: "distinct_countries_covered"
+      expr: COUNT(DISTINCT geographic_coverage_country)
+      comment: "Number of distinct countries covered by distribution plans. Measures geographic programme reach."
 $$;

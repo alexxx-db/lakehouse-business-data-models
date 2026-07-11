@@ -1,225 +1,74 @@
--- Metric views for domain: procurement | Business: Consumer_Goods | Version: 2 | Generated on: 2026-06-27 07:41:37
+-- Metric views for domain: procurement | Business: Consumer_Goods | Version: 2 | Generated on: 2026-07-10 14:45:03
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_purchase_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs for purchase order management covering spend value, order volume, approval efficiency, and supplier concentration. Enables procurement leadership to monitor total committed spend, order cycle health, and sourcing strategy effectiveness."
+  comment: "Strategic procurement KPIs tracking order value, fulfillment efficiency, and supplier performance at the purchase order level"
   source: "`vibe_consumer_goods_v1`.`procurement`.`purchase_order`"
   dimensions:
     - name: "po_status"
-      expr: purchase_order_status
-      comment: "Current lifecycle status of the purchase order (e.g. Open, Closed, Cancelled) for pipeline and backlog analysis."
+      expr: po_status
+      comment: "Current status of the purchase order (e.g., approved, closed, cancelled)"
     - name: "po_type"
       expr: po_type
-      comment: "Classification of the purchase order type (e.g. Standard, Blanket, Framework) to segment spend by procurement strategy."
-    - name: "currency"
-      expr: currency_code
-      comment: "Transaction currency of the purchase order for multi-currency spend analysis."
+      comment: "Type of purchase order (e.g., standard, blanket, contract)"
+    - name: "order_year"
+      expr: YEAR(order_date)
+      comment: "Year the purchase order was created"
+    - name: "order_month"
+      expr: DATE_TRUNC('MONTH', order_date)
+      comment: "Month the purchase order was created"
     - name: "purchasing_organization"
       expr: purchasing_organization
-      comment: "Organizational unit responsible for the purchase order, enabling spend analysis by procurement entity."
+      comment: "Organizational unit responsible for procurement"
     - name: "purchasing_group"
       expr: purchasing_group
-      comment: "Buyer group responsible for the purchase order, enabling workload and spend distribution analysis."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval workflow status of the purchase order to monitor governance compliance and bottlenecks."
-    - name: "order_date"
-      expr: DATE_TRUNC('month', order_date)
-      comment: "Month of purchase order creation for trend and seasonality analysis of procurement activity."
-    - name: "requested_delivery_month"
-      expr: DATE_TRUNC('month', requested_delivery_date)
-      comment: "Month of requested delivery for demand timing and supplier scheduling analysis."
+      comment: "Buyer group managing the purchase order"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency in which the order is denominated"
+    - name: "priority"
+      expr: priority
+      comment: "Business priority level of the purchase order"
     - name: "incoterms"
       expr: incoterms
-      comment: "Trade terms governing delivery responsibility, used to analyze logistics cost allocation across orders."
+      comment: "International commercial terms defining delivery responsibility"
     - name: "sustainability_certification"
       expr: sustainability_certification
-      comment: "Sustainability certification associated with the purchase order for ESG sourcing compliance tracking."
+      comment: "Sustainability certification status of the order"
     - name: "vmi_indicator"
       expr: vmi_indicator
-      comment: "Flag indicating whether the order is under a Vendor Managed Inventory arrangement."
+      comment: "Flag indicating vendor-managed inventory arrangement"
   measures:
-    - name: "total_purchase_order_value"
+    - name: "total_po_value"
       expr: SUM(CAST(total_order_value AS DOUBLE))
-      comment: "Total committed spend value across all purchase orders. Core procurement spend KPI used in budget tracking and supplier spend analysis."
-    - name: "total_net_order_value"
+      comment: "Total value of all purchase orders including tax and freight"
+    - name: "net_po_value"
       expr: SUM(CAST(net_order_value AS DOUBLE))
-      comment: "Sum of net order values excluding taxes and freight, representing the baseline procurement cost for margin and cost analysis."
+      comment: "Net value of purchase orders excluding tax and freight"
+    - name: "total_freight_cost"
+      expr: SUM(CAST(freight_amount AS DOUBLE))
+      comment: "Total freight and logistics costs across purchase orders"
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax liability across purchase orders, used for tax compliance reporting and cash flow planning."
-    - name: "total_freight_amount"
-      expr: SUM(CAST(freight_amount AS DOUBLE))
-      comment: "Total freight costs across purchase orders, enabling logistics cost management and incoterms strategy evaluation."
-    - name: "purchase_order_count"
-      expr: COUNT(DISTINCT purchase_order_id)
-      comment: "Number of distinct purchase orders issued, used to measure procurement activity volume and buyer workload."
-    - name: "avg_purchase_order_value"
+      comment: "Total tax amount across all purchase orders"
+    - name: "avg_po_value"
       expr: AVG(CAST(total_order_value AS DOUBLE))
-      comment: "Average value per purchase order, indicating order consolidation efficiency and procurement strategy effectiveness."
-    - name: "cancelled_order_count"
-      expr: COUNT(DISTINCT CASE WHEN purchase_order_status = 'Cancelled' THEN purchase_order_id END)
-      comment: "Number of cancelled purchase orders, a leading indicator of supply disruption, demand volatility, or supplier reliability issues."
-    - name: "approved_order_count"
-      expr: COUNT(DISTINCT CASE WHEN approval_status = 'Approved' THEN purchase_order_id END)
-      comment: "Number of purchase orders that have received formal approval, used to track governance compliance and approval throughput."
-    - name: "vmi_order_count"
-      expr: COUNT(DISTINCT CASE WHEN vmi_indicator = TRUE THEN purchase_order_id END)
-      comment: "Number of purchase orders under Vendor Managed Inventory, tracking adoption of advanced replenishment strategies."
-    - name: "sustainable_order_count"
-      expr: COUNT(DISTINCT CASE WHEN sustainability_certification IS NOT NULL THEN purchase_order_id END)
-      comment: "Number of purchase orders with a sustainability certification, used for ESG sourcing compliance and reporting."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_po_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Line-level procurement KPIs covering ordered quantities, receipt performance, invoice matching, and delivery compliance. Enables operations and procurement teams to monitor fulfillment accuracy, open order exposure, and line-level spend efficiency."
-  source: "`vibe_consumer_goods_v1`.`procurement`.`po_line`"
-  dimensions:
-    - name: "po_line_status"
-      expr: po_line_status
-      comment: "Current status of the purchase order line (e.g. Open, Closed, Blocked) for pipeline and backlog management."
-    - name: "line_status"
-      expr: line_status
-      comment: "Operational processing status of the PO line for workflow and exception management."
-    - name: "material_group"
-      expr: material_group
-      comment: "Material group classification of the ordered item for category spend analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency of the PO line for multi-currency spend analysis."
-    - name: "incoterm_code"
-      expr: incoterm_code
-      comment: "Trade terms for the PO line governing delivery responsibility and risk transfer."
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax classification applied to the PO line for tax compliance and cost analysis."
-    - name: "delivery_month"
-      expr: DATE_TRUNC('month', delivery_date)
-      comment: "Month of scheduled delivery for demand timing and supplier scheduling analysis."
-    - name: "confirmed_delivery_month"
-      expr: DATE_TRUNC('month', confirmed_delivery_date)
-      comment: "Month of supplier-confirmed delivery date for on-time delivery performance tracking."
-    - name: "goods_receipt_indicator"
-      expr: goods_receipt_indicator
-      comment: "Flag indicating whether a goods receipt is required for this PO line, used for three-way match compliance analysis."
-    - name: "invoice_receipt_indicator"
-      expr: invoice_receipt_indicator
-      comment: "Flag indicating whether an invoice receipt is required, used for accounts payable process compliance."
-    - name: "purchasing_group"
-      expr: purchasing_group
-      comment: "Buyer group responsible for the PO line for workload and spend distribution analysis."
-  measures:
-    - name: "total_line_spend"
-      expr: SUM(CAST(line_total AS DOUBLE))
-      comment: "Total committed spend at the PO line level, the most granular view of procurement cost for category and material analysis."
-    - name: "total_net_order_value"
-      expr: SUM(CAST(net_order_value AS DOUBLE))
-      comment: "Sum of net order values at line level, used for cost baseline and margin analysis excluding taxes."
-    - name: "total_ordered_quantity"
-      expr: SUM(CAST(ordered_quantity AS DOUBLE))
-      comment: "Total quantity ordered across PO lines, used for demand volume analysis and supplier capacity planning."
-    - name: "total_received_quantity"
-      expr: SUM(CAST(received_quantity AS DOUBLE))
-      comment: "Total quantity received against PO lines, measuring fulfillment completeness and goods receipt performance."
-    - name: "total_outstanding_quantity"
-      expr: SUM(CAST(outstanding_quantity AS DOUBLE))
-      comment: "Total open/unfulfilled quantity on PO lines, representing supply exposure and delivery risk."
-    - name: "total_invoiced_quantity"
-      expr: SUM(CAST(invoiced_quantity AS DOUBLE))
-      comment: "Total quantity invoiced against PO lines, used for three-way match and accounts payable reconciliation."
-    - name: "receipt_fill_rate"
-      expr: ROUND(100.0 * SUM(CAST(received_quantity AS DOUBLE)) / NULLIF(SUM(CAST(ordered_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of ordered quantity that has been received, a key supplier fulfillment performance KPI. Low fill rate signals supply risk."
-    - name: "invoice_match_rate"
-      expr: ROUND(100.0 * SUM(CAST(invoiced_quantity AS DOUBLE)) / NULLIF(SUM(CAST(ordered_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of ordered quantity that has been invoiced, used to track accounts payable completeness and three-way match efficiency."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across PO lines, used for price benchmarking and negotiation effectiveness analysis."
-    - name: "po_line_count"
-      expr: COUNT(DISTINCT po_line_id)
-      comment: "Number of distinct PO lines, used to measure procurement complexity and buyer workload."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_goods_receipt`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Inbound goods receipt KPIs covering receipt volumes, quality acceptance rates, rejection rates, and valuation. Enables supply chain and quality teams to monitor supplier delivery performance, inspection outcomes, and inventory intake accuracy."
-  source: "`vibe_consumer_goods_v1`.`procurement`.`goods_receipt`"
-  dimensions:
-    - name: "goods_receipt_status"
-      expr: goods_receipt_status
-      comment: "Current status of the goods receipt document for inbound logistics and inventory management."
-    - name: "quality_status"
-      expr: quality_status
-      comment: "Quality inspection outcome for the goods receipt, used to track supplier quality performance."
-    - name: "movement_type"
-      expr: movement_type
-      comment: "Inventory movement type associated with the goods receipt for stock management and accounting analysis."
-    - name: "storage_location_code"
-      expr: storage_location_code
-      comment: "Storage location where goods were received, used for inventory placement and warehouse capacity analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency of the goods receipt for multi-currency valuation analysis."
-    - name: "receipt_month"
-      expr: DATE_TRUNC('month', receipt_date)
-      comment: "Month of goods receipt for trend analysis of inbound supply volumes and delivery timing."
-    - name: "posting_month"
-      expr: DATE_TRUNC('month', posting_date)
-      comment: "Month of accounting posting for financial period alignment and accrual analysis."
-    - name: "gr_reversal_flag"
-      expr: gr_reversal_flag
-      comment: "Flag indicating whether the goods receipt was reversed, used to identify receipt errors and supplier disputes."
-    - name: "otif_compliance_flag"
-      expr: otif_compliance_flag
-      comment: "On-Time In-Full compliance flag for the delivery, a critical supplier performance KPI dimension."
-    - name: "quality_inspection_required_flag"
-      expr: quality_inspection_required_flag
-      comment: "Flag indicating whether quality inspection was required for this receipt, used for quality process compliance analysis."
-    - name: "sustainable_sourcing_certification"
-      expr: sustainable_sourcing_certification
-      comment: "Sustainability certification associated with the received goods for ESG supply chain compliance tracking."
-  measures:
-    - name: "total_received_quantity"
-      expr: SUM(CAST(received_quantity AS DOUBLE))
-      comment: "Total quantity of goods received, the primary inbound supply volume KPI for inventory and demand fulfillment tracking."
-    - name: "total_accepted_quantity"
-      expr: SUM(CAST(accepted_quantity AS DOUBLE))
-      comment: "Total quantity accepted after inspection, representing usable inbound supply for production and inventory planning."
-    - name: "total_rejected_quantity"
-      expr: SUM(CAST(rejected_quantity AS DOUBLE))
-      comment: "Total quantity rejected at goods receipt, a direct measure of supplier quality failure and associated rework/return costs."
-    - name: "total_valuation_amount"
-      expr: SUM(CAST(valuation_amount AS DOUBLE))
-      comment: "Total inventory valuation of received goods, used for balance sheet accuracy and cost of goods received reporting."
-    - name: "quality_acceptance_rate"
-      expr: ROUND(100.0 * SUM(CAST(accepted_quantity AS DOUBLE)) / NULLIF(SUM(CAST(received_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of received quantity that passed quality inspection. A critical supplier quality KPI — low rates trigger supplier corrective action."
-    - name: "rejection_rate"
-      expr: ROUND(100.0 * SUM(CAST(rejected_quantity AS DOUBLE)) / NULLIF(SUM(CAST(received_quantity AS DOUBLE)), 0), 2)
-      comment: "Percentage of received quantity rejected at inspection. Directly impacts production continuity and supplier scorecard ratings."
-    - name: "otif_receipt_count"
-      expr: COUNT(DISTINCT CASE WHEN otif_compliance_flag = TRUE THEN goods_receipt_id END)
-      comment: "Number of goods receipts that were On-Time In-Full compliant, used to calculate OTIF delivery performance rate."
-    - name: "total_receipt_count"
-      expr: COUNT(DISTINCT goods_receipt_id)
-      comment: "Total number of goods receipt documents, used as the denominator for OTIF rate and quality rate calculations."
-    - name: "reversal_count"
-      expr: COUNT(DISTINCT CASE WHEN gr_reversal_flag = TRUE THEN goods_receipt_id END)
-      comment: "Number of reversed goods receipts, indicating receipt errors, supplier disputes, or returns that impact inventory accuracy."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price at goods receipt, used for price variance analysis against purchase order unit prices."
+      comment: "Average purchase order value - key metric for procurement efficiency"
+    - name: "po_count"
+      expr: COUNT(DISTINCT purchase_order_id)
+      comment: "Number of distinct purchase orders"
+    - name: "supplier_count"
+      expr: COUNT(DISTINCT supplier_id)
+      comment: "Number of unique suppliers engaged"
+    - name: "avg_days_to_approval"
+      expr: AVG(DATEDIFF(approval_date, created_timestamp))
+      comment: "Average days from PO creation to approval - measures procurement cycle efficiency"
+    - name: "freight_to_net_ratio_pct"
+      expr: ROUND(100.0 * SUM(CAST(freight_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_order_value AS DOUBLE)), 0), 2)
+      comment: "Freight cost as percentage of net order value - key logistics efficiency metric"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_supplier_invoice`
@@ -227,79 +76,141 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts payable and invoice processing KPIs covering invoice volumes, payment performance, discount capture, tax liability, and three-way match compliance. Enables finance and procurement to manage cash flow, payment terms adherence, and invoice processing efficiency."
+  comment: "Financial control KPIs for accounts payable, invoice processing efficiency, and payment performance"
   source: "`vibe_consumer_goods_v1`.`procurement`.`supplier_invoice`"
   dimensions:
     - name: "invoice_status"
       expr: invoice_status
-      comment: "Current processing status of the supplier invoice (e.g. Open, Paid, Blocked) for AP pipeline management."
+      comment: "Current processing status of the invoice"
     - name: "invoice_type"
       expr: invoice_type
-      comment: "Type of supplier invoice (e.g. Standard, Credit Memo, Debit Memo) for AP categorization and reporting."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Payment execution status of the invoice for cash flow and working capital management."
-    - name: "match_status"
-      expr: match_status
-      comment: "Two-way or three-way match status of the invoice against PO and goods receipt for compliance and exception management."
+      comment: "Type of invoice (e.g., standard, credit memo, debit memo)"
     - name: "three_way_match_status"
       expr: three_way_match_status
-      comment: "Three-way match result (PO, GR, Invoice) — a critical AP control KPI dimension for fraud prevention and accuracy."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used for the invoice (e.g. ACH, Wire, Check) for treasury and cash management analysis."
-    - name: "payment_terms_code"
-      expr: payment_terms_code
-      comment: "Payment terms applied to the invoice for early payment discount capture and DPO analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Invoice currency for multi-currency AP and FX exposure analysis."
+      comment: "Status of three-way match validation (PO, GR, Invoice)"
     - name: "invoice_month"
-      expr: DATE_TRUNC('month', invoice_date)
-      comment: "Month of invoice date for AP volume trend and accrual analysis."
-    - name: "due_month"
-      expr: DATE_TRUNC('month', due_date)
-      comment: "Month of invoice due date for cash flow forecasting and payment scheduling."
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Month the invoice was issued"
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month the invoice was posted to the general ledger"
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year of the invoice for period-based financial reporting and budget vs. actuals analysis."
+      comment: "Fiscal year of the invoice"
     - name: "fiscal_period"
       expr: fiscal_period
-      comment: "Fiscal period of the invoice for sub-annual financial reporting and accrual management."
+      comment: "Fiscal period of the invoice"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency in which the invoice is denominated"
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Method used for payment (e.g., wire, check, ACH)"
     - name: "blocking_reason_code"
       expr: blocking_reason_code
-      comment: "Reason code for invoice payment block, used to identify and resolve AP processing bottlenecks."
+      comment: "Code indicating reason for payment block"
   measures:
-    - name: "total_invoice_amount"
-      expr: SUM(CAST(invoice_amount AS DOUBLE))
-      comment: "Total gross invoice amount across all supplier invoices. Primary AP spend KPI for cash flow and budget management."
-    - name: "total_net_amount"
+    - name: "total_invoice_gross_amount"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross invoice amount before discounts and tax"
+    - name: "total_invoice_net_amount"
       expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net invoice amount after discounts, representing actual cash outflow for cost accounting."
+      comment: "Total net invoice amount after discounts before tax"
+    - name: "total_discount_captured"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total early payment discounts captured - measures working capital efficiency"
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount on supplier invoices for tax liability reporting and compliance."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early payment discounts captured, a direct measure of working capital optimization and supplier relationship value."
-    - name: "total_withholding_tax_amount"
+      comment: "Total tax amount across all invoices"
+    - name: "total_withholding_tax"
       expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
-      comment: "Total withholding tax deducted from supplier payments for tax compliance and regulatory reporting."
+      comment: "Total withholding tax amount"
     - name: "invoice_count"
       expr: COUNT(DISTINCT supplier_invoice_id)
-      comment: "Total number of supplier invoices processed, used to measure AP workload and processing throughput."
-    - name: "blocked_invoice_count"
-      expr: COUNT(DISTINCT CASE WHEN invoice_status = 'Blocked' THEN supplier_invoice_id END)
-      comment: "Number of invoices currently blocked from payment, indicating AP processing exceptions that risk supplier relationship damage."
-    - name: "three_way_match_pass_count"
-      expr: COUNT(DISTINCT CASE WHEN three_way_match_status = 'Matched' THEN supplier_invoice_id END)
-      comment: "Number of invoices that passed three-way match (PO, GR, Invoice), a key AP control and fraud prevention metric."
+      comment: "Number of distinct supplier invoices processed"
     - name: "avg_invoice_amount"
-      expr: AVG(CAST(invoice_amount AS DOUBLE))
-      comment: "Average invoice value, used to benchmark invoice complexity and identify outliers requiring additional scrutiny."
-    - name: "total_gross_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross invoice amount before discounts and deductions, used for spend baseline and vendor spend analysis."
+      expr: AVG(CAST(net_amount AS DOUBLE))
+      comment: "Average invoice amount - indicator of transaction size and processing efficiency"
+    - name: "avg_days_to_payment"
+      expr: AVG(DATEDIFF(payment_date, invoice_date))
+      comment: "Average days from invoice date to payment - key working capital and supplier relationship metric"
+    - name: "avg_processing_days"
+      expr: AVG(DATEDIFF(posting_date, invoice_receipt_date))
+      comment: "Average days from invoice receipt to posting - measures AP processing efficiency"
+    - name: "discount_capture_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount AS DOUBLE)), 0), 2)
+      comment: "Percentage of gross amount captured as early payment discount - key cash management KPI"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_goods_receipt`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Operational excellence KPIs for inbound logistics, quality compliance, and on-time delivery performance"
+  source: "`vibe_consumer_goods_v1`.`procurement`.`goods_receipt`"
+  dimensions:
+    - name: "gr_status"
+      expr: gr_status
+      comment: "Status of the goods receipt (e.g., posted, blocked, reversed)"
+    - name: "movement_type"
+      expr: movement_type
+      comment: "Type of inventory movement (e.g., standard receipt, return)"
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month the goods receipt was posted"
+    - name: "receiving_plant_code"
+      expr: receiving_plant_code
+      comment: "Plant or facility receiving the goods"
+    - name: "storage_location_code"
+      expr: storage_location_code
+      comment: "Storage location within the receiving plant"
+    - name: "quality_inspection_required_flag"
+      expr: quality_inspection_required_flag
+      comment: "Flag indicating if quality inspection is required"
+    - name: "otif_compliance_flag"
+      expr: otif_compliance_flag
+      comment: "On-Time In-Full compliance flag - critical delivery performance indicator"
+    - name: "gr_reversal_flag"
+      expr: gr_reversal_flag
+      comment: "Flag indicating if the goods receipt was reversed"
+    - name: "certificate_of_analysis_received_flag"
+      expr: certificate_of_analysis_received_flag
+      comment: "Flag indicating receipt of certificate of analysis"
+    - name: "sustainable_sourcing_certification"
+      expr: sustainable_sourcing_certification
+      comment: "Sustainability certification of received goods"
+    - name: "carrier_name"
+      expr: carrier_name
+      comment: "Name of the logistics carrier"
+  measures:
+    - name: "total_received_quantity"
+      expr: SUM(CAST(received_quantity AS DOUBLE))
+      comment: "Total quantity of goods received"
+    - name: "total_valuation_amount"
+      expr: SUM(CAST(valuation_amount AS DOUBLE))
+      comment: "Total inventory valuation of goods received"
+    - name: "goods_receipt_count"
+      expr: COUNT(DISTINCT goods_receipt_id)
+      comment: "Number of distinct goods receipt transactions"
+    - name: "supplier_count"
+      expr: COUNT(DISTINCT supplier_id)
+      comment: "Number of unique suppliers from whom goods were received"
+    - name: "avg_receipt_value"
+      expr: AVG(CAST(valuation_amount AS DOUBLE))
+      comment: "Average value per goods receipt transaction"
+    - name: "otif_compliance_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN otif_compliance_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "On-Time In-Full delivery compliance rate - critical supplier performance KPI"
+    - name: "reversal_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN gr_reversal_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of goods receipts reversed - indicator of quality or process issues"
+    - name: "quality_inspection_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN quality_inspection_required_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of receipts requiring quality inspection - risk management metric"
+    - name: "coa_receipt_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN certificate_of_analysis_received_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Certificate of Analysis receipt rate - quality documentation compliance metric"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_supplier`
@@ -307,73 +218,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Supplier master KPIs covering supplier base composition, performance scores, risk ratings, certification compliance, and strategic classification. Enables procurement leadership to manage supplier portfolio health, risk exposure, and sustainability compliance."
+  comment: "Strategic supplier management KPIs tracking supplier base composition, performance, and risk profile"
   source: "`vibe_consumer_goods_v1`.`procurement`.`supplier`"
   dimensions:
     - name: "supplier_status"
       expr: supplier_status
-      comment: "Current operational status of the supplier (e.g. Active, Inactive, Blocked) for supplier base management."
+      comment: "Current status of the supplier (e.g., active, blocked, onboarding)"
     - name: "supplier_type"
       expr: supplier_type
-      comment: "Classification of the supplier type (e.g. Manufacturer, Distributor, Service Provider) for sourcing strategy analysis."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the supplier for procurement use, used to track supplier qualification compliance."
-    - name: "onboarding_status"
-      expr: onboarding_status
-      comment: "Supplier onboarding lifecycle status for pipeline management of new supplier activation."
-    - name: "risk_rating"
-      expr: risk_rating
-      comment: "Supplier risk rating (e.g. Low, Medium, High, Critical) for supply chain risk management and mitigation prioritization."
+      comment: "Classification of supplier type (e.g., manufacturer, distributor, service provider)"
     - name: "tier"
       expr: tier
-      comment: "Supplier tier classification (e.g. Tier 1, Tier 2) for supply chain visibility and strategic sourcing decisions."
+      comment: "Supplier tier classification (e.g., Tier 1, Tier 2, strategic)"
+    - name: "risk_rating"
+      expr: risk_rating
+      comment: "Risk assessment rating of the supplier"
     - name: "country_code"
       expr: country_code
-      comment: "Country of the supplier for geographic spend analysis, trade compliance, and supply chain resilience assessment."
+      comment: "Country where the supplier is located"
     - name: "diversity_classification"
       expr: diversity_classification
-      comment: "Supplier diversity classification (e.g. MBE, WBE, SDVOB) for diversity spend reporting and ESG compliance."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Default transaction currency of the supplier for FX exposure and multi-currency spend analysis."
-    - name: "is_strategic"
-      expr: is_strategic
-      comment: "Flag indicating whether the supplier is classified as strategic, used to differentiate investment and relationship management."
-    - name: "onboarding_month"
-      expr: DATE_TRUNC('month', onboarding_date)
-      comment: "Month of supplier onboarding for new supplier activation trend analysis."
+      comment: "Diversity classification (e.g., minority-owned, women-owned)"
+    - name: "onboarding_status"
+      expr: onboarding_status
+      comment: "Current onboarding status for new suppliers"
+    - name: "iso_9001_certified_flag"
+      expr: iso_9001_certified_flag
+      comment: "Flag indicating ISO 9001 quality management certification"
+    - name: "gmp_certified_flag"
+      expr: gmp_certified_flag
+      comment: "Flag indicating Good Manufacturing Practice certification"
+    - name: "fsc_certified_flag"
+      expr: fsc_certified_flag
+      comment: "Flag indicating Forest Stewardship Council certification"
+    - name: "rspo_certified_flag"
+      expr: rspo_certified_flag
+      comment: "Flag indicating Roundtable on Sustainable Palm Oil certification"
+    - name: "edi_capable_flag"
+      expr: edi_capable_flag
+      comment: "Flag indicating electronic data interchange capability"
+    - name: "vmi_eligible_flag"
+      expr: vmi_eligible_flag
+      comment: "Flag indicating vendor-managed inventory eligibility"
   measures:
     - name: "active_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN supplier_status = 'Active' THEN supplier_id END)
-      comment: "Number of active suppliers in the approved supplier base. Core supplier portfolio KPI for sourcing capacity and concentration risk."
-    - name: "total_supplier_count"
       expr: COUNT(DISTINCT supplier_id)
-      comment: "Total number of suppliers in the master data, used as the denominator for active rate and risk distribution calculations."
-    - name: "strategic_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN is_strategic = TRUE THEN supplier_id END)
-      comment: "Number of suppliers classified as strategic, used to track strategic sourcing portfolio size and relationship investment."
-    - name: "high_risk_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN risk_rating = 'High' THEN supplier_id END)
-      comment: "Number of suppliers rated as high risk, a critical supply chain resilience KPI requiring executive attention and mitigation plans."
-    - name: "avg_performance_score"
+      comment: "Number of distinct active suppliers - key supplier base consolidation metric"
+    - name: "avg_supplier_performance_score"
       expr: AVG(CAST(performance_score AS DOUBLE))
-      comment: "Average supplier performance score across the supplier base, used to benchmark overall supply chain quality and delivery reliability."
-    - name: "iso_9001_certified_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN iso_9001_certified_flag = TRUE THEN supplier_id END)
-      comment: "Number of ISO 9001 certified suppliers, tracking quality management system compliance across the supply base."
-    - name: "gmp_certified_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN gmp_certified_flag = TRUE THEN supplier_id END)
-      comment: "Number of GMP (Good Manufacturing Practice) certified suppliers, critical for consumer goods regulatory compliance."
-    - name: "rspo_certified_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN rspo_certified_flag = TRUE THEN supplier_id END)
-      comment: "Number of RSPO certified suppliers, tracking sustainable palm oil sourcing compliance for consumer goods ESG commitments."
-    - name: "edi_capable_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN edi_capable_flag = TRUE THEN supplier_id END)
-      comment: "Number of EDI-capable suppliers, measuring digital integration maturity of the supply base for order automation efficiency."
-    - name: "approved_supplier_rate"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN is_approved = TRUE THEN supplier_id END) / NULLIF(COUNT(DISTINCT supplier_id), 0), 2)
-      comment: "Percentage of suppliers that are formally approved for procurement use, a governance compliance KPI for sourcing risk management."
+      comment: "Average supplier performance score - strategic supplier quality indicator"
+    - name: "avg_moq_quantity"
+      expr: AVG(CAST(moq_quantity AS DOUBLE))
+      comment: "Average minimum order quantity across suppliers"
+    - name: "iso_certification_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN iso_9001_certified_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of suppliers with ISO 9001 certification - quality assurance metric"
+    - name: "gmp_certification_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN gmp_certified_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of suppliers with GMP certification - regulatory compliance metric"
+    - name: "sustainability_certification_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN fsc_certified_flag = TRUE OR rspo_certified_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of suppliers with sustainability certifications - ESG performance metric"
+    - name: "edi_adoption_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN edi_capable_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of suppliers with EDI capability - digital transformation metric"
+    - name: "vmi_eligible_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN vmi_eligible_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of suppliers eligible for VMI - supply chain optimization metric"
+    - name: "diversity_supplier_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN diversity_classification IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of diverse suppliers - corporate social responsibility metric"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_supplier_contract`
@@ -381,73 +295,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Supplier contract portfolio KPIs covering contract value, coverage, renewal risk, and compliance. Enables procurement and legal teams to manage contract lifecycle, spend under contract, and expiry risk to protect commercial terms."
+  comment: "Contract management KPIs tracking contract value, compliance, and renewal risk"
   source: "`vibe_consumer_goods_v1`.`procurement`.`supplier_contract`"
   dimensions:
     - name: "contract_status"
       expr: contract_status
-      comment: "Current lifecycle status of the supplier contract (e.g. Active, Expired, Terminated) for contract portfolio management."
+      comment: "Current status of the contract (e.g., active, expired, terminated)"
     - name: "contract_type"
       expr: contract_type
-      comment: "Type of supplier contract (e.g. Framework, Blanket, Fixed Price) for sourcing strategy and commercial terms analysis."
-    - name: "supplier_contract_status"
-      expr: supplier_contract_status
-      comment: "Operational status of the supplier contract for procurement workflow and compliance tracking."
+      comment: "Type of contract (e.g., blanket, framework, spot)"
+    - name: "pricing_mechanism"
+      expr: pricing_mechanism
+      comment: "Pricing mechanism defined in the contract (e.g., fixed, variable, index-based)"
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Year the contract became effective"
+    - name: "expiry_year"
+      expr: YEAR(expiry_date)
+      comment: "Year the contract expires"
     - name: "currency_code"
       expr: currency_code
-      comment: "Contract currency for multi-currency spend under contract analysis."
-    - name: "purchasing_organization"
-      expr: purchasing_organization
-      comment: "Organizational unit owning the contract for spend under contract analysis by procurement entity."
-    - name: "purchasing_group"
-      expr: purchasing_group
-      comment: "Buyer group managing the contract for workload and portfolio distribution analysis."
-    - name: "incoterms"
-      expr: incoterms
-      comment: "Trade terms in the contract governing delivery responsibility and risk transfer."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms in the contract for working capital and cash flow analysis."
-    - name: "auto_renew_flag"
-      expr: auto_renew_flag
-      comment: "Flag indicating whether the contract auto-renews, used to manage renewal risk and renegotiation opportunities."
+      comment: "Currency in which the contract is denominated"
+    - name: "auto_renewal_flag"
+      expr: auto_renewal_flag
+      comment: "Flag indicating if the contract auto-renews"
     - name: "sustainability_certification"
       expr: sustainability_certification
-      comment: "Sustainability certification required by the contract for ESG sourcing compliance tracking."
-    - name: "contract_start_month"
-      expr: DATE_TRUNC('month', start_date)
-      comment: "Month of contract start for portfolio vintage analysis and contract coverage trend tracking."
-    - name: "contract_end_month"
-      expr: DATE_TRUNC('month', end_date)
-      comment: "Month of contract expiry for renewal pipeline management and expiry risk monitoring."
+      comment: "Sustainability certification requirements in the contract"
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Organizational unit managing the contract"
   measures:
     - name: "total_contract_value"
-      expr: SUM(CAST(total_contract_value AS DOUBLE))
-      comment: "Total value of all supplier contracts in the portfolio. Primary spend under contract KPI for procurement coverage and commercial risk management."
-    - name: "total_contract_value_committed"
       expr: SUM(CAST(contract_value_total AS DOUBLE))
-      comment: "Total committed contract value across the portfolio, used for budget commitment tracking and supplier spend forecasting."
+      comment: "Total value of all supplier contracts - key spend under management metric"
     - name: "total_target_quantity"
       expr: SUM(CAST(target_quantity_total AS DOUBLE))
-      comment: "Total target quantity committed across contracts, used for supply capacity planning and volume commitment compliance."
-    - name: "active_contract_count"
-      expr: COUNT(DISTINCT CASE WHEN contract_status = 'Active' THEN supplier_contract_id END)
-      comment: "Number of active supplier contracts, measuring the breadth of contractual coverage across the supply base."
-    - name: "total_contract_count"
+      comment: "Total target quantity across all contracts"
+    - name: "contract_count"
       expr: COUNT(DISTINCT supplier_contract_id)
-      comment: "Total number of supplier contracts in the portfolio, used as the denominator for active rate and expiry risk calculations."
-    - name: "expiring_contract_count"
-      expr: COUNT(DISTINCT CASE WHEN expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN supplier_contract_id END)
-      comment: "Number of contracts expiring within the next 90 days, a critical renewal risk KPI requiring immediate procurement action."
-    - name: "auto_renew_contract_count"
-      expr: COUNT(DISTINCT CASE WHEN auto_renew_flag = TRUE THEN supplier_contract_id END)
-      comment: "Number of contracts set to auto-renew, used to identify renegotiation opportunities before automatic renewal locks in terms."
+      comment: "Number of distinct supplier contracts"
+    - name: "supplier_count"
+      expr: COUNT(DISTINCT supplier_id)
+      comment: "Number of unique suppliers under contract"
     - name: "avg_contract_value"
-      expr: AVG(CAST(total_contract_value AS DOUBLE))
-      comment: "Average contract value across the portfolio, used to benchmark contract size and identify consolidation opportunities."
-    - name: "sustainable_contract_count"
-      expr: COUNT(DISTINCT CASE WHEN sustainability_certification IS NOT NULL THEN supplier_contract_id END)
-      comment: "Number of contracts with sustainability certification requirements, tracking ESG sourcing compliance across the contract portfolio."
+      expr: AVG(CAST(contract_value_total AS DOUBLE))
+      comment: "Average contract value - indicator of contract size and complexity"
+    - name: "avg_contract_duration_days"
+      expr: AVG(DATEDIFF(expiry_date, effective_date))
+      comment: "Average contract duration in days - strategic sourcing planning metric"
+    - name: "auto_renewal_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN auto_renewal_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of contracts with auto-renewal - contract management efficiency metric"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_purchase_requisition`
@@ -455,216 +354,115 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Purchase requisition KPIs covering requisition volumes, approval cycle performance, spend authorization, and sourcing compliance. Enables procurement and finance to monitor demand-to-order efficiency, budget adherence, and requisition-to-PO conversion."
+  comment: "Demand management KPIs tracking requisition volume, approval efficiency, and procurement lead time"
   source: "`vibe_consumer_goods_v1`.`procurement`.`purchase_requisition`"
   dimensions:
     - name: "purchase_requisition_status"
       expr: purchase_requisition_status
-      comment: "Current lifecycle status of the purchase requisition (e.g. Pending, Approved, Rejected, Converted) for pipeline management."
-    - name: "requisition_status"
-      expr: requisition_status
-      comment: "Operational processing status of the requisition for workflow and exception management."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval workflow status of the requisition for governance compliance and bottleneck identification."
-    - name: "approval_level"
-      expr: approval_level
-      comment: "Approval authority level required for the requisition, used to analyze approval complexity and cycle time by tier."
+      comment: "Current status of the purchase requisition"
     - name: "requisition_type"
       expr: requisition_type
-      comment: "Type of purchase requisition (e.g. Standard, Emergency, Blanket) for demand categorization and process compliance."
-    - name: "material_group_code"
-      expr: material_group_code
-      comment: "Material group of the requested item for category spend analysis and sourcing strategy alignment."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the requisition for multi-currency spend authorization analysis."
+      comment: "Type of requisition (e.g., stock, non-stock, service)"
     - name: "priority"
       expr: priority
-      comment: "Priority level of the requisition (e.g. Urgent, Normal, Low) for workload management and SLA compliance."
+      comment: "Priority level of the requisition"
+    - name: "requested_month"
+      expr: DATE_TRUNC('MONTH', requested_date)
+      comment: "Month the requisition was requested"
+    - name: "source_of_supply"
+      expr: source_of_supply
+      comment: "Identified source of supply for the requisition"
     - name: "purchasing_organization_code"
       expr: purchasing_organization_code
-      comment: "Purchasing organization responsible for the requisition for spend authorization analysis by entity."
+      comment: "Purchasing organization responsible for the requisition"
     - name: "purchasing_group_code"
       expr: purchasing_group_code
-      comment: "Buyer group assigned to the requisition for workload distribution and processing efficiency analysis."
+      comment: "Purchasing group assigned to the requisition"
     - name: "sustainability_flag"
       expr: sustainability_flag
-      comment: "Flag indicating whether the requisition has sustainability requirements for ESG procurement compliance tracking."
-    - name: "requisition_month"
-      expr: DATE_TRUNC('month', requisition_date)
-      comment: "Month of requisition creation for demand trend analysis and procurement planning."
-    - name: "required_delivery_month"
-      expr: DATE_TRUNC('month', required_delivery_date)
-      comment: "Month of required delivery for demand timing and supply planning alignment."
+      comment: "Flag indicating sustainability requirements"
+    - name: "sds_required_flag"
+      expr: sds_required_flag
+      comment: "Flag indicating if Safety Data Sheet is required"
   measures:
-    - name: "total_estimated_requisition_value"
-      expr: SUM(CAST(total_estimated_value AS DOUBLE))
-      comment: "Total estimated spend value across all purchase requisitions, used for budget demand forecasting and spend authorization monitoring."
-    - name: "total_requested_quantity"
+    - name: "total_requisition_value"
+      expr: SUM(CAST(estimated_total_value AS DOUBLE))
+      comment: "Total estimated value of all purchase requisitions"
+    - name: "total_quantity_requested"
       expr: SUM(CAST(quantity_requested AS DOUBLE))
-      comment: "Total quantity requested across requisitions, used for demand volume analysis and supply planning."
+      comment: "Total quantity requested across all requisitions"
     - name: "requisition_count"
       expr: COUNT(DISTINCT purchase_requisition_id)
-      comment: "Total number of purchase requisitions submitted, measuring procurement demand volume and buyer workload."
-    - name: "approved_requisition_count"
-      expr: COUNT(DISTINCT CASE WHEN approval_status = 'Approved' THEN purchase_requisition_id END)
-      comment: "Number of approved requisitions, used to calculate approval rate and measure governance throughput."
-    - name: "rejected_requisition_count"
-      expr: COUNT(DISTINCT CASE WHEN approval_status = 'Rejected' THEN purchase_requisition_id END)
-      comment: "Number of rejected requisitions, indicating demand quality issues, budget overruns, or policy non-compliance requiring investigation."
-    - name: "requisition_approval_rate"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN approval_status = 'Approved' THEN purchase_requisition_id END) / NULLIF(COUNT(DISTINCT purchase_requisition_id), 0), 2)
-      comment: "Percentage of requisitions approved on first submission, a governance efficiency KPI. Low rates indicate policy gaps or budget misalignment."
-    - name: "avg_estimated_unit_price"
-      expr: AVG(CAST(estimated_unit_price AS DOUBLE))
-      comment: "Average estimated unit price across requisitions, used for price benchmarking and early detection of cost inflation in demand."
-    - name: "sustainable_requisition_count"
-      expr: COUNT(DISTINCT CASE WHEN sustainability_flag = TRUE THEN purchase_requisition_id END)
-      comment: "Number of requisitions with sustainability requirements, tracking ESG procurement policy adoption across the organization."
-    - name: "urgent_requisition_count"
-      expr: COUNT(DISTINCT CASE WHEN priority = 'Urgent' THEN purchase_requisition_id END)
-      comment: "Number of urgent priority requisitions, a leading indicator of supply planning failures and emergency procurement costs."
+      comment: "Number of distinct purchase requisitions"
+    - name: "avg_requisition_value"
+      expr: AVG(CAST(estimated_total_value AS DOUBLE))
+      comment: "Average value per requisition"
+    - name: "avg_days_to_approval"
+      expr: AVG(DATEDIFF(approved_date, requested_date))
+      comment: "Average days from requisition to approval - procurement cycle efficiency metric"
+    - name: "avg_procurement_lead_time_days"
+      expr: AVG(DATEDIFF(required_delivery_date, requested_date))
+      comment: "Average procurement lead time - planning and responsiveness metric"
+    - name: "sustainability_requisition_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sustainability_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of requisitions with sustainability requirements - ESG metric"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_invoice_line`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_spend_category`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Invoice line-level KPIs covering invoiced spend, price and quantity variances, discount capture, and tax analysis. Enables finance and procurement to monitor AP accuracy, three-way match exceptions, and line-level cost control."
-  source: "`vibe_consumer_goods_v1`.`procurement`.`invoice_line`"
+  comment: "Category management KPIs tracking spend allocation, savings targets, and strategic sourcing effectiveness"
+  source: "`vibe_consumer_goods_v1`.`procurement`.`spend_category`"
   dimensions:
-    - name: "invoice_line_status"
-      expr: invoice_line_status
-      comment: "Current processing status of the invoice line for AP exception management and workflow tracking."
-    - name: "match_status"
-      expr: match_status
-      comment: "Match status of the invoice line against PO and goods receipt for three-way match compliance analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Invoice line currency for multi-currency AP analysis."
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax code applied to the invoice line for tax compliance and cost analysis."
-    - name: "payment_terms_code"
-      expr: payment_terms_code
-      comment: "Payment terms on the invoice line for early payment discount and DPO analysis."
-    - name: "country_of_origin"
-      expr: country_of_origin
-      comment: "Country of origin of the invoiced goods for trade compliance and import duty analysis."
-    - name: "blocking_reason"
-      expr: blocking_reason
-      comment: "Reason for invoice line payment block, used to identify and resolve AP processing bottlenecks."
-    - name: "sustainability_certification"
-      expr: sustainability_certification
-      comment: "Sustainability certification on the invoice line for ESG spend compliance tracking."
+    - name: "category_name"
+      expr: category_name
+      comment: "Name of the spend category"
+    - name: "category_code"
+      expr: category_code
+      comment: "Code identifying the spend category"
+    - name: "category_level"
+      expr: category_level
+      comment: "Hierarchical level of the category (e.g., L1, L2, L3)"
+    - name: "category_status"
+      expr: category_status
+      comment: "Status of the spend category (e.g., active, inactive)"
+    - name: "commodity_type"
+      expr: commodity_type
+      comment: "Type of commodity within the category"
+    - name: "strategic_importance"
+      expr: strategic_importance
+      comment: "Strategic importance classification of the category"
+    - name: "risk_profile"
+      expr: risk_profile
+      comment: "Risk profile assessment of the category"
+    - name: "preferred_sourcing_strategy"
+      expr: preferred_sourcing_strategy
+      comment: "Preferred sourcing strategy for the category"
+    - name: "sustainable_sourcing_flag"
+      expr: sustainable_sourcing_flag
+      comment: "Flag indicating sustainable sourcing requirements"
+    - name: "procurement_organization"
+      expr: procurement_organization
+      comment: "Procurement organization managing the category"
   measures:
-    - name: "total_invoiced_amount"
-      expr: SUM(CAST(line_amount AS DOUBLE))
-      comment: "Total invoiced amount at line level, the most granular AP spend KPI for category and material cost analysis."
-    - name: "total_net_invoiced_amount"
-      expr: SUM(CAST(line_net_amount AS DOUBLE))
-      comment: "Total net invoiced amount after discounts at line level, representing actual cost for margin and profitability analysis."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(line_tax_amount AS DOUBLE))
-      comment: "Total tax amount at invoice line level for tax liability reporting and compliance."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount amount captured at invoice line level, measuring early payment discount optimization."
-    - name: "total_price_variance"
-      expr: SUM(CAST(price_variance AS DOUBLE))
-      comment: "Total price variance between invoiced price and PO price, a key AP accuracy KPI. Large variances indicate pricing disputes or contract non-compliance."
-    - name: "total_quantity_variance"
-      expr: SUM(CAST(quantity_variance AS DOUBLE))
-      comment: "Total quantity variance between invoiced and received quantities, indicating billing accuracy and goods receipt discrepancies."
-    - name: "total_amount_variance"
-      expr: SUM(CAST(amount_variance AS DOUBLE))
-      comment: "Total monetary variance on invoice lines, used to quantify AP exception exposure and prioritize resolution efforts."
-    - name: "total_invoiced_quantity"
-      expr: SUM(CAST(invoiced_quantity AS DOUBLE))
-      comment: "Total quantity invoiced at line level for volume reconciliation against purchase orders and goods receipts."
-    - name: "invoice_line_count"
-      expr: COUNT(DISTINCT invoice_line_id)
-      comment: "Total number of invoice lines processed, used to measure AP processing complexity and workload."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across invoice lines, used for price benchmarking and detection of price drift from contracted rates."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`procurement_approved_supplier_list`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Approved Supplier List (ASL) KPIs covering supplier qualification coverage, preference rankings, compliance status, and audit health. Enables procurement and quality teams to manage sourcing eligibility, supplier qualification expiry risk, and sustainability compliance."
-  source: "`vibe_consumer_goods_v1`.`procurement`.`approved_supplier_list`"
-  dimensions:
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the ASL entry (e.g. Approved, Pending, Rejected) for supplier qualification pipeline management."
-    - name: "approved_supplier_list_status"
-      expr: approved_supplier_list_status
-      comment: "Operational status of the ASL record for sourcing eligibility and compliance tracking."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Compliance status of the approved supplier entry for regulatory and quality compliance monitoring."
-    - name: "qualification_level"
-      expr: qualification_level
-      comment: "Qualification tier of the supplier on the ASL (e.g. Preferred, Approved, Conditional) for sourcing strategy analysis."
-    - name: "risk_category"
-      expr: risk_category
-      comment: "Risk category assigned to the ASL entry for supply chain risk management and mitigation prioritization."
-    - name: "quality_rating"
-      expr: quality_rating
-      comment: "Quality performance rating of the supplier on the ASL for supplier scorecard and selection decisions."
-    - name: "delivery_rating"
-      expr: delivery_rating
-      comment: "Delivery performance rating of the supplier on the ASL for on-time delivery analysis and supplier selection."
-    - name: "preferred_supplier_flag"
-      expr: preferred_supplier_flag
-      comment: "Flag indicating whether the supplier is preferred for this material/facility combination, used for sourcing strategy analysis."
-    - name: "sole_source_flag"
-      expr: sole_source_flag
-      comment: "Flag indicating sole-source supply arrangements, a critical supply chain concentration risk indicator."
-    - name: "sustainability_certification"
-      expr: sustainability_certification
-      comment: "Sustainability certification of the ASL entry for ESG sourcing compliance tracking."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the ASL pricing for multi-currency sourcing analysis."
-    - name: "approval_month"
-      expr: DATE_TRUNC('month', approval_date)
-      comment: "Month of ASL approval for qualification trend analysis and supplier onboarding velocity tracking."
-    - name: "expiry_month"
-      expr: DATE_TRUNC('month', expiry_date)
-      comment: "Month of ASL entry expiry for qualification renewal risk monitoring."
-  measures:
-    - name: "approved_supplier_entry_count"
-      expr: COUNT(DISTINCT CASE WHEN approval_status = 'Approved' THEN approved_supplier_list_id END)
-      comment: "Number of active approved supplier entries on the ASL, measuring the breadth of qualified sourcing options available."
-    - name: "total_asl_entry_count"
-      expr: COUNT(DISTINCT approved_supplier_list_id)
-      comment: "Total number of ASL entries across all statuses, used as the denominator for approval rate and compliance rate calculations."
-    - name: "preferred_supplier_count"
-      expr: COUNT(DISTINCT CASE WHEN preferred_supplier_flag = TRUE THEN approved_supplier_list_id END)
-      comment: "Number of preferred supplier designations on the ASL, tracking strategic sourcing concentration and preferred supplier utilization."
-    - name: "sole_source_count"
-      expr: COUNT(DISTINCT CASE WHEN sole_source_flag = TRUE THEN approved_supplier_list_id END)
-      comment: "Number of sole-source supplier arrangements, a critical supply chain concentration risk KPI requiring executive attention and dual-sourcing strategy."
-    - name: "expiring_asl_count"
-      expr: COUNT(DISTINCT CASE WHEN expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN approved_supplier_list_id END)
-      comment: "Number of ASL entries expiring within 90 days, a supply continuity risk KPI requiring proactive re-qualification to avoid sourcing disruption."
-    - name: "total_asl_amount"
-      expr: SUM(CAST(amount AS DOUBLE))
-      comment: "Total contracted amount across ASL entries, representing the financial value of approved sourcing arrangements."
-    - name: "avg_moq_quantity"
-      expr: AVG(CAST(moq_quantity AS DOUBLE))
-      comment: "Average minimum order quantity across ASL entries, used for inventory planning and order consolidation strategy."
-    - name: "sustainable_asl_count"
-      expr: COUNT(DISTINCT CASE WHEN sustainability_certification IS NOT NULL THEN approved_supplier_list_id END)
-      comment: "Number of ASL entries with sustainability certifications, tracking ESG sourcing compliance across the approved supplier base."
-    - name: "vmi_eligible_asl_count"
-      expr: COUNT(DISTINCT CASE WHEN vmi_eligible_flag = TRUE THEN approved_supplier_list_id END)
-      comment: "Number of ASL entries eligible for Vendor Managed Inventory, tracking adoption potential of advanced replenishment strategies."
+    - name: "total_annual_budget"
+      expr: SUM(CAST(annual_spend_budget_amount AS DOUBLE))
+      comment: "Total annual spend budget across all categories - strategic spend planning metric"
+    - name: "category_count"
+      expr: COUNT(DISTINCT spend_category_id)
+      comment: "Number of distinct spend categories"
+    - name: "avg_category_budget"
+      expr: AVG(CAST(annual_spend_budget_amount AS DOUBLE))
+      comment: "Average annual budget per category"
+    - name: "avg_contract_coverage_pct"
+      expr: AVG(CAST(contract_coverage_percentage AS DOUBLE))
+      comment: "Average contract coverage percentage - measures spend under contract"
+    - name: "avg_savings_target_pct"
+      expr: AVG(CAST(cost_savings_target_percentage AS DOUBLE))
+      comment: "Average cost savings target percentage - strategic procurement goal metric"
+    - name: "sustainable_category_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sustainable_sourcing_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of categories with sustainable sourcing requirements - ESG strategy metric"
 $$;

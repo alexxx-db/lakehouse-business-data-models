@@ -1,204 +1,261 @@
 -- Schema for Domain: design | Business: Semiconductors | Version: v2_mvm
--- Generated on: 2026-06-27 11:13:59
+-- Generated on: 2026-07-10 14:04:02
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`design` COMMENT 'IC design and architecture lifecycle from RTL specification through GDS/GDSII tapeout. Manages IP cores, PDK libraries, EDA tool flows, DFM and DFT rule sets, logic synthesis, physical design, timing closure data, and MPW shuttle assignments. Integrates with Cadence Virtuoso, Synopsys Design Compiler, and PrimeTime for design data provenance.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` (
-    `ic_design_project_id` BIGINT COMMENT 'Primary key',
-    `account_id` BIGINT COMMENT 'FK to customer account',
-    `ic_catalog_id` BIGINT COMMENT 'FK to product ic catalog',
-    `nda_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.nda_agreement. Business justification: NDA compliance tracking: semiconductor design projects share PDK, IP, and design data under a specific customer NDA. Export control and IP protection audits require knowing which NDA governs each desi',
-    `pdk_id` BIGINT COMMENT 'FK to design pdk',
-    `block_count` STRING COMMENT 'Number of design blocks',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `design_phase` STRING COMMENT 'Current design phase',
-    `design_type` STRING COMMENT 'Type of IC design',
-    `dfm_rule_set_version` STRING COMMENT 'The dfm rule set version of the ic design project record in the design domain.',
-    `dft_enabled` BOOLEAN COMMENT 'DFT enabled flag',
-    `eda_tool_suite` STRING COMMENT 'EDA tool suite name',
-    `eda_tool_version` STRING COMMENT 'The eda tool version of the ic design project record in the design domain.',
-    `export_control_classification` STRING COMMENT 'The export control classification of the ic design project record in the design domain.',
-    `gate_count_target_k` DECIMAL(18,2) COMMENT 'Target gate count in thousands',
-    `gds_file_path` STRING COMMENT 'File system or storage gds file path for the ic design project design record.',
-    `iatf_automotive_grade` BOOLEAN COMMENT 'IATF automotive grade flag',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `lithography_type` STRING COMMENT 'The lithography type of the ic design project record in the design domain.',
-    `metal_layer_count` STRING COMMENT 'Number of metal layers',
-    `nre_actual_spend_usd` DECIMAL(18,2) COMMENT 'Actual NRE spend in USD',
-    `nre_budget_usd` DECIMAL(18,2) COMMENT 'NRE budget in USD',
-    `packaging_type` STRING COMMENT 'The packaging type of the ic design project record in the design domain.',
-    `pdk_version` STRING COMMENT 'The pdk version of the ic design project record in the design domain.',
-    `plm_item_reference` STRING COMMENT 'The plm item reference of the ic design project record in the design domain.',
-    `process_node_nm` STRING COMMENT 'Process node in nm',
-    `project_code` STRING COMMENT 'Coded value representing the project code of the ic design project design record.',
-    `project_description` STRING COMMENT 'The project description of the ic design project record in the design domain.',
-    `project_name` STRING COMMENT 'The project name of the ic design project record in the design domain.',
-    `project_start_date` DATE COMMENT 'The project start date associated with the ic design project design record.',
-    `project_status` STRING COMMENT 'The project status of the ic design project record in the design domain.',
-    `reach_svhc_assessed` BOOLEAN COMMENT 'REACH SVHC assessed flag',
-    `revision` STRING COMMENT 'Revision identifier',
-    `rohs_compliant` BOOLEAN COMMENT 'RoHS compliant flag',
-    `rtl_freeze_date` DATE COMMENT 'The rtl freeze date associated with the ic design project design record.',
-    `sap_wbs_element` STRING COMMENT 'The sap wbs element of the ic design project record in the design domain.',
-    `tapeout_actual_date` DATE COMMENT 'Actual tapeout date',
-    `tapeout_target_date` DATE COMMENT 'Target tapeout date',
-    `target_clock_freq_mhz` DECIMAL(18,2) COMMENT 'Target clock frequency in MHz',
-    `target_die_area_mm2` DECIMAL(18,2) COMMENT 'Target die area in mm2',
-    `target_power_budget_mw` DECIMAL(18,2) COMMENT 'Target power budget in mW',
-    `tsv_required` BOOLEAN COMMENT 'TSV required flag',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the ic design project record in the design domain.',
+    `ic_design_project_id` BIGINT COMMENT 'Unique surrogate identifier for the IC design project record in the Databricks Silver Layer. Primary key for all downstream joins and lineage tracking.',
+    `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Required for project accounting and billing reports linking each design project to the commissioning customer account.',
+    `eda_tool_id` BIGINT COMMENT 'Foreign key linking to design.eda_tool. Business justification: ic_design_project has eda_tool_suite (STRING) and eda_tool_version (STRING) as denormalized EDA tool suite references — the primary EDA tool suite governing the design flow (e.g., Synopsys Design Comp',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Program Management Dashboard requires linking each design project to its originating R&D program for reporting and budget tracking.',
+    `flow_id` BIGINT COMMENT 'Identifier of the foundry-specific Process Design Kit (PDK) used for this project (e.g., TSMC N5P, Samsung SF3E). Links to the PDK library version in the EDA tool environment and governs all DRC/LVS rule sets.',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: Foundry selection contract for each design project; required for manufacturing cost tracking and compliance.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Required for Product Lifecycle Management: design project outcome is recorded as a catalog entry for sales, production planning, and compliance reporting.',
+    `nda_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.nda_agreement. Business justification: Semiconductor design engagements require an active NDA before sharing PDK details, IP, and process information with the customer. Legal and compliance teams track which NDA governs each design project',
+    `pdk_id` BIGINT COMMENT 'FK to design.pdk.pdk_id — Every IC design project targets a specific PDK version. This determines all design rules, standard cells, and device models available. Fundamental design constraint.',
+    `block_count` STRING COMMENT 'Number of top-level hierarchical design blocks (partitions) in the IC design. Reflects the block decomposition strategy used for parallel design team assignments and hierarchical physical design in Cadence Innovus.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the IC design project record was first created in the system of record (Siemens Teamcenter PLM or Oracle Agile PLM), propagated to the Databricks Silver Layer. Supports audit trail and data lineage requirements.',
+    `design_phase` STRING COMMENT 'Indicates the primary fabrication phase scope of the design: Front End of Line (FEOL), Middle of Line (MOL), Back End of Line (BEOL), or full-flow. Governs which process modules and DFM rules are active.. Valid values are `FEOL|BEOL|MOL|full_flow`',
+    `design_type` STRING COMMENT 'Classification of the integrated circuit design type. Drives NRE cost structure, EDA tool selection, and tapeout process. [ENUM-REF-CANDIDATE: ASIC|SoC|FPGA|ASSP|MCU|GPU|DSP|RFIC|MEMS|Analog — promote to reference product if additional types are needed]. Valid values are `ASIC|SoC|FPGA|ASSP|MCU|GPU`',
+    `dfm_rule_set_version` STRING COMMENT 'Version identifier of the Design for Manufacturability (DFM) rule set applied to this project. Governs OPC recipe selection, MEEF corrections, and yield-enhancement layout guidelines provided by the foundry PDK.',
+    `dft_enabled` BOOLEAN COMMENT 'Indicates whether Design for Testability (DFT) structures (scan chains, BIST, boundary scan) are included in this design. Drives ATPG flow activation, ATE program generation, and KGD qualification planning.',
+    `export_control_classification` STRING COMMENT 'Export control classification of the IC design project under US Export Administration Regulations (EAR) or International Traffic in Arms Regulations (ITAR). Governs technology transfer restrictions, foreign national access controls, and license requirements. [ENUM-REF-CANDIDATE: EAR99|ECCN_3E001|ECCN_3E002|ECCN_3E003|ITAR|no_restriction — promote to reference product]. Valid values are `EAR99|ECCN_3E001|ECCN_3E002|ITAR|no_restriction`',
+    `gate_count_target_k` DECIMAL(18,2) COMMENT 'Target logic gate count in thousands of equivalent gates (Kilo-Gates) for the design. Used for complexity estimation, EDA tool capacity planning, and synthesis runtime forecasting in Synopsys Design Compiler.',
+    `gds_file_path` STRING COMMENT 'Storage path or URI of the final GDS/GDSII design database file submitted for tapeout. Provides traceability to the authoritative design artifact in the EDA data management system.',
+    `iatf_automotive_grade` BOOLEAN COMMENT 'Indicates whether this IC design project targets automotive-grade qualification per IATF 16949 and AEC-Q100/Q101 standards. Triggers additional FMEA, reliability testing, and DPPM requirements in the quality management workflow.',
+    `ip_core_count` STRING COMMENT 'Total number of licensed or internally developed Intellectual Property (IP) cores integrated into this IC design project. Drives IP license cost tracking, third-party IP compliance review, and BOM management in Oracle Agile PLM.',
+    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the IC design project record in the source system of record. Used for incremental data pipeline processing, change detection, and audit compliance.',
+    `lithography_type` STRING COMMENT 'Primary lithography technology used for critical layer patterning: Extreme Ultraviolet (EUV), Deep Ultraviolet (DUV), multi-patterning DUV, or nanoimprint. Impacts mask cost, OPC complexity, and MEEF considerations.. Valid values are `EUV|DUV|multi_patterning|nanoimprint`',
+    `metal_layer_count` STRING COMMENT 'Number of metal interconnect layers in the BEOL stack for this design. Determines routing resource availability, RC parasitics, and mask set cost. Specified in the PDK and foundry process design rules.',
+    `nre_actual_spend_usd` DECIMAL(18,2) COMMENT 'Cumulative actual NRE expenditure incurred to date for the IC design project in US dollars, as recorded in SAP S/4HANA FI/CO. Compared against nre_budget_usd for variance analysis and financial reporting.',
+    `nre_budget_usd` DECIMAL(18,2) COMMENT 'Total approved Non-Recurring Engineering (NRE) budget for the IC design project in US dollars. Covers EDA tool licensing, mask set costs, engineering labor, and MPW shuttle fees. Managed in SAP S/4HANA CO cost center planning.',
+    `packaging_type` STRING COMMENT 'Target die packaging technology for this IC design project (e.g., WLCSP, BGA, CoWoS, InFO, flip-chip). Influences die size constraints, I/O pad ring design, and OSAT partner selection. [ENUM-REF-CANDIDATE: WLCSP|BGA|QFN|CoWoS|InFO|flip_chip|TSV|SiP|LGA — promote to reference product]. Valid values are `WLCSP|BGA|QFN|CoWoS|InFO|flip_chip`',
+    `pdk_version` STRING COMMENT 'Version of the Process Design Kit (PDK) certified for use in this IC design project. Ensures reproducibility of design rule checks (DRC), layout versus schematic (LVS) verification, and parasitic extraction across the design lifecycle.. Valid values are `^v[0-9]+.[0-9]+(.[0-9]+)?$`',
+    `plm_item_reference` STRING COMMENT 'Native item/object identifier in Siemens Teamcenter PLM or Oracle Agile PLM for this IC design project. Enables bidirectional traceability between the Databricks Silver Layer and the authoritative PLM system of record.',
+    `process_node_nm` STRING COMMENT 'Target semiconductor fabrication process node in nanometers (e.g., 5nm, 7nm, 28nm). Determines PDK selection, EDA tool configuration, DFM rule sets, and foundry partner assignment. Critical for PPA target-setting and yield estimation.. Valid values are `^[0-9]+(nm|N)$`',
+    `project_code` STRING COMMENT 'Externally-known alphanumeric project identifier assigned at project initiation in Siemens Teamcenter PLM and Oracle Agile PLM. Used across EDA tool flows, NRE contracts, and cross-functional communications as the canonical project reference.. Valid values are `^[A-Z0-9_-]{3,30}$`',
+    `project_description` STRING COMMENT 'Free-text description of the IC design project scope, target application domain (e.g., AI accelerator, automotive MCU, IoT SoC), and key design objectives. Supports search, discovery, and executive reporting.',
+    `project_name` STRING COMMENT 'Human-readable name of the IC design project (e.g., Orion SoC Rev2). Used in PLM dashboards, design reviews, and executive reporting.',
+    `project_start_date` DATE COMMENT 'Official start date of the IC design project, corresponding to project kick-off and initial resource allocation in Siemens Teamcenter PLM and SAP S/4HANA CO.',
+    `project_status` STRING COMMENT 'Current lifecycle state of the IC design project from concept through GDS/GDSII tapeout. Drives milestone tracking, resource allocation, and PLM workflow gates. [ENUM-REF-CANDIDATE: concept|rtl_design|synthesis|physical_design|verification|tapeout|post_tapeout|cancelled — promote to reference product]. Valid values are `concept|rtl_design|synthesis|physical_design|tapeout|cancelled`',
+    `reach_svhc_assessed` BOOLEAN COMMENT 'Indicates whether a REACH Substances of Very High Concern (SVHC) assessment has been completed for materials used in this IC design and packaging. Required for EU chemical safety compliance and customer disclosure obligations.',
+    `revision` STRING COMMENT 'Design revision identifier (e.g., A, B1, C) tracking major design iterations managed through Oracle Agile PLM change control. Incremented upon significant design changes, ECO incorporation, or re-tapeout events.. Valid values are `^[A-Z][0-9]?$`',
+    `rohs_compliant` BOOLEAN COMMENT 'Indicates whether the IC design and associated packaging materials comply with the EU RoHS Directive (2011/65/EU) restricting hazardous substances. Required for EU market access and customer compliance declarations.',
+    `rtl_freeze_date` DATE COMMENT 'Planned or actual date on which the Register Transfer Level (RTL) specification is frozen and handed off to logic synthesis. A key milestone in the IC design schedule tracked in Siemens Teamcenter PLM.',
+    `sap_wbs_element` STRING COMMENT 'SAP S/4HANA CO Work Breakdown Structure (WBS) element code assigned to this IC design project for NRE cost collection, budget tracking, and financial reporting under SOX controls.. Valid values are `^[A-Z0-9.-]{3,40}$`',
+    `tapeout_actual_date` DATE COMMENT 'Actual date on which the final GDS/GDSII design database was submitted to the foundry for mask generation. Compared against tapeout_target_date to measure schedule adherence and Time to Market (TTM) performance.',
+    `tapeout_target_date` DATE COMMENT 'Planned date for final GDS/GDSII tapeout submission to the foundry. Drives the master project schedule, NRE milestone payments, and MPW shuttle slot reservations.',
+    `target_clock_freq_mhz` DECIMAL(18,2) COMMENT 'Target operating clock frequency in megahertz (MHz) as defined in the Power Performance Area (PPA) specification. Used by Synopsys Design Compiler and PrimeTime for timing closure constraints and sign-off.',
+    `target_die_area_mm2` DECIMAL(18,2) COMMENT 'Target silicon die area in square millimeters (mm²) as defined in the PPA specification. Constrains floorplanning, block partitioning, and IP core placement in Cadence Innovus physical design flow.',
+    `target_power_budget_mw` DECIMAL(18,2) COMMENT 'Maximum allowable total power consumption in milliwatts (mW) as specified in the PPA targets. Drives power-aware synthesis, clock gating strategies, and multi-voltage domain planning in Cadence Innovus and Synopsys Design Compiler.',
+    `tsv_required` BOOLEAN COMMENT 'Indicates whether Through-Silicon Via (TSV) interconnects are required for 3D stacking or advanced packaging (e.g., CoWoS, HBM integration). Triggers specialized process module planning and OSAT coordination.',
     CONSTRAINT pk_ic_design_project PRIMARY KEY(`ic_design_project_id`)
 ) COMMENT 'Master record for an IC design project lifecycle from RTL specification through GDS/GDSII tapeout. Captures project identity, target process node, design type (ASIC, SoC, FPGA), PPA targets (power budget, clock frequency, die area), tapeout milestone dates, NRE budget, design team assignments, EDA tool suite version, hierarchical block decomposition, and PLM integration references. SSOT for all design project metadata including block-level partitioning. Managed in Siemens Teamcenter PLM and Oracle Agile PLM.';
 
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`ip_core` (
-    `ip_core_id` BIGINT COMMENT 'Primary key',
-    `pdk_id` BIGINT COMMENT 'FK to design PDK',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: IP qualification matrix: semiconductor engineers track which IP cores are qualified for each process node to enable IP reuse decisions. This is a standard deliverable in PDK/IP qualification workflows',
-    `area_um2` DECIMAL(18,2) COMMENT 'Area in um2',
-    `ip_core_code` STRING COMMENT 'Coded value representing the ip core code of the design ip core design record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `datasheet_url` STRING COMMENT 'The datasheet url of the design ip core record in the design domain.',
-    `dfm_compliant` BOOLEAN COMMENT 'DFM compliant flag',
-    `dft_compliant` BOOLEAN COMMENT 'DFT compliant flag',
-    `eda_tool_compatibility` STRING COMMENT 'The eda tool compatibility of the design ip core record in the design domain.',
-    `export_control_classification` STRING COMMENT 'The export control classification of the design ip core record in the design domain.',
-    `foundry_compatibility` STRING COMMENT 'The foundry compatibility of the design ip core record in the design domain.',
-    `function_category` STRING COMMENT 'The function category of the design ip core record in the design domain.',
-    `functional_description` STRING COMMENT 'The functional description of the design ip core record in the design domain.',
-    `gate_count` BIGINT COMMENT 'The gate count of the design ip core record in the design domain.',
-    `gds_available` BOOLEAN COMMENT 'GDS available flag',
-    `interface_standard` STRING COMMENT 'The interface standard of the design ip core record in the design domain.',
-    `ip_type` STRING COMMENT 'The ip type of the design ip core record in the design domain.',
-    `lef_available` BOOLEAN COMMENT 'LEF available flag',
-    `license_expiry_date` DATE COMMENT 'The license expiry date associated with the design ip core design record.',
-    `license_fee_usd` DECIMAL(18,2) COMMENT 'License fee in USD',
-    `license_type` STRING COMMENT 'The license type of the design ip core record in the design domain.',
-    `lifecycle_status` STRING COMMENT 'The lifecycle status of the design ip core record in the design domain.',
-    `max_frequency_mhz` DECIMAL(18,2) COMMENT 'Max frequency in MHz',
-    `mpw_eligible` BOOLEAN COMMENT 'MPW eligible flag',
-    `ip_core_name` STRING COMMENT 'IP core name',
-    `nda_required` BOOLEAN COMMENT 'NDA required flag',
-    `power_uw` DECIMAL(18,2) COMMENT 'Power in uW',
-    `qualification_status` STRING COMMENT 'The qualification status of the design ip core record in the design domain.',
-    `release_date` DATE COMMENT 'The release date associated with the design ip core design record.',
-    `rohs_compliant` BOOLEAN COMMENT 'RoHS compliant flag',
-    `royalty_rate_pct` DECIMAL(18,2) COMMENT 'Royalty rate percentage',
-    `rtl_language` STRING COMMENT 'The rtl language of the design ip core record in the design domain.',
-    `scan_coverage_pct` DECIMAL(18,2) COMMENT 'Scan coverage percentage',
-    `silicon_proven` BOOLEAN COMMENT 'Silicon proven flag',
-    `silicon_proven_date` DATE COMMENT 'The silicon proven date associated with the design ip core design record.',
-    `source_type` STRING COMMENT 'The source type of the design ip core record in the design domain.',
-    `support_tier` STRING COMMENT 'The support tier of the design ip core record in the design domain.',
-    `timing_model_available` BOOLEAN COMMENT 'Timing model available flag',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the design ip core record in the design domain.',
-    `vendor_name` STRING COMMENT 'The vendor name of the design ip core record in the design domain.',
-    `vendor_part_number` STRING COMMENT 'The vendor part number of the design ip core record in the design domain.',
-    `version` STRING COMMENT 'Version or revision identifier of the design ip core design record.',
-    CONSTRAINT pk_ip_core PRIMARY KEY(`ip_core_id`)
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` (
+    `design_ip_core_id` BIGINT COMMENT 'Unique surrogate identifier for each IP core record in the master catalog. Primary key for the ip_core data product.',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Licensed IP cores (GDS, LEF, timing models) are procured deliverables tracked as material masters for compliance (RoHS, REACH), shelf-life, and procurement cost management. This link enables IP procur',
+    `pdk_id` BIGINT COMMENT 'Foreign key linking to design.pdk. Business justification: An IP core is defined for a specific Process Design Kit; linking ip_core to pdk eliminates redundant version fields and enables direct lookup of process details.',
+    `product_ip_core_id` BIGINT COMMENT 'Foreign key linking to product.product_ip_core. Business justification: Needed for IP commercialization tracking: links each designed IP core to its product record for royalty, licensing, and revenue reporting.',
+    `rtl_specification_id` BIGINT COMMENT 'Foreign key linking to design.rtl_specification. Business justification: A design_ip_core is a reusable IP block that has an authoritative RTL specification defining its functional hardware description. The rtl_specification product captures the HDL source, interface proto',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: IP core licensing vendor relationship; needed for royalty tracking, compliance, and supplier risk assessment.',
+    `area_um2` DECIMAL(18,2) COMMENT 'Physical silicon area occupied by the IP core in square micrometers (µm²) for the characterized process node. Part of the PPA characterization data used for die size estimation and floorplanning in Cadence Innovus.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this IP core record was first created in the master catalog (yyyy-MM-ddTHH:mm:ss.SSSXXX). Provides audit trail for data governance and lineage tracking in the Databricks Silver Layer.',
+    `datasheet_url` STRING COMMENT 'URL link to the official IP core datasheet or technical reference manual stored in the PLM document management system or vendor portal. Provides design teams with access to integration guidelines, timing specifications, and interface documentation.. Valid values are `^https?://.+$`',
+    `dfm_compliant` BOOLEAN COMMENT 'Indicates whether the IP core has passed Design for Manufacturability (DFM) rule checks for the target process node (True = DFM-compliant; False = DFM issues present or not checked). DFM compliance reduces yield risk during wafer fabrication.',
+    `dft_compliant` BOOLEAN COMMENT 'Indicates whether the IP core includes Design for Testability (DFT) structures (scan chains, BIST, boundary scan) compliant with the projects DFT architecture (True = DFT-compliant; False = not compliant or not applicable). Affects ATPG test coverage and ATE test time.',
+    `eda_tool_compatibility` STRING COMMENT 'Comma-separated list of EDA tools and versions with which this IP core has been validated (e.g., Cadence Virtuoso 23.1, Synopsys DC 2023.03, Cadence Innovus 22.1). Ensures design teams select compatible tool versions for integration.',
+    `export_control_classification` STRING COMMENT 'Export control classification of the IP core under US Export Administration Regulations (EAR) or International Traffic in Arms Regulations (ITAR). Determines licensing requirements for cross-border IP transfers and design collaboration with foreign nationals. EAR99 = no license required; ECCN codes require BIS license review; ITAR_controlled = State Dept. license required.. Valid values are `EAR99|ECCN_3E001|ECCN_3E002|ECCN_3E003|ITAR_controlled`',
+    `foundry_compatibility` STRING COMMENT 'Comma-separated list of semiconductor foundries for which this IP core has been qualified and is available (e.g., TSMC, Samsung, GlobalFoundries). Determines which fabrication facilities can manufacture designs incorporating this IP.',
+    `function_category` STRING COMMENT 'Functional classification of the IP core indicating its primary design purpose (e.g., CPU, GPU, NPU, SerDes, PHY, memory_controller, analog, RF, security, interconnect, IO). Used for IP portfolio management and design-in selection. [ENUM-REF-CANDIDATE: CPU|GPU|NPU|SerDes|PHY|memory_controller|analog|RF|security|interconnect|IO|other — promote to reference product]',
+    `functional_description` STRING COMMENT 'Detailed technical description of the IP cores functionality, architecture, and key features as documented in the IP datasheet. Provides design engineers with the information needed to evaluate IP suitability for a given SoC design.',
+    `gate_count` BIGINT COMMENT 'Equivalent gate count of the IP core representing its logic complexity, expressed in number of 2-input NAND gate equivalents. Used for die area estimation, synthesis resource planning, and complexity benchmarking in Synopsys Design Compiler.',
+    `gds_available` BOOLEAN COMMENT 'Indicates whether a GDSII (Graphic Data System II) physical layout file is available for this IP core (True = GDSII provided; False = not available). GDSII availability is required for hard macro integration and tapeout submission.',
+    `interface_standard` STRING COMMENT 'Industry interface protocol standards supported by this IP core (e.g., AMBA AXI4, PCIe Gen5, USB 3.2, DDR5, MIPI CSI-2). Ensures interoperability with SoC interconnect fabric and system-level integration. [ENUM-REF-CANDIDATE: AMBA_AXI4|PCIe_Gen5|USB3.2|DDR5|MIPI_CSI2|Ethernet|CAN|I2C|SPI|other — promote to reference product]',
+    `ip_core_code` STRING COMMENT 'Externally-known unique alphanumeric code identifying the IP core in the internal IP library and vendor catalogs (e.g., ARM Cortex-A55, SNPS-PCIE-GEN5). Used as the business key across EDA tool flows, PLM, and design project references.. Valid values are `^[A-Z0-9_-]{3,30}$`',
+    `ip_type` STRING COMMENT 'Classification of the IP core by its delivery form: hard_macro (fixed physical layout, process-specific GDS), soft_ip (synthesizable RTL, process-portable), or firm_ip (partially optimized netlist, semi-portable). Determines integration methodology and EDA tool flow requirements.. Valid values are `hard_macro|soft_ip|firm_ip`',
+    `lef_available` BOOLEAN COMMENT 'Indicates whether a Library Exchange Format (LEF) abstract view is available for this IP core (True = LEF provided; False = not available). LEF files are required for place-and-route integration in Cadence Innovus and Synopsys IC Compiler.',
+    `license_expiry_date` DATE COMMENT 'Date on which the IP core license agreement expires or must be renewed. Null for perpetual licenses. Critical for license renewal planning and ensuring design projects do not use expired IP licenses.',
+    `license_fee_usd` DECIMAL(18,2) COMMENT 'One-time or annual license fee paid to the IP vendor in US Dollars (USD). Represents the NRE or access cost component of the IP licensing agreement. Null for open-source or internally developed IP.',
+    `license_type` STRING COMMENT 'Type of licensing arrangement governing use of this IP core: perpetual (one-time fee, unlimited use), subscription (time-limited access), royalty_bearing (per-unit royalty on shipped products), royalty_free (no per-unit royalty after license fee), open_source (governed by open-source license terms). Drives financial planning and legal compliance.. Valid values are `perpetual|subscription|royalty_bearing|royalty_free|open_source`',
+    `lifecycle_status` STRING COMMENT 'Current lifecycle state of the IP core in the catalog: active (available for new designs), deprecated (supported but not recommended for new designs), obsolete (no longer supported), under_development (not yet released), qualification (in silicon validation). Drives IP selection eligibility and EOL planning.. Valid values are `active|deprecated|obsolete|under_development|qualification`',
+    `max_frequency_mhz` DECIMAL(18,2) COMMENT 'Maximum achievable operating frequency of the IP core in megahertz (MHz) at the characterized process corner (typical/worst-case) for the target process node. Part of the PPA characterization data used for timing closure planning in Synopsys Design Compiler and PrimeTime.',
+    `mpw_eligible` BOOLEAN COMMENT 'Indicates whether this IP core is eligible for inclusion in Multi-Project Wafer (MPW) shuttle runs for cost-effective silicon validation (True = MPW eligible; False = not eligible, e.g., due to NDA restrictions or hard macro size constraints).',
+    `design_ip_core_name` STRING COMMENT 'Human-readable name of the IP core as used in design documentation, EDA tool libraries, and vendor datasheets (e.g., Cortex-A55 CPU Cluster, DesignWare PCIe Gen5 Controller).',
+    `nda_required` BOOLEAN COMMENT 'Indicates whether a Non-Disclosure Agreement (NDA) must be in place before design teams can access the IP core documentation, RTL source, or GDSII files (True = NDA required; False = no NDA required). Governs IP access control and legal compliance.',
+    `power_uw` DECIMAL(18,2) COMMENT 'Characterized typical power consumption of the IP core in microwatts (µW) at the nominal operating voltage and frequency for the target process node. Part of the Power-Performance-Area (PPA) characterization data used for SoC power budget analysis.',
+    `qualification_status` STRING COMMENT 'Current qualification status of the IP core against the target process node and foundry: not_started, in_progress (characterization underway), qualified (passed all qualification criteria), failed (qualification failed, remediation required). Distinct from silicon_proven status.. Valid values are `not_started|in_progress|qualified|failed`',
+    `release_date` DATE COMMENT 'Date on which this version of the IP core was officially released and made available for design-in use in the internal IP library or vendor catalog. Used for version history tracking and design project planning.',
+    `rohs_compliant` BOOLEAN COMMENT 'Indicates whether the IP core and its associated physical implementation materials comply with the EU RoHS Directive restricting hazardous substances (True = RoHS compliant; False = non-compliant or not assessed). Required for products sold in the EU market.',
+    `royalty_rate_pct` DECIMAL(18,2) COMMENT 'Per-unit royalty rate expressed as a percentage of the net selling price of the end product incorporating this IP core. Applicable only for royalty_bearing license types. Used for royalty accrual and financial reporting in SAP S/4HANA.',
+    `rtl_language` STRING COMMENT 'Hardware description language used for the RTL source code of the IP core (Verilog, SystemVerilog, VHDL, or mixed). Relevant only for soft IP and firm IP types. Determines EDA tool compatibility and synthesis flow requirements.. Valid values are `Verilog|SystemVerilog|VHDL|mixed`',
+    `scan_coverage_pct` DECIMAL(18,2) COMMENT 'Percentage of internal logic nodes covered by scan-based DFT test structures, as reported by ATPG tools. Higher coverage reduces DPPM risk. Null if DFT is not applicable (e.g., analog IP).',
+    `silicon_proven` BOOLEAN COMMENT 'Indicates whether this IP core has been successfully validated in a fabricated silicon device (True = silicon-proven; False = simulation-only or pre-silicon). Silicon-proven status is a critical risk factor in IP selection for production designs.',
+    `silicon_proven_date` DATE COMMENT 'Date on which the IP core achieved silicon-proven status through successful tape-out and functional validation in fabricated silicon. Null if not yet silicon-proven.',
+    `source_type` STRING COMMENT 'Indicates whether the IP core originates from the internal IP development team, a third-party vendor (e.g., ARM, Synopsys DesignWare, Cadence Tensilica), or an open-source library. Determines licensing obligations, support model, and NRE cost applicability.. Valid values are `internal|third_party|open_source`',
+    `support_tier` STRING COMMENT 'Level of technical support available for this IP core: standard (community/documentation support), premium (dedicated FAE support with SLA), end_of_support (no active support, use at own risk). Influences design-in risk assessment and vendor engagement planning.. Valid values are `standard|premium|end_of_support`',
+    `timing_model_available` BOOLEAN COMMENT 'Indicates whether Liberty (.lib) timing models are available for this IP core for static timing analysis (True = Liberty models provided; False = not available). Required for timing closure analysis in Synopsys PrimeTime and Cadence Tempus.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this IP core record was most recently modified in the master catalog (yyyy-MM-ddTHH:mm:ss.SSSXXX). Supports change tracking, data lineage, and incremental ETL processing in the Databricks Lakehouse.',
+    `vendor_name` STRING COMMENT 'Name of the third-party IP vendor or licensor (e.g., ARM Holdings, Synopsys, Cadence Design Systems, CEVA). Null for internally developed IP cores. Used for vendor management, license tracking, and procurement.',
+    `version` STRING COMMENT 'Version identifier of the IP core release following semantic versioning (e.g., 2.1.0, r0p4). Tracks revision history and ensures design projects reference the correct IP release.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$`',
+    CONSTRAINT pk_design_ip_core PRIMARY KEY(`design_ip_core_id`)
 ) COMMENT 'Master catalog of reusable Intellectual Property (IP) cores available for integration into IC designs. Tracks IP type (hard macro, soft IP, firm IP), function category (CPU, GPU, NPU, SerDes, PHY, memory controller, analog, RF), process node compatibility matrix, PPA characterization data, licensing terms and royalty structure, version history, silicon-proven status, EDA tool compatibility, and compliance with industry interface standards (AMBA, PCIe, USB). Sourced from internal IP library and third-party vendors (ARM, Synopsys DesignWare, Cadence Tensilica). SSOT for IP core definitions used across design projects.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`pdk` (
-    `pdk_id` BIGINT COMMENT 'Primary key',
-    `process_node_id` BIGINT COMMENT 'FK to product process node',
-    `agile_plm_part_number` STRING COMMENT 'The agile plm part number of the pdk record in the design domain.',
-    `checksum_sha256` STRING COMMENT 'SHA256 checksum',
-    `pdk_code` STRING COMMENT 'Coded value representing the code of the pdk design record.',
-    `deprecation_date` DATE COMMENT 'The deprecation date associated with the pdk design record.',
-    `pdk_description` STRING COMMENT 'PDK description',
-    `dft_rule_deck_version` STRING COMMENT 'The dft rule deck version of the pdk record in the design domain.',
-    `drc_rule_deck_version` STRING COMMENT 'The drc rule deck version of the pdk record in the design domain.',
-    `eda_tool_compatibility` STRING COMMENT 'The eda tool compatibility of the pdk record in the design domain.',
-    `export_control_classification` STRING COMMENT 'The export control classification of the pdk record in the design domain.',
-    `file_path` STRING COMMENT 'File system or storage file path for the pdk design record.',
-    `foundry_name` STRING COMMENT 'The foundry name of the pdk record in the design domain.',
-    `gds_format` STRING COMMENT 'The gds format of the pdk record in the design domain.',
-    `io_library_name` STRING COMMENT 'The io library name of the pdk record in the design domain.',
-    `ip_library_version` STRING COMMENT 'The ip library version of the pdk record in the design domain.',
-    `layer_stack_definition` STRING COMMENT 'The layer stack definition of the pdk record in the design domain.',
-    `license_type` STRING COMMENT 'The license type of the pdk record in the design domain.',
-    `lithography_type` STRING COMMENT 'The lithography type of the pdk record in the design domain.',
-    `lvs_rule_deck_version` STRING COMMENT 'The lvs rule deck version of the pdk record in the design domain.',
-    `max_supply_voltage_v` DECIMAL(18,2) COMMENT 'Max supply voltage',
-    `memory_compiler_supported` BOOLEAN COMMENT 'The memory compiler supported of the pdk record in the design domain.',
-    `metal_layer_count` STRING COMMENT 'The metal layer count of the pdk record in the design domain.',
-    `min_supply_voltage_v` DECIMAL(18,2) COMMENT 'Min supply voltage',
-    `mpw_shuttle_supported` BOOLEAN COMMENT 'The mpw shuttle supported of the pdk record in the design domain.',
-    `pdk_name` STRING COMMENT 'The name of the pdk record in the design domain.',
-    `nda_required` BOOLEAN COMMENT 'The nda required of the pdk record in the design domain.',
-    `nominal_supply_voltage_v` DECIMAL(18,2) COMMENT 'Nominal supply voltage',
-    `opc_rule_deck_version` STRING COMMENT 'The opc rule deck version of the pdk record in the design domain.',
-    `operating_temp_max_c` DECIMAL(18,2) COMMENT 'Max operating temperature',
-    `operating_temp_min_c` DECIMAL(18,2) COMMENT 'Min operating temperature',
-    `pdk_status` STRING COMMENT 'PDK status',
-    `process_corner_set` STRING COMMENT 'The process corner set of the pdk record in the design domain.',
-    `process_family` STRING COMMENT 'The process family of the pdk record in the design domain.',
-    `qualification_date` DATE COMMENT 'The qualification date associated with the pdk design record.',
-    `release_date` DATE COMMENT 'The release date associated with the pdk design record.',
-    `release_notes_url` STRING COMMENT 'The release notes url of the pdk record in the design domain.',
-    `spice_model_set` STRING COMMENT 'The spice model set of the pdk record in the design domain.',
-    `spice_model_version` STRING COMMENT 'The spice model version of the pdk record in the design domain.',
-    `std_cell_library_name` STRING COMMENT 'Standard cell library name',
-    `std_cell_library_version` STRING COMMENT 'Standard cell library version',
-    `teamcenter_item_reference` STRING COMMENT 'The teamcenter item reference of the pdk record in the design domain.',
-    `transistor_architecture` STRING COMMENT 'The transistor architecture of the pdk record in the design domain.',
-    `version` STRING COMMENT 'Version or revision identifier of the pdk design record.',
+    `pdk_id` BIGINT COMMENT 'Unique surrogate identifier for the PDK master record in the Databricks Silver Layer. Primary key for all downstream joins and lineage tracking.',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: PDK qualification is tracked per product family in semiconductor process technology roadmaps. Foundry PDK releases are scoped to specific product families (e.g., automotive-grade 5nm family). PDK life',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: Each PDK is owned and delivered by a specific foundry supplier. Supplier qualification, NDA management, export-control classification, and PDK version lifecycle all require knowing which supplier enti',
+    `agile_plm_part_number` STRING COMMENT 'Part number assigned to this PDK in Oracle Agile PLM for product data and change management. Used to track PDK-related Engineering Change Orders (ECOs) and Product Change Notifications (PCNs).. Valid values are `^[A-Z0-9_-]{4,40}$`',
+    `checksum_sha256` STRING COMMENT 'SHA-256 cryptographic hash of the PDK distribution archive. Used to verify PDK file integrity after download or transfer, ensuring no corruption or unauthorized modification of foundry-provided design rule files.. Valid values are `^[a-fA-F0-9]{64}$`',
+    `pdk_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying this PDK release, as assigned by the foundry or internal PDK management team (e.g., TSMC_N5_PDK_2023Q4). Used as the business-facing identifier in Cadence Virtuoso and Synopsys Design Compiler tool configurations.. Valid values are `^[A-Z0-9_-]{3,40}$`',
+    `deprecation_date` DATE COMMENT 'Date on which this PDK version was deprecated and superseded by a newer release. Designs in progress must migrate to the active version by this date. Null if the PDK is still active.',
+    `pdk_description` STRING COMMENT 'Free-text description of the PDK, including key features, intended use cases, known limitations, and any special design guidelines. Provides context for design engineers selecting the appropriate PDK for a new IC design project.',
+    `dft_rule_deck_version` STRING COMMENT 'Version of the Design for Testability (DFT) rule deck included in this PDK. DFT rules govern scan chain insertion, ATPG (Automatic Test Pattern Generation) compatibility, and boundary scan requirements for post-fabrication testing.. Valid values are `^[A-Z0-9_-.]{2,30}$`',
+    `drc_rule_deck_version` STRING COMMENT 'Version identifier of the Design Rule Check (DRC) rule deck included in this PDK. The DRC rule deck enforces foundry-mandated physical design rules to ensure manufacturability. Used in Cadence Innovus and KLA ICOS inspection correlation.. Valid values are `^[A-Z0-9_-.]{2,30}$`',
+    `eda_tool_compatibility` STRING COMMENT 'Comma-separated list or reference identifier describing the EDA tool versions certified for use with this PDK (e.g., Cadence Virtuoso 23.1, Synopsys IC Compiler II 2023.03, Mentor Calibre 2023.1). Ensures design teams use validated tool-PDK combinations for tapeout sign-off.',
+    `export_control_classification` STRING COMMENT 'Export control classification of this PDK under US Export Administration Regulations (EAR) or ITAR. Determines which countries and entities may receive this PDK. Critical for compliance with BIS/EAR and CHIPS Act requirements.. Valid values are `EAR99|ECCN_3E001|ECCN_3E002|ITAR|Unrestricted`',
+    `file_path` STRING COMMENT 'Canonical file system or object storage path to the PDK installation directory or archive (e.g., /pdk/tsmc/n5/v1.3.2 or s3://pdk-repo/tsmc/n5/v1.3.2). Used by EDA tool setup scripts to locate PDK assets in Cadence Virtuoso and Synopsys Design Compiler environments.',
+    `gds_format` STRING COMMENT 'Layout data format supported by this PDK for tapeout submission to the foundry. GDSII (Graphic Data System II) is the legacy industry standard; OASIS is the modern compressed alternative. Determines the final tapeout file format.. Valid values are `GDSII|OASIS|Both`',
+    `io_library_name` STRING COMMENT 'Name of the I/O pad cell library included in this PDK, providing ESD-protected interface cells for chip-to-package signal routing. Required for full-chip physical design and package co-design.',
+    `ip_library_version` STRING COMMENT 'Version of the foundry-provided hard IP library (e.g., PLLs, SerDes, PHYs) bundled with this PDK. IP cores are pre-characterized and validated for the specific process node.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?$`',
+    `layer_stack_definition` STRING COMMENT 'Identifier or reference name for the metal layer stack definition included in this PDK, specifying the number of metal layers, dielectric materials, and interconnect hierarchy (FEOL/MOL/BEOL). Governs routing resources available to physical design tools.',
+    `license_type` STRING COMMENT 'Type of licensing agreement under which this PDK is distributed to design teams. foundry_standard = included with foundry engagement; nre_included = bundled with NRE (Non-Recurring Engineering) agreement; subscription = annual license fee; evaluation = time-limited trial.. Valid values are `foundry_standard|nre_included|subscription|evaluation|open_source`',
+    `lithography_type` STRING COMMENT 'Primary lithography technology used in this process node as reflected in the PDK design rules. EUV (Extreme Ultraviolet) is used for leading-edge nodes (≤7nm); DUV (Deep Ultraviolet) with multi-patterning for older nodes. Impacts mask cost and design rule complexity.. Valid values are `EUV|DUV|Multi-Patterning|Hybrid|Other`',
+    `lvs_rule_deck_version` STRING COMMENT 'Version identifier of the Layout Versus Schematic (LVS) rule deck included in this PDK. LVS verifies that the physical layout matches the circuit schematic. Mandatory for tapeout sign-off in Cadence Virtuoso flows.. Valid values are `^[A-Z0-9_-.]{2,30}$`',
+    `max_supply_voltage_v` DECIMAL(18,2) COMMENT 'Maximum operating supply voltage (Vdd) in volts supported by this process node as defined in the PDK. Exceeding this value risks device reliability and oxide breakdown.',
+    `memory_compiler_supported` BOOLEAN COMMENT 'Indicates whether this PDK includes or is compatible with a foundry-provided memory compiler for generating SRAM, ROM, or register file macros. True = memory compiler available; False = memory macros must be sourced separately.',
+    `metal_layer_count` STRING COMMENT 'Total number of metal interconnect layers defined in the PDK layer stack. Determines routing density, signal integrity characteristics, and manufacturing cost. Typical values range from 6 to 20+ for advanced nodes.',
+    `min_supply_voltage_v` DECIMAL(18,2) COMMENT 'Minimum operating supply voltage (Vdd) in volts supported by this process node as defined in the PDK. Used for low-power design optimization and multi-voltage domain planning.',
+    `mpw_shuttle_supported` BOOLEAN COMMENT 'Indicates whether this PDK version is qualified and approved for use in Multi-Project Wafer (MPW) shuttle runs, enabling cost-shared prototyping across multiple design projects on a single wafer.',
+    `pdk_name` STRING COMMENT 'Human-readable descriptive name of the PDK (e.g., TSMC 5nm N5 PDK v1.3). Used in EDA tool selection menus, design review documentation, and PLM records in Siemens Teamcenter.',
+    `nda_required` BOOLEAN COMMENT 'Indicates whether access to this PDK requires a signed Non-Disclosure Agreement (NDA) with the foundry. True = NDA mandatory before distribution; False = PDK is available under standard licensing terms. Governs access control in Siemens Teamcenter PLM.',
+    `nominal_supply_voltage_v` DECIMAL(18,2) COMMENT 'Nominal (typical) operating supply voltage in volts for this process node as specified in the PDK. Used as the reference voltage for standard timing and power characterization.',
+    `opc_rule_deck_version` STRING COMMENT 'Version of the Optical Proximity Correction (OPC) rule deck included in this PDK. OPC rules compensate for photolithographic distortions during mask writing, critical for sub-10nm nodes using EUV or DUV lithography.. Valid values are `^[A-Z0-9_-.]{2,30}$`',
+    `operating_temp_max_c` DECIMAL(18,2) COMMENT 'Maximum junction operating temperature in degrees Celsius for which the PDK device models and timing libraries are characterized. Defines the hot corner for timing sign-off and reliability qualification.',
+    `operating_temp_min_c` DECIMAL(18,2) COMMENT 'Minimum junction operating temperature in degrees Celsius for which the PDK device models and timing libraries are characterized. Defines the cold corner for timing sign-off.',
+    `pdk_status` STRING COMMENT 'Current lifecycle state of the PDK version. draft = under development; active = qualified and approved for production design starts; deprecated = superseded by newer version but still supported; retired = no longer supported; restricted = limited access pending NDA or export control review.. Valid values are `draft|active|deprecated|retired|restricted`',
+    `process_corner_set` STRING COMMENT 'Comma-separated list of process corners (PVT corners) defined in this PDK for timing and power sign-off (e.g., TT, FF, SS, FS, SF). Each corner represents a combination of process, voltage, and temperature variation for worst/best-case analysis in Synopsys PrimeTime.',
+    `process_family` STRING COMMENT 'Foundry-specific process family or platform name within a node (e.g., N5, N5P, N4, SF3E). Distinguishes performance-optimized, power-optimized, or cost-optimized variants within the same technology node.',
+    `qualification_date` DATE COMMENT 'Date on which the PDK version was internally qualified and approved for production IC design starts at Semiconductors. Distinct from the foundry release date; reflects internal DRC/LVS and SPICE model validation completion.',
+    `release_date` DATE COMMENT 'Date on which this PDK version was officially released by the foundry and made available for design use. Used for design start eligibility checks and tapeout qualification timelines.',
+    `release_notes_url` STRING COMMENT 'URL pointing to the official PDK release notes document, detailing changes, bug fixes, and known issues relative to the previous version. Essential for design teams evaluating PDK upgrade impact on in-progress designs.. Valid values are `^https?://.+$`',
+    `spice_model_set` STRING COMMENT 'Identifier or name of the SPICE (Simulation Program with Integrated Circuit Emphasis) device model set bundled with this PDK (e.g., BSIM-CMG v110, PSP v103). Used by Synopsys PrimeTime and Cadence Virtuoso for circuit simulation and timing analysis.',
+    `spice_model_version` STRING COMMENT 'Version identifier of the SPICE model set included in this PDK. Critical for simulation reproducibility and sign-off correlation between design teams and the foundry.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?$`',
+    `std_cell_library_name` STRING COMMENT 'Name of the primary standard cell library bundled with this PDK (e.g., SC9MC_HD, SC7P5T_HD). Standard cell libraries provide pre-characterized logic gates used in RTL-to-GDS synthesis flows in Synopsys Design Compiler.',
+    `std_cell_library_version` STRING COMMENT 'Version of the standard cell library included in this PDK release. Version changes may affect timing, power, and area (PPA) characteristics of synthesized designs.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?$`',
+    `teamcenter_item_reference` STRING COMMENT 'Item identifier assigned to this PDK record in Siemens Teamcenter PLM, enabling traceability between the PDK master record and associated design projects, change orders, and release workflows.. Valid values are `^[A-Z0-9_-]{4,40}$`',
+    `transistor_architecture` STRING COMMENT 'Transistor architecture type used in this process node (e.g., FinFET, Gate-All-Around (GAA), Planar, FDSOI). Determines device modeling approach, SPICE model complexity, and applicable EDA tool flows.. Valid values are `FinFET|GAA|Planar|FDSOI|BiCMOS|Other`',
+    `version` STRING COMMENT 'Version string of the PDK release following semantic versioning conventions (e.g., 1.3.2, 2.0.0-beta). Critical for design reproducibility, tapeout qualification, and EDA tool compatibility validation. Managed in Oracle Agile PLM and Siemens Teamcenter.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$`',
     CONSTRAINT pk_pdk PRIMARY KEY(`pdk_id`)
 ) COMMENT 'Process Design Kit (PDK) master record defining the foundry-specific design rules, device models, standard cell libraries, and technology files required for IC design at a given process node. Captures PDK version, foundry name, process node (e.g., 3nm, 5nm, 7nm), SPICE model sets, DRC/LVS rule decks, layer stack definitions, and EDA tool compatibility matrix. SSOT for PDK versioning used in Cadence Virtuoso and Synopsys Design Compiler flows.';
 
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` (
+    `rtl_specification_id` BIGINT COMMENT 'Unique surrogate identifier for the RTL specification record in the lakehouse. Primary key for this data product.',
+    `pdk_id` BIGINT COMMENT 'Foreign key linking to design.pdk. Business justification: An RTL specification targets a specific PDK (process design kit) for synthesis and implementation. rtl_specification.pdk_version is a denormalized STRING reference to the PDK. Adding pdk_id as a prope',
+    `product_ip_core_id` BIGINT COMMENT 'Reference to the IP license agreement governing the use of third-party or licensed IP content within this RTL specification. Populated when ip_reuse_source is licensed_third_party. Supports IP compliance and NRE cost tracking.',
+    `supplier_id` BIGINT COMMENT 'Reference to the Multi-Project Wafer (MPW) shuttle run assigned for prototype fabrication of this RTL design. MPW shuttles allow multiple designs to share a single wafer to reduce NRE costs for early silicon validation.',
+    `ic_design_project_id` BIGINT COMMENT 'FK to design.ic_design_project.ic_design_project_id — Every RTL specification belongs to exactly one IC design project. This is the fundamental parent-child relationship for design artifacts. Engineers navigate from project to RTL modules daily.',
+    `ams_behavioral_model_ref` STRING COMMENT 'Reference identifier or path to the Verilog-AMS or VHDL-AMS behavioral model associated with this analog/mixed-signal RTL block. Populated only when is_analog_mixed_signal is True. Links to the Cadence Virtuoso schematic source.',
+    `cdc_annotation_status` STRING COMMENT 'Completion status of Clock Domain Crossing (CDC) boundary annotations within the RTL specification. CDC annotation is mandatory for multi-clock designs prior to synthesis sign-off to prevent metastability failures.. Valid values are `not_required|pending|partial|complete|waived`',
+    `clock_domain_count` STRING COMMENT 'Number of distinct clock domains defined within this RTL design block. Drives Clock Domain Crossing (CDC) analysis requirements and verification complexity estimation.',
+    `commit_hash` STRING COMMENT 'The specific commit hash or changelist number in the revision control system corresponding to the approved version of this RTL specification. Provides immutable provenance linkage to the exact source snapshot.. Valid values are `^[0-9a-f]{7,40}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this RTL specification record was first created in the system of record. Provides audit trail for design provenance and compliance with ISO 9001 design record retention requirements.',
+    `design_block_name` STRING COMMENT 'Human-readable name of the RTL design block, IP subsystem, or full-chip entity described by this specification (e.g., USB3_PHY_Controller, DDR5_Memory_Interface, Top_Level_SoC). Serves as the primary identity label for the design artifact.',
+    `design_block_type` STRING COMMENT 'Classification of the RTL design block scope. Determines applicable design rules, verification methodology, and integration requirements. ip_core blocks are subject to IP licensing tracking; fpga_target blocks require device-specific synthesis constraints. [ENUM-REF-CANDIDATE: full_chip|subsystem|ip_core|interface_block|analog_mixed_signal|fpga_target — promote to reference product]. Valid values are `full_chip|subsystem|ip_core|interface_block|analog_mixed_signal|fpga_target`',
+    `design_intent_description` STRING COMMENT 'Narrative description of the functional design intent, architectural decisions, and key requirements captured in this RTL specification. Provides context for design reviews, IP reuse assessments, and new engineer onboarding.',
+    `dfm_rule_set_version` STRING COMMENT 'Version identifier of the Design for Manufacturability (DFM) rule set applied to this RTL specification. DFM rules ensure the design can be reliably manufactured at the target process node with acceptable yield.',
+    `dft_strategy` STRING COMMENT 'Design for Testability (DFT) methodology applied to this RTL block. Defines the test insertion approach used to enable Automatic Test Pattern Generation (ATPG) and silicon test coverage on Automatic Test Equipment (ATE).. Valid values are `scan_chain|mbist|boundary_scan|jtag|none`',
+    `ear_eccn_code` STRING COMMENT 'Export Control Classification Number (ECCN) assigned to this RTL specification under the Export Administration Regulations (EAR). Determines export licensing requirements for cross-border transfer of design data.. Valid values are `^[0-9][A-Z][0-9]{3}$`',
+    `fpga_device_family` STRING COMMENT 'Target FPGA device family for synthesis and implementation (e.g., Xilinx Ultrascale+, Intel Agilex, Lattice ECP5). Populated only when is_fpga_target is True. Determines device-specific synthesis constraints and IP primitives.',
+    `functional_coverage_target_pct` DECIMAL(18,2) COMMENT 'Target functional coverage percentage defined in the verification plan for this RTL specification. Expressed as a percentage (0.00–100.00). Used to gate simulation sign-off and tapeout readiness reviews.',
+    `hdl_language` STRING COMMENT 'Primary Hardware Description Language used to author the RTL source code for this design block. Determines EDA tool compatibility, lint rule sets, and synthesis flow configuration in Synopsys Design Compiler.. Valid values are `Verilog|SystemVerilog|VHDL|Chisel|Verilog-AMS|VHDL-AMS`',
+    `interface_protocols` STRING COMMENT 'Comma-separated list of hardware interface protocols implemented in this RTL block (e.g., AXI4, AHB5, APB3, Wishbone, PCIe, USB3). Used for integration compatibility checks and IP reuse assessments.',
+    `ip_reuse_source` STRING COMMENT 'Origin classification of the IP content in this RTL specification. licensed_third_party requires IP license compliance tracking; open_source requires license obligation management (e.g., GPL, Apache); internal indicates proprietary reuse. Classified confidential due to IP licensing sensitivity.. Valid values are `internal|licensed_third_party|open_source|custom`',
+    `is_analog_mixed_signal` BOOLEAN COMMENT 'Indicates whether this RTL specification includes analog or mixed-signal content requiring behavioral model references (Verilog-AMS, VHDL-AMS) and linkage to transistor-level schematic source in Cadence Virtuoso.',
+    `is_fpga_target` BOOLEAN COMMENT 'Indicates whether this RTL specification is intended for FPGA implementation rather than ASIC tapeout. When True, synthesis constraints, pin assignments, and target device family fields are applicable.',
+    `itar_controlled` BOOLEAN COMMENT 'Indicates whether this RTL specification is subject to International Traffic in Arms Regulations (ITAR) export controls. When True, access must be restricted to authorized US persons and export license requirements apply.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this RTL specification record. Used for change tracking, incremental data pipeline processing, and audit compliance.',
+    `lint_compliance_status` STRING COMMENT 'Status of RTL lint rule compliance checks for this specification. Lint tools (e.g., Synopsys SpyGlass, Cadence HAL) enforce coding guidelines and detect potential design errors. clean is required before synthesis sign-off.. Valid values are `not_run|violations_open|violations_waived|clean`',
+    `logic_gate_count_estimate` BIGINT COMMENT 'Estimated number of equivalent logic gates for this RTL design block, derived from synthesis estimation runs in Synopsys Design Compiler. Used for area budgeting, floorplanning, and Power-Performance-Area (PPA) target setting.',
+    `nre_cost_usd` DECIMAL(18,2) COMMENT 'Estimated Non-Recurring Engineering (NRE) cost in US dollars associated with developing this RTL specification. Used for project budgeting, customer design-in pricing, and financial reporting in SAP S/4HANA CO module.',
+    `obsolescence_date` DATE COMMENT 'Date on which this RTL specification was marked obsolete, typically superseded by a newer version or upon product End of Life (EOL). Supports Product Change Notification (PCN) and Last Time Buy (LTB) processes.',
+    `power_domain_count` STRING COMMENT 'Number of distinct power domains defined in the Unified Power Format (UPF) or Common Power Format (CPF) specification for this RTL block. Drives low-power verification and power intent analysis.',
+    `power_intent_format` STRING COMMENT 'Standard format used to specify power intent for this RTL design block. UPF (IEEE 1801) and CPF (Cadence) are the two industry standards. none indicates no multi-voltage power management is implemented.. Valid values are `UPF|CPF|none`',
+    `repository_path` STRING COMMENT 'Full path or URL to the revision control repository location where the RTL source files for this specification are stored (e.g., Git remote URL or Perforce depot path). Classified confidential as it reveals internal IP infrastructure.',
+    `reset_strategy` STRING COMMENT 'Reset architecture employed in this RTL design block. Defines whether resets are synchronous, asynchronous, or mixed, which impacts timing closure, DFT scan insertion, and silicon reliability.. Valid values are `synchronous|asynchronous|mixed|power_on_reset`',
+    `revision_control_system` STRING COMMENT 'Version control system in which the RTL source files for this specification are managed. Enables provenance tracking and audit trail for design changes.. Valid values are `Git|Perforce|SVN`',
+    `specification_approved_date` DATE COMMENT 'Date on which this RTL specification was formally approved through the PLM design review process. Marks the effective start of the specification as a binding design baseline. Required for ISO 9001 and IATF 16949 design record compliance.',
+    `specification_number` STRING COMMENT 'Externally-known, human-readable unique identifier for the RTL specification artifact as tracked in Siemens Teamcenter PLM and revision control systems (Git, Perforce). Used for cross-system traceability and design review references.. Valid values are `^RTL-[A-Z0-9]{3,12}-[0-9]{4,8}$`',
+    `specification_released_date` DATE COMMENT 'Date on which this RTL specification was released for downstream use (synthesis, physical design, verification). Distinct from approval date; release may follow approval after additional sign-off steps.',
+    `specification_status` STRING COMMENT 'Current lifecycle state of the RTL specification artifact within the PLM workflow. Controls downstream design activities: draft allows edits; approved gates synthesis; released permits tapeout submission; obsolete marks superseded versions.. Valid values are `draft|in_review|approved|released|obsolete|on_hold`',
+    `tapeout_target_date` DATE COMMENT 'Planned date for final GDS/GDSII design submission (tapeout) to the fabrication facility. Tapeout is the milestone at which the RTL design is frozen and submitted for mask generation. Drives program schedule and supply chain commitments.',
+    `target_clock_frequency_mhz` DECIMAL(18,2) COMMENT 'Target operating clock frequency in megahertz (MHz) for the primary clock domain of this RTL design block. Drives timing constraint definition in Synopsys PrimeTime and synthesis optimization targets.',
+    `target_process_node` STRING COMMENT 'Semiconductor fabrication process node for which this RTL design is targeted (e.g., 5nm, 7nm, 28nm, 180nm). Determines applicable PDK, design rules, and standard cell libraries used in synthesis and physical design.',
+    `teamcenter_item_reference` STRING COMMENT 'Native item identifier assigned to this RTL specification within Siemens Teamcenter PLM. Enables direct cross-system traceability between the lakehouse silver layer record and the authoritative PLM system of record.',
+    `version_label` STRING COMMENT 'Semantic version label of this RTL specification revision (e.g., v1.0, v2.3.1). Tracks design evolution through revision control (Git, Perforce) and PLM change management. Incremented on each approved change.. Valid values are `^v[0-9]+.[0-9]+(.[0-9]+)?$`',
+    CONSTRAINT pk_rtl_specification PRIMARY KEY(`rtl_specification_id`)
+) COMMENT 'Register Transfer Level (RTL) design specification and source record capturing the functional hardware description of a design block, IP subsystem, or full chip. Tracks RTL module hierarchy, HDL language (VHDL, Verilog, SystemVerilog, Chisel), design intent documentation, clock domain definitions and CDC boundary annotations, reset strategy, interface protocols (AXI, AHB, APB, Wishbone), power domain definitions (UPF/CPF), functional coverage model targets, lint rule compliance status, and linkage to the parent IC design project. For analog/mixed-signal blocks, captures behavioral model references (Verilog-AMS, VHDL-AMS) and links to transistor-level schematic source in Cadence Virtuoso where applicable. For FPGA targets, captures synthesis constraints, pin assignments, and target device family. Managed as a versioned artifact in revision control (Git, Perforce) with provenance tracking through Siemens Teamcenter PLM.';
+
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`netlist` (
-    `netlist_id` BIGINT COMMENT 'Primary key',
-    `ip_core_id` BIGINT COMMENT 'FK to design IP core',
-    `pdk_id` BIGINT COMMENT 'FK to design PDK',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Netlists are synthesized targeting a specific process node; timing closure, power analysis, and cell library selection are all process-node-driven. Normalizing process_node_nm into a proper FK enables',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to design.design_revision. Business justification: A synthesized netlist is produced from a specific RTL design revision. Linking netlist to design_revision establishes full design provenance: which revision of the RTL was synthesized to produce this ',
-    `ic_design_project_id` BIGINT COMMENT 'FK to design IC design project',
-    `to_pdk_id` BIGINT COMMENT 'FK to design PDK',
-    `approval_timestamp` TIMESTAMP COMMENT 'The approval timestamp of the netlist record in the design domain.',
-    `area_estimate_um2` DECIMAL(18,2) COMMENT 'Area estimate in um2',
-    `cell_instance_count` BIGINT COMMENT 'The cell instance count of the netlist record in the design domain.',
-    `cell_library_name` STRING COMMENT 'The cell library name of the netlist record in the design domain.',
-    `cell_library_version` STRING COMMENT 'The cell library version of the netlist record in the design domain.',
-    `checksum_sha256` STRING COMMENT 'SHA256 checksum',
-    `combinational_cell_count` BIGINT COMMENT 'The combinational cell count of the netlist record in the design domain.',
-    `constraints_file_ref` STRING COMMENT 'Constraints file reference',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the netlist record in the design domain.',
-    `critical_path_delay_ps` DECIMAL(18,2) COMMENT 'Critical path delay in ps',
-    `design_block_name` STRING COMMENT 'The design block name of the netlist record in the design domain.',
-    `design_iteration` STRING COMMENT 'The design iteration of the netlist record in the design domain.',
-    `dfm_rule_check_status` STRING COMMENT 'The dfm rule check status of the netlist record in the design domain.',
-    `dft_scan_coverage_pct` DECIMAL(18,2) COMMENT 'The dft scan coverage pct of the netlist record in the design domain.',
-    `dynamic_power_mw` DECIMAL(18,2) COMMENT 'Dynamic power in mW',
-    `file_path` STRING COMMENT 'File system or storage file path for the netlist design record.',
-    `format` STRING COMMENT 'Netlist format',
-    `gate_count` BIGINT COMMENT 'The gate count of the netlist record in the design domain.',
-    `leakage_power_uw` DECIMAL(18,2) COMMENT 'Leakage power in uW',
-    `netlist_name` STRING COMMENT 'Netlist name',
-    `netlist_type` STRING COMMENT 'Netlist type',
-    `sequential_cell_count` BIGINT COMMENT 'The sequential cell count of the netlist record in the design domain.',
-    `synthesis_run_timestamp` TIMESTAMP COMMENT 'The synthesis run timestamp of the netlist record in the design domain.',
-    `synthesis_runtime_minutes` DECIMAL(18,2) COMMENT 'Synthesis runtime in minutes',
-    `synthesis_status` STRING COMMENT 'The synthesis status of the netlist record in the design domain.',
-    `tapeout_target_date` DATE COMMENT 'The tapeout target date associated with the netlist design record.',
-    `target_clock_freq_mhz` DECIMAL(18,2) COMMENT 'Target clock frequency in MHz',
-    `timing_closure_achieved` BOOLEAN COMMENT 'Timing closure achieved flag',
-    `timing_slack_hold_ps` DECIMAL(18,2) COMMENT 'Timing slack hold in ps',
-    `timing_slack_setup_ps` DECIMAL(18,2) COMMENT 'Timing slack setup in ps',
-    `timing_violation_count` STRING COMMENT 'The timing violation count of the netlist record in the design domain.',
-    `total_power_estimate_mw` DECIMAL(18,2) COMMENT 'Total power estimate in mW',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the netlist record in the design domain.',
-    `version` STRING COMMENT 'Version or revision identifier of the netlist design record.',
+    `netlist_id` BIGINT COMMENT 'Unique surrogate identifier for the synthesized netlist artifact record in the design domain. Primary key for this data product.',
+    `design_ip_core_id` BIGINT COMMENT 'Reference to an IP (Intellectual Property) core incorporated in this netlist, if applicable. Links to licensed third-party or internally developed IP blocks (e.g., PCIe PHY, USB controller, ARM Cortex core) for IP usage tracking and license compliance.',
+    `eda_tool_id` BIGINT COMMENT 'Foreign key linking to design.eda_tool. Business justification: Netlist is produced by a specific EDA tool; adding eda_tool_id creates a proper reference and removes tool name/version duplication.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_flow. Business justification: Netlists are synthesized targeting a specific process flow that determines available standard cell libraries, metal stack options, and timing corners. Synthesis sign-off reports reference the process ',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Netlist release management and ECO tracking require direct traceability from a synthesized netlist to its IC catalog entry. Netlist-level sign-off reports and tapeout readiness dashboards query netlis',
+    `pdk_id` BIGINT COMMENT 'Reference to the Process Design Kit (PDK) version used during logic synthesis. The PDK defines the standard cell library, design rules, and technology parameters for the target fabrication process node.',
+    `rtl_specification_id` BIGINT COMMENT 'Reference to the RTL specification artifact from which this netlist was synthesized. Establishes design provenance traceability from RTL source to synthesized gate-level netlist.',
+    `ic_design_project_id` BIGINT COMMENT 'FK to design.ic_design_project.ic_design_project_id — Netlist belongs to a design project. Required for project-level artifact tracking and version management.',
+    `to_pdk_id` BIGINT COMMENT 'FK to design.pdk.pdk_id — Synthesis uses PDK standard cell libraries. The netlist must reference which PDK version was used for synthesis.',
+    `to_rtl_specification_id` BIGINT COMMENT 'FK to design.rtl_specification.rtl_specification_id — A netlist is synthesized from an RTL specification. This is the core design flow linkage (RTL -> synthesis -> netlist) required for design provenance.',
+    `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the netlist was formally approved for promotion to the next design stage. Supports design review audit trails and milestone tracking for tapeout schedule management.',
+    `area_estimate_um2` DECIMAL(18,2) COMMENT 'Estimated silicon area of the synthesized netlist in square micrometers (µm²) as reported by the synthesis tool. Represents the combinational and sequential cell area before physical placement. A key PPA (Power-Performance-Area) metric.',
+    `cell_instance_count` BIGINT COMMENT 'Total number of standard cell instances instantiated in the synthesized netlist. Distinct from gate count — counts actual cell placements including sequential elements (flip-flops, latches) and combinational cells.',
+    `cell_library_name` STRING COMMENT 'Name of the standard cell library used during logic synthesis (e.g., TSMC_N5_SC_HD_v1.2). Defines the set of logic gates, flip-flops, and combinational cells mapped during synthesis from the PDK.',
+    `cell_library_version` STRING COMMENT 'Version identifier of the standard cell library used during synthesis. Critical for design reproducibility and provenance — different library versions may have different timing, power, or area characteristics.',
+    `checksum_sha256` STRING COMMENT 'SHA-256 cryptographic hash of the netlist file content. Used to verify file integrity, detect unauthorized modifications, and ensure design provenance authenticity across EDA tool handoffs and IP delivery.. Valid values are `^[a-fA-F0-9]{64}$`',
+    `combinational_cell_count` BIGINT COMMENT 'Number of combinational logic cells (AND, OR, MUX, inverters, etc.) in the synthesized netlist. Used for area estimation and logic optimization analysis during PPA (Power-Performance-Area) evaluation.',
+    `constraints_file_ref` STRING COMMENT 'File path or repository reference to the Synopsys Design Constraints (SDC) file used during synthesis. The SDC file specifies timing constraints, clock definitions, input/output delays, and false paths that govern synthesis optimization.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this netlist record was first created in the data platform. Supports audit trail, data lineage, and Silver layer ingestion tracking for the design domain.',
+    `critical_path_delay_ps` DECIMAL(18,2) COMMENT 'Propagation delay of the longest (critical) timing path in the synthesized netlist, measured in picoseconds (ps). Determines the maximum achievable operating frequency and is a key PPA (Power-Performance-Area) metric for design optimization.',
+    `design_block_name` STRING COMMENT 'Name of the IC design block or module represented by this netlist (e.g., ALU, memory_controller, pcie_phy). Corresponds to the top-level module name in the RTL hierarchy submitted to the synthesis tool.',
+    `design_iteration` STRING COMMENT 'Sequential iteration counter for synthesis runs on the same design block. Increments with each new synthesis attempt, enabling tracking of design convergence progress and comparison of PPA metrics across iterations.',
+    `dfm_rule_check_status` STRING COMMENT 'Status of Design for Manufacturability (DFM) rule checks applied to this netlist. DFM rules ensure the synthesized design is compatible with the target fabrication process constraints to maximize yield.. Valid values are `passed|failed|waived|not_run`',
+    `dft_scan_coverage_pct` DECIMAL(18,2) COMMENT 'Percentage of sequential elements covered by DFT (Design for Testability) scan chains in the synthesized netlist. Higher coverage improves defect detection during Automatic Test Equipment (ATE) testing. Target is typically ≥95% for production designs.',
+    `dynamic_power_mw` DECIMAL(18,2) COMMENT 'Estimated dynamic (switching) power consumption in milliwatts (mW) from the synthesis power analysis report. Represents power consumed by logic transitions and is activity-dependent. Used for thermal and battery life analysis.',
+    `file_path` STRING COMMENT 'Repository or file system path to the synthesized netlist artifact file (e.g., /design/proj/cpu_core/syn/v3/cpu_core_top.v). Enables EDA tool flows and downstream physical design steps to locate and consume the netlist.',
+    `format` STRING COMMENT 'File format of the synthesized netlist artifact (e.g., Verilog gate-level netlist, VHDL, SPICE, EDIF, Liberty). Determines compatibility with downstream EDA tools for physical design, simulation, and verification flows.. Valid values are `verilog|vhdl|spice|edif|liberty`',
+    `gate_count` BIGINT COMMENT 'Total number of logic gates (expressed in equivalent 2-input NAND gate equivalents) in the synthesized netlist. A primary measure of design complexity and silicon area consumption used for Power-Performance-Area (PPA) analysis.',
+    `leakage_power_uw` DECIMAL(18,2) COMMENT 'Estimated static leakage power consumption in microwatts (µW) from the synthesis power analysis report. Represents power consumed when the circuit is idle due to sub-threshold leakage currents. Critical for low-power and IoT product designs.',
+    `netlist_name` STRING COMMENT 'Human-readable name assigned to the netlist artifact, typically reflecting the design block name and synthesis iteration (e.g., cpu_core_top_postsyn_v3). Used for identification in EDA tool flows and design review sessions.',
+    `netlist_type` STRING COMMENT 'Classification of the netlist stage in the IC design flow: pre_synthesis (RTL-level functional netlist before synthesis), post_synthesis (gate-level netlist after logic synthesis by Synopsys Design Compiler), or post_layout (netlist annotated with parasitic extraction data after physical design in Cadence Innovus).. Valid values are `pre_synthesis|post_synthesis|post_layout`',
+    `sequential_cell_count` BIGINT COMMENT 'Number of sequential logic cells (flip-flops, latches, registers) in the synthesized netlist. Used for Design for Testability (DFT) scan chain planning and power analysis of dynamic switching activity.',
+    `synthesis_run_timestamp` TIMESTAMP COMMENT 'Date and time when the logic synthesis run that produced this netlist was executed. Provides the principal business event timestamp for design provenance, audit trails, and design iteration tracking.',
+    `synthesis_runtime_minutes` DECIMAL(18,2) COMMENT 'Wall-clock runtime of the synthesis job in minutes. Used for EDA compute resource planning, license utilization tracking, and identifying synthesis runs that exceed expected runtimes due to design complexity or tool issues.',
+    `synthesis_status` STRING COMMENT 'Current lifecycle status of the netlist artifact within the design flow. Tracks progression from initial synthesis run through completion, failure, archival, or supersession by a newer version.. Valid values are `draft|in_progress|completed|failed|archived|superseded`',
+    `tapeout_target_date` DATE COMMENT 'Planned tapeout date for the IC design project associated with this netlist. Used to assess synthesis schedule adherence and Time-to-Market (TTM) risk. Tapeout is the final design submission milestone for manufacturing.',
+    `target_clock_freq_mhz` DECIMAL(18,2) COMMENT 'Target operating clock frequency in megahertz (MHz) specified in the synthesis constraints (SDC). Defines the timing closure goal for the synthesis run and is used to evaluate whether timing slack objectives are met.',
+    `timing_closure_achieved` BOOLEAN COMMENT 'Indicates whether timing closure has been achieved for this netlist (True = all timing paths meet constraints with non-negative slack; False = timing violations remain). A prerequisite gate for advancing to physical design and tapeout.',
+    `timing_slack_hold_ps` DECIMAL(18,2) COMMENT 'Worst-case hold timing slack in picoseconds (ps) across all timing paths in the synthesized netlist, as reported by Synopsys PrimeTime. Negative hold slack indicates a hold violation requiring buffer insertion or path adjustment.',
+    `timing_slack_setup_ps` DECIMAL(18,2) COMMENT 'Worst-case setup timing slack in picoseconds (ps) across all timing paths in the synthesized netlist, as reported by Synopsys PrimeTime. Negative slack indicates a timing violation (setup violation) that must be resolved before tapeout. Critical PPA metric.',
+    `timing_violation_count` STRING COMMENT 'Total number of timing path violations (setup and hold combined) reported in the synthesis timing analysis. A value of zero indicates timing closure has been achieved. Used to track synthesis convergence progress across iterations.',
+    `total_power_estimate_mw` DECIMAL(18,2) COMMENT 'Estimated total power consumption of the synthesized netlist in milliwatts (mW), as reported by the synthesis tool. Includes dynamic switching power and static leakage power. A key PPA (Power-Performance-Area) metric for product qualification.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this netlist record was last modified in the data platform. Used for incremental data pipeline processing, change detection, and audit trail maintenance in the Databricks Silver layer.',
+    `version` STRING COMMENT 'Version identifier for the netlist artifact following semantic versioning conventions (e.g., v1.0, v2.3.1). Tracks netlist iterations across design synthesis runs to support design provenance and change management.. Valid values are `^vd+.d+(.d+)?$`',
     CONSTRAINT pk_netlist PRIMARY KEY(`netlist_id`)
 ) COMMENT 'Synthesized netlist artifact produced by logic synthesis tools (Synopsys Design Compiler) from RTL. Captures netlist type (pre-synthesis, post-synthesis, post-layout), gate count, cell library version, synthesis constraints file reference, timing slack summary, power estimate, and linkage to the RTL specification and PDK version used. Tracks netlist versions across design iterations for design provenance.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` (
     `physical_layout_id` BIGINT COMMENT 'Unique surrogate identifier for each physical design layout record in the Databricks Silver Layer. Serves as the primary key for the physical_layout data product.',
+    `eda_tool_id` BIGINT COMMENT 'Foreign key linking to design.eda_tool. Business justification: physical_layout has eda_tool (STRING) and eda_tool_version (STRING) as denormalized EDA tool references — the P&R tool used to produce the layout (e.g., Cadence Innovus, Synopsys ICC2). Adding eda_too',
+    `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: Physical layout files are assigned to a specific fab tool for mask generation; required by the Layout‑to‑Tool Assignment process.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_flow. Business justification: Physical layout implementation (place-and-route, DRC, CMP fill) is performed against a specific process flows design rule decks and metal stack definition. DRC sign-off and tapeout readiness reviews ',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Physical layout sign-off, DFM scoring, and yield prediction reports are tied directly to the IC catalog entry. Layout engineers query layouts by product in PDM/PLM systems. The indirect path via ic_de',
     `netlist_id` BIGINT COMMENT 'FK to design.netlist.netlist_id — Physical layout (place and route) takes a netlist as input. This is the core PnR flow linkage required for design provenance.',
     `pdk_id` BIGINT COMMENT 'Reference to the Process Design Kit (PDK) version used for this physical layout. The PDK defines the technology node rules, design rule checks (DRC), and layer stack for the target fabrication process.',
-    `ic_design_project_id` BIGINT COMMENT 'Reference to the parent IC design record for which this physical layout iteration was produced. Links the layout to its originating design project.',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to design.design_revision. Business justification: A physical layout (floorplan, placement, routing) is implemented against a specific design revision. Linking physical_layout to design_revision provides the provenance chain from RTL revision through ',
-    `to_ic_design_project_id` BIGINT COMMENT 'FK to design.ic_design_project.ic_design_project_id — Physical layouts belong to a specific IC design project. Required for design artifact management.',
+    `ic_design_project_id` BIGINT COMMENT 'FK to design.ic_design_project.ic_design_project_id — Physical layouts belong to a specific IC design project. Required for design artifact management.',
+    `primary_physical_ic_design_project_id` BIGINT COMMENT 'Reference to the parent IC design record for which this physical layout iteration was produced. Links the layout to its originating design project.',
     `antenna_violation_count` STRING COMMENT 'Number of antenna rule violations detected in the layout. Antenna violations occur when metal segments accumulate charge during plasma etching that can damage gate oxide. Must be resolved or mitigated with antenna diodes before tapeout.',
     `cell_utilization_pct` DECIMAL(18,2) COMMENT 'Percentage of the core area occupied by placed standard cells, expressed as a decimal percentage (e.g., 72.500 = 72.5%). High utilization (>85%) may indicate routing congestion risk; low utilization (<50%) may indicate oversized floorplan.',
     `core_area_mm2` DECIMAL(18,2) COMMENT 'Area of the core logic region in square millimeters (mm²), excluding I/O ring, power ring, and seal ring. Used to assess logic density and available routing resources.',
@@ -212,8 +269,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` (
     `die_width_um` DECIMAL(18,2) COMMENT 'Width of the die boundary in micrometers (µm) as defined in the physical layout floorplan. Used for package selection, wafer yield estimation, and cost modeling.',
     `drc_critical_violation_count` STRING COMMENT 'Number of DRC violations classified as critical (yield-impacting or functionality-blocking) as opposed to waivable violations. Critical DRC violations must be resolved before tapeout; waivable violations may be accepted with foundry approval.',
     `drc_violation_count` STRING COMMENT 'Total number of Design Rule Check (DRC) violations detected in this layout iteration by the signoff DRC tool (e.g., Mentor Calibre, Synopsys IC Validator). A value of zero is required for tapeout approval.',
-    `eda_tool` STRING COMMENT 'EDA tool used to produce this physical layout iteration. Identifies the physical implementation platform (Cadence Innovus, Synopsys IC Compiler 2, Siemens Aprisa, or Cadence Virtuoso for custom layouts) for provenance and reproducibility.. Valid values are `cadence_innovus|synopsys_icc2|siemens_aprisa|cadence_virtuoso`',
-    `eda_tool_version` STRING COMMENT 'Version string of the EDA tool used to generate this layout (e.g., Innovus 21.1, ICC2 2022.03). Critical for design reproducibility and debugging layout-specific tool behavior.',
     `em_compliant` BOOLEAN COMMENT 'Indicates whether all metal interconnects in the layout comply with electromigration (EM) current density limits specified by the foundry PDK. TRUE = EM compliant; FALSE = EM violations present requiring wire widening or rerouting.',
     `gds_file_checksum` STRING COMMENT 'SHA-256 cryptographic checksum of the GDSII/OASIS layout file for integrity verification. Used to confirm that the submitted tapeout file has not been corrupted or tampered with during transfer to the foundry.. Valid values are `^[a-fA-F0-9]{64}$`',
     `gds_file_format` STRING COMMENT 'Format of the layout database file referenced in gds_file_path. GDSII is the traditional foundry submission format; OASIS (Open Artwork System Interchange Standard) is the modern compressed alternative; LEF/DEF is used for abstract/physical exchange.. Valid values are `gdsii|oasis|lef_def`',
@@ -242,16 +297,18 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`tapeout` (
     `tapeout_id` BIGINT COMMENT 'Unique system-generated surrogate identifier for the tapeout event record. Primary key for the tapeout data product in the design domain.',
+    `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Each tapeout shipment must be covered by an export license; linking enables audit of license usage per tapeout.',
     `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Enables tracking of each tapeout against its originating design win for NRE cost recovery and warranty reporting.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_flow. Business justification: A tapeout is executed against a specific process flow that defines the manufacturing steps, mask layers, and design rules. Foundry submission requires referencing the exact process flow revision. proc',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: Tapeout submission must specify the foundry supplier to coordinate mask set delivery and wafer fab.',
     `ic_catalog_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA) associated with this tapeout event. Links the tapeout to the product master record.',
-    `nda_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.nda_agreement. Business justification: Tapeout GDS file and design IP sharing with customers requires a governing NDA. Tapeout sign-off checklists and export control audits must reference the specific NDA authorizing data disclosure. Tapeo',
     `pdk_id` BIGINT COMMENT 'Reference to the Process Design Kit (PDK) version used for this tapeout. The PDK defines the foundry-specific design rules, device models, and layer stack used during physical design.',
     `physical_layout_id` BIGINT COMMENT 'FK to design.physical_layout.physical_layout_id — Tapeout submits a final physical layout (GDS) to the foundry. Must reference which layout version was taped out.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Tapeout is a foundry submission for a specific process node; yield analysis, mask cost tracking, and NRE reporting are all grouped by process node. Normalizing the plain process_node attribute into a ',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to design.design_revision. Business justification: A tapeout event captures the final design submission for manufacturing and must reference the exact design_revision that was submitted. The tapeout table currently has a denormalized STRING column de',
     `ic_design_project_id` BIGINT COMMENT 'FK to design.ic_design_project.ic_design_project_id — A tapeout event is the culmination of an IC design project. This is the critical milestone linkage.',
+    `tool_qualification_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_qualification. Business justification: Tapeout Readiness Review is a formal semiconductor manufacturing gate requiring verified tool qualification records before mask submission. A domain expert expects tapeout sign-off to reference the sp',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the tapeout record was first created in the system. Used for audit trail and data lineage tracking.',
     `design_name` STRING COMMENT 'Human-readable name of the IC design being taped out (e.g., product code name or internal design designation). Used for identification in design review meetings and foundry communications.',
+    `design_revision` STRING COMMENT 'Revision identifier of the design at the time of tapeout (e.g., A0, B1, C2). Distinguishes successive tapeout iterations of the same design, critical for mask set versioning and silicon bring-up tracking.. Valid values are `^[A-Z][0-9]{1,2}$`',
     `design_type` STRING COMMENT 'Classification of the IC design type being taped out. Distinguishes ASIC, SoC, FPGA, analog, mixed-signal, RF, memory, and photonic designs, which have different EDA flows, PDK requirements, and sign-off criteria. [ENUM-REF-CANDIDATE: ASIC|SoC|FPGA|analog|mixed_signal|RF|memory|photonic — promote to reference product]',
     `dfm_score` DECIMAL(18,2) COMMENT 'Quantitative Design for Manufacturability (DFM) score assigned to the layout at tapeout, reflecting predicted yield sensitivity to process variation. Higher scores indicate better manufacturability. Sourced from DFM analysis tools integrated with the EDA flow.',
     `dft_coverage_pct` DECIMAL(18,2) COMMENT 'Percentage of logic nodes covered by Design for Testability (DFT) structures (scan chains, BIST) as measured by Automatic Test Pattern Generation (ATPG) at tapeout sign-off. Directly impacts post-silicon test quality and DPPM targets.',
@@ -272,12 +329,11 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`tapeout` (
     `metal_layer_count` STRING COMMENT 'Total number of metal interconnect layers in the Back End of Line (BEOL) stack for this tapeout. Determines routing density, RC parasitics, and mask count, directly impacting NRE cost and manufacturing complexity.',
     `notes` STRING COMMENT 'Free-text field for capturing tapeout-specific notes, known issues, approved waivers, or special foundry instructions that do not fit structured fields. Used by design and process engineering teams for context during silicon bring-up.',
     `nre_cost_usd` DECIMAL(18,2) COMMENT 'Total Non-Recurring Engineering (NRE) cost committed for this tapeout in US dollars, including mask set fabrication, EDA tool licenses, and foundry engineering charges. A critical financial commitment recorded at tapeout sign-off. Classified confidential as it contains proprietary cost data.',
-    `number` STRING COMMENT 'Externally-known business identifier for the tapeout event, used in communications with the foundry, mask house, and internal design teams. Follows the format TO-<DESIGN_CODE>-<YEAR>.. Valid values are `^TO-[A-Z0-9]{4,20}-[0-9]{4}$`',
     `opc_ret_status` STRING COMMENT 'Processing status of Optical Proximity Correction (OPC) and Resolution Enhancement Technology (RET) applied to the GDS data prior to mask tape-out. OPC/RET is mandatory for sub-28nm nodes to compensate for photolithographic distortion effects.. Valid values are `not_started|in_progress|completed|waived`',
     `packaging_type` STRING COMMENT 'Intended die packaging technology for the taped-out design (e.g., WLCSP, CoWoS, InFO, flip-chip BGA, QFN). Informs OSAT engagement, assembly NRE planning, and downstream packaging domain linkage. [ENUM-REF-CANDIDATE: WLCSP|CoWoS|InFO|flip_chip_BGA|QFN|BGA|LGA|SiP — promote to reference product]',
-    `process_technology` STRING COMMENT 'Transistor architecture and process technology type used for this tapeout. Distinguishes between planar CMOS, FinFET, Gate-All-Around (GAA), and specialty process technologies relevant to device performance and yield modeling. [ENUM-REF-CANDIDATE: CMOS|FinFET|GAA|BiCMOS|SiGe|GaN|SiC|SOI — 8 candidates stripped; promote to reference product]',
     `signoff_checklist_complete` BOOLEAN COMMENT 'Indicates whether all items on the design sign-off checklist have been completed and approved prior to tapeout submission. The checklist covers DRC, LVS, ERC, timing closure, power analysis, DFT, and IP sign-off milestones.',
     `tapeout_date` DATE COMMENT 'The principal real-world business event date on which the final GDS/GDSII design data was submitted to the foundry or mask house for manufacturing. This is the definitive tapeout milestone date used in project tracking and TTM reporting.',
+    `tapeout_number` STRING COMMENT 'Externally-known business identifier for the tapeout event, used in communications with the foundry, mask house, and internal design teams. Follows the format TO-<DESIGN_CODE>-<YEAR>.. Valid values are `^TO-[A-Z0-9]{4,20}-[0-9]{4}$`',
     `tapeout_status` STRING COMMENT 'Current lifecycle state of the tapeout event. Tracks progression from internal preparation through foundry acceptance or rejection. [ENUM-REF-CANDIDATE: draft|pending_signoff|submitted|accepted|rejected|cancelled — promote to reference product if additional states are needed]. Valid values are `draft|pending_signoff|submitted|accepted|rejected|cancelled`',
     `tapeout_type` STRING COMMENT 'Classification of the tapeout run type. Distinguishes full custom dedicated wafer tapeouts, Multi-Project Wafer (MPW) shuttle runs, engineering sample tapeouts, and production tapeouts. Drives cost allocation and foundry scheduling.. Valid values are `full_custom|mpw|engineering_sample|production`',
     `target_market_segment` STRING COMMENT 'Primary market segment for which the taped-out IC is designed. Used for business reporting, revenue forecasting, and strategic portfolio analysis. [ENUM-REF-CANDIDATE: mobile|automotive|datacenter|IoT|industrial|consumer|aerospace_defense|networking — promote to reference product]',
@@ -288,11 +344,100 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`tapeout` (
     CONSTRAINT pk_tapeout PRIMARY KEY(`tapeout_id`)
 ) COMMENT 'Tapeout event record capturing the final design submission milestone for manufacturing. Records tapeout date, GDS/GDSII file version, mask set identifier, foundry submission reference, PDK version used, final DRC/LVS clean status, OPC/RET processing status, design sign-off checklist completion, NRE cost committed, and MPW shuttle assignment if applicable. SSOT for tapeout provenance linking design to fabrication domain.';
 
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` (
+    `eda_tool_id` BIGINT COMMENT 'Unique surrogate identifier for each EDA tool record in the master catalog. Primary key for the eda_tool data product. Entity role: MASTER_RESOURCE — catalogues a tool asset owned/licensed by the business.',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: EDA tools are procured from vendors (Synopsys, Cadence, Siemens EDA) tracked as suppliers. Linking eda_tool to supplier enables vendor contract management, spend analysis, license renewal tracking, an',
+    `annual_license_cost_usd` DECIMAL(18,2) COMMENT 'Annual cost of the EDA tool license in US Dollars as contracted with the vendor. For perpetual licenses, represents the annual maintenance and support fee. Used for R&D cost allocation, NRE budgeting, and design cost-per-project analysis in SAP S/4HANA CO.',
+    `approved_user_groups` STRING COMMENT 'Comma-separated list of authorized engineering groups or organizational units permitted to use this EDA tool (e.g., IC_Design,Physical_Design,DFT_Engineering). Used for access control enforcement, license allocation governance, and ITAR/EAR user screening compliance.',
+    `compute_platform_type` STRING COMMENT 'Deployment model for this EDA tool: on_premise = installed on internal compute farm; cloud = deployed on cloud EDA platform (e.g., AWS, Azure, Cadence Cloud); hybrid = split between on-premise and cloud burst. Drives infrastructure cost allocation and data sovereignty compliance.. Valid values are `on_premise|cloud|hybrid`',
+    `concurrent_users_peak` STRING COMMENT 'Maximum number of concurrent users or license checkouts observed for this tool during peak design activity periods (e.g., pre-tapeout crunch). Used to assess license adequacy, identify bottlenecks, and justify license pool expansion requests.',
+    `design_flow_stage` STRING COMMENT 'Primary IC design flow stage at which this EDA tool is deployed. Maps to the standard front-to-back design flow: rtl_design (RTL coding and simulation), logic_synthesis (RTL-to-netlist via Design Compiler), physical_design (place-and-route via Innovus), signoff (STA/DRC/LVS/PEX), verification (formal/functional), packaging (assembly design), other. [ENUM-REF-CANDIDATE: rtl_design|logic_synthesis|physical_design|signoff|verification|packaging|other — 7 candidates stripped; promote to reference product]',
+    `dfm_rule_set_version` STRING COMMENT 'Version identifier of the DFM rule set bundled with or validated against this EDA tool version (e.g., TSMC_N5_DFM_v2.1). Ensures that physical design outputs meet foundry DFM requirements for yield optimization. Critical for tapeout sign-off packages.',
+    `dft_support_flag` BOOLEAN COMMENT 'Indicates whether this EDA tool includes or supports DFT capabilities such as ATPG, scan insertion, BIST, or boundary scan (IEEE 1149.1 JTAG). True = DFT-capable; False = no DFT support. Used to determine tool eligibility for DFT-required design projects.',
+    `euv_process_support_flag` BOOLEAN COMMENT 'Indicates whether this EDA tool version is validated for use with EUV lithography process nodes (typically sub-7nm). True = EUV-qualified. Relevant for OPC, mask synthesis, and DRC tools where EUV-specific rule decks are required.',
+    `export_control_classification` STRING COMMENT 'Export control classification code applicable to this EDA tool under US Export Administration Regulations (EAR) or ITAR (e.g., ECCN 3D002, EAR99, ITAR Category XV). Required for compliance with BIS/EAR and ITAR regulations governing the export and re-export of EDA software to foreign nationals and entities.',
+    `flow_integration_point` STRING COMMENT 'Description of how this tool integrates into the enterprise EDA design flow, including upstream and downstream tool handoffs (e.g., Receives synthesized netlist from Synopsys DC; outputs DEF/LEF to Cadence Innovus; interfaces with PrimeTime for timing constraints). Used for flow documentation and tool dependency management.',
+    `formal_verification_flag` BOOLEAN COMMENT 'Indicates whether this EDA tool supports formal verification methodologies (equivalence checking, model checking, property verification). True = formal verification capable. Used to classify tools for safety-critical design flows (automotive ISO 26262, IEC 61508).',
+    `installation_path` STRING COMMENT 'File system path or network mount point where this EDA tool version is installed on the compute infrastructure (e.g., /tools/synopsys/dc/2023.09). Used by design flow scripts, Makefiles, and environment setup modules to locate the correct tool binary.',
+    `itar_controlled_flag` BOOLEAN COMMENT 'Indicates whether this EDA tool is subject to ITAR controls, restricting its use, transfer, or disclosure to foreign persons without a license. True = ITAR-controlled; False = not ITAR-controlled. Mandatory for compliance with US State Department ITAR regulations.',
+    `last_used_date` DATE COMMENT 'Most recent date on which a license checkout was recorded for this EDA tool version. Used to identify dormant or underutilized tools for license reclamation, cost optimization, and EOL planning decisions.',
+    `license_count` STRING COMMENT 'Total number of license seats or tokens procured for this EDA tool version. For floating licenses, represents the maximum concurrent user count. For node-locked, represents the number of authorized hosts. Used for license compliance audits and capacity planning.',
+    `license_expiry_date` DATE COMMENT 'Date on which the current EDA tool license agreement expires. Null for perpetual licenses. Used to trigger renewal workflows in SAP S/4HANA MM and to prevent design flow disruptions due to license lapses. Critical for SOX-compliant software asset management.',
+    `license_server_host` STRING COMMENT 'Hostname or IP address of the FlexLM/RLM license server managing floating license pools for this tool. Null for node-locked or cloud-based licenses. Required for license server failover planning and network access control configuration.',
+    `license_start_date` DATE COMMENT 'Date on which the current EDA tool license agreement becomes effective. Defines the start of the licensed usage period for subscription and term-based licenses. Used alongside license_expiry_date to determine the active license window for compliance reporting.',
+    `license_type` STRING COMMENT 'Licensing model under which the EDA tool is procured and deployed. node_locked = tied to a specific compute host; floating = shared pool via FlexLM/RLM license server; subscription = time-limited SaaS or annual term; cloud = consumption-based cloud deployment; perpetual = one-time purchase with optional maintenance. Governs compliance obligations and cost allocation.. Valid values are `node_locked|floating|subscription|cloud|perpetual`',
+    `license_utilization_pct` DECIMAL(18,2) COMMENT 'Average license utilization rate expressed as a percentage of total licensed seats consumed over the most recent reporting period (e.g., 78.50 = 78.5%). Calculated as (average concurrent checkouts / total license count) × 100. Used for license optimization, rightsizing, and vendor negotiation.',
+    `maintenance_renewal_date` DATE COMMENT 'Date by which the annual maintenance and support contract for this EDA tool must be renewed to maintain access to patches, updates, and vendor support. Triggers procurement renewal workflow in SAP S/4HANA MM. Distinct from license_expiry_date for perpetual licenses.',
+    `pdk_compatibility_version` STRING COMMENT 'Specific PDK version string with which this EDA tool version has been validated for correct DRC, LVS, and parasitic extraction results (e.g., TSMC_N5_PDK_v1.3, Samsung_SF3_PDK_v2.0). Ensures design rule compliance and sign-off accuracy for tapeout submissions.',
+    `qualification_date` DATE COMMENT 'Date on which the EDA tool version was formally qualified and approved for production use in the enterprise design flow. Recorded in Oracle Agile PLM as part of the design tool change management record. Required for design audit trails and tapeout sign-off packages.',
+    `qualification_status` STRING COMMENT 'Formal qualification status of the EDA tool version against the enterprise design methodology and PDK. qualified = passed all DRM/DFM/DFT checks and approved for production tapeouts; in_qualification = undergoing validation; not_qualified = failed or not yet tested; waived = approved with documented exceptions. Required for ISO 9001 and IATF 16949 design control compliance.. Valid values are `qualified|in_qualification|not_qualified|waived`',
+    `qualified_by` STRING COMMENT 'Name or employee ID of the CAD/EDA engineer or team responsible for qualifying this tool version. Provides accountability for the qualification sign-off and is referenced in design methodology documentation and audit packages.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this EDA tool record was first created in the master catalog. Provides audit trail for tool onboarding and is used for data lineage tracking in the Databricks Silver Layer. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this EDA tool record in the master catalog. Used for change tracking, data freshness monitoring, and incremental ETL processing in the Databricks Silver Layer. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `release_notes_url` STRING COMMENT 'URL or internal document management path to the vendor release notes for this specific tool version. Provides engineers with access to known issues, bug fixes, and new feature documentation. Stored in Siemens Teamcenter PLM document management.',
+    `supported_os_platforms` STRING COMMENT 'Comma-separated list of operating system platforms on which this EDA tool version is certified to run (e.g., RHEL7,RHEL8,CentOS7,SLES15). Required for IT infrastructure planning, compute farm provisioning, and tool qualification sign-off.',
+    `supported_process_nodes` STRING COMMENT 'Comma-separated list of semiconductor process technology nodes (in nanometers) for which this EDA tool version is qualified and PDK-validated (e.g., 3nm,5nm,7nm,12nm,28nm). Determines tool eligibility for specific tapeout projects. Validated against PDK release notes from foundry partners.',
+    `tool_category` STRING COMMENT 'Functional classification of the EDA tool within the IC design flow. Drives tool selection, flow integration, and license budgeting. Valid categories: synthesis (logic synthesis), simulation (functional/timing simulation), formal_verification, place_and_route (physical implementation), sta (Static Timing Analysis), drc_lvs (Design Rule Check / Layout vs. Schematic), parasitic_extraction, power_analysis, signal_integrity, other. [ENUM-REF-CANDIDATE: synthesis|simulation|formal_verification|place_and_route|sta|drc_lvs|parasitic_extraction|power_analysis|signal_integrity|other — promote to reference product]',
+    `tool_code` STRING COMMENT 'Externally-known, human-readable unique business identifier for the EDA tool (e.g., SYNOPSYS-DC-2023, CADENCE-INNOVUS-22). Used as the canonical reference code across PLM, procurement, and license management systems. Maps to the tool catalog number in Oracle Agile PLM.. Valid values are `^[A-Z0-9_-]{2,30}$`',
+    `tool_description` STRING COMMENT 'Free-text description of the EDA tools functional capabilities, primary use cases, and design flow role. Provides context for engineers selecting tools for new projects and for onboarding documentation. Sourced from vendor product documentation and internal CAD team notes.',
+    `tool_name` STRING COMMENT 'Full commercial name of the EDA tool as published by the vendor (e.g., Synopsys Design Compiler, Cadence Innovus Implementation System, Siemens Calibre DRC). Primary human-readable label used in design flow documentation and license agreements.',
+    `tool_status` STRING COMMENT 'Current lifecycle state of the EDA tool in the enterprise design environment. active = qualified and in production use; deprecated = superseded but still permitted for legacy projects; evaluation = under qualification testing; retired = no longer licensed or supported; pending_qualification = awaiting PDK and flow validation sign-off.. Valid values are `active|deprecated|evaluation|retired|pending_qualification`',
+    `tool_version` STRING COMMENT 'Specific release version string of the EDA tool as provided by the vendor (e.g., 2023.09, v22.1, 21.1.0.1). Critical for design reproducibility, PDK compatibility validation, and regression testing. Tracked in Siemens Teamcenter PLM for design provenance.. Valid values are `^[A-Za-z0-9.-_]{1,40}$`',
+    `vendor_contract_number` STRING COMMENT 'Vendor-assigned or internally-assigned contract reference number for the EDA tool license agreement. Links this tool record to the corresponding procurement contract in SAP S/4HANA MM for spend tracking, renewal management, and audit compliance.',
+    `vendor_support_tier` STRING COMMENT 'Level of vendor technical support contracted for this EDA tool (e.g., standard = business-hours support; premium = 24/7 with dedicated TAM; elite = on-site engineering support; end_of_support = vendor no longer provides patches or fixes). Impacts risk assessment for production tapeout use.. Valid values are `standard|premium|elite|end_of_support`',
+    CONSTRAINT pk_eda_tool PRIMARY KEY(`eda_tool_id`)
+) COMMENT 'EDA (Electronic Design Automation) tool master record cataloging all licensed design automation tools used across the IC design flow. Captures tool name, vendor (Cadence, Synopsys, Siemens EDA, Ansys), tool category (synthesis, simulation, formal verification, place-and-route, STA, DRC/LVS, parasitic extraction, power analysis, signal integrity), version, license type (node-locked, floating, subscription), license count, supported process nodes, flow integration points, and license utilization metrics. SSOT for EDA tool inventory, version management, and license compliance.';
+
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` (
+    `ip_core_usage_id` BIGINT COMMENT 'Unique surrogate identifier for each IP core integration instance record within a design project. Primary key for the ip_core_usage entity.',
+    `pdk_id` BIGINT COMMENT 'Foreign key linking to design.pdk. Business justification: ip_core_usage.pdk_node (STRING) is a denormalized reference to the process node/PDK under which the IP core is being integrated. Each IP core usage instance is qualified against a specific PDK. Adding',
+    `ic_design_project_id` BIGINT COMMENT 'Reference to the IC design project (SoC, ASIC, or FPGA design) into which this IP core version is being integrated. Links the usage record to the parent design context.',
+    `product_ip_core_id` BIGINT COMMENT 'Reference to the governing license agreement under which this IP core is used in this design project. Enables license compliance auditing and royalty obligation tracking.',
+    `source_design_project_ic_design_project_id` BIGINT COMMENT 'Reference to the original design project from which this IP core integration was reused, when ip_reuse_flag is True. Enables IP reuse lineage tracking and qualification inheritance assessment.',
+    `supplier_id` BIGINT COMMENT 'Reference to the MPW (Multi-Project Wafer) shuttle run in which this IP core integration was included, if applicable. Used for prototype and early silicon validation cost tracking.',
+    `tapeout_id` BIGINT COMMENT 'Reference to the tapeout event (final GDSII submission for manufacturing) in which this IP core integration was included. Links IP usage to the specific fabrication submission for traceability.',
+    `area_consumed_um2` DECIMAL(18,2) COMMENT 'Physical silicon area consumed by this IP core integration in square micrometers (µm²). Used for die area budget tracking, PPA (Power, Performance, Area) analysis, and cost estimation.',
+    `clock_frequency_mhz` DECIMAL(18,2) COMMENT 'Target operating clock frequency in megahertz (MHz) for this IP core integration in the design context. Used for timing closure planning and STA (Static Timing Analysis) constraint setup.',
+    `configuration_parameters` STRING COMMENT 'Serialized key-value string of configuration parameters applied to this IP core instance (e.g., data_width=64, num_channels=8, fifo_depth=512). Captures the specific parameterization used in this design context for reproducibility and IP reuse analytics.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this IP core usage record was first created in the system. Used for audit trail, data lineage, and record provenance tracking in the Databricks Silver Layer.',
+    `design_hierarchy_path` STRING COMMENT 'Full hierarchical path of the IP core instance within the design netlist (e.g., top/subsystem_a/pcie_ctrl_0). Enables precise identification of the IP instance location in the design hierarchy for debug, ECO, and physical implementation.',
+    `export_control_classification` STRING COMMENT 'Export control classification of this IP core under US EAR (Export Administration Regulations) or ITAR (International Traffic in Arms Regulations). Determines permissible countries and end-users for design sharing and IP transfer. Critical for regulatory compliance.. Valid values are `EAR99|ECCN_3E001|ECCN_3E002|ECCN_3E003|ITAR|unrestricted`',
+    `functional_coverage_pct` DECIMAL(18,2) COMMENT 'Functional verification coverage percentage achieved for this IP core integration, as reported by the verification environment. Used for sign-off readiness assessment and quality gate enforcement.',
+    `instance_count` STRING COMMENT 'Number of times this IP core is instantiated within the design project (e.g., 4 instances of a SERDES PHY). Drives royalty calculation for royalty-bearing IP and area budget planning.',
+    `integration_start_date` DATE COMMENT 'Calendar date on which integration of this IP core into the design project was initiated. Used for project timeline tracking, TTM (Time to Market) analysis, and design schedule management.',
+    `integration_status` STRING COMMENT 'Current lifecycle state of the IP core integration within the design project. Tracks progression from initial selection through silicon validation: planned (selected but not yet integrated), in_progress (integration underway), verified (simulation/emulation verified), silicon_proven (validated on fabricated silicon).. Valid values are `planned|in_progress|verified|silicon_proven`',
+    `interface_protocol` STRING COMMENT 'Primary bus or interface protocol used to connect this IP core to the SoC interconnect fabric (e.g., AXI4, AHB, APB, CHI, TileLink, OCP). Critical for integration verification and bus protocol compliance checking. [ENUM-REF-CANDIDATE: AXI4|AHB|APB|CHI|TileLink|OCP|AXI4-Lite|AXI4-Stream|Wishbone|AMBA — promote to reference product]',
+    `ip_core_version` STRING COMMENT 'Specific version identifier of the IP core being integrated (e.g., 2.1.0, 3.0.0-rc1). Tracks which release of the IP block is used in this design context to support IP lifecycle and change management.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$`',
+    `ip_reuse_flag` BOOLEAN COMMENT 'Indicates whether this IP core integration is a reuse of a previously silicon-proven instance from another design project (True = reused IP, False = first-time integration). Enables IP reuse analytics and NRE cost avoidance tracking.',
+    `ip_usage_to_core` BIGINT COMMENT 'FK to design.ip_core.ip_core_id — Each usage record references which IP core from the catalog is being integrated. Essential for IP reuse analytics and license compliance.',
+    `is_dfm_compliant` BOOLEAN COMMENT 'Indicates whether this IP core integration has passed DFM (Design for Manufacturability) rule checks for the target process node (True = DFM compliant). Critical for yield optimization and tapeout readiness sign-off.',
+    `is_dft_enabled` BOOLEAN COMMENT 'Indicates whether DFT (Design for Testability) structures such as scan chains, BIST, or JTAG boundary scan are enabled for this IP core integration (True = DFT enabled). Impacts ATPG test pattern generation and ATE test coverage.',
+    `is_silicon_proven` BOOLEAN COMMENT 'Indicates whether this IP core version has been validated on fabricated silicon within this specific design project context (True = silicon-proven, False = not yet silicon-proven). Key qualifier for IP reuse qualification and KGD (Known Good Die) assessments.',
+    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this IP core usage record was most recently modified. Used for change tracking, incremental data pipeline processing, and audit compliance.',
+    `license_type` STRING COMMENT 'Licensing model under which the IP core is used in this design: royalty_bearing (per-unit royalty owed on production), perpetual (one-time NRE fee, unlimited use), subscription (time-limited access), internal (internally developed IP, no external license), open_source (open-source licensed IP). Critical for license compliance auditing and cost accounting.. Valid values are `royalty_bearing|perpetual|subscription|internal|open_source`',
+    `notes` STRING COMMENT 'Free-text field for capturing integration-specific observations, known issues, workarounds, or deviations from standard integration procedures. Supports design review documentation and knowledge transfer.',
+    `nre_cost_usd` DECIMAL(18,2) COMMENT 'Non-Recurring Engineering cost in US dollars associated with licensing or customizing this IP core for the design project. Includes one-time integration fees, customization charges, and support costs. Used for design project cost accounting.',
+    `power_contribution_mw` DECIMAL(18,2) COMMENT 'Estimated power consumption contributed by this IP core integration in milliwatts (mW), covering dynamic and static power. Used for top-level power budget analysis and PPA optimization.',
+    `royalty_rate_per_unit` DECIMAL(18,2) COMMENT 'Per-unit royalty rate in US dollars payable to the IP licensor for each chip shipped containing this IP core. Applicable only for royalty_bearing license types. Used for royalty obligation forecasting and financial accruals.',
+    `sign_off_date` DATE COMMENT 'Calendar date on which the formal design sign-off for this IP core integration was granted or last updated. Used for tapeout readiness tracking and audit trail.',
+    `sign_off_status` STRING COMMENT 'Design sign-off status for this IP core integration, reflecting the outcome of formal design review and approval gates (pending, approved, rejected, waived). Required for tapeout readiness and quality gate compliance.. Valid values are `pending|approved|rejected|waived`',
+    `silicon_validation_date` DATE COMMENT 'Calendar date on which silicon validation of this IP core integration was completed, confirming silicon-proven status. Null if silicon validation has not yet occurred.',
+    `supply_voltage_v` DECIMAL(18,2) COMMENT 'Operating supply voltage in volts (V) for this IP core integration. Used for power domain planning, multi-voltage design verification, and UPF (Unified Power Format) constraint generation.',
+    `timing_budget_ns` DECIMAL(18,2) COMMENT 'Timing budget allocated to this IP core integration in nanoseconds (ns), representing its contribution to the top-level timing closure budget. Derived from Synopsys PrimeTime timing analysis and used for STA sign-off.',
+    `usage_to_core` BIGINT COMMENT 'FK to design.ip_core.ip_core_id — IP core usage records which IP core is being integrated. This is the fundamental FK for the association record.',
+    `verification_completion_date` DATE COMMENT 'Calendar date on which functional verification of this IP core integration was completed and signed off. Marks the transition from in_progress to verified integration status.',
+    `verification_methodology` STRING COMMENT 'Verification methodology applied to validate this IP core integration (e.g., UVM, OVM, formal verification, emulation, FPGA prototype). Determines verification coverage and sign-off criteria. [ENUM-REF-CANDIDATE: UVM|OVM|VMM|formal|emulation|FPGA_prototype|mixed — 7 candidates stripped; promote to reference product]',
+    CONSTRAINT pk_ip_core_usage PRIMARY KEY(`ip_core_usage_id`)
+) COMMENT 'Integration instance record capturing the deployment of a specific IP core version into an IC design project, with full lifecycle from selection through silicon validation. Tracks IP core version used, integration status (planned, in-progress, verified, silicon-proven), configuration parameters applied, interface connections and bus protocol mappings, timing constraints contributed to the top-level budget, physical area consumed, power contribution, licensing compliance status (royalty-bearing, perpetual, subscription), and silicon-proven flag for this design context. Enables IP reuse analytics, license compliance auditing across design projects, and IP qualification tracking. SSOT for the many-to-many relationship between IP cores and design projects.';
+
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` (
     `verification_plan_id` BIGINT COMMENT 'Unique surrogate identifier for the design verification plan record within the Databricks Silver Layer lakehouse. Primary key for this entity.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_flow. Business justification: Verification plans must reference the target process flow to ensure simulation corners, DRC rules, and timing models match the actual manufacturing flow. Sign-off completeness checks require confirmin',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Verification Plan aligns with a specific research project; linking enables project‑level verification status reporting.',
     `ic_design_project_id` BIGINT COMMENT 'Reference to the parent IC design project for which this verification plan is authored. Links the plan to the RTL-to-GDSII design project record managed in Cadence Virtuoso/Innovus or Siemens Teamcenter PLM.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Verification plans are scoped to a process node for qualification sign-off; process node qualification requires verification coverage evidence. Normalizing target_process_node into a FK enables proces',
-    `revision_id` BIGINT COMMENT 'Reference to the specific RTL or netlist design revision under verification. Ensures the verification plan is tied to a precise design snapshot, supporting traceability from verification results back to the design state at time of sign-off.',
+    `pdk_id` BIGINT COMMENT 'Foreign key linking to design.pdk. Business justification: A verification plan is written against a specific PDK version — the DRC/LVS rule decks, DFT rule decks, and process corners referenced in the plan are PDK-specific. verification_plan.pdk_version is a ',
+    `product_spec_id` BIGINT COMMENT 'Foreign key linking to product.product_spec. Business justification: Verification engineers derive coverage targets (functional, fault, safety mechanism) directly from product_spec requirements. Automated verification completeness checks and ISO 26262 ASIL sign-off rep',
+    `eda_tool_id` BIGINT COMMENT 'Foreign key linking to design.eda_tool. Business justification: verification_plan.simulation_tool (STRING) is a denormalized reference to the simulation EDA tool used for functional verification (e.g., Synopsys VCS, Cadence Xcelium). Adding simulation_eda_tool_id ',
     `assertion_coverage_target_pct` DECIMAL(18,2) COMMENT 'Target percentage of SystemVerilog Assertions (SVA) or PSL assertions that must be exercised and pass during simulation. Assertion coverage is a key metric for protocol compliance and corner-case verification completeness.',
     `bug_tracking_project_key` STRING COMMENT 'Project key or identifier in the bug tracking system corresponding to this verification plan (e.g., SOC-X5-VER). Used to hyperlink verification failures to the defect management workflow.',
     `bug_tracking_system` STRING COMMENT 'Name of the defect/bug tracking system integrated with this verification plan for logging simulation failures and RTL bugs (e.g., Jira, Bugzilla, Synopsys Serenity). Enables traceability from verification failures to RTL fixes.',
@@ -310,7 +455,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` (
     `ip_reuse_count` STRING COMMENT 'Number of third-party or internal IP cores integrated into this design that require verification waivers or pre-verified IP sign-off. Impacts the scope of the verification plan and the testbench architecture for IP interface compliance.',
     `iso26262_asil_decomposition` STRING COMMENT 'Description of the ASIL decomposition strategy applied to this design per ISO 26262 Part 9. Documents how a higher ASIL requirement is decomposed into two independent lower-ASIL sub-elements (e.g., ASIL D decomposed to ASIL B + ASIL B). Mandatory for automotive safety-critical IC designs.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this design verification plan record. Used for change tracking, PLM synchronization, and incremental data pipeline processing in the Databricks Silver Layer.',
-    `pdk_version` STRING COMMENT 'Version of the foundry-provided PDK used in this design and verification environment. The PDK defines the design rules, device models, and standard cell libraries. Verification must be validated against the correct PDK version to ensure DFM compliance.',
     `plan_end_date` DATE COMMENT 'Planned completion date for all verification activities and sign-off, aligned with the tapeout schedule. A key TTM (Time to Market) planning date. Slippage triggers NRE (Non-Recurring Engineering) cost impact analysis.',
     `plan_name` STRING COMMENT 'Descriptive human-readable name for the verification plan, typically including the IC design project name and verification phase (e.g., SoC-X5 Full-Chip Functional Verification Plan v2.1). Used in dashboards, reports, and PLM document management.',
     `plan_number` STRING COMMENT 'Externally-known, human-readable identifier for the verification plan, typically assigned by the PLM system (e.g., Oracle Agile PLM or Siemens Teamcenter). Format: DVP-<PROJECT_CODE>-<YEAR>-<SEQ>. Used in cross-functional communications, tapeout checklists, and audit trails.. Valid values are `^DVP-[A-Z0-9]{3,10}-[0-9]{4}-[0-9]{3}$`',
@@ -325,7 +469,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` (
     `signoff_approved` BOOLEAN COMMENT 'Indicates whether all verification sign-off criteria have been met and formal approval has been granted to proceed to tapeout. True only after all coverage targets, regression pass rates, and safety requirements are satisfied.',
     `signoff_criteria_description` STRING COMMENT 'Textual description of the complete set of criteria that must be satisfied before verification sign-off is granted and tapeout is authorized. Includes coverage closure thresholds, zero-open-critical-bug requirement, regression pass rate, and formal proof completion.',
     `signoff_date` DATE COMMENT 'Actual date on which verification sign-off was formally approved. Null until sign-off is granted. Used for tapeout readiness confirmation and post-silicon correlation analysis.',
-    `simulation_tool` STRING COMMENT 'Primary EDA simulation tool assigned for RTL and gate-level simulation (e.g., Synopsys VCS, Cadence Xcelium, Mentor Questa). Determines the simulation environment configuration, license requirements, and regression infrastructure.',
     `tapeout_target_date` DATE COMMENT 'Target date for GDSII tapeout submission to the foundry. The verification plan must achieve all sign-off criteria before this date. Drives the verification schedule and milestone gate definitions.',
     `testbench_architecture` STRING COMMENT 'Structural architecture of the simulation testbench. UVM_layered follows the standard UVM agent/scoreboard/coverage hierarchy; directed uses manually written test vectors; constrained_random uses SystemVerilog randomization; cocotb uses Python-based co-simulation; SystemC uses transaction-level modeling. [ENUM-REF-CANDIDATE: UVM_layered|directed|constrained_random|hybrid|cocotb|SystemC — promote to reference product]. Valid values are `UVM_layered|directed|constrained_random|hybrid|cocotb|SystemC`',
     `toggle_coverage_target_pct` DECIMAL(18,2) COMMENT 'Target toggle coverage percentage for all RTL signals, ensuring each net transitions both 0→1 and 1→0 during simulation. Used as a DFT readiness indicator and a structural verification completeness metric.',
@@ -333,279 +476,366 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` (
     CONSTRAINT pk_verification_plan PRIMARY KEY(`verification_plan_id`)
 ) COMMENT 'Design verification plan master record defining the pre-silicon verification strategy for an IC design project. Captures verification methodology (UVM, formal, emulation, FPGA prototyping), coverage goals (functional, code, toggle, assertion), testbench architecture, simulation environment configuration, DFT strategy (ATPG, BIST, scan chain, boundary scan), verification milestones and schedule, tool assignments, regression suite definitions, bug tracking integration, and sign-off criteria. For automotive and safety-critical designs, captures ISO 26262 functional safety verification requirements including ASIL decomposition, safety mechanism coverage targets, fault injection campaign plans, and FMEDA linkage. Ensures systematic verification coverage and regulatory compliance before tapeout.';
 
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`revision` (
-    `revision_id` BIGINT COMMENT 'Primary key for design_revision',
-    `prior_design_revision_id` BIGINT COMMENT 'Self-referencing FK on design_revision (prior_design_revision_id)',
-    `area_um2` DECIMAL(18,2) COMMENT 'Physical silicon area of the design in square micrometers.',
-    `change_reason` STRING COMMENT 'Business or technical justification for the revision.',
-    `change_summary` STRING COMMENT 'Brief textual summary of the changes introduced in this revision.',
-    `checksum` STRING COMMENT 'SHA‑256 checksum of the primary design file to ensure integrity.',
-    `confidentiality_level` STRING COMMENT 'Data sensitivity classification for the revision.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the revision record was first created in the system.',
-    `design_complexity_metric` STRING COMMENT 'Qualitative assessment of design complexity.',
-    `design_file_path` STRING COMMENT 'File system or repository path where the design files for this revision are stored.',
-    `design_owner_team` STRING COMMENT 'Team responsible for the design revision.',
-    `design_stage` STRING COMMENT 'Current development stage of the design for this revision.',
-    `design_type` STRING COMMENT 'Technology category of the design.',
-    `designer` STRING COMMENT 'Name of the primary engineer or team that authored the revision.',
-    `file_format` STRING COMMENT 'Standard file format of the stored design data.',
-    `gate_count` BIGINT COMMENT 'Total number of logic gates in the design for this revision.',
-    `is_critical` BOOLEAN COMMENT 'Flag indicating whether the revision addresses a critical issue.',
-    `label` STRING COMMENT 'Human‑readable label or name for the design revision (e.g., "Rev_A1").',
-    `place_and_route_tool` STRING COMMENT 'Name of the place‑and‑route tool used (e.g., Cadence Innovus).',
-    `power_mw` DECIMAL(18,2) COMMENT 'Estimated power consumption of the design in milliwatts.',
-    `power_report_available` BOOLEAN COMMENT 'Indicates whether a post‑layout power analysis report exists for this revision.',
-    `release_date` DATE COMMENT 'Calendar date when the revision was officially released to downstream teams.',
-    `release_notes` STRING COMMENT 'Detailed notes accompanying the release of this revision.',
-    `review_status` STRING COMMENT 'Outcome of the design review process.',
-    `reviewer` STRING COMMENT 'Name of the engineer or manager who performed the formal review.',
-    `revision_number` STRING COMMENT 'External version number assigned to the revision (e.g., "1.0.3").',
-    `revision_status` STRING COMMENT 'Current lifecycle state of the design revision.',
-    `revision_type` STRING COMMENT 'Category of the revision indicating its impact scope.',
-    `synthesis_tool` STRING COMMENT 'Name of the logic synthesis tool used (e.g., Synopsys Design Compiler).',
-    `timing_report_available` BOOLEAN COMMENT 'Indicates whether a timing analysis report exists for this revision.',
-    `timing_slack_ns` DECIMAL(18,2) COMMENT 'Worst negative timing slack for the design in nanoseconds.',
-    `tool_version` STRING COMMENT 'Version of the EDA tool suite used to generate this revision.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the revision record.',
-    `valid_until` DATE COMMENT 'Date after which the revision is considered obsolete or superseded.',
-    `version_control_branch` STRING COMMENT 'Source‑control branch name where the revision is tracked.',
-    `version_control_commit` STRING COMMENT 'Commit hash or identifier linking to the exact source code snapshot.',
-    CONSTRAINT pk_revision PRIMARY KEY(`revision_id`)
-) COMMENT 'Master reference table for design_revision. Referenced by design_revision_id.';
-
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` (
-    `ip_integration_id` BIGINT COMMENT 'Primary key uniquely identifying each IP core integration instance within a design project',
-    `design_ip_core_id` BIGINT COMMENT 'Foreign key to the IP core being integrated',
-    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to the IC design project that integrates the IP core',
-    `ip_core_id` BIGINT COMMENT 'Foreign key linking to the IP core being integrated into the design project',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this integration record was created in the system',
-    `instance_count` STRING COMMENT 'Number of instances of this IP core instantiated within the design project. Affects area, power, and licensing calculations.',
-    `integration_date` DATE COMMENT 'Date when the IP core was integrated into the design project. Used for milestone tracking and schedule management.',
-    `integration_engineer_name` BIGINT COMMENT 'Engineer responsible for integrating and verifying this IP core instance within the design project',
-    `integration_status` STRING COMMENT 'Current status of the IP integration workflow (planned, in_progress, integrated, verified, signed_off, failed). Tracks progression through integration gates.',
-    `ip_core_count` STRING COMMENT 'Number of IP cores [Moved from ic_design_project: This attribute currently on ic_design_project is a derived count that would be calculated by aggregating ip_integration records. It represents the cardinality of the M:N relationship and should not be stored redundantly on the project table.]',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this integration record',
-    `license_usage_count` STRING COMMENT 'Number of license seats consumed by this integration instance. Used for royalty calculation and license compliance tracking.',
-    `sign_off_status` STRING COMMENT 'Design review sign-off status for this IP integration (pending, approved, rejected, conditional). Required for tapeout gate progression.',
-    `verification_completion_pct` DECIMAL(18,2) COMMENT 'Percentage of verification test cases completed for this IP integration instance',
-    `version_used` STRING COMMENT 'Specific version of the IP core integrated into this design project. Critical for silicon-proven status tracking and tapeout documentation.',
-    CONSTRAINT pk_ip_integration PRIMARY KEY(`ip_integration_id`)
-) COMMENT 'This association product represents the integration instance of a reusable IP core into a specific IC design project. It captures the operational relationship between IP cores and design projects, tracking version compatibility, licensing consumption, integration status, and sign-off gates. Each record represents one IP core integrated into one design project with attributes that exist only in the context of this specific integration instance.. Existence Justification: In semiconductor IC design, IP core integration is a recognized operational business process with dedicated workflows, sign-off gates, and license tracking managed in EDA tools (Cadence Virtuoso, Synopsys). A single IP core (e.g., ARM CPU, Synopsys DDR controller) is reused across multiple design projects simultaneously, and each design project integrates multiple IP cores to compose the complete SoC. The business actively manages each integration instance with version selection, license consumption tracking, verification status, and design review sign-offs.';
-
 -- ========= FOREIGN KEYS =========
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ADD CONSTRAINT `fk_design_ic_design_project_eda_tool_id` FOREIGN KEY (`eda_tool_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`eda_tool`(`eda_tool_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ADD CONSTRAINT `fk_design_ic_design_project_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ADD CONSTRAINT `fk_design_ip_core_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_ip_core_id` FOREIGN KEY (`ip_core_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ip_core`(`ip_core_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ADD CONSTRAINT `fk_design_design_ip_core_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ADD CONSTRAINT `fk_design_design_ip_core_rtl_specification_id` FOREIGN KEY (`rtl_specification_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`rtl_specification`(`rtl_specification_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ADD CONSTRAINT `fk_design_rtl_specification_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ADD CONSTRAINT `fk_design_rtl_specification_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_design_ip_core_id` FOREIGN KEY (`design_ip_core_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`design_ip_core`(`design_ip_core_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_eda_tool_id` FOREIGN KEY (`eda_tool_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`eda_tool`(`eda_tool_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`revision`(`revision_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_rtl_specification_id` FOREIGN KEY (`rtl_specification_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`rtl_specification`(`rtl_specification_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_to_pdk_id` FOREIGN KEY (`to_pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ADD CONSTRAINT `fk_design_netlist_to_rtl_specification_id` FOREIGN KEY (`to_rtl_specification_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`rtl_specification`(`rtl_specification_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_eda_tool_id` FOREIGN KEY (`eda_tool_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`eda_tool`(`eda_tool_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_netlist_id` FOREIGN KEY (`netlist_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`netlist`(`netlist_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`revision`(`revision_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_to_ic_design_project_id` FOREIGN KEY (`to_ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ADD CONSTRAINT `fk_design_physical_layout_primary_physical_ic_design_project_id` FOREIGN KEY (`primary_physical_ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ADD CONSTRAINT `fk_design_tapeout_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ADD CONSTRAINT `fk_design_tapeout_physical_layout_id` FOREIGN KEY (`physical_layout_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`physical_layout`(`physical_layout_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ADD CONSTRAINT `fk_design_tapeout_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`revision`(`revision_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ADD CONSTRAINT `fk_design_tapeout_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ADD CONSTRAINT `fk_design_ip_core_usage_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ADD CONSTRAINT `fk_design_ip_core_usage_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ADD CONSTRAINT `fk_design_ip_core_usage_source_design_project_ic_design_project_id` FOREIGN KEY (`source_design_project_ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ADD CONSTRAINT `fk_design_ip_core_usage_tapeout_id` FOREIGN KEY (`tapeout_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`tapeout`(`tapeout_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ADD CONSTRAINT `fk_design_verification_plan_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ADD CONSTRAINT `fk_design_verification_plan_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`revision`(`revision_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ADD CONSTRAINT `fk_design_revision_prior_design_revision_id` FOREIGN KEY (`prior_design_revision_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`revision`(`revision_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ADD CONSTRAINT `fk_design_ip_integration_design_ip_core_id` FOREIGN KEY (`design_ip_core_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ip_core`(`ip_core_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ADD CONSTRAINT `fk_design_ip_integration_ic_design_project_id` FOREIGN KEY (`ic_design_project_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ic_design_project`(`ic_design_project_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ADD CONSTRAINT `fk_design_ip_integration_ip_core_id` FOREIGN KEY (`ip_core_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`ip_core`(`ip_core_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ADD CONSTRAINT `fk_design_verification_plan_pdk_id` FOREIGN KEY (`pdk_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`pdk`(`pdk_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ADD CONSTRAINT `fk_design_verification_plan_eda_tool_id` FOREIGN KEY (`eda_tool_id`) REFERENCES `vibe_semiconductors_v1`.`design`.`eda_tool`(`eda_tool_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_semiconductors_v1`.`design` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_semiconductors_v1`.`design` SET TAGS ('dbx_domain' = 'design');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Integrated Circuit (IC) Design Project ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `eda_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Rd Program Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Foundry Process Design Kit (PDK) Identifier');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Foundry Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nda_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Nda Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `block_count` SET TAGS ('dbx_business_glossary_term' = 'Block Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_phase` SET TAGS ('dbx_business_glossary_term' = 'Design Phase');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_type` SET TAGS ('dbx_business_glossary_term' = 'Design Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `dfm_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Dfm Rule Set Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `dft_enabled` SET TAGS ('dbx_business_glossary_term' = 'Dft Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `eda_tool_suite` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Suite');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `eda_tool_version` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `gate_count_target_k` SET TAGS ('dbx_business_glossary_term' = 'Gate Count Target K');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `gds_file_path` SET TAGS ('dbx_business_glossary_term' = 'Gds File Path');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `iatf_automotive_grade` SET TAGS ('dbx_business_glossary_term' = 'Iatf Automotive Grade');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `lithography_type` SET TAGS ('dbx_business_glossary_term' = 'Lithography Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Layer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_actual_spend_usd` SET TAGS ('dbx_business_glossary_term' = 'Nre Actual Spend Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_budget_usd` SET TAGS ('dbx_business_glossary_term' = 'Nre Budget Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `packaging_type` SET TAGS ('dbx_business_glossary_term' = 'Packaging Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `pdk_version` SET TAGS ('dbx_business_glossary_term' = 'Pdk Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `plm_item_reference` SET TAGS ('dbx_business_glossary_term' = 'Plm Item Reference');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `process_node_nm` SET TAGS ('dbx_business_glossary_term' = 'Process Node Nm');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_description` SET TAGS ('dbx_business_glossary_term' = 'Project Description');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_start_date` SET TAGS ('dbx_business_glossary_term' = 'Project Start Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'Project Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `reach_svhc_assessed` SET TAGS ('dbx_business_glossary_term' = 'Reach Svhc Assessed');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `revision` SET TAGS ('dbx_business_glossary_term' = 'Revision');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Rohs Compliant');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `rtl_freeze_date` SET TAGS ('dbx_business_glossary_term' = 'Rtl Freeze Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `sap_wbs_element` SET TAGS ('dbx_business_glossary_term' = 'Sap Wbs Element');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tapeout_actual_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Actual Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tapeout_target_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Target Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_clock_freq_mhz` SET TAGS ('dbx_business_glossary_term' = 'Target Clock Freq Mhz');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_die_area_mm2` SET TAGS ('dbx_business_glossary_term' = 'Target Die Area Mm2');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_power_budget_mw` SET TAGS ('dbx_business_glossary_term' = 'Target Power Budget Mw');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tsv_required` SET TAGS ('dbx_business_glossary_term' = 'Tsv Required');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Design Ip Core Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Ip Core Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `area_um2` SET TAGS ('dbx_business_glossary_term' = 'Area Um2');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `ip_core_code` SET TAGS ('dbx_business_glossary_term' = 'Ip Core Code');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `datasheet_url` SET TAGS ('dbx_business_glossary_term' = 'Datasheet Url');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `dfm_compliant` SET TAGS ('dbx_business_glossary_term' = 'Dfm Compliant');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `dft_compliant` SET TAGS ('dbx_business_glossary_term' = 'Dft Compliant');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `eda_tool_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Compatibility');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `foundry_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Foundry Compatibility');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `function_category` SET TAGS ('dbx_business_glossary_term' = 'Function Category');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `functional_description` SET TAGS ('dbx_business_glossary_term' = 'Functional Description');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `gate_count` SET TAGS ('dbx_business_glossary_term' = 'Gate Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `gds_available` SET TAGS ('dbx_business_glossary_term' = 'Gds Available');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `interface_standard` SET TAGS ('dbx_business_glossary_term' = 'Interface Standard');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `ip_type` SET TAGS ('dbx_business_glossary_term' = 'Ip Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `lef_available` SET TAGS ('dbx_business_glossary_term' = 'Lef Available');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `license_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'License Expiry Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `license_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'License Fee Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'License Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `max_frequency_mhz` SET TAGS ('dbx_business_glossary_term' = 'Max Frequency Mhz');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `mpw_eligible` SET TAGS ('dbx_business_glossary_term' = 'Mpw Eligible');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `ip_core_name` SET TAGS ('dbx_business_glossary_term' = 'Design Ip Core Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `nda_required` SET TAGS ('dbx_business_glossary_term' = 'Nda Required');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `power_uw` SET TAGS ('dbx_business_glossary_term' = 'Power Uw');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Rohs Compliant');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `royalty_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `rtl_language` SET TAGS ('dbx_business_glossary_term' = 'Rtl Language');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `scan_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'Scan Coverage Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `silicon_proven` SET TAGS ('dbx_business_glossary_term' = 'Silicon Proven');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `silicon_proven_date` SET TAGS ('dbx_business_glossary_term' = 'Silicon Proven Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Source Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `support_tier` SET TAGS ('dbx_business_glossary_term' = 'Support Tier');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `timing_model_available` SET TAGS ('dbx_business_glossary_term' = 'Timing Model Available');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `vendor_name` SET TAGS ('dbx_business_glossary_term' = 'Vendor Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `vendor_part_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Part Number');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `block_count` SET TAGS ('dbx_business_glossary_term' = 'Hierarchical Design Block Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_phase` SET TAGS ('dbx_business_glossary_term' = 'IC Design Phase (FEOL/BEOL/MOL)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_phase` SET TAGS ('dbx_value_regex' = 'FEOL|BEOL|MOL|full_flow');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_type` SET TAGS ('dbx_business_glossary_term' = 'IC Design Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `design_type` SET TAGS ('dbx_value_regex' = 'ASIC|SoC|FPGA|ASSP|MCU|GPU');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `dfm_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Rule Set Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `dft_enabled` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Enabled Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification (EAR/ITAR)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = 'EAR99|ECCN_3E001|ECCN_3E002|ITAR|no_restriction');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `gate_count_target_k` SET TAGS ('dbx_business_glossary_term' = 'Target Gate Count (Kilo-Gates)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `gds_file_path` SET TAGS ('dbx_business_glossary_term' = 'GDS/GDSII Design Database File Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `iatf_automotive_grade` SET TAGS ('dbx_business_glossary_term' = 'IATF 16949 Automotive Grade Design Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `ip_core_count` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `lithography_type` SET TAGS ('dbx_business_glossary_term' = 'Lithography Type (EUV/DUV)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `lithography_type` SET TAGS ('dbx_value_regex' = 'EUV|DUV|multi_patterning|nanoimprint');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Interconnect Layer Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_actual_spend_usd` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Actual Spend (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_actual_spend_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_budget_usd` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Budget (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `nre_budget_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `packaging_type` SET TAGS ('dbx_business_glossary_term' = 'IC Packaging Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `packaging_type` SET TAGS ('dbx_value_regex' = 'WLCSP|BGA|QFN|CoWoS|InFO|flip_chip');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `pdk_version` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `pdk_version` SET TAGS ('dbx_value_regex' = '^v[0-9]+.[0-9]+(.[0-9]+)?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `plm_item_reference` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) Item ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `process_node_nm` SET TAGS ('dbx_business_glossary_term' = 'Target Process Node (Nanometer)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `process_node_nm` SET TAGS ('dbx_value_regex' = '^[0-9]+(nm|N)$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Code');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_description` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Description');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_start_date` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Start Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Lifecycle Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `project_status` SET TAGS ('dbx_value_regex' = 'concept|rtl_design|synthesis|physical_design|tapeout|cancelled');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `reach_svhc_assessed` SET TAGS ('dbx_business_glossary_term' = 'REACH Substances of Very High Concern (SVHC) Assessment Completed Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `revision` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project Revision');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `revision` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Restriction of Hazardous Substances (RoHS) Compliant Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `rtl_freeze_date` SET TAGS ('dbx_business_glossary_term' = 'Register Transfer Level (RTL) Freeze Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `sap_wbs_element` SET TAGS ('dbx_business_glossary_term' = 'SAP Work Breakdown Structure (WBS) Element');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `sap_wbs_element` SET TAGS ('dbx_value_regex' = '^[A-Z0-9.-]{3,40}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tapeout_actual_date` SET TAGS ('dbx_business_glossary_term' = 'GDS/GDSII Tapeout Actual Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tapeout_target_date` SET TAGS ('dbx_business_glossary_term' = 'GDS/GDSII Tapeout Target Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_clock_freq_mhz` SET TAGS ('dbx_business_glossary_term' = 'Target Clock Frequency (MHz) — Power Performance Area (PPA)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_die_area_mm2` SET TAGS ('dbx_business_glossary_term' = 'Target Die Area (mm²) — Power Performance Area (PPA)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `target_power_budget_mw` SET TAGS ('dbx_business_glossary_term' = 'Target Power Budget (mW) — Power Performance Area (PPA)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ic_design_project` ALTER COLUMN `tsv_required` SET TAGS ('dbx_business_glossary_term' = 'Through-Silicon Via (TSV) Required Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` SET TAGS ('dbx_subdomain' = 'component_integration');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `design_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `product_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Product Ip Core Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `rtl_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Rtl Specification Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `area_um2` SET TAGS ('dbx_business_glossary_term' = 'Silicon Area Square Micrometers (PPA - Area)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `datasheet_url` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Datasheet URL');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `datasheet_url` SET TAGS ('dbx_value_regex' = '^https?://.+$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `dfm_compliant` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Compliance');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `dft_compliant` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Compliance');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `eda_tool_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Compatibility');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN) / ITAR Classification');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = 'EAR99|ECCN_3E001|ECCN_3E002|ECCN_3E003|ITAR_controlled');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `foundry_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Foundry Compatibility');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `function_category` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Function Category');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `functional_description` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Functional Description');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `gate_count` SET TAGS ('dbx_business_glossary_term' = 'Gate Count (Logic Complexity)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `gds_available` SET TAGS ('dbx_business_glossary_term' = 'Graphic Data System II (GDSII) Layout Availability');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `interface_standard` SET TAGS ('dbx_business_glossary_term' = 'Interface Standard Compliance');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `ip_core_code` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Code');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `ip_core_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `ip_type` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `ip_type` SET TAGS ('dbx_value_regex' = 'hard_macro|soft_ip|firm_ip');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `lef_available` SET TAGS ('dbx_business_glossary_term' = 'Library Exchange Format (LEF) Availability');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core License Expiry Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_expiry_date` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core License Fee USD');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_fee_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core License Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_type` SET TAGS ('dbx_value_regex' = 'perpetual|subscription|royalty_bearing|royalty_free|open_source');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `license_type` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Lifecycle Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_value_regex' = 'active|deprecated|obsolete|under_development|qualification');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `max_frequency_mhz` SET TAGS ('dbx_business_glossary_term' = 'Maximum Operating Frequency Megahertz (PPA - Performance)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `mpw_eligible` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Shuttle Eligibility');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `design_ip_core_name` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `design_ip_core_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `nda_required` SET TAGS ('dbx_business_glossary_term' = 'Non-Disclosure Agreement (NDA) Required');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `power_uw` SET TAGS ('dbx_business_glossary_term' = 'Power Consumption Microwatts (PPA - Power)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Qualification Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `qualification_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|qualified|failed');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Release Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Restriction of Hazardous Substances (RoHS) Compliance');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `royalty_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Royalty Rate Percentage');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `royalty_rate_pct` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `rtl_language` SET TAGS ('dbx_business_glossary_term' = 'Register Transfer Level (RTL) Hardware Description Language');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `rtl_language` SET TAGS ('dbx_value_regex' = 'Verilog|SystemVerilog|VHDL|mixed');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `scan_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'Scan Test Coverage Percentage (DFT)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `silicon_proven` SET TAGS ('dbx_business_glossary_term' = 'Silicon-Proven Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `silicon_proven_date` SET TAGS ('dbx_business_glossary_term' = 'Silicon-Proven Validation Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Source Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `source_type` SET TAGS ('dbx_value_regex' = 'internal|third_party|open_source');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `support_tier` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Support Tier');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `support_tier` SET TAGS ('dbx_value_regex' = 'standard|premium|end_of_support');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `timing_model_available` SET TAGS ('dbx_business_glossary_term' = 'Timing Model (Liberty) Availability');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `vendor_name` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Vendor Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `vendor_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`design_ip_core` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Product Process Node Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `agile_plm_part_number` SET TAGS ('dbx_business_glossary_term' = 'Agile Plm Part Number');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_business_glossary_term' = 'Checksum Sha256');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_code` SET TAGS ('dbx_business_glossary_term' = 'Pdk Code');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `deprecation_date` SET TAGS ('dbx_business_glossary_term' = 'Deprecation Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_description` SET TAGS ('dbx_business_glossary_term' = 'Pdk Description');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `dft_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Dft Rule Deck Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `drc_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Drc Rule Deck Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `eda_tool_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Compatibility');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `file_path` SET TAGS ('dbx_business_glossary_term' = 'File Path');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `foundry_name` SET TAGS ('dbx_business_glossary_term' = 'Foundry Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `gds_format` SET TAGS ('dbx_business_glossary_term' = 'Gds Format');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `io_library_name` SET TAGS ('dbx_business_glossary_term' = 'Io Library Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `ip_library_version` SET TAGS ('dbx_business_glossary_term' = 'Ip Library Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` SET TAGS ('dbx_subdomain' = 'component_integration');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Family Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Foundry Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `agile_plm_part_number` SET TAGS ('dbx_business_glossary_term' = 'Oracle Agile PLM Part Number');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `agile_plm_part_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{4,40}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_business_glossary_term' = 'PDK Archive SHA-256 Checksum');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_value_regex' = '^[a-fA-F0-9]{64}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_code` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Code');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,40}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `deprecation_date` SET TAGS ('dbx_business_glossary_term' = 'PDK Deprecation Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_description` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Description');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `dft_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Rule Deck Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `dft_rule_deck_version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-.]{2,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `drc_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Design Rule Check (DRC) Rule Deck Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `drc_rule_deck_version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-.]{2,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `eda_tool_compatibility` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Compatibility Matrix');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = 'EAR99|ECCN_3E001|ECCN_3E002|ITAR|Unrestricted');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `file_path` SET TAGS ('dbx_business_glossary_term' = 'PDK File Repository Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `gds_format` SET TAGS ('dbx_business_glossary_term' = 'Graphic Data System (GDS) Format');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `gds_format` SET TAGS ('dbx_value_regex' = 'GDSII|OASIS|Both');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `io_library_name` SET TAGS ('dbx_business_glossary_term' = 'Input/Output (I/O) Library Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `io_library_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `ip_library_version` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Library Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `ip_library_version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `layer_stack_definition` SET TAGS ('dbx_business_glossary_term' = 'Layer Stack Definition');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'License Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'PDK License Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `license_type` SET TAGS ('dbx_value_regex' = 'foundry_standard|nre_included|subscription|evaluation|open_source');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `lithography_type` SET TAGS ('dbx_business_glossary_term' = 'Lithography Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `lvs_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Lvs Rule Deck Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `max_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Max Supply Voltage V');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `memory_compiler_supported` SET TAGS ('dbx_business_glossary_term' = 'Memory Compiler Supported');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `lithography_type` SET TAGS ('dbx_value_regex' = 'EUV|DUV|Multi-Patterning|Hybrid|Other');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `lvs_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Layout Versus Schematic (LVS) Rule Deck Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `lvs_rule_deck_version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-.]{2,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `max_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Maximum Supply Voltage (V)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `memory_compiler_supported` SET TAGS ('dbx_business_glossary_term' = 'Memory Compiler Supported Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Layer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `min_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Min Supply Voltage V');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `mpw_shuttle_supported` SET TAGS ('dbx_business_glossary_term' = 'Mpw Shuttle Supported');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_name` SET TAGS ('dbx_business_glossary_term' = 'Pdk Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `nda_required` SET TAGS ('dbx_business_glossary_term' = 'Nda Required');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `nominal_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Nominal Supply Voltage V');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `opc_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Opc Rule Deck Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `operating_temp_max_c` SET TAGS ('dbx_business_glossary_term' = 'Operating Temp Max C');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `operating_temp_min_c` SET TAGS ('dbx_business_glossary_term' = 'Operating Temp Min C');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_status` SET TAGS ('dbx_business_glossary_term' = 'Pdk Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `min_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Minimum Supply Voltage (V)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `mpw_shuttle_supported` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Shuttle Supported Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_name` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `nda_required` SET TAGS ('dbx_business_glossary_term' = 'Non-Disclosure Agreement (NDA) Required Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `nda_required` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `nominal_supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'Nominal Supply Voltage (V)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `opc_rule_deck_version` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Deck Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `opc_rule_deck_version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-.]{2,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `operating_temp_max_c` SET TAGS ('dbx_business_glossary_term' = 'Maximum Operating Temperature (°C)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `operating_temp_min_c` SET TAGS ('dbx_business_glossary_term' = 'Minimum Operating Temperature (°C)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_status` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Lifecycle Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `pdk_status` SET TAGS ('dbx_value_regex' = 'draft|active|deprecated|retired|restricted');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `process_corner_set` SET TAGS ('dbx_business_glossary_term' = 'Process Corner Set');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `process_family` SET TAGS ('dbx_business_glossary_term' = 'Process Family');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `release_notes_url` SET TAGS ('dbx_business_glossary_term' = 'Release Notes Url');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `spice_model_set` SET TAGS ('dbx_business_glossary_term' = 'Spice Model Set');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `spice_model_version` SET TAGS ('dbx_business_glossary_term' = 'Spice Model Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_name` SET TAGS ('dbx_business_glossary_term' = 'Std Cell Library Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_version` SET TAGS ('dbx_business_glossary_term' = 'Std Cell Library Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `teamcenter_item_reference` SET TAGS ('dbx_business_glossary_term' = 'Teamcenter Item Reference');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'PDK Qualification Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'PDK Release Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `release_notes_url` SET TAGS ('dbx_business_glossary_term' = 'PDK Release Notes URL');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `release_notes_url` SET TAGS ('dbx_value_regex' = '^https?://.+$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `spice_model_set` SET TAGS ('dbx_business_glossary_term' = 'SPICE Model Set');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `spice_model_version` SET TAGS ('dbx_business_glossary_term' = 'SPICE Model Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `spice_model_version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_name` SET TAGS ('dbx_business_glossary_term' = 'Standard Cell Library Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_version` SET TAGS ('dbx_business_glossary_term' = 'Standard Cell Library Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `std_cell_library_version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `teamcenter_item_reference` SET TAGS ('dbx_business_glossary_term' = 'Siemens Teamcenter PLM Item ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `teamcenter_item_reference` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{4,40}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `transistor_architecture` SET TAGS ('dbx_business_glossary_term' = 'Transistor Architecture');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `transistor_architecture` SET TAGS ('dbx_value_regex' = 'FinFET|GAA|Planar|FDSOI|BiCMOS|Other');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`pdk` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `rtl_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Register Transfer Level (RTL) Specification ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `product_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) License ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Shuttle ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'To Ic Design Project Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ams_behavioral_model_ref` SET TAGS ('dbx_business_glossary_term' = 'Analog/Mixed-Signal (AMS) Behavioral Model Reference');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `cdc_annotation_status` SET TAGS ('dbx_business_glossary_term' = 'Clock Domain Crossing (CDC) Annotation Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `cdc_annotation_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|partial|complete|waived');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `clock_domain_count` SET TAGS ('dbx_business_glossary_term' = 'Clock Domain Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `commit_hash` SET TAGS ('dbx_business_glossary_term' = 'Revision Control Commit Hash');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `commit_hash` SET TAGS ('dbx_value_regex' = '^[0-9a-f]{7,40}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `design_block_name` SET TAGS ('dbx_business_glossary_term' = 'Design Block Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `design_block_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `design_block_type` SET TAGS ('dbx_business_glossary_term' = 'Design Block Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `design_block_type` SET TAGS ('dbx_value_regex' = 'full_chip|subsystem|ip_core|interface_block|analog_mixed_signal|fpga_target');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `design_intent_description` SET TAGS ('dbx_business_glossary_term' = 'Design Intent Description');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `dfm_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Rule Set Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `dft_strategy` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Strategy');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `dft_strategy` SET TAGS ('dbx_value_regex' = 'scan_chain|mbist|boundary_scan|jtag|none');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ear_eccn_code` SET TAGS ('dbx_business_glossary_term' = 'Export Administration Regulations (EAR) Export Control Classification Number (ECCN)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ear_eccn_code` SET TAGS ('dbx_value_regex' = '^[0-9][A-Z][0-9]{3}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ear_eccn_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `fpga_device_family` SET TAGS ('dbx_business_glossary_term' = 'Field-Programmable Gate Array (FPGA) Target Device Family');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `functional_coverage_target_pct` SET TAGS ('dbx_business_glossary_term' = 'Functional Coverage Target Percentage');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `hdl_language` SET TAGS ('dbx_business_glossary_term' = 'Hardware Description Language (HDL)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `hdl_language` SET TAGS ('dbx_value_regex' = 'Verilog|SystemVerilog|VHDL|Chisel|Verilog-AMS|VHDL-AMS');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `interface_protocols` SET TAGS ('dbx_business_glossary_term' = 'Interface Protocol List');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ip_reuse_source` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Reuse Source');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ip_reuse_source` SET TAGS ('dbx_value_regex' = 'internal|licensed_third_party|open_source|custom');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `ip_reuse_source` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `is_analog_mixed_signal` SET TAGS ('dbx_business_glossary_term' = 'Analog/Mixed-Signal (AMS) Block Indicator');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `is_fpga_target` SET TAGS ('dbx_business_glossary_term' = 'Field-Programmable Gate Array (FPGA) Target Indicator');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_business_glossary_term' = 'International Traffic in Arms Regulations (ITAR) Controlled Indicator');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `lint_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'RTL Lint Compliance Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `lint_compliance_status` SET TAGS ('dbx_value_regex' = 'not_run|violations_open|violations_waived|clean');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `logic_gate_count_estimate` SET TAGS ('dbx_business_glossary_term' = 'Logic Gate Count Estimate');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Cost (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `obsolescence_date` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Obsolescence Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `power_domain_count` SET TAGS ('dbx_business_glossary_term' = 'Power Domain Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `power_intent_format` SET TAGS ('dbx_business_glossary_term' = 'Power Intent Format');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `power_intent_format` SET TAGS ('dbx_value_regex' = 'UPF|CPF|none');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `repository_path` SET TAGS ('dbx_business_glossary_term' = 'RTL Repository Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `repository_path` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `reset_strategy` SET TAGS ('dbx_business_glossary_term' = 'Reset Strategy');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `reset_strategy` SET TAGS ('dbx_value_regex' = 'synchronous|asynchronous|mixed|power_on_reset');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `revision_control_system` SET TAGS ('dbx_business_glossary_term' = 'Revision Control System');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `revision_control_system` SET TAGS ('dbx_value_regex' = 'Git|Perforce|SVN');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_approved_date` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Approved Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_number` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Number');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_number` SET TAGS ('dbx_value_regex' = '^RTL-[A-Z0-9]{3,12}-[0-9]{4,8}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_released_date` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Released Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_status` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Lifecycle Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `specification_status` SET TAGS ('dbx_value_regex' = 'draft|in_review|approved|released|obsolete|on_hold');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `tapeout_target_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Target Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `target_clock_frequency_mhz` SET TAGS ('dbx_business_glossary_term' = 'Target Clock Frequency (MHz)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `target_process_node` SET TAGS ('dbx_business_glossary_term' = 'Target Process Node');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `teamcenter_item_reference` SET TAGS ('dbx_business_glossary_term' = 'Siemens Teamcenter PLM Item ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `version_label` SET TAGS ('dbx_business_glossary_term' = 'RTL Specification Version Label');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`rtl_specification` ALTER COLUMN `version_label` SET TAGS ('dbx_value_regex' = '^v[0-9]+.[0-9]+(.[0-9]+)?$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` SET TAGS ('dbx_subdomain' = 'physical_implementation');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_id` SET TAGS ('dbx_business_glossary_term' = 'Netlist Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Design Ip Core Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Netlist Pdk Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_id` SET TAGS ('dbx_business_glossary_term' = 'Netlist ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `design_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `eda_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Version ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `rtl_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Register Transfer Level (RTL) Specification ID');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'To Ic Design Project Id');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `to_pdk_id` SET TAGS ('dbx_business_glossary_term' = 'To Pdk Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `area_estimate_um2` SET TAGS ('dbx_business_glossary_term' = 'Area Estimate Um2');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `to_rtl_specification_id` SET TAGS ('dbx_business_glossary_term' = 'To Rtl Specification Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Netlist Approval Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `area_estimate_um2` SET TAGS ('dbx_business_glossary_term' = 'Area Estimate (µm²)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_instance_count` SET TAGS ('dbx_business_glossary_term' = 'Cell Instance Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_library_name` SET TAGS ('dbx_business_glossary_term' = 'Cell Library Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_library_version` SET TAGS ('dbx_business_glossary_term' = 'Cell Library Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_business_glossary_term' = 'Checksum Sha256');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_library_name` SET TAGS ('dbx_business_glossary_term' = 'Standard Cell Library Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_library_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `cell_library_version` SET TAGS ('dbx_business_glossary_term' = 'Standard Cell Library Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_business_glossary_term' = 'Netlist File SHA-256 Checksum');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_value_regex' = '^[a-fA-F0-9]{64}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `combinational_cell_count` SET TAGS ('dbx_business_glossary_term' = 'Combinational Cell Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `constraints_file_ref` SET TAGS ('dbx_business_glossary_term' = 'Constraints File Ref');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `critical_path_delay_ps` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Delay Ps');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `constraints_file_ref` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Design Constraints (SDC) File Reference');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `critical_path_delay_ps` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Delay (ps)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `design_block_name` SET TAGS ('dbx_business_glossary_term' = 'Design Block Name');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `design_iteration` SET TAGS ('dbx_business_glossary_term' = 'Design Iteration');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dfm_rule_check_status` SET TAGS ('dbx_business_glossary_term' = 'Dfm Rule Check Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dft_scan_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'Dft Scan Coverage Pct');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dynamic_power_mw` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Power Mw');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `file_path` SET TAGS ('dbx_business_glossary_term' = 'File Path');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `format` SET TAGS ('dbx_business_glossary_term' = 'Format');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `design_block_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `design_iteration` SET TAGS ('dbx_business_glossary_term' = 'Design Iteration Number');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dfm_rule_check_status` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Rule Check Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dfm_rule_check_status` SET TAGS ('dbx_value_regex' = 'passed|failed|waived|not_run');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dft_scan_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Scan Coverage Percentage');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `dynamic_power_mw` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Power Estimate (mW)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `file_path` SET TAGS ('dbx_business_glossary_term' = 'Netlist File Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `format` SET TAGS ('dbx_business_glossary_term' = 'Netlist File Format');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `format` SET TAGS ('dbx_value_regex' = 'verilog|vhdl|spice|edif|liberty');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `gate_count` SET TAGS ('dbx_business_glossary_term' = 'Gate Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `leakage_power_uw` SET TAGS ('dbx_business_glossary_term' = 'Leakage Power Uw');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `leakage_power_uw` SET TAGS ('dbx_business_glossary_term' = 'Leakage Power Estimate (µW)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_name` SET TAGS ('dbx_business_glossary_term' = 'Netlist Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_type` SET TAGS ('dbx_business_glossary_term' = 'Netlist Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `netlist_type` SET TAGS ('dbx_value_regex' = 'pre_synthesis|post_synthesis|post_layout');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `sequential_cell_count` SET TAGS ('dbx_business_glossary_term' = 'Sequential Cell Count');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `synthesis_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Run Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `synthesis_runtime_minutes` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Runtime Minutes');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `synthesis_runtime_minutes` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Runtime (Minutes)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `synthesis_status` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `synthesis_status` SET TAGS ('dbx_value_regex' = 'draft|in_progress|completed|failed|archived|superseded');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `tapeout_target_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Target Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `target_clock_freq_mhz` SET TAGS ('dbx_business_glossary_term' = 'Target Clock Freq Mhz');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_closure_achieved` SET TAGS ('dbx_business_glossary_term' = 'Timing Closure Achieved');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_slack_hold_ps` SET TAGS ('dbx_business_glossary_term' = 'Timing Slack Hold Ps');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_slack_setup_ps` SET TAGS ('dbx_business_glossary_term' = 'Timing Slack Setup Ps');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `target_clock_freq_mhz` SET TAGS ('dbx_business_glossary_term' = 'Target Clock Frequency (MHz)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_closure_achieved` SET TAGS ('dbx_business_glossary_term' = 'Timing Closure Achieved Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_slack_hold_ps` SET TAGS ('dbx_business_glossary_term' = 'Hold Timing Slack (ps)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_slack_setup_ps` SET TAGS ('dbx_business_glossary_term' = 'Setup Timing Slack (ps)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `timing_violation_count` SET TAGS ('dbx_business_glossary_term' = 'Timing Violation Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `total_power_estimate_mw` SET TAGS ('dbx_business_glossary_term' = 'Total Power Estimate Mw');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `total_power_estimate_mw` SET TAGS ('dbx_business_glossary_term' = 'Total Power Estimate (mW)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Netlist Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`netlist` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^vd+.d+(.d+)?$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` SET TAGS ('dbx_subdomain' = 'physical_implementation');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `physical_layout_id` SET TAGS ('dbx_business_glossary_term' = 'Physical Layout ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `eda_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Eda Tool Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `netlist_id` SET TAGS ('dbx_business_glossary_term' = 'Netlist Id');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) ID');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'IC Design ID');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `to_ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `primary_physical_ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'IC Design ID');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `antenna_violation_count` SET TAGS ('dbx_business_glossary_term' = 'Antenna Rule Violation Count');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `cell_utilization_pct` SET TAGS ('dbx_business_glossary_term' = 'Cell Utilization Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `core_area_mm2` SET TAGS ('dbx_business_glossary_term' = 'Core Area (Square Millimeters)');
@@ -619,9 +849,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `di
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `die_width_um` SET TAGS ('dbx_business_glossary_term' = 'Die Width (Micrometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `drc_critical_violation_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Design Rule Check (DRC) Violation Count');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `drc_violation_count` SET TAGS ('dbx_business_glossary_term' = 'Design Rule Check (DRC) Violation Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `eda_tool` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `eda_tool` SET TAGS ('dbx_value_regex' = 'cadence_innovus|synopsys_icc2|siemens_aprisa|cadence_virtuoso');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `eda_tool_version` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool Version');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `em_compliant` SET TAGS ('dbx_business_glossary_term' = 'Electromigration (EM) Compliance Status');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `gds_file_checksum` SET TAGS ('dbx_business_glossary_term' = 'Layout File Checksum (SHA-256)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `gds_file_checksum` SET TAGS ('dbx_value_regex' = '^[a-fA-F0-9]{64}$');
@@ -633,6 +860,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `im
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `ir_drop_max_mv` SET TAGS ('dbx_business_glossary_term' = 'Maximum IR Drop (Millivolts)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `iteration_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Layout Iteration Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `layout_name` SET TAGS ('dbx_business_glossary_term' = 'Physical Layout Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `layout_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `layout_status` SET TAGS ('dbx_business_glossary_term' = 'Physical Layout Status');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `layout_status` SET TAGS ('dbx_value_regex' = 'in_progress|review|approved|rejected|archived');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `layout_version` SET TAGS ('dbx_business_glossary_term' = 'Physical Layout Version');
@@ -651,18 +879,22 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `to
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`physical_layout` ALTER COLUMN `wns_ps` SET TAGS ('dbx_business_glossary_term' = 'Worst Negative Slack (WNS) (Picoseconds)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` SET TAGS ('dbx_subdomain' = 'physical_implementation');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Export License Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Design Win Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Foundry Supplier Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `nda_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Nda Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) ID');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `physical_layout_id` SET TAGS ('dbx_business_glossary_term' = 'Physical Layout Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'To Ic Design Project Id');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tool_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Qualification Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_name` SET TAGS ('dbx_business_glossary_term' = 'Design Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_revision` SET TAGS ('dbx_business_glossary_term' = 'Design Revision');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_revision` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{1,2}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `design_type` SET TAGS ('dbx_business_glossary_term' = 'Design Type');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `dfm_score` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Score');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `dft_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Coverage Percentage');
@@ -674,6 +906,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `export_con
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = 'EAR99|ECCN_3E001|ECCN_3A001|ITAR_controlled|not_classified');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `foundry_name` SET TAGS ('dbx_business_glossary_term' = 'Foundry Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `foundry_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `foundry_submission_ref` SET TAGS ('dbx_business_glossary_term' = 'Foundry Submission Reference');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `gds_file_path` SET TAGS ('dbx_business_glossary_term' = 'Graphic Data System II (GDSII) File Path');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `gds_file_path` SET TAGS ('dbx_confidential' = 'true');
@@ -689,14 +922,13 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `metal_laye
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Cost (USD)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Number');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `number` SET TAGS ('dbx_value_regex' = '^TO-[A-Z0-9]{4,20}-[0-9]{4}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `opc_ret_status` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction / Resolution Enhancement Technology (OPC/RET) Processing Status');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `opc_ret_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|waived');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `packaging_type` SET TAGS ('dbx_business_glossary_term' = 'Packaging Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `process_technology` SET TAGS ('dbx_business_glossary_term' = 'Process Technology');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `signoff_checklist_complete` SET TAGS ('dbx_business_glossary_term' = 'Design Sign-Off Checklist Completion Status');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_number` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Number');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_number` SET TAGS ('dbx_value_regex' = '^TO-[A-Z0-9]{4,20}-[0-9]{4}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_status` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Status');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_status` SET TAGS ('dbx_value_regex' = 'draft|pending_signoff|submitted|accepted|rejected|cancelled');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `tapeout_type` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Type');
@@ -707,12 +939,125 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `timing_clo
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `timing_closure_status` SET TAGS ('dbx_value_regex' = 'clean|waived|failed');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`tapeout` ALTER COLUMN `wafer_count_ordered` SET TAGS ('dbx_business_glossary_term' = 'Wafer Count Ordered');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` SET TAGS ('dbx_subdomain' = 'component_integration');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `eda_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Electronic Design Automation (EDA) Tool ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `annual_license_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Annual EDA License Cost (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `annual_license_cost_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `approved_user_groups` SET TAGS ('dbx_business_glossary_term' = 'Approved EDA Tool User Groups');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `compute_platform_type` SET TAGS ('dbx_business_glossary_term' = 'EDA Compute Platform Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `compute_platform_type` SET TAGS ('dbx_value_regex' = 'on_premise|cloud|hybrid');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `concurrent_users_peak` SET TAGS ('dbx_business_glossary_term' = 'Peak Concurrent EDA Tool Users');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `design_flow_stage` SET TAGS ('dbx_business_glossary_term' = 'IC Design Flow Stage');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `dfm_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Rule Set Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `dft_support_flag` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Support Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `euv_process_support_flag` SET TAGS ('dbx_business_glossary_term' = 'Extreme Ultraviolet (EUV) Lithography Process Support Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification (EAR/ITAR)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `flow_integration_point` SET TAGS ('dbx_business_glossary_term' = 'EDA Flow Integration Point');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `formal_verification_flag` SET TAGS ('dbx_business_glossary_term' = 'Formal Verification Support Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `installation_path` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Installation Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `itar_controlled_flag` SET TAGS ('dbx_business_glossary_term' = 'International Traffic in Arms Regulations (ITAR) Controlled Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `itar_controlled_flag` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `last_used_date` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Last Used Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_count` SET TAGS ('dbx_business_glossary_term' = 'EDA License Seat Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_count` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'EDA License Expiry Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_expiry_date` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_server_host` SET TAGS ('dbx_business_glossary_term' = 'EDA License Server Hostname');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_server_host` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_start_date` SET TAGS ('dbx_business_glossary_term' = 'EDA License Start Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_start_date` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'EDA License Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_type` SET TAGS ('dbx_value_regex' = 'node_locked|floating|subscription|cloud|perpetual');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_type` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `license_utilization_pct` SET TAGS ('dbx_business_glossary_term' = 'EDA License Utilization Percentage');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `maintenance_renewal_date` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Maintenance Renewal Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `maintenance_renewal_date` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `pdk_compatibility_version` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Compatibility Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Qualification Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Qualification Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `qualification_status` SET TAGS ('dbx_value_regex' = 'qualified|in_qualification|not_qualified|waived');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `qualified_by` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Qualified By (Engineer)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `release_notes_url` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Release Notes URL');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `supported_os_platforms` SET TAGS ('dbx_business_glossary_term' = 'Supported Operating System Platforms');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `supported_process_nodes` SET TAGS ('dbx_business_glossary_term' = 'Supported Process Nodes');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_category` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Category');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_code` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Code');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_description` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Description');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_name` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_status` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Lifecycle Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_status` SET TAGS ('dbx_value_regex' = 'active|deprecated|evaluation|retired|pending_qualification');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_version` SET TAGS ('dbx_business_glossary_term' = 'EDA Tool Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `tool_version` SET TAGS ('dbx_value_regex' = '^[A-Za-z0-9.-_]{1,40}$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `vendor_contract_number` SET TAGS ('dbx_business_glossary_term' = 'EDA Vendor Contract Number');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `vendor_contract_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `vendor_support_tier` SET TAGS ('dbx_business_glossary_term' = 'EDA Vendor Support Tier');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`eda_tool` ALTER COLUMN `vendor_support_tier` SET TAGS ('dbx_value_regex' = 'standard|premium|elite|end_of_support');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` SET TAGS ('dbx_subdomain' = 'component_integration');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ip_core_usage_id` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Usage ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'IC Design Project ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `product_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'IP Core License Agreement ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `product_ip_core_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `source_design_project_ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Source Design Project ID (IP Reuse Origin)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Shuttle ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `area_consumed_um2` SET TAGS ('dbx_business_glossary_term' = 'IP Core Physical Area Consumed (µm²)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `clock_frequency_mhz` SET TAGS ('dbx_business_glossary_term' = 'IP Core Clock Frequency (MHz)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `configuration_parameters` SET TAGS ('dbx_business_glossary_term' = 'IP Core Configuration Parameters');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `design_hierarchy_path` SET TAGS ('dbx_business_glossary_term' = 'IP Core Design Hierarchy Path');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification (EAR/ITAR)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_value_regex' = 'EAR99|ECCN_3E001|ECCN_3E002|ECCN_3E003|ITAR|unrestricted');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `functional_coverage_pct` SET TAGS ('dbx_business_glossary_term' = 'IP Core Functional Coverage Percentage (%)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `instance_count` SET TAGS ('dbx_business_glossary_term' = 'IP Core Instance Count');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `integration_start_date` SET TAGS ('dbx_business_glossary_term' = 'IP Core Integration Start Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `integration_status` SET TAGS ('dbx_business_glossary_term' = 'IP Core Integration Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `integration_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|verified|silicon_proven');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `interface_protocol` SET TAGS ('dbx_business_glossary_term' = 'IP Core Interface Bus Protocol');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ip_core_version` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Version');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ip_core_version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?([a-zA-Z0-9_-]*)?$');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ip_reuse_flag` SET TAGS ('dbx_business_glossary_term' = 'IP Core Reuse Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `ip_usage_to_core` SET TAGS ('dbx_business_glossary_term' = 'Ip Usage To Core');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `is_dfm_compliant` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Compliant Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `is_dft_enabled` SET TAGS ('dbx_business_glossary_term' = 'Design for Testability (DFT) Enabled Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `is_silicon_proven` SET TAGS ('dbx_business_glossary_term' = 'IP Core Silicon-Proven Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `license_type` SET TAGS ('dbx_business_glossary_term' = 'IP Core License Type');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `license_type` SET TAGS ('dbx_value_regex' = 'royalty_bearing|perpetual|subscription|internal|open_source');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `license_type` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'IP Core Integration Notes');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Cost (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `nre_cost_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `power_contribution_mw` SET TAGS ('dbx_business_glossary_term' = 'IP Core Power Contribution (mW)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `royalty_rate_per_unit` SET TAGS ('dbx_business_glossary_term' = 'IP Core Royalty Rate Per Unit (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `royalty_rate_per_unit` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `sign_off_date` SET TAGS ('dbx_business_glossary_term' = 'IP Core Integration Sign-Off Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `sign_off_status` SET TAGS ('dbx_business_glossary_term' = 'IP Core Integration Sign-Off Status');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `sign_off_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|waived');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `silicon_validation_date` SET TAGS ('dbx_business_glossary_term' = 'IP Core Silicon Validation Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `supply_voltage_v` SET TAGS ('dbx_business_glossary_term' = 'IP Core Supply Voltage (V)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `timing_budget_ns` SET TAGS ('dbx_business_glossary_term' = 'IP Core Timing Budget Contribution (ns)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `usage_to_core` SET TAGS ('dbx_business_glossary_term' = 'Usage To Core');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `verification_completion_date` SET TAGS ('dbx_business_glossary_term' = 'IP Core Verification Completion Date');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_core_usage` ALTER COLUMN `verification_methodology` SET TAGS ('dbx_business_glossary_term' = 'IP Core Verification Methodology');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `verification_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Design Verification Plan (DVP) ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Research Project Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Integrated Circuit (IC) Design Project ID');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision ID');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Pdk Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `product_spec_id` SET TAGS ('dbx_business_glossary_term' = 'Product Spec Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `eda_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Simulation Eda Tool Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `assertion_coverage_target_pct` SET TAGS ('dbx_business_glossary_term' = 'Assertion Coverage Target Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `bug_tracking_project_key` SET TAGS ('dbx_business_glossary_term' = 'Bug Tracking Project Key');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `bug_tracking_system` SET TAGS ('dbx_business_glossary_term' = 'Bug Tracking System');
@@ -730,9 +1075,9 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `ip_reuse_count` SET TAGS ('dbx_business_glossary_term' = 'Intellectual Property (IP) Core Reuse Count');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `iso26262_asil_decomposition` SET TAGS ('dbx_business_glossary_term' = 'ISO 26262 Automotive Safety Integrity Level (ASIL) Decomposition Description');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `pdk_version` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) Version');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_end_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Plan End Date');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Design Verification Plan Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Design Verification Plan (DVP) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^DVP-[A-Z0-9]{3,10}-[0-9]{4}-[0-9]{3}$');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `plan_start_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Plan Start Date');
@@ -742,73 +1087,16 @@ ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `regression_run_frequency` SET TAGS ('dbx_business_glossary_term' = 'Regression Run Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `regression_run_frequency` SET TAGS ('dbx_value_regex' = 'continuous|nightly|weekly|milestone_triggered|on_demand');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `regression_suite_name` SET TAGS ('dbx_business_glossary_term' = 'Regression Suite Name');
+ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `regression_suite_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `safety_criticality_level` SET TAGS ('dbx_business_glossary_term' = 'Automotive Safety Integrity Level (ASIL) / Safety Integrity Level (SIL) Classification');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `safety_mechanism_coverage_target_pct` SET TAGS ('dbx_business_glossary_term' = 'Safety Mechanism Coverage Target Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `scan_chain_count` SET TAGS ('dbx_business_glossary_term' = 'Scan Chain Count');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `signoff_approved` SET TAGS ('dbx_business_glossary_term' = 'Verification Sign-Off Approved Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `signoff_criteria_description` SET TAGS ('dbx_business_glossary_term' = 'Verification Sign-Off Criteria Description');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `signoff_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Sign-Off Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `simulation_tool` SET TAGS ('dbx_business_glossary_term' = 'Simulation Tool');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `tapeout_target_date` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Target Date');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `testbench_architecture` SET TAGS ('dbx_business_glossary_term' = 'Testbench Architecture');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `testbench_architecture` SET TAGS ('dbx_value_regex' = 'UVM_layered|directed|constrained_random|hybrid|cocotb|SystemC');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `toggle_coverage_target_pct` SET TAGS ('dbx_business_glossary_term' = 'Toggle Coverage Target Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `verification_methodology` SET TAGS ('dbx_business_glossary_term' = 'Verification Methodology');
 ALTER TABLE `vibe_semiconductors_v1`.`design`.`verification_plan` ALTER COLUMN `verification_methodology` SET TAGS ('dbx_value_regex' = 'UVM|formal|emulation|FPGA_prototyping|hybrid|mixed_signal');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `prior_design_revision_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Design Revision Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `prior_design_revision_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `area_um2` SET TAGS ('dbx_business_glossary_term' = 'Area Um2');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `change_reason` SET TAGS ('dbx_business_glossary_term' = 'Change Reason');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `change_summary` SET TAGS ('dbx_business_glossary_term' = 'Change Summary');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `checksum` SET TAGS ('dbx_business_glossary_term' = 'Checksum');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `design_complexity_metric` SET TAGS ('dbx_business_glossary_term' = 'Design Complexity Metric');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `design_file_path` SET TAGS ('dbx_business_glossary_term' = 'Design File Path');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `design_owner_team` SET TAGS ('dbx_business_glossary_term' = 'Design Owner Team');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `design_stage` SET TAGS ('dbx_business_glossary_term' = 'Design Stage');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `design_type` SET TAGS ('dbx_business_glossary_term' = 'Design Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `designer` SET TAGS ('dbx_business_glossary_term' = 'Designer');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `file_format` SET TAGS ('dbx_business_glossary_term' = 'File Format');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `gate_count` SET TAGS ('dbx_business_glossary_term' = 'Gate Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `label` SET TAGS ('dbx_business_glossary_term' = 'Revision Label');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `place_and_route_tool` SET TAGS ('dbx_business_glossary_term' = 'Place And Route Tool');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `power_mw` SET TAGS ('dbx_business_glossary_term' = 'Power Mw');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `power_report_available` SET TAGS ('dbx_business_glossary_term' = 'Power Report Available');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `release_notes` SET TAGS ('dbx_business_glossary_term' = 'Release Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Review Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `reviewer` SET TAGS ('dbx_business_glossary_term' = 'Reviewer');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Revision Number');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `revision_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `revision_type` SET TAGS ('dbx_business_glossary_term' = 'Revision Type');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `synthesis_tool` SET TAGS ('dbx_business_glossary_term' = 'Synthesis Tool');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `timing_report_available` SET TAGS ('dbx_business_glossary_term' = 'Timing Report Available');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `timing_slack_ns` SET TAGS ('dbx_business_glossary_term' = 'Timing Slack Ns');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `tool_version` SET TAGS ('dbx_business_glossary_term' = 'Tool Version');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `valid_until` SET TAGS ('dbx_business_glossary_term' = 'Valid Until');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `version_control_branch` SET TAGS ('dbx_business_glossary_term' = 'Version Control Branch');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`revision` ALTER COLUMN `version_control_commit` SET TAGS ('dbx_business_glossary_term' = 'Version Control Commit');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` SET TAGS ('dbx_subdomain' = 'project_lifecycle');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` SET TAGS ('dbx_association_edges' = 'design.design_ip_core,design.ic_design_project');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `ip_integration_id` SET TAGS ('dbx_business_glossary_term' = 'IP Integration Instance Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `design_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'IP Core Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ip Integration - Ic Design Project Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Ip Integration - Design Ip Core Id');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `instance_count` SET TAGS ('dbx_business_glossary_term' = 'Instance Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `integration_date` SET TAGS ('dbx_business_glossary_term' = 'Integration Date');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `integration_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Integration Engineer');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `integration_status` SET TAGS ('dbx_business_glossary_term' = 'Integration Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `ip_core_count` SET TAGS ('dbx_business_glossary_term' = 'Ip Core Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Update Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `license_usage_count` SET TAGS ('dbx_business_glossary_term' = 'License Usage Count');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `sign_off_status` SET TAGS ('dbx_business_glossary_term' = 'Sign-off Status');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `verification_completion_pct` SET TAGS ('dbx_business_glossary_term' = 'Verification Completion Percentage');
-ALTER TABLE `vibe_semiconductors_v1`.`design`.`ip_integration` ALTER COLUMN `version_used` SET TAGS ('dbx_business_glossary_term' = 'IP Core Version Used');

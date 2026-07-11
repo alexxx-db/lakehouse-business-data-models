@@ -1,5 +1,5 @@
 -- Schema for Domain: schedule | Business: Construction | Version: v2_mvm
--- Generated on: 2026-06-27 01:56:05
+-- Generated on: 2026-07-10 14:35:56
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`schedule` COMMENT 'Project scheduling domain managing CPM (Critical Path Method) networks, activity sequencing, resource leveling, critical path analysis, progress tracking, baseline comparisons, look-ahead plans, and schedule performance metrics (SPI). Integrates with Oracle Primavera P6 for schedule exports and EVM (Earned Value Management) for project control.';
@@ -7,14 +7,18 @@ CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`schedule` COMMENT 'Project
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity` (
     `activity_id` BIGINT COMMENT 'Unique system-generated identifier for the schedule activity.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Interface Coordination Schedule uses interface_point_id to align multidisciplinary handover dates with activity sequencing.',
+    `bim_model_id` BIGINT COMMENT 'Foreign key linking to design.bim_model. Business justification: 4D BIM scheduling directly links schedule activities to BIM model elements for construction simulation, clash detection scheduling, and progress visualization. This link is a mandatory requirement in ',
+    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: Each activity has a designated foreman/supervisor responsible for safety and execution; needed for safety incident reporting and activity oversight.',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Construction activities are executed against specific IFC drawings. Schedulers and field engineers must confirm the correct drawing revision is active before work starts. This activity-to-drawing link',
+    `estimate_id` BIGINT COMMENT 'Foreign key linking to bid.estimate. Business justification: Earned Value Management (EVM) requires linking schedule activities to the estimate that budgeted them. Cost engineers reconcile planned cost (estimate) against schedule progress at activity level. A c',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Cost coding of schedule activities for budgeting and earned value reporting requires linking each activity to a finance cost_code entity.',
-    `itp_id` BIGINT COMMENT 'Foreign key linking to quality.itp. Business justification: ITP‑tracking report requires each activity to reference its ITP; activity references itp_id for planning and compliance.',
     `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: Activities requiring hazardous work must reference the associated Permit‑to‑Work to manage authorization and control measures.',
-    `project_baseline_id` BIGINT COMMENT 'Identifier of the schedule baseline to which this activity belongs.',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Pre-task safety planning requires each scheduled activity to reference its governing risk assessment. Construction schedulers and HSE officers cross-reference these daily for work pack approvals, regu',
+    `review_id` BIGINT COMMENT 'Foreign key linking to design.review. Business justification: Design review milestones (30%, 60%, IFC reviews) are scheduled activities in construction programs. Linking the schedule activity to the design review record enables tracking of review completion agai',
+    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Each scheduled activity must reference its governing risk assessment before work commences — required by WHS Act, CDM Regulations, and standard construction HSE management systems. Schedulers and HSE ',
     `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: During planning, each activity is linked to its approved Safe Work Method Statement to ensure compliance with safety procedures.',
-    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: QA/QC and construction execution: each activity (e.g., concrete pour, structural steel erection) is governed by a specific specification section. Project controls and quality teams link activities to ',
-    `toolbox_meeting_id` BIGINT COMMENT 'Foreign key linking to safety.toolbox_meeting. Business justification: Toolbox meetings are conducted immediately before high-risk activities commence. Linking activity to its pre-task TBM enables verification that mandatory safety briefings occurred before work started ',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Each scheduled activity is governed by a technical specification section (e.g., concrete pour activity references spec for concrete mix). QA/QC and schedule teams verify the correct spec version is cu',
+    `toolbox_meeting_id` BIGINT COMMENT 'Foreign key linking to safety.toolbox_meeting. Business justification: Toolbox meetings are conducted immediately before high-risk activities commence. Linking activity to its pre-commencement TBM supports HSE compliance reporting (was a TBM held before this activity st',
     `activity_status` STRING COMMENT 'Current lifecycle status of the activity.. Valid values are `not_started|in_progress|completed|suspended|cancelled`',
     `activity_type` STRING COMMENT 'Classification of the activity based on its nature (task‑dependent, resource‑dependent, level of effort, or milestone).. Valid values are `task_dependent|resource_dependent|level_of_effort|milestone`',
     `actual_finish_date` DATE COMMENT 'Date the activity actually finished.',
@@ -26,6 +30,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity` (
     `critical_path_flag` BOOLEAN COMMENT 'True if the activity lies on the critical path.',
     `activity_description` STRING COMMENT 'Detailed textual description of the work to be performed.',
     `free_float_days` STRING COMMENT 'Free float available for the activity in days.',
+    `lookahead_finish_date` DATE COMMENT 'Finish date used in the look‑ahead planning window.',
+    `lookahead_start_date` DATE COMMENT 'Start date used in the look‑ahead planning window.',
     `activity_name` STRING COMMENT 'Human‑readable name or title of the activity.',
     `original_duration_days` STRING COMMENT 'Planned duration of the activity in calendar days at creation.',
     `percent_complete` DECIMAL(18,2) COMMENT 'Current percent complete of the activity (0‑100).',
@@ -39,7 +45,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` (
     `activity_relationship_id` BIGINT COMMENT 'System-generated unique identifier for the activity relationship record.',
-    `construction_project_id` BIGINT COMMENT 'Foreign key to project.construction_project.construction_project_id',
+    `construction_project_id` BIGINT COMMENT 'add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - activity relationships (FS/FF/SS/SF) are project-specific schedule logic',
     `activity_id` BIGINT COMMENT 'Identifier of the predecessor activity in the CPM network.',
     `activity_relationship_status` STRING COMMENT 'Current lifecycle status of the relationship record.. Valid values are `active|inactive|deleted`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the relationship record was first created in the system.',
@@ -58,9 +64,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity_relationship
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` (
     `schedule_baseline_id` BIGINT COMMENT 'System-generated unique identifier for the schedule baseline record.',
-    `opportunity_id` BIGINT COMMENT 'Foreign key linking to client.client_opportunity. Business justification: Project controls teams trace schedule baselines to the originating opportunity for scope change analysis and earned value reporting. The opportunity defines the original scope, duration, and contract ',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: EVM requires pairing a schedule baseline with a project (cost+scope) baseline. Construction PMO baseline approval processes treat cost and schedule baselines as a unified project baseline. schedule_ba',
-    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: The schedule baseline and project budget baseline are established together as the Project Control Baseline (PCB). Linking enables time-phased BCWS generation, S-curve production, and EVM reporting — a',
     `approval_date` DATE COMMENT 'Date on which the baseline was formally approved for use.',
     `baseline_type` STRING COMMENT 'Classification of the baseline indicating its purpose: original contract baseline, current working baseline, or supplemental revision.. Valid values are `original|current|supplemental`',
     `bcws_amount` DECIMAL(18,2) COMMENT 'Monetary value of work scheduled in the baseline, used for Earned Value calculations.',
@@ -85,8 +88,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` (
     `baseline_activity_id` BIGINT COMMENT 'Unique surrogate key for the baseline activity record.',
     `activity_id` BIGINT COMMENT 'Reference to the master activity definition (work breakdown element).',
-    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: Baseline activity costs (baseline_cost) must reconcile with approved project budget line items. Linking enables schedule-to-budget variance analysis, cost-loaded schedule validation, and EVM baseline ',
-    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: baseline_activity is a frozen snapshot of an activitys planned dates and metrics at a specific baseline point. It already references the cross-domain schedule.project_baseline, but within the schedule',
+    `construction_project_id` BIGINT COMMENT 'add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - baseline activities are project-specific schedule snapshots',
+    `estimate_id` BIGINT COMMENT 'Foreign key linking to bid.estimate. Business justification: Baseline activities represent the cost-loaded schedule baseline. Tracing each baseline activity to the estimate version that informed it is essential for bid-vs-actual variance analysis and change ord',
+    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: Baseline activities carry baseline_cost values that must reconcile to project budget line items. Linking baseline_activity to project_budget enables budget-vs-baseline cost variance reporting at activ',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: baseline_activity is a frozen snapshot of an activitys planned dates and resources at a specific baseline. It currently references project.project_baseline (the project-domain baseline) but has NO FK',
     `baseline_activity_status` STRING COMMENT 'Current lifecycle status of the activity within the baseline.. Valid values are `planned|in_progress|completed|on_hold|cancelled`',
     `baseline_constraint_date` DATE COMMENT 'Date associated with the constraint type, if applicable.',
     `baseline_constraint_type` STRING COMMENT 'Scheduling constraint applied to the activity in the baseline.. Valid values are `as_soon_as_possible|start_on|finish_on|must_start_on|must_finish_on|none`',
@@ -114,8 +119,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`resource` (
     `resource_id` BIGINT COMMENT 'Primary key for resource',
     `asset_category_id` BIGINT COMMENT 'Foreign key linking to equipment.asset_category. Business justification: Resource Costing & Compliance: tying resource equipment_category to the master asset_category allows accurate cost rates, depreciation tracking, and regulatory reporting on equipment usage.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Resources belong to a cost center for overhead allocation and internal charging. The plain cost_center attribute on resource is a denormalized reference. Normalizing to FK enables resource cost center',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Resources carry a default cost code for cost allocation in estimating and scheduling. The denormalized cost_account_code plain attribute on resource should be normalized to a proper FK. Enables resour',
+    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: Schedule resources often represent individual workers; linking enables labor allocation reports and compliance with union and safety regulations.',
+    `material_catalog_id` BIGINT COMMENT 'Foreign key linking to procurement.material_catalog. Business justification: Schedule resources of type material must reference the procurement material catalog for accurate unit pricing, lead times, and specification compliance. Construction schedulers use catalog data to v',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: RESOURCE PLANNING: External subcontractor/vendor provides the resource; procurement contracts vendor, schedule assigns resource to activities. Linking enables traceability of vendor‑supplied labor/equ',
     `availability_percentage` DECIMAL(18,2) COMMENT 'Planned availability of the resource expressed as a percent of total time.',
     `billing_rate_per_hour` DECIMAL(18,2) COMMENT 'Rate used for billing external parties for labor resources.',
@@ -123,6 +128,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`resource` (
     `certification_requirements` STRING COMMENT 'Required certifications or trainings for the resource (e.g., OSHA, LEED).',
     `resource_code` STRING COMMENT 'External identifier or catalogue number for the resource.',
     `compliance_requirements` STRING COMMENT 'Regulatory or safety compliance items applicable to the resource (e.g., OSHA training).',
+    `cost_account_code` STRING COMMENT 'Accounting code used to charge resource costs.',
+    `cost_center` STRING COMMENT 'Organizational cost centre responsible for the resource.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the resource record was first created in the system.',
     `default_units_per_time` DECIMAL(18,2) COMMENT 'Default allocation quantity when the resource is assigned without explicit units.',
     `depreciation_method` STRING COMMENT 'Accounting method used to depreciate the resource over its useful life.. Valid values are `straight_line|declining_balance`',
@@ -136,6 +143,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`resource` (
     `labor_category` STRING COMMENT 'Category of labor (e.g., skilled, unskilled, supervisory).',
     `last_used_timestamp` TIMESTAMP COMMENT 'Date‑time when the resource was last assigned to an activity.',
     `lead_time_days` STRING COMMENT 'Number of days required to procure or mobilize the resource.',
+    `material_category` STRING COMMENT 'Classification of material (e.g., concrete, steel, piping).',
     `max_concurrent_assignments` STRING COMMENT 'Maximum number of activities the resource can be assigned to simultaneously.',
     `max_units_per_period` DECIMAL(18,2) COMMENT 'Maximum quantity of the resource that can be allocated in a scheduling period.',
     `resource_name` STRING COMMENT 'Human‑readable name of the resource as used in schedules.',
@@ -158,12 +166,15 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`resource` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` (
     `activity_resource_assignment_id` BIGINT COMMENT 'System-generated unique identifier for the resource assignment to an activity.',
     `activity_id` BIGINT COMMENT 'Identifier of the project activity to which the resource is assigned.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Resource assignments must post costs to project cost accounts for EVM and cost control reporting. Construction cost engineers track actual resource costs against cost accounts. activity_resource_assig',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Equipment Assignment Planning: linking each activity resource assignment to a specific asset enables the Equipment Allocation Report and ensures compliance with the daily equipment utilization schedul',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Resource assignments drive cost account charges in construction cost control. activity_resource_assignment has denormalized cost_account_code (plain text). Linking to cost_account enables earned value',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Resource assignments are charged to cost centers; linking enables accurate cost allocation and financial reporting per cost center.',
+    `estimate_line_id` BIGINT COMMENT 'Foreign key linking to bid.estimate_line. Business justification: Resource assignments in the cost-loaded schedule correspond directly to estimate line items. This link enables actual vs. budgeted cost tracking at line-item level — the core of construction cost cont',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Posting resource assignment costs to GL accounts requires linking assignments to finance.gl_account for proper ledger entries.',
-    `rental_agreement_id` BIGINT COMMENT 'Foreign key linking to equipment.rental_agreement. Business justification: Rental cost verification in scheduling: when a resource assignment involves rented equipment, the rental agreement governs applicable rates, minimum hire periods, and billing terms. Project controls t',
+    `party_id` BIGINT COMMENT 'Foreign key linking to contract.contract_party. Business justification: Resource Assignment Report requires linking each assignment to the responsible contract party (subcontractor) for cost and compliance tracking.',
     `resource_id` BIGINT COMMENT 'Identifier of the resource (labor, equipment, material, etc.) assigned to the activity.',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Resource assignments for high-risk tasks (confined space, hot work, elevated work) must reference the applicable risk assessment to confirm controls are in place before deployment. HSE compliance repo',
+    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Before mobilising a resource to a high-risk activity, the assignment record must reference the applicable risk assessment confirming controls are in place. HSE and planning teams use this link for pre',
+    `subcontract_id` BIGINT COMMENT 'Foreign key linking to contract.subcontract. Business justification: Tracks which subcontract provides the assigned resources, enabling accurate cost allocation and subcontractor performance analysis.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Cost incurred to date for the resource consumption.',
     `actual_finish_date` DATE COMMENT 'Date when the resource actually completed work on the activity.',
     `actual_quantity` DECIMAL(18,2) COMMENT 'Resource units actually consumed to date.',
@@ -199,8 +210,11 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`activity_resource_ass
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`progress_update` (
     `progress_update_id` BIGINT COMMENT 'Unique surrogate key for the schedule progress update record.',
-    `activity_id` BIGINT COMMENT 'Foreign key to schedule.activity.activity_id',
-    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: EVM metrics stored on progress_update (bcwp, bcws, spi, sv, sv_percent) are computed relative to a specific schedule baseline. Without a FK to schedule_baseline, it is impossible to determine which ba',
+    `activity_id` BIGINT COMMENT 'add column activity_id (BIGINT) with FK to schedule.activity.activity_id - progress updates must reference the specific schedule activity being updated',
+    `construction_project_id` BIGINT COMMENT 'Identifier of the project to which this progress update belongs.',
+    `field_progress_id` BIGINT COMMENT 'Foreign key linking to site.field_progress. Business justification: Earned Value Management and schedule performance reporting require traceability from schedule progress updates back to the field measurement records that sourced them. The progress_update is formally ',
+    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: EVM reporting requires linking schedule progress updates (BCWP, SPI, SV) to the approved project budget to compute CPI and forecast-at-completion. Construction project controllers depend on this link ',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: progress_update captures EVM metrics (bcwp, bcws, spi, sv) which are meaningless without a reference baseline. The SPI (Schedule Performance Index) and SV (Schedule Variance) are computed against a sp',
     `actual_finish_date` DATE COMMENT 'Actual finish date of the activity or work package as of this reporting period.',
     `actual_start_date` DATE COMMENT 'Actual start date of the activity or work package as of this reporting period.',
     `actual_units` DECIMAL(18,2) COMMENT 'Actual quantity of work units performed (e.g., labor hours, cubic meters).',
@@ -235,13 +249,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`progress_update` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` (
     `lookahead_plan_id` BIGINT COMMENT 'Unique identifier for the lookahead plan record.',
-    `construction_project_id` BIGINT COMMENT 'Identifier of the project to which this lookahead plan belongs.',
-    `fleet_assignment_id` BIGINT COMMENT 'Foreign key linking to equipment.fleet_assignment. Business justification: Last Planner System equipment readiness check: lookahead_plan.equipment_ready_flag requires verification against a specific fleet assignment record to confirm the equipment is formally deployed and av',
-    `itp_id` BIGINT COMMENT 'Foreign key linking to quality.itp. Business justification: Last Planner System lookahead planning explicitly checks ITP hold/witness point clearance as a constraint before committing work to the weekly plan. A construction scheduler must verify ITP readiness ',
-    `package_id` BIGINT COMMENT 'Foreign key linking to design.package. Business justification: Last Planner System / lookahead planning: before committing activities to the weekly work plan, planners must confirm the governing design package is approved and issued. This link enables automated r',
-    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: A lookahead plan (3-week or 6-week rolling window) is derived from and measured against the current approved schedule baseline. The lookahead_plan already references schedule.project_baseline (cross-do',
-    `staffing_plan_id` BIGINT COMMENT 'Foreign key linking to workforce.staffing_plan. Business justification: Last Planner System (LPS) lookahead planning requires confirming workforce readiness against the active staffing plan. The lookahead_plan.crew_ready_flag and readiness_status are assessed against the ',
-    `wbs_element_id` BIGINT COMMENT 'add column wbs_element_id (BIGINT) with FK to project.wbs_element.wbs_element_id - lookahead plans typically scope to a WBS branch',
+    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: In Last Planner System, the lookahead plan must be reviewed against the active HSE plan to confirm planned work fronts comply with site safety requirements. HSE managers and planners cross-reference t',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: A lookahead plan (3-week or 6-week rolling window) is derived from and measured against the current approved schedule baseline. lookahead_plan already has project_baseline_id -> project.project_baseli',
+    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: Short-interval lookahead scheduling (Last Planner System) is organized by work front. The lookahead_plan.work_front plain-text column is a denormalized reference to site.work_front. Planners and forem',
     `change_order_flag` BOOLEAN COMMENT 'True if any change orders are expected within the lookahead window.',
     `constraint_description` STRING COMMENT 'Detailed description of the identified constraint.',
     `constraint_type` STRING COMMENT 'Primary constraint type affecting the planned work.. Valid values are `material|permit|crew|equipment|weather|none`',
@@ -271,18 +281,45 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` (
     `total_activities` STRING COMMENT 'Total number of activities scheduled in the lookahead window.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the lookahead plan record.',
     `weather_impact_flag` BOOLEAN COMMENT 'True if adverse weather conditions are expected to impact the lookahead activities.',
-    `work_front` STRING COMMENT 'Name or code of the work front or zone covered by the lookahead plan.',
     `zone_code` STRING COMMENT 'Alphanumeric code representing the specific site zone for the plan.',
     CONSTRAINT pk_lookahead_plan PRIMARY KEY(`lookahead_plan_id`)
 ) COMMENT 'Short-interval look-ahead schedule (typically 3-week or 6-week rolling window) used for near-term construction planning and crew coordination. Captures look-ahead period dates, horizon (weeks), responsible superintendent/foreman, work front or zone, constraint identification, and readiness status (materials, permits, crew, equipment confirmed). Supports Last Planner System (LPS) and Percent Plan Complete (PPC) tracking. Bridges the gap between the master CPM schedule and daily site execution. The header record for lookahead_activity line items.';
 
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` (
+    `schedule_milestone_id` BIGINT COMMENT 'System‑generated unique identifier for the schedule milestone. _canonical_skip_reason: Entity does not fit a predefined role, treated as OTHER.',
+    `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: In CPM scheduling (Oracle Primavera P6), milestones ARE activities — specifically zero-duration activities that mark significant events. schedule_milestone currently has no FK to activity, creating a ',
+    `agreement_id` BIGINT COMMENT 'Identifier of the contract to which the milestone is tied.',
+    `contract_milestone_id` BIGINT COMMENT 'Foreign key linking to contract.contract_milestone. Business justification: Milestone reconciliation report aligns contract milestones with schedule milestones for payment certification and performance monitoring.',
+    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.contract_payment_certificate. Business justification: Payment certification requires linking schedule milestones to the contract payment certificate for audit, retention release, and compliance reporting.',
+    `plan_id` BIGINT COMMENT 'Foreign key linking to quality.quality_plan. Business justification: Handover, practical completion, and DLP commencement milestones are gated by quality plan sign-off. The quality plans handover_quality_requirements directly govern milestone achievement — linking the',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: schedule_milestone has a baseline_date field (denormalized baseline date for the milestone) but no FK to schedule_baseline. Milestones are tracked against specific approved baselines — the baseline_da',
+    `actual_date` DATE COMMENT 'Date the milestone was actually achieved; null if not yet achieved.',
+    `baseline_date` DATE COMMENT 'Original baseline date from the approved project schedule before any re‑baselines.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the milestone record was first created in the system.',
+    `critical_path_flag` BOOLEAN COMMENT 'True if the milestone lies on the projects critical path, affecting overall project duration.',
+    `schedule_milestone_description` STRING COMMENT 'Detailed narrative describing the purpose and scope of the milestone.',
+    `forecast_date` DATE COMMENT 'Most recent forecasted date for milestone completion based on progress and risk analysis.',
+    `ld_exposure_flag` BOOLEAN COMMENT 'Indicates whether the milestone triggers liquidated damages if missed.',
+    `ld_rate_per_day` DECIMAL(18,2) COMMENT 'Monetary amount charged per day of delay when the LD exposure flag is true.',
+    `location` STRING COMMENT 'Physical site or geographic location where the milestone is to be achieved.',
+    `schedule_milestone_name` STRING COMMENT 'Human‑readable name of the milestone as defined in the contract or project plan.',
+    `planned_date` DATE COMMENT 'Date originally scheduled for the milestone according to the baseline CPM schedule.',
+    `risk_level` STRING COMMENT 'Risk rating assigned to the milestone based on impact and probability of delay.. Valid values are `low|medium|high`',
+    `schedule_milestone_status` STRING COMMENT 'Current status of the milestone reflecting progress and risk.. Valid values are `not_started|at_risk|achieved|missed`',
+    `schedule_milestone_type` STRING COMMENT 'Classification of the milestone (e.g., contract‑driven, internal project, client‑required, or regulatory).. Valid values are `contract|internal|client|regulatory`',
+    `sequence` STRING COMMENT 'Ordinal position of the milestone within the overall schedule.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the milestone record.',
+    `variance_days` STRING COMMENT 'Difference in days between planned (or baseline) date and actual/forecast date.',
+    CONSTRAINT pk_schedule_milestone PRIMARY KEY(`schedule_milestone_id`)
+) COMMENT 'Key project milestone records representing contractually significant or internally critical schedule events with zero duration. Captures milestone name, milestone type (contract milestone, internal milestone, client milestone, regulatory milestone), planned date, forecast date, actual achieved date, milestone status (not started, at risk, achieved, missed), contract reference, liquidated damages (LD) exposure flag, LD rate per day, and milestone owner. Derived from contract schedule requirements and master CPM schedule milestone activities. Enables contract compliance tracking, LD exposure monitoring, and executive schedule reporting.';
+
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`delay_event` (
     `delay_event_id` BIGINT COMMENT 'System-generated unique identifier for the delay event record.',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Delay events directly threaten contractual milestones — the basis for LD exposure and EOT claims. Construction contracts require demonstrating which milestone a delay event impacts. delay_event has no',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Delay events in construction are reported at phase level for EOT claims and gate review impacts (e.g., design phase delayed by permit). Phase-level delay reporting is a contractual requirement. delay_',
+    `daily_log_id` BIGINT COMMENT 'Foreign key linking to site.daily_log. Business justification: EOT (Extension of Time) claims and delay analysis require formal linkage between delay events and the daily log entries that evidence them. Daily logs are the primary contemporaneous record used to su',
+    `incident_id` BIGINT COMMENT 'Foreign key linking to safety.incident. Business justification: Safety incidents are a recognised cause of schedule delay in construction. The delay event must reference the triggering incident so that EOT (Extension of Time) claims, delay analysis reports, and in',
+    `eot_claim_id` BIGINT COMMENT 'Foreign key linking to contract.contract_eot_claim. Business justification: Delay events are the factual schedule records that substantiate formal EOT claims. Essential for claim preparation, linking schedule analysis to contractual claims, and providing audit trail. Construc',
     `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: Delay events affect a specific schedule baseline and may be tied to an EOT claim; linking creates proper relationships and removes string reference columns.',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: DELAY CLAIMS: Delay events often stem from vendor delivery or performance; linking to vendor supports root‑cause analysis and EOT claim justification.',
-    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: EOT claim and delay analysis reports identify which work fronts were impacted by each delay event, enabling zone-level schedule impact assessment. Construction delay claims require spatial attribution',
     `approval_date` DATE COMMENT 'Date when the delay event record was approved.',
     `approved_by` STRING COMMENT 'Name or identifier of the person who approved the delay event record.',
     `cost_currency_code` STRING COMMENT 'ISO 4217 currency code for the cost impact amount.',
@@ -309,22 +346,42 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`delay_event` (
     CONSTRAINT pk_delay_event PRIMARY KEY(`delay_event_id`)
 ) COMMENT 'Discrete delay event record capturing a specific occurrence that caused or is causing schedule delay. Stores event name, event type (weather, design change, employer instruction, utility conflict, permit delay, labor dispute, material shortage, force majeure), event start date, event end date, impacted activities, delay duration (calendar days, working days), responsibility party (employer, contractor, third party, neutral), delay category (excusable compensable, excusable non-compensable, non-excusable), linked EOT claim reference, and mitigation measures taken. Supports delay analysis (as-planned vs as-built, time impact analysis, windows analysis).';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` (
-    `plan_commitment_id` BIGINT COMMENT 'Primary key for the plan_commitment association',
-    `activity_id` BIGINT COMMENT 'Foreign key linking to the CPM schedule activity being committed to in this plan window',
-    `lookahead_plan_id` BIGINT COMMENT 'Foreign key linking to the lookahead plan that contains this commitment',
-    `commitment_status` STRING COMMENT 'Lifecycle status of this plan commitment record — whether the activity was committed, completed as planned, or not completed (used for PPC calculation).',
-    `constraint_type` STRING COMMENT 'Type of constraint blocking or affecting this activity within this lookahead window. Distinct from the master schedule constraint_type on the activity record.',
-    `crew_ready_flag` BOOLEAN COMMENT 'True if the required crew is confirmed available for this activity within this lookahead plan window.',
-    `equipment_ready_flag` BOOLEAN COMMENT 'True if required equipment is confirmed available for this activity within this lookahead plan window.',
-    `lookahead_finish_date` DATE COMMENT 'Finish date used in the look‑ahead planning window. [Moved from activity: Same reasoning as lookahead_start_date — this is a per-window planned date that belongs to the plan_commitment association as window_planned_finish_date, not a static property of the activity itself.]',
-    `lookahead_start_date` DATE COMMENT 'Start date used in the look‑ahead planning window. [Moved from activity: This date is specific to a particular lookahead plan window, not a permanent property of the activity. When an activity appears in multiple lookahead plans, storing a single lookahead_start_date on the activity record causes data loss — only the most recent window date is retained. The correct location is window_planned_start_date on the plan_commitment association.]',
-    `material_ready_flag` BOOLEAN COMMENT 'True if all required materials are confirmed available for this activity within this lookahead plan window.',
-    `readiness_status` STRING COMMENT 'Readiness status of this specific activity within this specific lookahead plan window. Tracks whether the activity has cleared all prerequisites for execution in this window.',
-    `window_planned_finish_date` DATE COMMENT 'Planned finish date for this activity as scheduled within this specific lookahead window. May differ from the master schedule planned_finish_date.',
-    `window_planned_start_date` DATE COMMENT 'Planned start date for this activity as scheduled within this specific lookahead window. May differ from the master schedule planned_start_date due to near-term replanning.',
-    CONSTRAINT pk_plan_commitment PRIMARY KEY(`plan_commitment_id`)
-) COMMENT 'This association product represents the formal commitment between a lookahead_plan and an activity within the Last Planner System (LPS). It captures the per-window readiness state, constraint tracking, and planned execution dates for a specific activity as it appears in a specific lookahead plan period. Each record links one lookahead_plan to one activity and carries attributes that exist only in the context of that plan-window/activity pairing — readiness flags, window-specific dates, and constraint details that change from one rolling window to the next.. Existence Justification: In Last Planner System (LPS) construction scheduling, a lookahead plan explicitly manages a curated set of activities for a rolling planning window (typically 3–6 weeks). A single lookahead plan covers multiple activities, AND a single activity can appear in multiple successive lookahead plans (e.g., a multi-week activity spans plan week 1, week 2, and week 3 rolling windows). The relationship itself — called a lookahead commitment or plan commitment — carries its own data: window-specific readiness flags, constraint tracking, and planned dates within that specific window that differ from the master schedule dates.';
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` (
+    `lookahead_activity_id` BIGINT COMMENT 'Unique system-generated identifier for this lookahead activity commitment record',
+    `activity_id` BIGINT COMMENT 'Foreign key linking to the CPM schedule activity being committed to in this lookahead window',
+    `lookahead_plan_id` BIGINT COMMENT 'Foreign key linking to the lookahead plan that includes this activity commitment',
+    `actual_completion_flag` BOOLEAN COMMENT 'True if this activity was actually completed during the lookahead period, used to calculate actual PPC versus target',
+    `commitment_date` DATE COMMENT 'Date when this activity was committed to the lookahead plan by the responsible foreman or superintendent',
+    `constraint_description` STRING COMMENT 'Detailed description of the specific constraint affecting this activity in the lookahead period, captured during weekly planning meetings',
+    `constraint_type` STRING COMMENT 'Primary constraint type preventing or delaying this activity within the lookahead window, used for constraint log analysis',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this lookahead activity commitment record was created in the system',
+    `notes` STRING COMMENT 'Free-text notes specific to this activitys inclusion in this lookahead plan, captured during planning meetings',
+    `planned_finish_date` DATE COMMENT 'The finish date planned for this activity within the lookahead window, may differ from the master schedule baseline date due to near-term adjustments',
+    `planned_start_date` DATE COMMENT 'The start date planned for this activity within the lookahead window, may differ from the master schedule baseline date due to near-term adjustments',
+    `ppc_contribution_flag` BOOLEAN COMMENT 'True if this activity was committed to and successfully completed within the lookahead period, contributing positively to the Percent Plan Complete (PPC) metric',
+    `readiness_status` STRING COMMENT 'Overall readiness status of this activity for execution within the lookahead period, drives the ready_activities count on the parent lookahead_plan',
+    `removed_flag` BOOLEAN COMMENT 'True if this activity was removed from the lookahead plan after initial commitment due to constraints or reprioritization',
+    `removed_reason` STRING COMMENT 'Explanation of why this activity was removed from the lookahead plan if removed_flag is true',
+    CONSTRAINT pk_lookahead_activity PRIMARY KEY(`lookahead_activity_id`)
+) COMMENT 'This association product represents the commitment of a specific CPM schedule activity within a short-interval lookahead plan window. It captures the Last Planner System (LPS) commitment tracking, readiness assessment, and Percent Plan Complete (PPC) contribution for each activity included in a lookahead planning cycle. Each record links one lookahead plan to one activity with attributes that exist only in the context of this near-term planning commitment.. Existence Justification: In Last Planner System (LPS) construction scheduling, a lookahead plan includes multiple CPM activities selected for near-term execution (typically 3-6 week window), and each activity can appear in multiple sequential lookahead plans as the rolling window advances. The business actively manages these commitments through weekly planning meetings, tracking readiness status, constraints, and PPC contribution for each activity-plan pairing. This is an operational M:N relationship with a recognized business name (lookahead activity or plan commitment) and relationship-specific data.';
+
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` (
+    `delay_activity_impact_id` BIGINT COMMENT 'System-generated unique identifier for the delay-activity impact record',
+    `activity_id` BIGINT COMMENT 'Foreign key linking to the schedule activity that was impacted',
+    `delay_event_id` BIGINT COMMENT 'Foreign key linking to the delay event that caused the impact',
+    `activity_ids_impacted` STRING COMMENT 'Comma‑separated list of activity identifiers that are affected by the delay. [Moved from delay_event: This denormalized STRING field (comma-separated list of activity IDs) is direct evidence that the current model acknowledges multiple activities per delay event but has not properly normalized it. This field should be REMOVED from delay_event and replaced by the M:N association table, which provides proper normalization and enables per-activity impact quantification.]',
+    `analysis_method` STRING COMMENT 'Delay analysis methodology used to establish this impact relationship',
+    `cost_impact_allocation` DECIMAL(18,2) COMMENT 'Portion of the delay events total cost impact allocated to this specific activity',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this impact record was first created',
+    `critical_path_contribution` BOOLEAN COMMENT 'Indicates whether this specific impact contributed to overall project critical path delay (true/false)',
+    `eot_days_claimed` STRING COMMENT 'Number of Extension of Time days claimed for this specific activity impact in the EOT claim',
+    `impact_duration_days` STRING COMMENT 'Number of days this specific delay event impacted this specific activity (calendar days)',
+    `impact_recorded_date` DATE COMMENT 'Date when this delay-activity impact relationship was formally recorded in the system',
+    `impact_type` STRING COMMENT 'Classification of how the delay impacted the activity: direct (activity directly delayed), indirect (downstream impact), concurrent (overlapping delays), pacing (activity became critical)',
+    `mitigation_action` STRING COMMENT 'Specific mitigation measures taken for this activity in response to this delay event',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this impact record',
+    CONSTRAINT pk_delay_activity_impact PRIMARY KEY(`delay_activity_impact_id`)
+) COMMENT 'This association product represents the impact relationship between a delay event and a schedule activity. It captures the formal delay analysis linkage required for Time Impact Analysis (TIA), Windows Analysis, and As-Planned vs As-Built methodologies. Each record links one delay event to one impacted activity with attributes that quantify the specific impact on that activity, supporting EOT claim substantiation and critical path analysis per activity per delay.. Existence Justification: In construction project controls, delay events routinely impact multiple schedule activities simultaneously (e.g., a weather delay affects all outdoor activities in progress), and individual activities can be impacted by multiple distinct delay events over their lifecycle (e.g., an activity delayed first by design changes, then by material shortages). The relationship between delay events and impacted activities is a formally managed business concept called delay impact or delay-activity impact, which is the foundation of delay analysis methodologies (Time Impact Analysis, Windows Analysis, As-Planned vs As-Built) required for EOT claims and dispute resolution.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ADD CONSTRAINT `fk_schedule_activity_relationship_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
@@ -335,20 +392,29 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ADD
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ADD CONSTRAINT `fk_schedule_progress_update_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ADD CONSTRAINT `fk_schedule_progress_update_schedule_baseline_id` FOREIGN KEY (`schedule_baseline_id`) REFERENCES `vibe_construction_v1`.`schedule`.`schedule_baseline`(`schedule_baseline_id`);
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ADD CONSTRAINT `fk_schedule_lookahead_plan_schedule_baseline_id` FOREIGN KEY (`schedule_baseline_id`) REFERENCES `vibe_construction_v1`.`schedule`.`schedule_baseline`(`schedule_baseline_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ADD CONSTRAINT `fk_schedule_schedule_milestone_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ADD CONSTRAINT `fk_schedule_schedule_milestone_schedule_baseline_id` FOREIGN KEY (`schedule_baseline_id`) REFERENCES `vibe_construction_v1`.`schedule`.`schedule_baseline`(`schedule_baseline_id`);
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ADD CONSTRAINT `fk_schedule_delay_event_schedule_baseline_id` FOREIGN KEY (`schedule_baseline_id`) REFERENCES `vibe_construction_v1`.`schedule`.`schedule_baseline`(`schedule_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ADD CONSTRAINT `fk_schedule_plan_commitment_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ADD CONSTRAINT `fk_schedule_plan_commitment_lookahead_plan_id` FOREIGN KEY (`lookahead_plan_id`) REFERENCES `vibe_construction_v1`.`schedule`.`lookahead_plan`(`lookahead_plan_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ADD CONSTRAINT `fk_schedule_lookahead_activity_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ADD CONSTRAINT `fk_schedule_lookahead_activity_lookahead_plan_id` FOREIGN KEY (`lookahead_plan_id`) REFERENCES `vibe_construction_v1`.`schedule`.`lookahead_plan`(`lookahead_plan_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ADD CONSTRAINT `fk_schedule_delay_activity_impact_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_construction_v1`.`schedule`.`activity`(`activity_id`);
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ADD CONSTRAINT `fk_schedule_delay_activity_impact_delay_event_id` FOREIGN KEY (`delay_event_id`) REFERENCES `vibe_construction_v1`.`schedule`.`delay_event`(`delay_event_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_construction_v1`.`schedule` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_construction_v1`.`schedule` SET TAGS ('dbx_domain' = 'schedule');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` SET TAGS ('dbx_subdomain' = 'activity_planning');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` SET TAGS ('dbx_subdomain' = 'activity_management');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Point Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `bim_model_id` SET TAGS ('dbx_business_glossary_term' = 'Bim Model Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `estimate_id` SET TAGS ('dbx_business_glossary_term' = 'Estimate Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `itp_id` SET TAGS ('dbx_business_glossary_term' = 'Itp Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `review_id` SET TAGS ('dbx_business_glossary_term' = 'Review Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Swms Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
@@ -367,7 +433,10 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `created_t
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `critical_path_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Flag');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `activity_description` SET TAGS ('dbx_business_glossary_term' = 'Activity Description');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `free_float_days` SET TAGS ('dbx_business_glossary_term' = 'Free Float (Days)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `lookahead_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Look‑Ahead Finish Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `lookahead_start_date` SET TAGS ('dbx_business_glossary_term' = 'Look‑Ahead Start Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `activity_name` SET TAGS ('dbx_business_glossary_term' = 'Activity Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `activity_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `original_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Original Duration (Days)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `planned_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Date');
@@ -376,9 +445,8 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `remaining
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `total_float_days` SET TAGS ('dbx_business_glossary_term' = 'Total Float (Days)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` SET TAGS ('dbx_subdomain' = 'activity_planning');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` SET TAGS ('dbx_subdomain' = 'activity_management');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `activity_relationship_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Relationship ID');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project Id');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Activity ID');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `activity_relationship_status` SET TAGS ('dbx_business_glossary_term' = 'Relationship Status');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `activity_relationship_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deleted');
@@ -391,6 +459,7 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLU
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `lag_duration` SET TAGS ('dbx_business_glossary_term' = 'Lag Duration');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `lag_time_unit` SET TAGS ('dbx_business_glossary_term' = 'Lag Time Unit');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `lag_time_unit` SET TAGS ('dbx_value_regex' = 'days|hours|minutes');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `lag_time_unit` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `relationship_source` SET TAGS ('dbx_business_glossary_term' = 'Relationship Source');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `relationship_source` SET TAGS ('dbx_value_regex' = 'system_export|manual_entry');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLUMN `relationship_type` SET TAGS ('dbx_business_glossary_term' = 'Relationship Type (Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish)');
@@ -399,9 +468,6 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_relationship` ALTER COLU
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` SET TAGS ('dbx_subdomain' = 'baseline_control');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline ID');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Client Opportunity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Approval Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `baseline_type` SET TAGS ('dbx_business_glossary_term' = 'Baseline Type');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `baseline_type` SET TAGS ('dbx_value_regex' = 'original|current|supplemental');
@@ -416,6 +482,8 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `finish_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Finish Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `is_current` SET TAGS ('dbx_business_glossary_term' = 'Is Current Baseline Flag');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_name` SET TAGS ('dbx_business_glossary_term' = 'Baseline Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `revision_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Revision Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_status` SET TAGS ('dbx_business_glossary_term' = 'Baseline Status');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_baseline` ALTER COLUMN `schedule_baseline_status` SET TAGS ('dbx_value_regex' = 'draft|approved|rejected|archived');
@@ -428,6 +496,7 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` SET TAGS ('dbx
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` SET TAGS ('dbx_subdomain' = 'baseline_control');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `baseline_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline Activity Identifier');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Identifier');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `estimate_id` SET TAGS ('dbx_business_glossary_term' = 'Estimate Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `baseline_activity_status` SET TAGS ('dbx_business_glossary_term' = 'Activity Status');
@@ -455,18 +524,23 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `line_sequence` SET TAGS ('dbx_business_glossary_term' = 'Line Sequence Number');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`baseline_activity` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` SET TAGS ('dbx_subdomain' = 'activity_planning');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` SET TAGS ('dbx_subdomain' = 'resource_planning');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_id` SET TAGS ('dbx_business_glossary_term' = 'Resource Identifier');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `asset_category_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Category Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `material_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Material Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `availability_percentage` SET TAGS ('dbx_business_glossary_term' = 'Availability Percentage');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `billing_rate_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Billing Rate Per Hour');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `calendar_name` SET TAGS ('dbx_business_glossary_term' = 'Resource Calendar Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `calendar_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `calendar_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `certification_requirements` SET TAGS ('dbx_business_glossary_term' = 'Certification Requirements');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_code` SET TAGS ('dbx_business_glossary_term' = 'Resource Code');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `compliance_requirements` SET TAGS ('dbx_business_glossary_term' = 'Compliance Requirements');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `cost_account_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Code');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `cost_center` SET TAGS ('dbx_business_glossary_term' = 'Cost Center');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `default_units_per_time` SET TAGS ('dbx_business_glossary_term' = 'Default Units Per Time');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `depreciation_method` SET TAGS ('dbx_business_glossary_term' = 'Depreciation Method');
@@ -481,12 +555,17 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `is_overti
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `labor_category` SET TAGS ('dbx_business_glossary_term' = 'Labor Category');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `last_used_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Used Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time (Days)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `material_category` SET TAGS ('dbx_business_glossary_term' = 'Material Category');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `max_concurrent_assignments` SET TAGS ('dbx_business_glossary_term' = 'Maximum Concurrent Assignments');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `max_units_per_period` SET TAGS ('dbx_business_glossary_term' = 'Maximum Units Per Period');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_name` SET TAGS ('dbx_business_glossary_term' = 'Resource Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Resource Notes');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `overtime_factor` SET TAGS ('dbx_business_glossary_term' = 'Overtime Factor');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `price_per_unit` SET TAGS ('dbx_business_glossary_term' = 'Price Per Unit');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `price_per_unit` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `procurement_source` SET TAGS ('dbx_business_glossary_term' = 'Procurement Source');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `procurement_source` SET TAGS ('dbx_value_regex' = 'internal|external');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `resource_role` SET TAGS ('dbx_business_glossary_term' = 'Resource Role');
@@ -499,18 +578,22 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `safety_ra
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `site_location` SET TAGS ('dbx_business_glossary_term' = 'Site Location');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `skill_set` SET TAGS ('dbx_business_glossary_term' = 'Skill Set');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`resource` ALTER COLUMN `utilization_rate` SET TAGS ('dbx_business_glossary_term' = 'Utilization Rate');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` SET TAGS ('dbx_subdomain' = 'activity_planning');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` SET TAGS ('dbx_subdomain' = 'resource_planning');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `activity_resource_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Resource Assignment ID');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `estimate_line_id` SET TAGS ('dbx_business_glossary_term' = 'Estimate Line Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `rental_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Rental Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Party Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `resource_id` SET TAGS ('dbx_business_glossary_term' = 'Resource ID');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `subcontract_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontract Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `actual_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `actual_quantity` SET TAGS ('dbx_business_glossary_term' = 'Actual Quantity');
@@ -548,12 +631,15 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALT
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'hours|days|m3|kg|units|percent');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`activity_resource_assignment` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` SET TAGS ('dbx_subdomain' = 'baseline_control');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `progress_update_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Update ID');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `field_progress_id` SET TAGS ('dbx_business_glossary_term' = 'Field Progress Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `actual_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
@@ -590,14 +676,11 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `up
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `update_source` SET TAGS ('dbx_value_regex' = 'field_report|p6_import|heavyjob');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`progress_update` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `lookahead_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Lookahead Plan ID');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `fleet_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Fleet Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `itp_id` SET TAGS ('dbx_business_glossary_term' = 'Itp Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Package Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `staffing_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Staffing Plan Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `change_order_flag` SET TAGS ('dbx_business_glossary_term' = 'Change Order Flag');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `constraint_description` SET TAGS ('dbx_business_glossary_term' = 'Constraint Description');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `constraint_type` SET TAGS ('dbx_business_glossary_term' = 'Constraint Type');
@@ -632,20 +715,52 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `sta
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `total_activities` SET TAGS ('dbx_business_glossary_term' = 'Total Activities');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `weather_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Weather Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `work_front` SET TAGS ('dbx_business_glossary_term' = 'Work Front');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_plan` ALTER COLUMN `zone_code` SET TAGS ('dbx_business_glossary_term' = 'Zone Code');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` SET TAGS ('dbx_subdomain' = 'activity_management');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Milestone ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_id` SET TAGS ('dbx_ssot_ref' = 'contract.contract_milestone');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `contract_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Milestone Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `payment_certificate_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Payment Certificate Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Plan Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `actual_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `baseline_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `critical_path_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Flag');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_description` SET TAGS ('dbx_business_glossary_term' = 'Milestone Description');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `forecast_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `ld_exposure_flag` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages Exposure Flag');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages Rate Per Day');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Milestone Location');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_name` SET TAGS ('dbx_business_glossary_term' = 'Milestone Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `planned_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Milestone Risk Level');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_status` SET TAGS ('dbx_business_glossary_term' = 'Milestone Status');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_status` SET TAGS ('dbx_value_regex' = 'not_started|at_risk|achieved|missed');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_type` SET TAGS ('dbx_business_glossary_term' = 'Milestone Type');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `schedule_milestone_type` SET TAGS ('dbx_value_regex' = 'contract|internal|client|regulatory');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Milestone Sequence Number');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`schedule_milestone` ALTER COLUMN `variance_days` SET TAGS ('dbx_business_glossary_term' = 'Schedule Variance (Days)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` SET TAGS ('dbx_subdomain' = 'execution_tracking');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `delay_event_id` SET TAGS ('dbx_business_glossary_term' = 'Delay Event Identifier');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Impacted Milestone Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Impacted Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Daily Log Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `eot_claim_id` SET TAGS ('dbx_business_glossary_term' = 'Related Eot Claim Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `created_by_user` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `delay_category` SET TAGS ('dbx_business_glossary_term' = 'Delay Category');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `delay_category` SET TAGS ('dbx_value_regex' = 'excusable_compensable|excusable_non_compensable|non_excusable');
@@ -658,11 +773,14 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `eot_cl
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `eot_claim_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Delay Event End Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_name` SET TAGS ('dbx_business_glossary_term' = 'Delay Event Name');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Delay Event Start Timestamp');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `event_type` SET TAGS ('dbx_business_glossary_term' = 'Delay Event Type');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `impact_on_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Amount');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `impact_on_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Impact Flag');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `mitigation_measures` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Measures');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Additional Notes');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating');
@@ -670,19 +788,38 @@ ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `risk_r
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `severity_level` SET TAGS ('dbx_business_glossary_term' = 'Severity Level');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `severity_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` SET TAGS ('dbx_subdomain' = 'execution_tracking');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` SET TAGS ('dbx_association_edges' = 'schedule.lookahead_plan,schedule.activity');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `plan_commitment_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Commitment - Plan Commitment Id');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Commitment - Activity Id');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `lookahead_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Commitment - Lookahead Plan Id');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `commitment_status` SET TAGS ('dbx_business_glossary_term' = 'Commitment Status');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `constraint_type` SET TAGS ('dbx_business_glossary_term' = 'Commitment Constraint Type');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `crew_ready_flag` SET TAGS ('dbx_business_glossary_term' = 'Crew Ready Flag');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `equipment_ready_flag` SET TAGS ('dbx_business_glossary_term' = 'Equipment Ready Flag');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `lookahead_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Look‑Ahead Finish Date');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `lookahead_start_date` SET TAGS ('dbx_business_glossary_term' = 'Look‑Ahead Start Date');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `material_ready_flag` SET TAGS ('dbx_business_glossary_term' = 'Material Ready Flag');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `readiness_status` SET TAGS ('dbx_business_glossary_term' = 'Activity Readiness Status');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `window_planned_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Window Planned Finish Date');
-ALTER TABLE `vibe_construction_v1`.`schedule`.`plan_commitment` ALTER COLUMN `window_planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Window Planned Start Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` SET TAGS ('dbx_subdomain' = 'performance_tracking');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` SET TAGS ('dbx_association_edges' = 'schedule.lookahead_plan,schedule.activity');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `lookahead_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Lookahead Activity Identifier');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Lookahead Activity - Activity Id');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `lookahead_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Lookahead Activity - Lookahead Plan Id');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `actual_completion_flag` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Flag');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `commitment_date` SET TAGS ('dbx_business_glossary_term' = 'Commitment Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `constraint_description` SET TAGS ('dbx_business_glossary_term' = 'Constraint Description');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `constraint_type` SET TAGS ('dbx_business_glossary_term' = 'Constraint Type');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `planned_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `ppc_contribution_flag` SET TAGS ('dbx_business_glossary_term' = 'PPC Contribution Flag');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `readiness_status` SET TAGS ('dbx_business_glossary_term' = 'Readiness Status');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `removed_flag` SET TAGS ('dbx_business_glossary_term' = 'Removed Flag');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`lookahead_activity` ALTER COLUMN `removed_reason` SET TAGS ('dbx_business_glossary_term' = 'Removed Reason');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` SET TAGS ('dbx_subdomain' = 'performance_tracking');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` SET TAGS ('dbx_association_edges' = 'schedule.delay_event,schedule.activity');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `delay_activity_impact_id` SET TAGS ('dbx_business_glossary_term' = 'Delay Activity Impact ID');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Delay Activity Impact - Activity Id');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `delay_event_id` SET TAGS ('dbx_business_glossary_term' = 'Delay Activity Impact - Delay Event Id');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `activity_ids_impacted` SET TAGS ('dbx_business_glossary_term' = 'Impacted Activity IDs');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `analysis_method` SET TAGS ('dbx_business_glossary_term' = 'Analysis Method');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `cost_impact_allocation` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Allocation');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `critical_path_contribution` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Contribution');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `eot_days_claimed` SET TAGS ('dbx_business_glossary_term' = 'EOT Days Claimed');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `impact_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Impact Duration Days');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `impact_recorded_date` SET TAGS ('dbx_business_glossary_term' = 'Impact Recorded Date');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `impact_type` SET TAGS ('dbx_business_glossary_term' = 'Impact Type');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `mitigation_action` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Action');
+ALTER TABLE `vibe_construction_v1`.`schedule`.`delay_activity_impact` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

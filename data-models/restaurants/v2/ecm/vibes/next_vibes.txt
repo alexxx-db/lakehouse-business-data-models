@@ -1,182 +1,596 @@
-**Model Quality Score: 66.01/100**
+**Model Quality Score: 72.91/100**
 
-**Static Analysis Findings (5 actionable):**
+**Static Analysis Findings (8 actionable):**
+  - [SA:unlinked_fk] Column procurement.category.parent_category_id looks like an FK but has no foreign_key_to reference
   - [SA:fk_cycle] Circular FK dependency detected: realestate.site -> realestate.trade_area -> realestate.site
   - [SA:fk_cycle] Circular FK dependency detected: restaurant.unit -> foodsafety.sop_document -> restaurant.unit
-  - [SA:fk_cycle] Circular FK dependency detected: guest.guest_segment -> loyalty.loyalty_segment -> guest.guest_segment
-  - [SA:denormalized_natural_key] Product 'foodsafety.foodsafety_supplier_certification' has both FK 'certification_id' and natural key 'certification_number' for entity 'certification'. The natural key is redundant — use the FK join instead.
-  - [SA:cross_domain_duplicate] Potential SSOT violation: 'franchise.franchise_remodel_project' and 'realestate.remodel_project' have the same entity name 'remodel_project' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:duplicate_product_pair] Domain 'workforce' has both 'department' and 'workforce_department' — SSOT violation. Merge into 'department'.
+  - [SA:fk_namespace_mismatch] restaurant.unit.department_id: description says 'restaurant' but FK points to 'workforce'
+  - [SA:denormalized_natural_key] Product 'supply.goods_receipt' has both FK 'purchase_order_id' and natural key 'purchase_order_number' for entity 'purchase_order'. The natural key is redundant — use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'supply.commodity_category' has both FK 'category_id' and natural key 'category_code' for entity 'category'. The natural key is redundant — use the FK join instead.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'order.order_item' and 'procurement.procurement_item' have the same entity name 'item' in different domains. One should be the SSOT owner, the other should reference via FK.
 
-**PRIORITY 1 — connect_table: menu.dietary_tag_assignment** — add column assigned_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — dietary tag assignments need audit trail of who assigned the tag for compliance tracking
-**PRIORITY 2 — connect_table: menu.dietary_tag_assignment** — add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id — dietary tag assignments may vary by unit for regional menu variations
-**PRIORITY 3 — connect_table: guest.guest_segment** — add column created_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — segments need ownership tracking for marketing accountability
-**PRIORITY 4 — connect_table: guest.guest_visit** — add column loyalty_member_id (BIGINT) with FK to loyalty.member.member_id — guest visits should link to loyalty membership for points accrual
-**PRIORITY 5 — connect_table: order.daypart** — add column brand_id (BIGINT) with FK to restaurant.brand.brand_id — daypart definitions vary by brand (QSR breakfast vs casual dining brunch)
-**PRIORITY 6 — connect_table: supply.supply_supplier** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — suppliers need legal entity association for contract and payment processing
-**PRIORITY 7 — connect_table: supply.supply_purchase_order** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — purchase orders require approval workflow tracking
-**PRIORITY 8 — connect_table: supply.purchase_order_line** — add column stock_item_id (BIGINT) with FK to inventory.stock_item.stock_item_id — PO lines must reference inventory items being ordered
-**PRIORITY 9 — connect_table: supply.invoice** — add column cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id — invoices must be allocated to cost centers for financial reporting
-**PRIORITY 10 — connect_table: inventory.inventory_ingredient_usage** — add column shift_id (BIGINT) with FK to workforce.shift.shift_id — ingredient usage should track which shift consumed inventory
-**PRIORITY 11 — connect_table: workforce.tip_compliance** — add column shift_id (BIGINT) with FK to workforce.shift.shift_id — tip compliance records must reference the specific shift for audit
-**PRIORITY 12 — connect_table: workforce.tip_compliance** — add column payroll_run_id (BIGINT) with FK to workforce.payroll_run.payroll_run_id — tip compliance feeds into payroll processing
-**PRIORITY 13 — connect_table: franchise.billing** — add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id — franchise billing must specify which unit the charges apply to
-**PRIORITY 14 — connect_table: franchise.billing** — add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id — billing records need period association for accrual accounting
-**PRIORITY 15 — connect_table: franchise.franchise_corrective_action** — add column assigned_to_employee_id (BIGINT) with FK to workforce.employee.employee_id — corrective actions need assignee for accountability
-**PRIORITY 16 — connect_table: franchise.fee_schedule** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — fee schedules are governed by legal entity for multi-brand franchisors
-**PRIORITY 17 — connect_table: franchise.franchise_remodel_project** — add column capex_project_id (BIGINT) with FK to finance.capex_project.capex_project_id — remodel projects must link to capital expenditure tracking
-**PRIORITY 18 — connect_table: franchise.marketing_fund_contribution** — add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id — contributions need period tracking for fund accounting
-**PRIORITY 19 — connect_table: franchise.marketing_fund_contribution** — add column fund_id (BIGINT) with FK to marketing.fund.fund_id — contributions must specify which marketing fund receives the payment
-**PRIORITY 20 — connect_table: foodsafety.foodsafety_supplier_certification** — add column procurement_supplier_id (BIGINT) with FK to procurement.procurement_supplier.procurement_supplier_id — certifications need link to procurement supplier master
-**PRIORITY 21 — connect_table: foodsafety.foodsafety_supplier_certification** — add column verified_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — certification verification requires audit trail
-**PRIORITY 22 — connect_table: foodsafety.environmental_monitoring** — add column haccp_plan_id (BIGINT) with FK to foodsafety.haccp_plan.haccp_plan_id — environmental monitoring supports HACCP compliance
-**PRIORITY 23 — connect_table: foodsafety.environmental_monitoring** — add column performed_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — monitoring tasks need performer tracking
-**PRIORITY 24 — connect_table: loyalty.loyalty_segment_membership** — add column enrolled_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — segment assignments may be manual and need audit trail
-**PRIORITY 25 — connect_table: loyalty.loyalty_visit** — add column channel_id (BIGINT) with FK to order.channel.channel_id — loyalty visits should track which channel the visit occurred through
-**PRIORITY 26 — connect_table: loyalty.loyalty_adjustment** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — point adjustments require approval for fraud prevention
-**PRIORITY 27 — connect_table: loyalty.loyalty_adjustment** — add column reason_code (STRING) — adjustments need categorization for reporting and audit
-**PRIORITY 28 — connect_table: loyalty.program_campaign_allocation** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — budget allocations need approval workflow
-**PRIORITY 29 — connect_table: loyalty.program_campaign_allocation** — add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id — allocations must be period-bound for budget tracking
-**PRIORITY 30 — connect_table: marketing.marketing_lto** — add column menu_item_id (BIGINT) with FK to menu.menu_item.menu_item_id — LTO campaigns must reference the menu items being promoted
-**PRIORITY 31 — connect_table: marketing.marketing_lto** — add column territory_id (BIGINT) with FK to franchise.territory.territory_id — LTOs may be regional and need territory scoping
-**PRIORITY 32 — connect_table: marketing.marketing_guest_segment** — add column guest_segment_id (BIGINT) with FK to guest.guest_segment.guest_segment_id — marketing segments should reference master guest segments for SSOT
-**PRIORITY 33 — connect_table: finance.lease_liability** — add column cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id — lease liabilities must allocate to cost centers for IFRS 16 reporting
-**PRIORITY 34 — connect_table: finance.lease_liability** — add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id — lease liability amortization is period-based
-**PRIORITY 35 — connect_table: realestate.realestate_remodel_project** — add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id — remodel projects must specify which unit is being remodeled
-**PRIORITY 36 — connect_table: realestate.realestate_remodel_project** — add column capex_budget_id (BIGINT) with FK to realestate.capex_budget.capex_budget_id — remodel projects draw from capital budgets
-**PRIORITY 37 — connect_table: realestate.realestate_remodel_project** — add column project_manager_employee_id (BIGINT) with FK to workforce.employee.employee_id — remodel projects need project manager assignment
-**PRIORITY 38 — connect_table: procurement.category** — add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id — procurement categories map to GL accounts for spend classification
-**PRIORITY 39 — connect_table: procurement.category** — add column owner_employee_id (BIGINT) with FK to workforce.employee.employee_id — categories need category manager ownership
-**PRIORITY 40 — connect_table: procurement.procurement_supplier_certification** — add column verified_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — certifications require verification audit trail
-**PRIORITY 41 — connect_table: procurement.vendor_rebate** — add column contract_id (BIGINT) with FK to procurement.contract.contract_id — rebates are governed by supplier contracts
-**PRIORITY 42 — connect_table: procurement.vendor_rebate** — add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id — rebates post to specific GL accounts
-**PRIORITY 43 — connect_table: menu.combo_component** — add column display_sequence (INTEGER) — combo components need ordering for POS and menu board display
-**PRIORITY 44 — connect_table: menu.combo_component** — add column default_quantity (INTEGER) — combo components need default quantity specification
-**PRIORITY 45 — connect_table: order.order_ingredient_usage** — add column waste_flag (BOOLEAN) — ingredient usage should distinguish between consumed and wasted
-**PRIORITY 46 — connect_table: order.order_ingredient_usage** — add column unit_cost_amount (DECIMAL) — usage records need cost capture for real-time COGS
-**PRIORITY 47 — connect_table: supply.supply_contract** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — supply contracts are executed by legal entities
-**PRIORITY 48 — connect_table: supply.supply_contract** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — contracts require approval workflow
-**PRIORITY 49 — connect_table: franchise.lease_agreement** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — lease agreements are between legal entities
-**PRIORITY 50 — connect_table: franchise.lease_agreement** — add column lease_id (BIGINT) with FK to realestate.lease.lease_id — franchise lease agreements should reference master lease records
-**PRIORITY 51 — connect_table: realestate.menu_item_site_offering** — add column effective_from_date (DATE) — site offerings need temporal validity tracking
-**PRIORITY 52 — connect_table: realestate.menu_item_site_offering** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — menu availability changes need approval
-**PRIORITY 53 — connect_table: procurement.supplier_category_contract** — add column effective_from_date (DATE) — category contracts need temporal validity
-**PRIORITY 54 — connect_table: procurement.supplier_category_contract** — add column approved_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — contracts require approval
-**PRIORITY 55 — connect_table: procurement.supply_agreement** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — supply agreements are executed by legal entities
-**PRIORITY 56 — connect_table: procurement.supply_agreement** — add column contract_id (BIGINT) with FK to procurement.contract.contract_id — supply agreements should reference master contracts
-**PRIORITY 57 — connect_table: loyalty.program** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — loyalty programs are operated by legal entities for liability tracking
-**PRIORITY 58 — connect_table: loyalty.program** — add column brand_id (BIGINT) with FK to restaurant.brand.brand_id — loyalty programs are brand-specific
-**PRIORITY 59 — connect_table: menu.modifier_group** — add column brand_id (BIGINT) with FK to restaurant.brand.brand_id — modifier groups vary by brand
-**PRIORITY 60 — connect_table: menu.modifier_group** — add column display_sequence (INTEGER) — modifier groups need ordering for POS display
-**PRIORITY 61 — connect_table: realestate.landlord** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — landlords are legal entities for contract purposes
-**PRIORITY 62 — connect_table: realestate.remodel_project** — add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id — remodel projects must specify which unit
-**PRIORITY 63 — connect_table: realestate.remodel_project** — add column capex_project_id (BIGINT) with FK to finance.capex_project.capex_project_id — remodel projects are capital projects
-**PRIORITY 64 — connect_table: order.catering_package** — add column brand_id (BIGINT) with FK to restaurant.brand.brand_id — catering packages are brand-specific
-**PRIORITY 65 — connect_table: order.delivery_platform** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — delivery platforms have contractual relationships with legal entities
-**PRIORITY 66 — connect_table: supply.commodity_category** — add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id — commodity categories map to GL for cost tracking
-**PRIORITY 67 — connect_table: inventory.item_category** — add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id — inventory categories need GL mapping for COGS
-**PRIORITY 68 — connect_table: menu.dietary_tag** — add column regulatory_code (STRING) — dietary tags need regulatory reference codes for compliance
-**PRIORITY 69 — connect_table: guest.consent_policy** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — consent policies are jurisdiction and entity specific
-**PRIORITY 70 — connect_table: guest.survey_question** — add column created_by_employee_id (BIGINT) with FK to workforce.employee.employee_id — survey questions need authorship tracking
-**PRIORITY 71 — connect_table: workforce.position** — add column department_id (BIGINT) with FK to restaurant.department.department_id — positions belong to departments
-**PRIORITY 72 — connect_table: workforce.position** — add column cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id — positions allocate to cost centers for labor costing
-**PRIORITY 73 — connect_table: workforce.scheduling_template** — add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id — scheduling templates are unit-specific
-**PRIORITY 74 — connect_table: workforce.payroll_group** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — payroll groups are legal entity specific for tax purposes
-**PRIORITY 75 — connect_table: marketing.content_template** — add column brand_id (BIGINT) with FK to restaurant.brand.brand_id — content templates are brand-specific
-**PRIORITY 76 — connect_table: finance.chart_of_accounts** — add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id — charts of accounts are entity-specific
-**PRIORITY 77 — connect_table: inventory.uom** — add column uom_category (STRING) — units of measure need categorization (weight, volume, count)
-**PRIORITY 78 — remove_fk: guest.guest_segment** — remove FK on loyalty_segment_id because guest_segment should be the SSOT and loyalty_segment should reference it, not vice versa
-**PRIORITY 79 — connect_table: loyalty.loyalty_segment** — add column guest_segment_id (BIGINT) with FK to guest.guest_segment.guest_segment_id — loyalty segments should reference master guest segments for SSOT alignment
-**PRIORITY 80 — remove_fk: loyalty.loyalty_segment** — remove FK on guest_segment_id because this creates circular reference; loyalty_segment should be child of guest_segment
-**PRIORITY 81 — connect_table: foodsafety.foodsafety_allergen_profile** — add column allergen_code (STRING) — allergen profiles need standardized allergen codes (FDA Big 9)
-**PRIORITY 82 — connect_table: guest.guest_allergen_profile** — add column severity_level (STRING) — guest allergen profiles need severity indication for safety protocols
-**PRIORITY 83 — connect_table: guest.guest_allergen_profile** — add column verified_flag (BOOLEAN) — allergen profiles need verification status for liability
-**PRIORITY 84 — connect_table: order.daypart** — add column start_time (TIME) — dayparts need time boundaries for classification
-**PRIORITY 85 — connect_table: order.daypart** — add column end_time (TIME) — dayparts need time boundaries for classification
-**PRIORITY 86 — connect_table: order.daypart** — add column daypart_name (STRING) — dayparts need descriptive names (Breakfast, Lunch, Dinner, Late Night)
-**PRIORITY 87 — connect_table: supply.supply_supplier** — add column supplier_code (STRING) — suppliers need business identifier codes
-**PRIORITY 88 — connect_table: supply.supply_supplier** — add column supplier_name (STRING) — suppliers need display names
-**PRIORITY 89 — connect_table: supply.supply_supplier** — add column active_flag (BOOLEAN) — suppliers need status tracking
-**PRIORITY 90 — connect_table: supply.supply_purchase_order** — add column order_date (DATE) — purchase orders need order date
-**PRIORITY 91 — connect_table: supply.supply_purchase_order** — add column expected_delivery_date (DATE) — purchase orders need expected delivery
-**PRIORITY 92 — connect_table: supply.supply_purchase_order** — add column total_amount (DECIMAL) — purchase orders need total value
-**PRIORITY 93 — connect_table: supply.supply_purchase_order** — add column status_code (STRING) — purchase orders need status tracking
-**PRIORITY 94 — connect_table: supply.purchase_order_line** — add column quantity_ordered (DECIMAL) — PO lines need quantity
-**PRIORITY 95 — connect_table: supply.purchase_order_line** — add column unit_price (DECIMAL) — PO lines need unit price
-**PRIORITY 96 — connect_table: supply.purchase_order_line** — add column line_amount (DECIMAL) — PO lines need line total
-**PRIORITY 97 — connect_table: supply.invoice** — add column invoice_number (STRING) — invoices need document number
-**PRIORITY 98 — connect_table: supply.invoice** — add column invoice_date (DATE) — invoices need document date
-**PRIORITY 99 — connect_table: supply.invoice** — add column total_amount (DECIMAL) — invoices need total value
-**PRIORITY 100 — connect_table: supply.invoice** — add column payment_due_date (DATE) — invoices need payment terms
-**PRIORITY 101 — connect_table: workforce.tip_compliance** — add column reported_tip_amount (DECIMAL) — tip compliance needs reported amount
-**PRIORITY 102 — connect_table: workforce.tip_compliance** — add column allocated_tip_amount (DECIMAL) — tip compliance needs allocated amount
-**PRIORITY 103 — connect_table: workforce.tip_compliance** — add column compliance_date (DATE) — tip compliance needs date reference
-**PRIORITY 104 — connect_table: franchise.billing** — add column billing_date (DATE) — billing records need date
-**PRIORITY 105 — connect_table: franchise.billing** — add column total_amount (DECIMAL) — billing records need amount
-**PRIORITY 106 — connect_table: franchise.billing** — add column billing_type_code (STRING) — billing needs type classification (royalty, marketing, technology)
-**PRIORITY 107 — connect_table: franchise.franchise_corrective_action** — add column due_date (DATE) — corrective actions need deadline
-**PRIORITY 108 — connect_table: franchise.franchise_corrective_action** — add column status_code (STRING) — corrective actions need status tracking
-**PRIORITY 109 — connect_table: franchise.franchise_corrective_action** — add column description (STRING) — corrective actions need description
-**PRIORITY 110 — connect_table: franchise.fee_schedule** — add column fee_type_code (STRING) — fee schedules need fee type classification
-**PRIORITY 111 — connect_table: franchise.fee_schedule** — add column fee_amount (DECIMAL) — fee schedules need amount
-**PRIORITY 112 — connect_table: franchise.fee_schedule** — add column effective_from_date (DATE) — fee schedules need temporal validity
-**PRIORITY 113 — connect_table: franchise.franchise_remodel_project** — add column project_name (STRING) — remodel projects need name
-**PRIORITY 114 — connect_table: franchise.franchise_remodel_project** — add column estimated_cost_amount (DECIMAL) — remodel projects need budget
-**PRIORITY 115 — connect_table: franchise.franchise_remodel_project** — add column status_code (STRING) — remodel projects need status
-**PRIORITY 116 — connect_table: franchise.marketing_fund_contribution** — add column contribution_amount (DECIMAL) — contributions need amount
-**PRIORITY 117 — connect_table: franchise.marketing_fund_contribution** — add column contribution_date (DATE) — contributions need date
-**PRIORITY 118 — connect_table: foodsafety.foodsafety_supplier_certification** — add column certification_type_code (STRING) — certifications need type (GFSI, SQF, BRC)
-**PRIORITY 119 — connect_table: foodsafety.foodsafety_supplier_certification** — add column expiration_date (DATE) — certifications expire
-**PRIORITY 120 — connect_table: foodsafety.foodsafety_supplier_certification** — add column certification_number (STRING) — certifications have document numbers
-**PRIORITY 121 — connect_table: foodsafety.environmental_monitoring** — add column sample_location (STRING) — monitoring needs sample location
-**PRIORITY 122 — connect_table: foodsafety.environmental_monitoring** — add column sample_date (DATE) — monitoring needs sample date
-**PRIORITY 123 — connect_table: foodsafety.environmental_monitoring** — add column test_result (STRING) — monitoring needs result
-**PRIORITY 124 — connect_table: foodsafety.environmental_monitoring** — add column pass_flag (BOOLEAN) — monitoring needs pass/fail status
-**PRIORITY 125 — connect_table: loyalty.loyalty_segment_membership** — add column enrolled_at (TIMESTAMP) — membership needs enrollment timestamp
-**PRIORITY 126 — connect_table: loyalty.loyalty_segment_membership** — add column expired_at (TIMESTAMP) — membership may expire
-**PRIORITY 127 — connect_table: loyalty.loyalty_visit** — add column visit_timestamp (TIMESTAMP) — visits need timestamp
-**PRIORITY 128 — connect_table: loyalty.loyalty_visit** — add column points_earned (INTEGER) — visits should track points earned
-**PRIORITY 129 — connect_table: loyalty.loyalty_adjustment** — add column adjustment_amount (INTEGER) — adjustments need point amount
-**PRIORITY 130 — connect_table: loyalty.loyalty_adjustment** — add column adjustment_date (DATE) — adjustments need date
-**PRIORITY 131 — connect_table: loyalty.program_campaign_allocation** — add column allocated_amount (DECIMAL) — allocations need budget amount
-**PRIORITY 132 — connect_table: loyalty.program_campaign_allocation** — add column allocation_date (DATE) — allocations need date
-**PRIORITY 133 — connect_table: marketing.marketing_lto** — add column lto_name (STRING) — LTOs need name
-**PRIORITY 134 — connect_table: marketing.marketing_lto** — add column start_date (DATE) — LTOs need start date
-**PRIORITY 135 — connect_table: marketing.marketing_lto** — add column end_date (DATE) — LTOs need end date
-**PRIORITY 136 — connect_table: marketing.marketing_guest_segment** — add column segment_name (STRING) — segments need name
-**PRIORITY 137 — connect_table: marketing.marketing_guest_segment** — add column segment_criteria (STRING) — segments need definition criteria
-**PRIORITY 138 — connect_table: finance.lease_liability** — add column initial_liability_amount (DECIMAL) — lease liabilities need initial recognition amount
-**PRIORITY 139 — connect_table: finance.lease_liability** — add column current_liability_amount (DECIMAL) — lease liabilities need current balance
-**PRIORITY 140 — connect_table: finance.lease_liability** — add column discount_rate (DECIMAL) — lease liabilities need discount rate for IFRS 16
-**PRIORITY 141 — connect_table: realestate.realestate_remodel_project** — add column project_name (STRING) — remodel projects need name
-**PRIORITY 142 — connect_table: realestate.realestate_remodel_project** — add column estimated_cost_amount (DECIMAL) — remodel projects need budget
-**PRIORITY 143 — connect_table: realestate.realestate_remodel_project** — add column status_code (STRING) — remodel projects need status
-**PRIORITY 144 — connect_table: procurement.category** — add column category_name (STRING) — categories need name
-**PRIORITY 145 — connect_table: procurement.category** — add column category_code (STRING) — categories need code
-**PRIORITY 146 — connect_table: procurement.procurement_supplier_certification** — add column certification_type_code (STRING) — certifications need type
-**PRIORITY 147 — connect_table: procurement.procurement_supplier_certification** — add column expiration_date (DATE) — certifications expire
-**PRIORITY 148 — connect_table: procurement.procurement_supplier_certification** — add column certification_number (STRING) — certifications have document numbers
-**PRIORITY 149 — connect_table: procurement.vendor_rebate** — add column rebate_percentage (DECIMAL) — rebates need rate
-**PRIORITY 150 — connect_table: procurement.vendor_rebate** — add column effective_from_date (DATE) — rebates need temporal validity
-**PRIORITY 151 — connect_table: procurement.vendor_rebate** — add column threshold_amount (DECIMAL) — rebates often have volume thresholds
-**PRIORITY 152 — connect_table: guest.guest_segment** — add column segment_name (STRING) — segments need name
-**PRIORITY 153 — connect_table: guest.guest_segment** — add column segment_code (STRING) — segments need code
-**PRIORITY 154 — connect_table: guest.guest_segment** — add column segment_criteria (STRING) — segments need definition
-**PRIORITY 155 — connect_table: guest.guest_segment_membership** — add column membership_start_date (DATE) — membership needs start date
-**PRIORITY 156 — connect_table: guest.guest_segment_membership** — add column membership_end_date (DATE) — membership may end
-**PRIORITY 157 — connect_table: guest.guest_visit** — add column visit_timestamp (TIMESTAMP) — visits need timestamp
-**PRIORITY 158 — connect_table: guest.guest_visit** — add column visit_type_code (STRING) — visits need type classification
-**PRIORITY 159 — connect_table: guest.guest_visit** — add column party_size (INTEGER) — visits should track party size
-**PRIORITY 160 — connect_table: guest.guest_allergen_profile** — add column allergen_name (STRING) — profiles need allergen identification
-**PRIORITY 161 — connect_table: guest.guest_allergen_profile** — add column reported_date (DATE) — profiles need when allergen was reported
-**PRIORITY 162 — connect_table: menu.dietary_tag_assignment** — add column effective_from_date (DATE) — assignments need temporal validity
-**PRIORITY 163 — connect_table: menu.dietary_tag_assignment** — add column effective_to_date (DATE) — assignments may expire
-**PRIORITY 164 — connect_table: inventory.inventory_ingredient_usage** — add column usage_quantity (DECIMAL) — usage needs quantity
-**PRIORITY 165 — connect_table: inventory.inventory_ingredient_usage** — add column usage_timestamp (TIMESTAMP) — usage needs timestamp
-**PRIORITY 166 — connect_table: inventory.inventory_ingredient_usage** — add column uom_id (BIGINT) with FK to inventory.uom.uom_id — usage needs unit of measure reference
+**PRIORITY 1 — connect_table: foodsafety.foodsafety_allergen_profile**
+— add column ingredient_id (BIGINT) with FK to supply.ingredient.ingredient_id
+— allergen profiles must link to specific ingredients to be actionable for food safety management
+**PRIORITY 2 — connect_table: foodsafety.sop_document**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— SOP documents are completely isolated with zero inbound and zero outbound FKs beyond being referenced by restaurant.unit; they need explicit scope linkage
+**PRIORITY 3 — connect_table: loyalty.tier**
+— add column program_id (BIGINT) with FK to loyalty.program.program_id
+— tiers are meaningless without association to a loyalty program
+**PRIORITY 4 — connect_table: loyalty.loyalty_visit**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— loyalty visits must record which restaurant location was visited
+**PRIORITY 5 — connect_table: loyalty.loyalty_visit**
+— add column guest_order_id (BIGINT) with FK to order.guest_order.guest_order_id
+— loyalty visits should link to the transaction that triggered the visit record
+**PRIORITY 6 — connect_table: marketing.fund**
+— add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id
+— marketing funds are isolated with no FKs; they must belong to a legal entity for financial accountability
+**PRIORITY 7 — connect_table: marketing.media_channel**
+— add column campaign_id (BIGINT) with FK to marketing.campaign.campaign_id
+— media channels are isolated reference tables but have no inbound FKs except from media_buy; confirm inbound exists or connect
+**PRIORITY 8 — connect_table: marketing.influencer**
+— add column campaign_id (BIGINT) with FK to marketing.campaign.campaign_id
+— influencer table only connects via influencer_activation; needs direct campaign association for master data integrity
+**PRIORITY 9 — connect_table: order.channel**
+— add column brand_id (BIGINT) with FK to restaurant.brand.brand_id
+— order channels should be scoped to brands since different brands may support different channels
+**PRIORITY 10 — connect_table: restaurant.brand_standard**
+— add column brand_id (BIGINT) with FK to restaurant.brand.brand_id
+— brand standards must explicitly reference which brand they belong to
+**PRIORITY 11 — connect_table: order.daypart**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— daypart references a guest_order but should also link to the unit for scheduling context
+**PRIORITY 12 — remove_fk: order.daypart**
+— remove FK on guest_order_id because dayparts are time-window definitions (breakfast, lunch, dinner) and should not have a single FK to one guest_order; this appears to be a modeling error
+**PRIORITY 13 — connect_table: supply.distribution_center**
+— add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id
+— distribution centers need legal entity ownership for financial consolidation
+**PRIORITY 14 — connect_table: supply.purchase_order_line**
+— add column supply_purchase_order_id (BIGINT) with FK to supply.supply_purchase_order.supply_purchase_order_id
+— PO lines must link to their parent purchase order
+**PRIORITY 15 — connect_table: supply.purchase_order_line**
+— add column ingredient_id (BIGINT) with FK to supply.ingredient.ingredient_id
+— PO lines need to specify what ingredient/item is being ordered
+**PRIORITY 16 — connect_table: realestate.trade_area**
+— add column site_id (BIGINT) with FK to realestate.site.site_id
+— trade areas are referenced by site but have no outbound FKs; adding geographic linkage improves navigability
+**PRIORITY 17 — connect_table: franchise.billing**
+— add column agreement_id (BIGINT) with FK to franchise.agreement.agreement_id
+— franchise billing must reference the governing agreement for fee calculation
+**PRIORITY 18 — connect_table: franchise.franchise_remodel_project**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— remodel projects must specify which unit is being remodeled
+**PRIORITY 19 — connect_table: franchise.franchise_corrective_action**
+— add column compliance_audit_id (BIGINT) with FK to franchise.compliance_audit.compliance_audit_id
+— corrective actions should trace back to the audit that identified the issue
+**PRIORITY 20 — connect_table: loyalty.loyalty_adjustment**
+— add column program_id (BIGINT) with FK to loyalty.program.program_id
+— adjustments need program context for multi-program environments
+**PRIORITY 21 — rename_product: procurement.procurement_item**
+— rename to item because the "procurement_" prefix is redundant given the domain prefix already provides context
+**PRIORITY 22 — connect_table: supply.supply_supplier**
+— add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id
+— suppliers need legal entity linkage for intercompany and tax reporting
+**PRIORITY 23 — rename_product: supply.supply_invoice**
+— rename to invoice because "invoice" is not ambiguous within the supply domain context
+**PRIORITY 24 — connect_table: restaurant.checklist_template**
+— add column brand_id (BIGINT) with FK to restaurant.brand.brand_id
+— checklist templates should be scoped to a brand for multi-brand operations
+**PRIORITY 25 — connect_table: restaurant.performance_period**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— performance periods need unit context unless they are global calendar periods, in which case they should link to finance.financial_period
+**PRIORITY 26 — connect_table: workforce.labor_budget**
+— add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id
+— labor budgets must reference a time period for planning
+**PRIORITY 27 — connect_table: workforce.labor_forecast**
+— add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id
+— labor forecasts need temporal boundaries
+**PRIORITY 28 — connect_table: workforce.position**
+— add column department_id (BIGINT) with FK to workforce.department.department_id
+— positions must belong to a department for org structure
+**PRIORITY 29 — connect_table: workforce.schedule**
+— add column shift_id (BIGINT) with FK to workforce.shift.shift_id
+— schedules should reference the shifts they contain
+**PRIORITY 30 — connect_table: franchise.marketing_fund_contribution**
+— add column fund_id (BIGINT) with FK to marketing.fund.fund_id
+— contributions must specify which marketing fund they flow into
+**PRIORITY 31 — connect_table: menu.modifier_group**
+— add column menu_id (BIGINT) with FK to menu.menu.menu_id
+— modifier groups need menu context to determine availability
+**PRIORITY 32 — remove_fk: guest.profile**
+— remove FK on menu_item_id because a guest profile should not have a single FK to one menu_item; preferences are already modeled in guest.preference
+**PRIORITY 33 — connect_table: foodsafety.environmental_monitoring**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— environmental monitoring samples must be traceable to a specific restaurant unit
+**PRIORITY 34 — connect_table: foodsafety.environmental_monitoring**
+— add column employee_id (BIGINT) with FK to workforce.employee.employee_id
+— need to track who collected the environmental sample
+**PRIORITY 35 — connect_table: supply.recall_event**
+— add column ingredient_id (BIGINT) with FK to supply.ingredient.ingredient_id
+— recall events should specify which ingredient is affected
+**PRIORITY 36 — connect_table: supply.commodity_category**
+— add column procurement_category_id (BIGINT) with FK to procurement.category.category_id
+— commodity categories should align with procurement categories to avoid parallel hierarchies
+**PRIORITY 37 — rename_product: guest.guest_communication**
+— rename to communication because "communication" is not overly generic within the guest domain context
+**PRIORITY 38 — connect_table: marketing.marketing_lto**
+— add column menu_item_id (BIGINT) with FK to menu.menu_item.menu_item_id
+— marketing LTOs must reference the menu item being promoted as limited-time
+**PRIORITY 39 — connect_table: franchise.development_schedule**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— development schedules should link to the unit being developed once assigned
+**PRIORITY 40 — connect_table: realestate.cam_reconciliation**
+— add column lease_id (BIGINT) with FK to realestate.lease.lease_id
+— CAM reconciliations must reference the lease governing the charges
+**PRIORITY 41 — connect_table: realestate.capex_budget**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— CapEx budgets need unit-level granularity for restaurant investments
+**PRIORITY 42 — connect_table: finance.allocation_rule**
+— add column cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id
+— allocation rules need to specify target cost centers
+**PRIORITY 43 — connect_table: loyalty.accrual_rule**
+— add column tier_id (BIGINT) with FK to loyalty.tier.tier_id
+— accrual rules often vary by tier level
+**PRIORITY 44 — connect_table: supply.supply_contract**
+— add column procurement_supplier_id (BIGINT) with FK to procurement.supplier.supplier_id
+— supply contracts reference supply_supplier but should also link to the canonical procurement supplier for spend consolidation
+**PRIORITY 45 — connect_table: workforce.certification**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— certifications should be trackable at the unit level for compliance reporting
+**PRIORITY 46 — connect_table: inventory.food_cost_period**
+— add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id
+— food cost periods should align with financial periods for P&L reconciliation
+**PRIORITY 47 — rename_product: procurement.supplier**
+— rename to supplier because the "procurement_" prefix is redundant given the domain prefix already provides context
+**PRIORITY 48 — rename_product: procurement.procurement_purchase_order**
+— rename to purchase_order because the "procurement_" prefix is redundant given domain context
+**PRIORITY 49 — connect_table: guest.survey_question**
+— add column satisfaction_survey_id (BIGINT) with FK to guest.satisfaction_survey.satisfaction_survey_id
+— survey questions should link to the survey template they belong to
+**PRIORITY 50 — connect_table: menu.engineering_review**
+— add column menu_item_id (BIGINT) with FK to menu.menu_item.menu_item_id
+— menu engineering reviews must reference specific items being analyzed for stars/dogs/puzzles/plowhorses classification
+**PRIORITY 51 — connect_table: franchise.performance_scorecard**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— performance scorecards should be traceable to specific units, not just franchisees
+**PRIORITY 52 — connect_table: marketing.campaign_roi**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— ROI should be measurable at unit level for local store marketing effectiveness
+**PRIORITY 53 — connect_table: supply.supplier_performance**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— supplier performance should be trackable per delivery location
+**PRIORITY 54 — connect_table: finance.intercompany_transaction**
+— add column cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id
+— intercompany transactions need cost center allocation for management reporting
+**PRIORITY 55 — connect_table: inventory.inventory_ingredient_usage**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— ingredient usage must be tracked per unit for food cost analysis
+**PRIORITY 56 — connect_table: inventory.inventory_ingredient_usage**
+— add column stock_item_id (BIGINT) with FK to inventory.stock_item.stock_item_id
+— usage records need to reference the physical stock item consumed
+**PRIORITY 57 — connect_table: realestate.facility**
+— add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id
+— facilities need legal entity ownership for asset management and IFRS 16 compliance
+**PRIORITY 58 — connect_table: franchise.lease_agreement**
+— add column site_id (BIGINT) with FK to realestate.site.site_id
+— franchise lease agreements must reference the physical site
+**PRIORITY 59 — connect_table: workforce.payroll_group**
+— add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id
+— payroll groups must be scoped to legal entities for tax and compliance
+**PRIORITY 60 — connect_table: restaurant.format_config**
+— add column brand_id (BIGINT) with FK to restaurant.brand.brand_id
+— format configurations (QSR/casual/fine-dining) should be brand-specific
+**PRIORITY 61 — connect_table: menu.combo_component**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— combo components may vary by unit for regional menu customization
+**PRIORITY 62 — remove_fk: guest.profile**
+— remove FK on location_profile_id because a guest profile should not permanently reference a single restaurant location_profile; visit history already captures this
+**PRIORITY 63 — connect_table: loyalty.challenge**
+— add column program_id (BIGINT) with FK to loyalty.program.program_id
+— challenges must belong to a specific loyalty program
+**PRIORITY 64 — connect_table: finance.bank_statement**
+— add column bank_account_id (BIGINT) with FK to finance.bank_account.bank_account_id
+— bank statements must reference which bank account they belong to
+**PRIORITY 65 — connect_table: restaurant.area_management**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— area management structures must link to the units they oversee
+**PRIORITY 66 — connect_table: workforce.scheduling_template**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— scheduling templates should be assignable to specific units
+**PRIORITY 67 — connect_table: marketing.marketing_guest_segment**
+— add column guest_segment_id (BIGINT) with FK to guest.guest_segment.guest_segment_id
+— marketing guest segments should reference the master guest segment definition to avoid duplication
+**PRIORITY 68 — connect_table: supply.inbound_shipment**
+— add column distribution_center_id (BIGINT) with FK to supply.distribution_center.distribution_center_id
+— inbound shipments need destination DC tracking
+**PRIORITY 69 — connect_table: order.catering_order**
+— add column guest_order_id (BIGINT) with FK to order.guest_order.guest_order_id
+— catering orders should link to the core order entity for unified order tracking and financial reconciliation
+**PRIORITY 70 — connect_table: franchise.sales_report**
+— add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id
+— franchise sales reports need period context for royalty calculations
+**PRIORITY 71 — connect_table: foodsafety.food_safety_certification**
+— add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id
+— certifications must be trackable per unit for compliance dashboards
+**PRIORITY 72 — move_product: restaurant.department**
+— move to workforce because workforce already has its own department table and restaurant.department creates confusion; alternatively merge semantics
+**PRIORITY 73 — connect_table: supply.quality_inspection**
+— add column ingredient_id (BIGINT) with FK to supply.ingredient.ingredient_id
+— quality inspections should specify which ingredient was inspected
+**PRIORITY 74 — connect_table: supply.quality_inspection**
+— add column distribution_center_id (BIGINT) with FK to supply.distribution_center.distribution_center_id
+— inspections occur at DCs and need location context
+**PRIORITY 75 — rename_attribute: restaurant.brand**
+— rename column brand_color_hex to color_hex because redundant product prefix brand_ should be removed
+**PRIORITY 76 — rename_attribute: restaurant.brand**
+— rename column brand_segment to segment because redundant product prefix brand_ should be removed
+**PRIORITY 77 — rename_attribute: restaurant.brand**
+— rename column brand_sos_target_seconds to sos_target_seconds because redundant product prefix brand_ should be removed
+**PRIORITY 78 — rename_attribute: restaurant.brand**
+— rename column brand_tagline to tagline because redundant product prefix brand_ should be removed
+**PRIORITY 79 — rename_attribute: procurement.procurement_item**
+— rename column product_line to line because redundant product prefix product_ should be removed
+**PRIORITY 80 — rename_attribute: finance.ap_invoice**
+— rename column employee_id to created_by_employee_id because generic employee_id is ambiguous when multiple employee FKs exist (approver_employee_id, created_by_user_employee_id, modified_by_user_employee_id)
+**PRIORITY 81 — rename_attribute: finance.ap_invoice**
+— rename column procurement_supplier_id to primary_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 82 — rename_attribute: finance.ap_invoice**
+— rename column unit_id to invoiced_unit_id because generic unit_id is ambiguous when restaurant_location_unit_id also exists
+**PRIORITY 83 — rename_attribute: finance.ap_invoice_line**
+— rename column ap_invoice_id to parent_ap_invoice_id because generic ap_invoice_id is ambiguous when ap_invoice_header_ap_invoice_id also exists
+**PRIORITY 84 — rename_attribute: finance.ap_invoice_line**
+— rename column unit_id to charged_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 85 — rename_attribute: finance.ap_payment**
+— rename column procurement_supplier_id to paid_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 86 — rename_attribute: finance.ar_invoice**
+— rename column profile_id to billed_profile_id because generic profile_id is ambiguous when customer_profile_id also exists
+**PRIORITY 87 — rename_attribute: finance.ar_invoice**
+— rename column unit_id to billing_unit_id because generic unit_id is ambiguous when location_unit_id also exists
+**PRIORITY 88 — rename_attribute: finance.asset_depreciation**
+— rename column unit_id to asset_location_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 89 — rename_attribute: finance.bank_statement_line**
+— rename column unit_id to transaction_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 90 — rename_attribute: finance.budget**
+— rename column unit_id to budgeted_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 91 — rename_attribute: finance.budget_line**
+— rename column budget_id to parent_budget_id because generic budget_id is ambiguous when budget_plan_budget_id also exists
+**PRIORITY 92 — rename_attribute: finance.budget_line**
+— rename column unit_id to allocated_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 93 — rename_attribute: finance.capex_project**
+— rename column unit_id to project_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 94 — rename_attribute: finance.cost_allocation**
+— rename column employee_id to allocated_by_employee_id because generic employee_id is ambiguous when user_employee_id also exists
+**PRIORITY 95 — rename_attribute: finance.cost_allocation**
+— rename column unit_id to allocated_to_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 96 — rename_attribute: finance.fixed_asset**
+— rename column procurement_supplier_id to purchased_from_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 97 — rename_attribute: finance.journal_entry**
+— rename column employee_id to posted_by_employee_id because generic employee_id is ambiguous when approver_user_employee_id, approver_user_id, last_modified_user_employee_id, primary_journal_employee_id also exist
+**PRIORITY 98 — rename_attribute: finance.journal_entry_line**
+— rename column profile_id to debtor_creditor_profile_id because generic profile_id is ambiguous when customer_profile_id also exists
+**PRIORITY 99 — rename_attribute: finance.journal_entry_line**
+— rename column procurement_supplier_id to payable_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 100 — rename_attribute: finance.period_close**
+— rename column employee_id to closed_by_employee_id because generic employee_id is ambiguous when sign_off_user_employee_id also exists
+**PRIORITY 101 — rename_attribute: finance.royalty_accrual**
+— rename column unit_id to accruing_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 102 — rename_attribute: finance.tax_posting**
+— rename column profile_id to taxed_profile_id because generic profile_id is ambiguous when customer_profile_id also exists
+**PRIORITY 103 — rename_attribute: finance.tax_posting**
+— rename column procurement_supplier_id to tax_remittance_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 104 — rename_attribute: finance.tax_posting**
+— rename column unit_id to taxed_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 105 — rename_attribute: foodsafety.allergen_incident**
+— rename column profile_id to affected_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 106 — rename_attribute: foodsafety.allergen_incident**
+— rename column unit_id to incident_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 107 — rename_attribute: foodsafety.audit_finding**
+— rename column employee_id to found_by_employee_id because generic employee_id is ambiguous when responsible_party_employee_id also exists
+**PRIORITY 108 — rename_attribute: foodsafety.audit_finding**
+— rename column unit_id to audited_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 109 — rename_attribute: foodsafety.foodsafety_corrective_action**
+— rename column employee_id to assigned_to_employee_id because generic employee_id is ambiguous when primary_foodsafety_employee_id, verified_by_employee_id also exist
+**PRIORITY 110 — rename_attribute: foodsafety.food_recall**
+— rename column procurement_supplier_id to recalled_by_supplier_id because generic procurement_supplier_id is ambiguous when primary_food_procurement_supplier_id also exists
+**PRIORITY 111 — rename_attribute: foodsafety.food_safety_audit**
+— rename column employee_id to scheduled_by_employee_id because generic employee_id is ambiguous when auditor_employee_id also exists
+**PRIORITY 112 — rename_attribute: foodsafety.food_safety_audit**
+— rename column unit_id to audited_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 113 — rename_attribute: foodsafety.food_safety_training**
+— rename column employee_id to trained_employee_id because generic employee_id is ambiguous when primary_food_employee_id also exists
+**PRIORITY 114 — rename_attribute: foodsafety.food_safety_training**
+— rename column unit_id to training_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 115 — rename_attribute: foodsafety.health_inspection**
+— rename column unit_id to inspected_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 116 — rename_attribute: foodsafety.illness_report**
+— rename column unit_id to reporting_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 117 — rename_attribute: foodsafety.inspection_violation**
+— rename column unit_id to violating_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 118 — rename_attribute: foodsafety.pest_control_log**
+— rename column procurement_supplier_id to pest_control_supplier_id because generic procurement_supplier_id is ambiguous when service_provider_procurement_supplier_id also exists
+**PRIORITY 119 — rename_attribute: foodsafety.pest_control_log**
+— rename column unit_id to serviced_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 120 — rename_attribute: foodsafety.recall_unit_response**
+— rename column employee_id to responding_employee_id because generic employee_id is ambiguous when manager_employee_id also exists
+**PRIORITY 121 — rename_attribute: foodsafety.receiving_inspection**
+— rename column employee_id to logged_by_employee_id because generic employee_id is ambiguous when inspector_employee_id also exists
+**PRIORITY 122 — rename_attribute: foodsafety.sanitation_task_log**
+— rename column unit_id to sanitized_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 123 — rename_attribute: foodsafety.temperature_log**
+— rename column employee_id to logged_by_employee_id because generic employee_id is ambiguous when recorded_by_user_employee_id also exists
+**PRIORITY 124 — rename_attribute: franchise.compliance_audit**
+— rename column employee_id to scheduled_by_employee_id because generic employee_id is ambiguous when auditor_employee_id also exists
+**PRIORITY 125 — rename_attribute: franchise.compliance_audit**
+— rename column franchisee_id to audited_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 126 — rename_attribute: franchise.fdd_disclosure**
+— rename column prospect_id to disclosed_to_prospect_id because generic prospect_id is ambiguous when recipient_prospect_id also exists
+**PRIORITY 127 — rename_attribute: franchise.agreement**
+— rename column legal_entity_id to franchisee_legal_entity_id because generic legal_entity_id is ambiguous when franchisor_legal_entity_id also exists
+**PRIORITY 128 — rename_attribute: franchise.nro_pipeline**
+— rename column employee_id to pipeline_owner_employee_id because generic employee_id is ambiguous when consultant_employee_id also exists
+**PRIORITY 129 — rename_attribute: franchise.prospect**
+— rename column employee_id to lead_owner_employee_id because generic employee_id is ambiguous when assigned_consultant_employee_id also exists
+**PRIORITY 130 — rename_attribute: franchise.sales_report**
+— rename column unit_id to reporting_unit_id because generic unit_id is ambiguous when location_unit_id also exists
+**PRIORITY 131 — rename_attribute: franchise.support_visit**
+— rename column employee_id to visit_coordinator_employee_id because generic employee_id is ambiguous when consultant_employee_id also exists
+**PRIORITY 132 — rename_attribute: franchise.support_visit**
+— rename column unit_id to visited_unit_id because generic unit_id is ambiguous when store_unit_id also exists
+**PRIORITY 133 — rename_attribute: franchise.training_enrollment**
+— rename column employee_id to enrolled_employee_id because generic employee_id is ambiguous when primary_training_employee_id, trainer_employee_id also exist
+**PRIORITY 134 — rename_attribute: franchise.transfer_event**
+— rename column employee_id to transfer_coordinator_employee_id because generic employee_id is ambiguous when approval_user_employee_id also exists
+**PRIORITY 135 — rename_attribute: guest.address**
+— rename column profile_id to address_owner_profile_id because generic profile_id is ambiguous when guest_profile_id, owner_profile_id also exist
+**PRIORITY 136 — rename_attribute: guest.channel_identity**
+— rename column profile_id to identity_owner_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 137 — rename_attribute: guest.guest_communication**
+— rename column consent_record_id to governing_consent_record_id because generic consent_record_id is ambiguous when consent_consent_record_id also exists
+**PRIORITY 138 — rename_attribute: guest.guest_communication**
+— rename column profile_id to recipient_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 139 — rename_attribute: guest.complaint**
+— rename column profile_id to complainant_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 140 — rename_attribute: guest.complaint**
+— rename column unit_id to complaint_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 141 — rename_attribute: guest.consent_record**
+— rename column profile_id to consenting_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 142 — rename_attribute: guest.demographic**
+— rename column profile_id to demographic_owner_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 143 — rename_attribute: guest.household_member**
+— rename column profile_id to member_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 144 — rename_attribute: guest.identity_resolution**
+— rename column profile_id to resolved_profile_id because generic profile_id is ambiguous when golden_guest_profile_id also exists
+**PRIORITY 145 — rename_attribute: guest.interaction**
+— rename column profile_id to interacting_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 146 — rename_attribute: guest.interaction**
+— rename column unit_id to interaction_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 147 — rename_attribute: guest.lifetime_value**
+— rename column profile_id to valued_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 148 — rename_attribute: guest.preference**
+— rename column profile_id to preference_owner_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 149 — rename_attribute: guest.profile**
+— rename column unit_id to home_unit_id because generic unit_id is ambiguous when preferred_store_unit_id also exists
+**PRIORITY 150 — rename_attribute: guest.satisfaction_survey**
+— rename column profile_id to surveyed_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 151 — rename_attribute: guest.satisfaction_survey**
+— rename column unit_id to surveyed_unit_id because generic unit_id is ambiguous when location_unit_id, primary_satisfaction_unit_id also exist
+**PRIORITY 152 — rename_attribute: guest.survey_response**
+— rename column profile_id to respondent_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 153 — rename_attribute: guest.survey_response**
+— rename column unit_id to response_unit_id because generic unit_id is ambiguous when location_unit_id also exists
+**PRIORITY 154 — rename_attribute: inventory.food_cost_period**
+— rename column employee_id to period_owner_employee_id because generic employee_id is ambiguous when approved_by_user_employee_id, primary_food_employee_id also exist
+**PRIORITY 155 — rename_attribute: inventory.inventory_adjustment**
+— rename column employee_id to adjustment_creator_employee_id because generic employee_id is ambiguous when primary_inventory_adjusted_by_employee_id also exists
+**PRIORITY 156 — rename_attribute: inventory.item_category**
+— rename column employee_id to category_owner_employee_id because generic employee_id is ambiguous when primary_item_employee_id also exists
+**PRIORITY 157 — rename_attribute: inventory.on_hand_balance**
+— rename column unit_id to balance_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 158 — rename_attribute: inventory.on_hand_balance**
+— rename column stock_item_id to balanced_stock_item_id because generic stock_item_id is ambiguous when sku_stock_item_id also exists
+**PRIORITY 159 — rename_attribute: inventory.physical_count**
+— rename column unit_id to counted_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 160 — rename_attribute: inventory.receiving_order**
+— rename column employee_id to receiving_clerk_employee_id because generic employee_id is ambiguous when receiving_manager_employee_id also exists
+**PRIORITY 161 — rename_attribute: inventory.receiving_order**
+— rename column unit_id to receiving_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 162 — rename_attribute: inventory.replenishment_order**
+— rename column employee_id to replenishment_requester_employee_id because generic employee_id is ambiguous when cancelled_by_user_employee_id, created_by_user_employee_id, primary_replenishment_employee_id, receiving_user_employee_id, receiving_user_id, tertiary_replenishment_cancelled_by_user_employee_id also exist
+**PRIORITY 163 — rename_attribute: inventory.stock_item**
+— rename column procurement_supplier_id to default_supplier_id because generic procurement_supplier_id is ambiguous when primary_vendor_procurement_supplier_id also exists
+**PRIORITY 164 — rename_attribute: inventory.vendor_item**
+— rename column procurement_supplier_id to supplying_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 165 — rename_attribute: inventory.waste_log**
+— rename column procurement_supplier_id to waste_attributed_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 166 — rename_attribute: inventory.waste_log**
+— rename column unit_id to waste_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 167 — rename_attribute: loyalty.challenge_enrollment**
+— rename column unit_id to enrollment_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 168 — rename_attribute: loyalty.enrollment_event**
+— rename column employee_id to enrolling_employee_id because generic employee_id is ambiguous when enrollment_staff_employee_id also exists
+**PRIORITY 169 — rename_attribute: loyalty.enrollment_event**
+— rename column unit_id to enrollment_unit_id because generic unit_id is ambiguous when enrollment_restaurant_unit_id also exists
+**PRIORITY 170 — rename_attribute: loyalty.enrollment_event**
+— rename column guest_order_id to triggering_guest_order_id because generic guest_order_id is ambiguous when enrollment_transaction_guest_order_id also exists
+**PRIORITY 171 — rename_attribute: loyalty.member**
+— rename column profile_id to member_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 172 — rename_attribute: loyalty.member**
+— rename column unit_id to enrollment_unit_id because generic unit_id is ambiguous when member_preferred_location_unit_id, member_unit_id, preferred_location_unit_id also exist
+**PRIORITY 173 — rename_attribute: loyalty.offer_redemption**
+— rename column franchisee_id to redeeming_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 174 — rename_attribute: loyalty.points_ledger**
+— rename column employee_id to ledger_entry_employee_id because generic employee_id is ambiguous when adjusted_by_user_employee_id also exists
+**PRIORITY 175 — rename_attribute: loyalty.points_ledger**
+— rename column franchisee_id to earning_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 176 — rename_attribute: loyalty.points_ledger**
+— rename column guest_order_id to earning_guest_order_id because generic guest_order_id is ambiguous when source_transaction_guest_order_id also exists
+**PRIORITY 177 — rename_attribute: loyalty.points_ledger**
+— rename column unit_id to earning_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 178 — rename_attribute: loyalty.redemption**
+— rename column unit_id to redemption_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 179 — rename_attribute: loyalty.referral**
+— rename column unit_id to referral_unit_id because generic unit_id is ambiguous when enrollment_location_unit_id also exists
+**PRIORITY 180 — rename_attribute: loyalty.referral**
+— rename column profile_id to referrer_profile_id because generic profile_id is ambiguous when referred_guest_profile_id also exists
+**PRIORITY 181 — rename_attribute: loyalty.loyalty_segment**
+— rename column employee_id to segment_owner_employee_id because generic employee_id is ambiguous when owner_user_employee_id also exists
+**PRIORITY 182 — rename_attribute: loyalty.tier_history**
+— rename column unit_id to tier_change_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 183 — rename_attribute: marketing.campaign_execution**
+— rename column franchisee_id to executing_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 184 — rename_attribute: marketing.campaign_spend**
+— rename column procurement_supplier_id to media_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 185 — rename_attribute: marketing.local_store_marketing**
+— rename column unit_id to marketing_unit_id because generic unit_id is ambiguous when sponsor_restaurant_unit_id also exists
+**PRIORITY 186 — rename_attribute: marketing.fund_contribution**
+— rename column unit_id to contributing_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 187 — rename_attribute: marketing.media_buy**
+— rename column procurement_supplier_id to media_vendor_supplier_id because generic procurement_supplier_id is ambiguous when vendor_procurement_supplier_id also exists
+**PRIORITY 188 — rename_attribute: marketing.promotion_redemption**
+— rename column profile_id to redeeming_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 189 — rename_attribute: marketing.promotion_redemption**
+— rename column member_id to redeeming_member_id because generic member_id is ambiguous when loyalty_member_id also exists
+**PRIORITY 190 — rename_attribute: marketing.promotion_redemption**
+— rename column unit_id to redemption_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 191 — rename_attribute: menu.item_price**
+— rename column employee_id to price_setter_employee_id because generic employee_id is ambiguous when approved_by_employee_id also exists
+**PRIORITY 192 — rename_attribute: menu.engineering_review**
+— rename column employee_id to review_creator_employee_id because generic employee_id is ambiguous when approved_by_employee_id, primary_engineering_employee_id also exist
+**PRIORITY 193 — rename_attribute: menu.recipe_ingredient**
+— rename column ingredient_id to primary_ingredient_id because generic ingredient_id is ambiguous when primary_recipe_substitute_ingredient_id also exists
+**PRIORITY 194 — rename_attribute: order.catering_order**
+— rename column profile_id to ordering_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 195 — rename_attribute: order.guest_order**
+— rename column profile_id to ordering_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 196 — rename_attribute: order.order_item**
+— rename column combo_meal_id to parent_combo_meal_id because generic combo_meal_id is ambiguous when combo_combo_meal_id also exists
+**PRIORITY 197 — rename_attribute: order.refund**
+— rename column employee_id to refund_initiator_employee_id because generic employee_id is ambiguous when refund_employee_id, refund_processing_employee_id, refund_voided_by_employee_id also exist
+**PRIORITY 198 — rename_attribute: order.refund**
+— rename column profile_id to refunded_profile_id because generic profile_id is ambiguous when guest_profile_id also exists
+**PRIORITY 199 — rename_attribute: procurement.contract**
+— rename column employee_id to contract_manager_employee_id because generic employee_id is ambiguous when owner_employee_id also exists
+**PRIORITY 200 — rename_attribute: procurement.po_line**
+— rename column procurement_purchase_order_id to parent_purchase_order_id because generic procurement_purchase_order_id is ambiguous when po_header_procurement_purchase_order_id also exists
+**PRIORITY 201 — rename_attribute: procurement.procurement_purchase_order**
+— rename column unit_id to delivery_unit_id because generic unit_id is ambiguous when delivery_location_unit_id also exists
+**PRIORITY 202 — rename_attribute: procurement.requisition**
+— rename column employee_id to requisition_requester_employee_id because generic employee_id is ambiguous when approved_by_employee_id, created_by_employee_id, requisition_approved_by_employee_id, requisition_created_by_employee_id, requisition_employee_id also exist
+**PRIORITY 203 — rename_attribute: procurement.requisition**
+— rename column unit_id to requisitioning_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 204 — rename_attribute: procurement.sourcing_event**
+— rename column employee_id to sourcing_lead_employee_id because generic employee_id is ambiguous when stakeholder_employee_id also exists
+**PRIORITY 205 — rename_attribute: realestate.maintenance_work_order**
+— rename column employee_id to work_order_creator_employee_id because generic employee_id is ambiguous when technician_employee_id also exists
+**PRIORITY 206 — rename_attribute: realestate.maintenance_work_order**
+— rename column unit_id to maintenance_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 207 — rename_attribute: realestate.nro_project**
+— rename column franchisee_id to project_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 208 — rename_attribute: realestate.property_acquisition**
+— rename column legal_entity_id to buyer_legal_entity_id because generic legal_entity_id is ambiguous when seller_entity_id also exists
+**PRIORITY 209 — rename_attribute: realestate.rent_payment**
+— rename column employee_id to payment_approver_employee_id because generic employee_id is ambiguous when approved_by_user_employee_id also exists
+**PRIORITY 210 — rename_attribute: realestate.rent_payment**
+— rename column unit_id to rent_paying_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 211 — rename_attribute: realestate.rent_schedule**
+— rename column unit_id to leased_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 212 — rename_attribute: realestate.site_selection**
+— rename column employee_id to selection_lead_employee_id because generic employee_id is ambiguous when approval_authority_employee_id, created_by_user_employee_id, last_modified_by_user_employee_id, primary_site_employee_id, quaternary_site_last_modified_by_user_employee_id, tertiary_site_created_by_user_employee_id also exist
+**PRIORITY 213 — rename_attribute: realestate.site_selection**
+— rename column franchisee_id to selecting_franchisee_id because generic franchisee_id is ambiguous when franchise_franchisee_id also exists
+**PRIORITY 214 — rename_attribute: realestate.site_selection**
+— rename column site_id to selected_site_id because generic site_id is ambiguous when site_master_site_id also exists
+**PRIORITY 215 — rename_attribute: restaurant.capacity_config**
+— rename column unit_id to configured_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 216 — rename_attribute: restaurant.equipment_asset**
+— rename column unit_id to asset_location_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 217 — rename_attribute: restaurant.format_config**
+— rename column unit_id to formatted_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 218 — rename_attribute: restaurant.location_profile**
+— rename column unit_id to profiled_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 219 — rename_attribute: restaurant.operating_hours**
+— rename column employee_id to hours_manager_employee_id because generic employee_id is ambiguous when approved_by_user_employee_id also exists
+**PRIORITY 220 — rename_attribute: restaurant.operating_hours**
+— rename column unit_id to operating_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 221 — rename_attribute: restaurant.ops_visit**
+— rename column employee_id to visit_scheduler_employee_id because generic employee_id is ambiguous when primary_ops_visitor_employee_id also exists
+**PRIORITY 222 — rename_attribute: restaurant.ops_visit**
+— rename column unit_id to visited_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 223 — rename_attribute: restaurant.ops_visit_finding**
+— rename column unit_id to finding_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 224 — rename_attribute: restaurant.pos_terminal**
+— rename column unit_id to terminal_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 225 — rename_attribute: restaurant.renovation_project**
+— rename column employee_id to project_manager_employee_id because generic employee_id is ambiguous when approved_by_user_employee_id also exists
+**PRIORITY 226 — rename_attribute: restaurant.renovation_project**
+— rename column unit_id to renovated_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 227 — rename_attribute: restaurant.sos_measurement**
+— rename column unit_id to measured_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 228 — rename_attribute: restaurant.table_turn_log**
+— rename column employee_id to serving_employee_id because generic employee_id is ambiguous when server_employee_id also exists
+**PRIORITY 229 — rename_attribute: restaurant.table_turn_log**
+— rename column unit_id to service_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 230 — rename_attribute: restaurant.throughput_benchmark**
+— rename column unit_id to benchmarked_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 231 — rename_attribute: restaurant.unit_ownership**
+— rename column employee_id to ownership_recorder_employee_id because generic employee_id is ambiguous when last_modified_by_user_employee_id, primary_unit_employee_id also exist
+**PRIORITY 232 — rename_attribute: restaurant.unit_ownership**
+— rename column franchisee_id to owning_franchisee_id because generic franchisee_id is ambiguous when franchise_partner_franchisee_id also exists
+**PRIORITY 233 — rename_attribute: restaurant.unit_ownership**
+— rename column unit_id to owned_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 234 — rename_attribute: restaurant.unit_performance**
+— rename column unit_id to performing_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 235 — rename_attribute: restaurant.unit_status_history**
+— rename column employee_id to status_change_employee_id because generic employee_id is ambiguous when initiated_by_user_employee_id also exists
+**PRIORITY 236 — rename_attribute: restaurant.unit_status_history**
+— rename column unit_id to status_changed_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 237 — rename_attribute: supply.goods_receipt**
+— rename column employee_id to receipt_clerk_employee_id because generic employee_id is ambiguous when inspector_employee_id also exists
+**PRIORITY 238 — rename_attribute: supply.goods_receipt_line**
+— rename column employee_id to line_receiver_employee_id because generic employee_id is ambiguous when receiving_user_employee_id also exists
+**PRIORITY 239 — rename_attribute: supply.quality_inspection**
+— rename column employee_id to inspection_scheduler_employee_id because generic employee_id is ambiguous when inspector_employee_id also exists
+**PRIORITY 240 — rename_attribute: workforce.employee**
+— rename column unit_id to primary_work_unit_id because generic unit_id is ambiguous when restaurant_unit_id, work_location_unit_id also exist
+**PRIORITY 241 — rename_attribute: workforce.labor_budget**
+— rename column unit_id to budgeted_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 242 — rename_attribute: workforce.labor_forecast**
+— rename column unit_id to forecasted_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 243 — rename_attribute: workforce.labor_violation**
+— rename column unit_id to violation_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 244 — rename_attribute: workforce.leave_request**
+— rename column employee_id to requesting_employee_id because generic employee_id is ambiguous when primary_leave_employee_id also exists
+**PRIORITY 245 — rename_attribute: workforce.onboarding**
+— rename column employee_id to onboarded_employee_id because generic employee_id is ambiguous when manager_employee_id, onboarding_assigned_buddy_employee_id, onboarding_employee_id, onboarding_manager_employee_id also exist
+**PRIORITY 246 — rename_attribute: workforce.performance_review**
+— rename column employee_id to reviewed_employee_id because generic employee_id is ambiguous when primary_performance_employee_id, reviewer_employee_id also exist
+**PRIORITY 247 — rename_attribute: workforce.recruitment**
+— rename column employee_id to recruiter_employee_id because generic employee_id is ambiguous when recruitment_employee_id, recruitment_hiring_manager_employee_id also exist
+**PRIORITY 248 — rename_attribute: workforce.schedule**
+— rename column employee_id to scheduled_employee_id because generic employee_id is ambiguous when manager_employee_id also exists
+**PRIORITY 249 — rename_attribute: workforce.schedule**
+— rename column unit_id to scheduled_unit_id because generic unit_id is ambiguous when restaurant_unit_id also exists
+**PRIORITY 250 — rename_attribute: workforce.shift**
+— rename column employee_id to shift_worker_employee_id because generic employee_id is ambiguous when shift_employee_id, shift_scheduled_by_user_employee_id also exist
+**PRIORITY 251 — rename_attribute: workforce.time_entry**
+— rename column employee_id to time_entry_employee_id because generic employee_id is ambiguous when primary_time_employee_id also exists
+**PRIORITY 252 — rename_attribute: workforce.training_completion**
+— rename column employee_id to trained_employee_id because generic employee_id is ambiguous when primary_training_employee_id also exists
+**PRIORITY 253 — rename_attribute: restaurant.store_campaign_assignment**
+— rename column unit_id to assigned_unit_id because generic unit_id is ambiguous when sponsor_restaurant_unit_id also exists
+**PRIORITY 254 — connect_table: workforce.payroll_group**
+— add column default_benefit_plan_id (BIGINT) with FK to workforce.benefit_plan.benefit_plan_id
+— unlinked FK column default_benefit_plan_id must be connected to establish benefit plan defaults for payroll groups
+**PRIORITY 255 — remove_fk: workforce.department**
+— remove FK on department_code because natural keys should not have FK constraints; use department_id FK instead for referential integrity
 
-Other known issues from static analysis (155):
-  - Attribute 'brand_segment' in restaurant.brand has redundant product prefix 'brand_'. Rename to 'segment'
+Other known issues from static analysis (183):
   - Table inventory.physical_count has self-referencing FK on column 'recount_of_count_id' with same name as PK 'physical_count_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table finance.financial_period has self-referencing FK on column 'comparative_prior_period_id' with same name as PK 'financial_period_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table finance.financial_period has self-referencing FK on column 'comparative_prior_year_period_id' with same name as PK 'financial_period_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
   - Table menu.item_price has 2 FK columns pointing to workforce.employee (employee_id, item_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table menu.engineering_review has 3 FK columns pointing to workforce.employee (employee_id, engineering_employee_id, primary_engineering_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table menu.item_86_event has 2 FK columns pointing to restaurant.equipment_asset (equipment_asset_id, item_equipment_equipment_asset_id) (generic/unlabeled: equipment_asset_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
@@ -185,33 +599,35 @@ Other known issues from static analysis (155):
   - Table guest.address has 3 FK columns pointing to guest.profile (profile_id, address_profile_id, owner_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.preference has 2 FK columns pointing to guest.profile (profile_id, preference_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.consent_record has 2 FK columns pointing to guest.profile (profile_id, consent_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.guest_segment_membership has 2 FK columns pointing to guest.profile (primary_guest_profile_id, secondary_guest_profile_id) (generic/unlabeled: secondary_guest_profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.household_member has 2 FK columns pointing to guest.profile (profile_id, household_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.lifetime_value has 2 FK columns pointing to guest.profile (profile_id, lifetime_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.satisfaction_survey has 3 FK columns pointing to restaurant.unit (unit_id, satisfaction_location_unit_id, satisfaction_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.satisfaction_survey has 2 FK columns pointing to guest.profile (profile_id, satisfaction_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.survey_response has 2 FK columns pointing to guest.profile (profile_id, survey_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.survey_response has 2 FK columns pointing to restaurant.unit (unit_id, survey_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.complaint has 2 FK columns pointing to guest.profile (profile_id, complaint_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.complaint has 2 FK columns pointing to restaurant.unit (unit_id, complaint_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.interaction has 2 FK columns pointing to guest.profile (profile_id, interaction_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.interaction has 2 FK columns pointing to restaurant.unit (unit_id, interaction_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.channel_identity has 2 FK columns pointing to guest.profile (profile_id, channel_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.communication has 2 FK columns pointing to guest.consent_record (consent_record_id, communication_consent_record_id) (generic/unlabeled: consent_record_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.communication has 2 FK columns pointing to guest.profile (profile_id, communication_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table guest.demographic has 2 FK columns pointing to guest.profile (profile_id, demographic_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.guest_visit has 2 FK columns pointing to restaurant.unit (unit_id, guest_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.guest_visit has 2 FK columns pointing to guest.profile (primary_guest_profile_id, profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table guest.guest_allergen_profile has 2 FK columns pointing to guest.profile (primary_guest_profile_id, profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.guest_communication has 2 FK columns pointing to guest.consent_record (consent_record_id, guest_consent_record_id) (generic/unlabeled: consent_record_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table guest.guest_communication has 2 FK columns pointing to guest.profile (profile_id, primary_guest_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table order.guest_order has 2 FK columns pointing to guest.profile (profile_id, primary_guest_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table order.order_modifier has 2 FK columns pointing to menu.menu_modifier (menu_modifier_id, primary_order_menu_modifier_id) (generic/unlabeled: menu_modifier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table order.order_item has 2 FK columns pointing to menu.combo_meal (combo_meal_id, order_combo_meal_id) (generic/unlabeled: combo_meal_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table order.order_modifier has 2 FK columns pointing to menu.menu_modifier (menu_modifier_id, source_modifier_menu_modifier_id) (generic/unlabeled: menu_modifier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table order.catering_order has 2 FK columns pointing to guest.profile (profile_id, catering_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table order.refund has 3 FK columns pointing to workforce.employee (employee_id, primary_refund_employee_id, tertiary_refund_voided_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table inventory.stock_item has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, stock_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table order.refund has 2 FK columns pointing to guest.profile (profile_id, refund_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.goods_receipt has 2 FK columns pointing to workforce.employee (employee_id, inspector_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.goods_receipt_line has 2 FK columns pointing to workforce.employee (employee_id, receiving_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.quality_inspection has 2 FK columns pointing to workforce.employee (employee_id, quality_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table inventory.stock_item has 2 FK columns pointing to procurement.supplier (supplier_id, stock_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.stock_location has 2 FK columns pointing to restaurant.equipment_asset (equipment_asset_id, stock_equipment_equipment_asset_id) (generic/unlabeled: equipment_asset_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.on_hand_balance has 2 FK columns pointing to restaurant.unit (unit_id, on_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.on_hand_balance has 2 FK columns pointing to inventory.stock_item (stock_item_id, on_stock_item_id) (generic/unlabeled: stock_item_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.receiving_order has 2 FK columns pointing to workforce.employee (employee_id, receiving_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table inventory.receiving_order has 2 FK columns pointing to restaurant.unit (unit_id, receiving_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.physical_count has 2 FK columns pointing to restaurant.unit (unit_id, physical_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table inventory.waste_log has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, waste_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table inventory.waste_log has 2 FK columns pointing to restaurant.unit (unit_id, waste_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table inventory.waste_log has 2 FK columns pointing to procurement.supplier (supplier_id, waste_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.stock_transfer has 2 FK columns pointing to restaurant.unit (unit_id, origin_restaurant_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.stock_transfer has 2 FK columns pointing to inventory.stock_location (stock_location_id, origin_stock_location_id) (generic/unlabeled: stock_location_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.stock_transfer has 2 FK columns pointing to workforce.employee (employee_id, tertiary_stock_received_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
@@ -220,6 +636,8 @@ Other known issues from static analysis (155):
   - Table inventory.inventory_adjustment has 2 FK columns pointing to inventory.receiving_order (receiving_order_id, inventory_related_receiving_receiving_order_id) (generic/unlabeled: receiving_order_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.inventory_adjustment has 2 FK columns pointing to inventory.stock_transfer (stock_transfer_id, inventory_related_transfer_stock_transfer_id) (generic/unlabeled: stock_transfer_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table inventory.food_cost_period has 3 FK columns pointing to workforce.employee (employee_id, food_employee_id, primary_food_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table inventory.vendor_item has 2 FK columns pointing to procurement.supplier (supplier_id, primary_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table inventory.item_category has 2 FK columns pointing to workforce.employee (employee_id, primary_item_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.location_profile has 2 FK columns pointing to restaurant.unit (unit_id, location_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.format_config has 2 FK columns pointing to restaurant.unit (unit_id, format_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.operating_hours has 2 FK columns pointing to workforce.employee (employee_id, operating_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
@@ -231,7 +649,6 @@ Other known issues from static analysis (155):
   - Table restaurant.table_turn_log has 2 FK columns pointing to restaurant.unit (unit_id, table_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.capacity_config has 2 FK columns pointing to restaurant.unit (unit_id, capacity_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.unit_status_history has 2 FK columns pointing to workforce.employee (employee_id, unit_initiated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table restaurant.area_management has 2 FK columns pointing to workforce.employee (employee_id, primary_area_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.renovation_project has 2 FK columns pointing to workforce.employee (employee_id, renovation_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.renovation_project has 2 FK columns pointing to restaurant.unit (unit_id, renovation_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.ops_visit has 2 FK columns pointing to workforce.employee (employee_id, primary_ops_visitor_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
@@ -241,14 +658,12 @@ Other known issues from static analysis (155):
   - Table restaurant.unit_ownership has 3 FK columns pointing to workforce.employee (employee_id, unit_employee_id, unit_last_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.unit_ownership has 2 FK columns pointing to franchise.franchisee (franchisee_id, unit_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table restaurant.pos_terminal has 2 FK columns pointing to restaurant.unit (unit_id, pos_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table restaurant.store_campaign_assignment has 3 FK columns pointing to restaurant.unit (unit_id, store_sponsor_restaurant_unit_id, store_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table restaurant.kitchen_station has 2 FK columns pointing to restaurant.unit (unit_id, kitchen_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table restaurant.store_campaign_assignment has 2 FK columns pointing to restaurant.unit (unit_id, store_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.employee has 3 FK columns pointing to restaurant.unit (unit_id, employee_unit_id, employee_work_location_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.shift has 2 FK columns pointing to workforce.employee (employee_id, primary_shift_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.schedule has 2 FK columns pointing to workforce.employee (employee_id, schedule_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.schedule has 2 FK columns pointing to restaurant.unit (unit_id, schedule_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.time_entry has 2 FK columns pointing to workforce.employee (employee_id, time_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.recruitment has 2 FK columns pointing to workforce.employee (employee_id, primary_recruitment_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table workforce.onboarding has 4 FK columns pointing to workforce.employee (employee_id, manager_employee_id, primary_onboarding_assigned_buddy_employee_id, tertiary_onboarding_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.labor_forecast has 2 FK columns pointing to restaurant.unit (unit_id, labor_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.training_completion has 2 FK columns pointing to workforce.employee (employee_id, training_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.performance_review has 3 FK columns pointing to workforce.employee (employee_id, primary_performance_employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table workforce.leave_request has 2 FK columns pointing to workforce.employee (employee_id, primary_leave_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
@@ -262,85 +677,107 @@ Other known issues from static analysis (155):
   - Table franchise.training_enrollment has 3 FK columns pointing to workforce.employee (employee_id, training_employee_id, training_trainer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table franchise.transfer_event has 2 FK columns pointing to workforce.employee (employee_id, transfer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table franchise.fdd_disclosure has 2 FK columns pointing to franchise.prospect (prospect_id, fdd_recipient_prospect_id) (generic/unlabeled: prospect_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table franchise.prospect has 2 FK columns pointing to workforce.employee (employee_id, prospect_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table franchise.support_visit has 2 FK columns pointing to workforce.employee (employee_id, support_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table franchise.support_visit has 2 FK columns pointing to restaurant.unit (unit_id, support_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.food_safety_audit has 2 FK columns pointing to workforce.employee (employee_id, food_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.food_safety_audit has 2 FK columns pointing to restaurant.unit (unit_id, food_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.audit_finding has 2 FK columns pointing to workforce.employee (employee_id, audit_responsible_party_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.audit_finding has 2 FK columns pointing to restaurant.unit (unit_id, audit_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.health_inspection has 2 FK columns pointing to restaurant.unit (unit_id, health_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.inspection_violation has 2 FK columns pointing to restaurant.unit (unit_id, inspection_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.foodsafety_corrective_action has 3 FK columns pointing to workforce.employee (employee_id, foodsafety_verified_by_employee_id, primary_foodsafety_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.foodsafety_corrective_action has 2 FK columns pointing to foodsafety.food_safety_audit (food_safety_audit_id, foodsafety_related_food_safety_audit_id) (generic/unlabeled: food_safety_audit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.foodsafety_corrective_action has 2 FK columns pointing to foodsafety.health_inspection (health_inspection_id, foodsafety_related_inspection_health_inspection_id) (generic/unlabeled: health_inspection_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.temperature_log has 2 FK columns pointing to workforce.employee (employee_id, temperature_recorded_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table foodsafety.temperature_log has 2 FK columns pointing to restaurant.equipment_asset (equipment_asset_id, temperature_equipment_equipment_asset_id) (generic/unlabeled: equipment_asset_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.sanitation_task_log has 2 FK columns pointing to restaurant.equipment_asset (equipment_asset_id, sanitation_equipment_equipment_asset_id) (generic/unlabeled: equipment_asset_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table foodsafety.sanitation_task_log has 2 FK columns pointing to restaurant.unit (unit_id, sanitation_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table foodsafety.allergen_incident has 2 FK columns pointing to restaurant.unit (unit_id, allergen_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table foodsafety.food_recall has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, primary_food_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.allergen_incident has 2 FK columns pointing to guest.profile (profile_id, allergen_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.illness_report has 2 FK columns pointing to restaurant.unit (unit_id, illness_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.food_recall has 2 FK columns pointing to procurement.supplier (supplier_id, primary_food_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.recall_unit_response has 2 FK columns pointing to workforce.employee (employee_id, recall_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table foodsafety.pest_control_log has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, pest_service_provider_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.pest_control_log has 2 FK columns pointing to procurement.supplier (supplier_id, pest_service_provider_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.pest_control_log has 2 FK columns pointing to restaurant.unit (unit_id, pest_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.receiving_inspection has 2 FK columns pointing to workforce.employee (employee_id, receiving_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table foodsafety.food_safety_training has 2 FK columns pointing to workforce.employee (employee_id, primary_food_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table foodsafety.food_safety_training has 2 FK columns pointing to restaurant.unit (unit_id, food_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.member has 2 FK columns pointing to guest.profile (profile_id, member_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.member has 3 FK columns pointing to restaurant.unit (unit_id, member_unit_id, primary_member_preferred_location_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.tier_history has 2 FK columns pointing to restaurant.unit (unit_id, tier_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.points_ledger has 2 FK columns pointing to workforce.employee (employee_id, points_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.points_ledger has 2 FK columns pointing to franchise.franchisee (franchisee_id, points_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.points_ledger has 2 FK columns pointing to order.guest_order (guest_order_id, source_transaction_guest_order_id) (generic/unlabeled: guest_order_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.points_ledger has 2 FK columns pointing to restaurant.unit (unit_id, points_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.redemption has 2 FK columns pointing to restaurant.unit (unit_id, redemption_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.offer_redemption has 2 FK columns pointing to franchise.franchisee (franchisee_id, offer_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.challenge_enrollment has 2 FK columns pointing to restaurant.unit (unit_id, challenge_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.enrollment_event has 2 FK columns pointing to workforce.employee (employee_id, primary_enrollment_staff_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.enrollment_event has 2 FK columns pointing to order.guest_order (guest_order_id, primary_enrollment_transaction_guest_order_id) (generic/unlabeled: guest_order_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.enrollment_event has 2 FK columns pointing to restaurant.unit (unit_id, primary_enrollment_restaurant_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.referral has 2 FK columns pointing to restaurant.unit (unit_id, referral_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.referral has 2 FK columns pointing to guest.profile (profile_id, referral_referred_guest_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table loyalty.loyalty_segment has 2 FK columns pointing to workforce.employee (employee_id, owner_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table loyalty.loyalty_adjustment has 2 FK columns pointing to loyalty.member (member_id, primary_loyalty_member_id) (generic/unlabeled: member_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table marketing.media_buy has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, media_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.campaign_execution has 2 FK columns pointing to franchise.franchisee (franchisee_id, campaign_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.media_buy has 2 FK columns pointing to procurement.supplier (supplier_id, media_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.promotion_redemption has 2 FK columns pointing to guest.profile (profile_id, promotion_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.promotion_redemption has 2 FK columns pointing to loyalty.member (member_id, promotion_member_id) (generic/unlabeled: member_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.promotion_redemption has 2 FK columns pointing to restaurant.unit (unit_id, promotion_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table marketing.local_store_marketing has 2 FK columns pointing to restaurant.unit (unit_id, local_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table marketing.fund_contribution has 2 FK columns pointing to restaurant.unit (unit_id, fund_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table marketing.campaign_spend has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, campaign_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.campaign_spend has 2 FK columns pointing to procurement.supplier (supplier_id, campaign_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.journal_entry has 5 FK columns pointing to workforce.employee (employee_id, approver_user_employee_id, journal_employee_id, journal_last_modified_user_employee_id, primary_journal_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.journal_entry_line has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, journal_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.journal_entry_line has 2 FK columns pointing to guest.profile (profile_id, journal_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.journal_entry_line has 2 FK columns pointing to procurement.supplier (supplier_id, journal_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.ap_invoice has 4 FK columns pointing to workforce.employee (employee_id, ap_employee_id, ap_modified_by_user_employee_id, approver_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.ap_invoice has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, ap_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.ap_invoice has 2 FK columns pointing to procurement.supplier (supplier_id, ap_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.ap_invoice has 2 FK columns pointing to restaurant.unit (unit_id, ap_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.ap_invoice_line has 2 FK columns pointing to restaurant.unit (unit_id, ap_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.ap_payment has 2 FK columns pointing to procurement.supplier (supplier_id, ap_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.ar_invoice has 2 FK columns pointing to guest.profile (profile_id, ar_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.ar_invoice has 2 FK columns pointing to restaurant.unit (unit_id, ar_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.budget has 2 FK columns pointing to restaurant.unit (unit_id, budget_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.fixed_asset has 2 FK columns pointing to procurement.supplier (supplier_id, fixed_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.asset_depreciation has 2 FK columns pointing to restaurant.unit (unit_id, asset_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.budget_line has 2 FK columns pointing to restaurant.unit (unit_id, budget_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.intercompany_transaction has 2 FK columns pointing to finance.legal_entity (legal_entity_id, sending_legal_entity_id) (generic/unlabeled: legal_entity_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.tax_posting has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, tax_vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.royalty_accrual has 2 FK columns pointing to restaurant.unit (unit_id, royalty_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.tax_posting has 2 FK columns pointing to guest.profile (profile_id, tax_profile_id) (generic/unlabeled: profile_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.tax_posting has 2 FK columns pointing to procurement.supplier (supplier_id, tax_vendor_procurement_supplier_id) (generic/unlabeled: supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.tax_posting has 2 FK columns pointing to restaurant.unit (unit_id, tax_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.period_close has 2 FK columns pointing to workforce.employee (employee_id, period_sign_off_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.cost_allocation has 3 FK columns pointing to finance.cost_center (cost_center_id, source_cost_center_id, target_cost_center_id) (generic/unlabeled: cost_center_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.cost_allocation has 2 FK columns pointing to workforce.employee (employee_id, cost_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.cost_allocation has 2 FK columns pointing to restaurant.unit (unit_id, cost_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table finance.capex_project has 2 FK columns pointing to restaurant.unit (unit_id, capex_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.lease_liability has 2 FK columns pointing to restaurant.unit (unit_id, lease_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table finance.pos_settlement_batch has 2 FK columns pointing to restaurant.unit (unit_id, pos_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.bank_statement_line has 2 FK columns pointing to restaurant.unit (unit_id, bank_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.rent_schedule has 2 FK columns pointing to restaurant.unit (unit_id, rent_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.rent_payment has 2 FK columns pointing to workforce.employee (employee_id, rent_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.rent_payment has 2 FK columns pointing to restaurant.unit (unit_id, rent_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.site_selection has 6 FK columns pointing to workforce.employee (employee_id, site_approval_authority_employee_id, site_created_by_user_employee_id, site_employee_id, site_last_modified_by_user_employee_id, tertiary_site_created_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.site_selection has 2 FK columns pointing to franchise.franchisee (franchisee_id, site_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.nro_project has 2 FK columns pointing to franchise.franchisee (franchisee_id, nro_franchisee_id) (generic/unlabeled: franchisee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.maintenance_work_order has 2 FK columns pointing to workforce.employee (employee_id, maintenance_technician_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table realestate.maintenance_work_order has 2 FK columns pointing to restaurant.unit (unit_id, maintenance_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table procurement.sourcing_event has 2 FK columns pointing to workforce.employee (employee_id, sourcing_stakeholder_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
   - Table procurement.contract has 2 FK columns pointing to workforce.employee (employee_id, owner_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table procurement.requisition has 5 FK columns pointing to workforce.employee (approved_by_employee_id, created_by_employee_id, employee_id, primary_requisition_approved_by_employee_id, tertiary_requisition_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table procurement.requisition has 2 FK columns pointing to restaurant.unit (unit_id, requisition_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table procurement.procurement_purchase_order has 2 FK columns pointing to restaurant.unit (unit_id, procurement_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table procurement.po_line has 2 FK columns pointing to procurement.procurement_purchase_order (procurement_purchase_order_id, primary_po_header_procurement_purchase_order_id) (generic/unlabeled: procurement_purchase_order_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table procurement.vendor_rebate has 2 FK columns pointing to procurement.procurement_supplier (procurement_supplier_id, vendor_procurement_supplier_id) (generic/unlabeled: procurement_supplier_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table realestate.remodel_project has only 1 attribute(s) — likely incomplete or should be merged
+  - Table procurement.po_line has 2 FK columns pointing to procurement.purchase_order (purchase_order_id, primary_po_header_procurement_purchase_order_id) (generic/unlabeled: purchase_order_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.purchase_order has 2 FK columns pointing to restaurant.unit (unit_id, purchase_unit_id) (generic/unlabeled: unit_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - PII-candidate attribute supply.supply_supplier.contact_email has no classification tags — expected restricted/confidential + PII tag
+  - PII-candidate attribute supply.supply_supplier.contact_phone has no classification tags — expected restricted/confidential + PII tag
+  - PII-candidate attribute supply.supply_supplier.address has no classification tags — expected restricted/confidential + PII tag
+  - Attribute guest.guest_segment.segment_description has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute guest.guest_segment.segment_criteria has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute supply.supply_supplier.address has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute procurement.category.category_description has unrecognized data type 'TEXT' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
   - Subdomain 'supplier_management' appears in 2 domains: procurement, supply. Consider renaming to qualified form.
-  - 84 attribute(s) match person-data patterns but lack pii_ tags
+  - Subdomain 'brand_standards' appears in 2 domains: restaurant, workforce. Consider renaming to qualified form.
+  - 282 attribute(s) match person-data patterns but lack pii_ tags
   - 20 non-PK attributes redundantly prefixed with their product name
-  - PK columns use 3 different datatypes: BIGINT, DECIMAL(10,2), DECIMAL(10,4). Recommend all PKs use BIGINT.
   - Corporate division holds 4/14 domains (28%) - exceeds the 20% cap (Operations+Business must be >=80%). Relocate or reclassify.
-  - 1 table(s) have no subdomain tag - every table MUST carry a subdomain grouping (e.g., realestate.remodel_project)
-**Vibe adherence: 98.3% (231/235 VREQs applied) | Structural quality: 69/100 (reported separately, NOT blended)**
+  - 1 table(s) have no subdomain tag - every table MUST carry a subdomain grouping (e.g., procurement.procurement_item)
+**Vibe adherence: 100.0% (74/74 VREQs applied) | Structural quality: 62/100 (reported separately, NOT blended)**
 
-Deterministic score: 66.01/100 (LLM assessment: 72/100)
+Deterministic score: 72.91/100 (LLM assessment: 52/100)
 
 ## MISSED VIBES (carried from the previous run — apply these THIS run; user directives first)
 
-- (USER DIRECTIVE - supreme authority) Apply generic rule: type every monetary attribute as DECIMAL(18,2). (target: all monetary attributes (model-wide)) [missed: vov_residual_unapplied]
-- (USER DIRECTIVE - supreme authority) Apply generic rule: type every *_date/_at/_timestamp attribute as DATE or TIMESTAMP. (target: all *_date/_at/_timestamp attributes (model-wide)) [missed: vov_residual_unapplied]
-- (USER DIRECTIVE - supreme authority) Apply generic rule: every monetary attribute must be typed DECIMAL(18,2). (target: every monetary attribute in the model) [missed: vov_residual_unapplied]
-- (USER DIRECTIVE - supreme authority) Apply generic rule: every *_date/_at/_timestamp attribute must be typed DATE or TIMESTAMP. (target: every *_date/_at/_timestamp attribute in the model) [missed: vov_residual_unapplied]
-- Populate full business data attributes for the 30 stub products, re-derived from business context (target: menu.dietary_tag_assignment, guest.guest_segment, guest.guest_segment_membership, guest.guest_visit, guest.guest_allergen_profile, order.daypart, supply.supply_supplier, supply.supply_purchase_order, supply.purchase_order_line, supply.invoice, inventory.inventory_ingredient_usage, workforce.tip_compliance, franchise.billing, franchise.franchise_corrective_action, franchise.fee_schedule, franchise.franchise_remodel_project, franchise.marketing_fund_contribution, foodsafety.foodsafety_supplier_certification, foodsafety.environmental_monitoring, loyalty.loyalty_segment_membership, loyalty.loyalty_visit, loyalty.loyalty_adjustment, loyalty.program_campaign_allocation, marketing.marketing_lto, marketing.marketing_guest_segment, finance.lease_liability, realestate.realestate_remodel_project, procurement.category, procurement.procurement_supplier_certification, procurement.vendor_rebate) [missed: orchestrator status=partial]
-- Resolve 15 cross-domain SSOT duplicate pairs (target: foodsafety.foodsafety_corrective_action, franchise.franchise_corrective_action, foodsafety.foodsafety_allergen_profile, guest.guest_allergen_profile, foodsafety.foodsafety_supplier_certification, procurement.procurement_supplier_certification, franchise.franchise_remodel_project, realestate.realestate_remodel_project, guest.guest_segment, loyalty.loyalty_segment, guest.guest_segment_membership, loyalty.loyalty_segment_membership, guest.guest_visit, loyalty.loyalty_visit, inventory.inventory_adjustment, loyalty.loyalty_adjustment, inventory.inventory_ingredient_usage, order.order_ingredient_usage, menu.menu_item, order.order_item, menu.menu_modifier, order.order_modifier, procurement.procurement_supplier, supply.supply_supplier, procurement.contract, supply.supply_contract, procurement.procurement_purchase_order, supply.supply_purchase_order, restaurant.department, workforce.department) [missed: orchestrator status=partial]
-- Fix the denormalized natural key warning (target: *) [missed: orchestrator status=partial]
-- Remove the guest_order FK from order.daypart (target: order.daypart, order.guest_order) [missed: orchestrator status=failed]
+- Remove redundant natural key department_code on workforce.department (target: workforce.department) [missed: orchestrator status=failed]
+- Resolve purchase_order cross-domain duplicate SSOT violation (target: procurement.procurement_purchase_order, supply.supply_purchase_order) [missed: orchestrator status=failed]
+- Resolve department cross-domain duplicate SSOT violation (target: restaurant.department, workforce.department) [missed: orchestrator status=failed]
+- Add restricted/confidential + PII tags to PII-candidate attributes (target: finance.house_bank, finance.chart_of_accounts, guest.corporate_account, restaurant.department, realestate.tenant) [missed: orchestrator status=failed]

@@ -1,474 +1,80 @@
--- Metric views for domain: invoice | Business: Semiconductors | Version: 2 | Generated on: 2026-06-28 00:14:33
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_adjustment_memo`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Credit and debit adjustment memo metrics tracking adjustment volumes, amounts, approval rates, and settlement status. Used by AR management and finance controllers to monitor billing corrections and revenue impact."
-  source: "`vibe_semiconductors_v1`.`invoice`.`adjustment_memo`"
-  dimensions:
-    - name: "adjustment_type"
-      expr: adjustment_type
-      comment: "Type of adjustment (Credit, Debit, Rebate) for classification and root-cause analysis."
-    - name: "adjustment_subtype"
-      expr: adjustment_subtype
-      comment: "Sub-classification of adjustment for granular billing correction analysis."
-    - name: "adjustment_category"
-      expr: adjustment_category
-      comment: "Business category of the adjustment for financial reporting segmentation."
-    - name: "adjustment_memo_status"
-      expr: adjustment_memo_status
-      comment: "Current lifecycle status of the adjustment memo."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval workflow status; pending approvals represent financial exposure."
-    - name: "settlement_status"
-      expr: settlement_status
-      comment: "Settlement status of the adjustment for cash flow impact tracking."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the adjustment for multi-currency reporting."
-    - name: "memo_date_month"
-      expr: DATE_TRUNC('MONTH', memo_date)
-      comment: "Month of memo issuance for trend analysis of billing corrections."
-    - name: "reason_code"
-      expr: reason_code
-      comment: "Reason code for the adjustment; used to identify systemic billing issues."
-    - name: "is_manual"
-      expr: is_manual
-      comment: "Flag for manually created adjustments; high manual rate indicates process gaps."
-  measures:
-    - name: "total_adjustment_memos"
-      expr: COUNT(1)
-      comment: "Total adjustment memos issued; volume indicator of billing correction activity."
-    - name: "total_adjustment_amount"
-      expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total adjustment amount; measures gross revenue impact of billing corrections."
-    - name: "total_applied_amount"
-      expr: SUM(CAST(applied_amount AS DOUBLE))
-      comment: "Total amount applied from adjustment memos; settled correction value."
-    - name: "total_approved_amount"
-      expr: SUM(CAST(approved_amount AS DOUBLE))
-      comment: "Total approved adjustment amount; authorized financial exposure from corrections."
-    - name: "total_remaining_balance"
-      expr: SUM(CAST(remaining_balance AS DOUBLE))
-      comment: "Total unapplied balance on adjustment memos; outstanding credit/debit exposure."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax component of adjustments; tax liability correction tracking."
-    - name: "avg_adjustment_amount"
-      expr: AVG(CAST(adjustment_amount AS DOUBLE))
-      comment: "Average adjustment memo value; benchmarks typical correction size."
-    - name: "manual_adjustment_count"
-      expr: COUNT(CASE WHEN is_manual = TRUE THEN 1 END)
-      comment: "Count of manually created adjustments; process automation gap indicator."
-    - name: "application_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(applied_amount AS DOUBLE)) / NULLIF(SUM(CAST(adjustment_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of adjustment amount applied; measures settlement completeness."
-$$;
+-- Metric views for domain: invoice | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_ar_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core accounts receivable invoice metrics tracking revenue, collections, and invoice lifecycle performance"
+  comment: "Core accounts-receivable invoice KPIs covering revenue billed, collection efficiency, discount exposure, and tax liability. Used by CFO, AR Director, and Revenue Controller to steer cash-flow and billing quality."
   source: "`vibe_semiconductors_v1`.`invoice`.`ar_invoice`"
   dimensions:
-    - name: "invoice_date"
-      expr: invoice_date
-      comment: "Date the invoice was issued"
-    - name: "invoice_month"
-      expr: DATE_TRUNC('MONTH', invoice_date)
-      comment: "Month of invoice issuance for period analysis"
-    - name: "invoice_quarter"
-      expr: DATE_TRUNC('QUARTER', invoice_date)
-      comment: "Quarter of invoice issuance for quarterly reporting"
-    - name: "due_date"
-      expr: due_date
-      comment: "Payment due date for aging analysis"
-    - name: "posting_date"
-      expr: posting_date
-      comment: "Date invoice was posted to GL"
-    - name: "ar_invoice_status"
+    - name: "invoice_status"
       expr: ar_invoice_status
-      comment: "Current status of the invoice (open, paid, cancelled, etc.)"
+      comment: "Current lifecycle status of the invoice (e.g. Draft, Posted, Paid, Cancelled) — primary filter for AR aging and collection dashboards."
     - name: "payment_status"
       expr: payment_status
-      comment: "Payment collection status"
-    - name: "collection_status"
-      expr: collection_status
-      comment: "Collections workflow status"
+      comment: "Payment collection status (e.g. Open, Partial, Paid, Overdue) — drives dunning and cash-application workflows."
     - name: "currency_code"
       expr: currency_code
-      comment: "Invoice currency for multi-currency analysis"
+      comment: "Billing currency — used to slice revenue by currency for FX exposure analysis."
     - name: "document_type"
       expr: document_type
-      comment: "Type of invoice document"
+      comment: "Invoice document type (Standard, Proforma, Credit Memo) — separates revenue-generating invoices from adjustments."
+    - name: "invoice_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Calendar month of invoice issuance — primary time dimension for monthly revenue trend analysis."
+    - name: "due_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Calendar month the invoice is due — used for cash-flow forecasting and aging bucket analysis."
     - name: "is_credit_memo"
       expr: is_credit_memo
-      comment: "Flag indicating if this is a credit memo"
-    - name: "is_proforma"
-      expr: is_proforma
-      comment: "Flag indicating if this is a proforma invoice"
+      comment: "Flag indicating whether the invoice is a credit memo — separates debit and credit flows in revenue reporting."
     - name: "export_control_flag"
       expr: export_control_flag
-      comment: "Flag for export-controlled transactions"
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Method of payment for the invoice"
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax code applied to the invoice"
+      comment: "Indicates whether the invoice is subject to export control regulations — used for compliance reporting."
+    - name: "collection_status"
+      expr: collection_status
+      comment: "AR collection status (e.g. Current, 30-day, 60-day, 90-day overdue) — drives collections prioritization."
   measures:
-    - name: "invoice_count"
-      expr: COUNT(DISTINCT ar_invoice_id)
-      comment: "Total number of unique invoices"
-    - name: "total_gross_amount"
+    - name: "total_invoices"
+      expr: COUNT(1)
+      comment: "Total number of AR invoices issued. Baseline volume metric for billing throughput and workload analysis."
+    - name: "total_gross_billed_amount"
       expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross invoice amount before discounts and taxes"
-    - name: "total_net_amount"
+      comment: "Sum of gross invoice amounts before discounts and taxes. Represents total revenue billed to customers — primary top-line revenue KPI."
+    - name: "total_net_billed_amount"
       expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net invoice amount after discounts before tax"
+      comment: "Sum of net invoice amounts after discounts. Represents actual revenue recognized net of commercial discounts — used in P&L reporting."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount across all invoices"
+      comment: "Total tax billed across all invoices. Used by tax controllers to reconcile tax liability and VAT/GST filings."
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount amount given"
+      comment: "Total commercial discounts granted. Measures discount leakage and pricing discipline — reviewed by VP Sales and CFO."
     - name: "total_late_fee_amount"
       expr: SUM(CAST(late_fee_amount AS DOUBLE))
-      comment: "Total late payment fees assessed"
-    - name: "avg_invoice_value"
+      comment: "Total late payment fees charged. Indicates collection enforcement effectiveness and customer payment behavior."
+    - name: "total_early_payment_discount"
+      expr: SUM(CAST(early_payment_discount AS DOUBLE))
+      comment: "Total early payment discounts granted. Measures cost of accelerating cash collection — used in working capital optimization."
+    - name: "avg_net_invoice_amount"
       expr: AVG(CAST(net_amount AS DOUBLE))
-      comment: "Average net invoice value"
-    - name: "avg_days_to_due"
-      expr: AVG(DATEDIFF(due_date, invoice_date))
-      comment: "Average number of days from invoice to due date"
+      comment: "Average net invoice value. Tracks deal size trends and is used to identify shifts in customer mix or product pricing."
     - name: "discount_rate_pct"
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of gross amount given as discounts"
-    - name: "tax_rate_pct"
+      comment: "Discount as a percentage of gross billed amount. Key pricing discipline KPI — high values signal margin erosion from excessive discounting."
+    - name: "tax_rate_effective_pct"
       expr: ROUND(100.0 * SUM(CAST(tax_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_amount AS DOUBLE)), 0), 2)
-      comment: "Effective tax rate as percentage of net amount"
-    - name: "customer_count"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers invoiced"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_credit_hold`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Credit risk and hold management metrics for accounts receivable risk mitigation"
-  source: "`vibe_semiconductors_v1`.`invoice`.`credit_hold`"
-  dimensions:
-    - name: "hold_start_date"
-      expr: hold_start_date
-      comment: "Date the credit hold was placed"
-    - name: "hold_month"
-      expr: DATE_TRUNC('MONTH', hold_start_date)
-      comment: "Month the hold was placed for trend analysis"
-    - name: "hold_release_date"
-      expr: hold_release_date
-      comment: "Date the credit hold was released"
-    - name: "placed_date"
-      expr: placed_date
-      comment: "Date hold was placed"
-    - name: "released_date"
-      expr: released_date
-      comment: "Date hold was released"
-    - name: "credit_hold_status"
-      expr: credit_hold_status
-      comment: "Current status of the credit hold"
-    - name: "hold_status"
-      expr: hold_status
-      comment: "Status of the hold"
-    - name: "hold_reason"
-      expr: hold_reason
-      comment: "Reason for placing the credit hold"
-    - name: "hold_reason_code"
-      expr: hold_reason_code
-      comment: "Coded reason for the hold"
-    - name: "hold_category"
-      expr: hold_category
-      comment: "Category of credit hold"
-    - name: "block_level"
-      expr: block_level
-      comment: "Level of blocking applied"
-    - name: "notification_status"
-      expr: notification_status
-      comment: "Status of customer notification"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of credit amounts"
-  measures:
-    - name: "credit_hold_count"
-      expr: COUNT(DISTINCT credit_hold_id)
-      comment: "Total number of credit holds placed"
-    - name: "total_hold_amount"
-      expr: SUM(CAST(hold_amount AS DOUBLE))
-      comment: "Total amount of orders on credit hold"
-    - name: "total_overdue_amount"
-      expr: SUM(CAST(overdue_amount AS DOUBLE))
-      comment: "Total overdue amount triggering holds"
-    - name: "total_credit_limit"
-      expr: SUM(CAST(credit_limit AS DOUBLE))
-      comment: "Total credit limit across held accounts"
-    - name: "avg_hold_amount"
-      expr: AVG(CAST(hold_amount AS DOUBLE))
-      comment: "Average amount per credit hold"
-    - name: "avg_hold_duration_days"
-      expr: AVG(DATEDIFF(COALESCE(hold_release_date, CURRENT_DATE()), hold_start_date))
-      comment: "Average number of days accounts are on credit hold"
-    - name: "avg_risk_score"
-      expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Average risk score of accounts on hold"
-    - name: "credit_utilization_pct"
-      expr: ROUND(100.0 * SUM(CAST(hold_amount AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit AS DOUBLE)), 0), 2)
-      comment: "Percentage of credit limit utilized by held amounts"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_customer_credit_limit`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer credit limit metrics tracking credit availability, utilization, overdue exposure, and risk classification. Used by credit management and CFO to govern credit policy and manage portfolio risk."
-  source: "`vibe_semiconductors_v1`.`invoice`.`customer_credit_limit`"
-  dimensions:
-    - name: "credit_limit_status"
-      expr: credit_limit_status
-      comment: "Status of the credit limit record (Active, Suspended, Expired)."
-    - name: "credit_limit_type"
-      expr: credit_limit_type
-      comment: "Type of credit limit (Standard, Secured, Insured) for policy segmentation."
-    - name: "credit_rating"
-      expr: credit_rating
-      comment: "Customer credit rating for risk-tier analysis."
-    - name: "credit_risk_classification"
-      expr: credit_risk_classification
-      comment: "Risk classification (Low, Medium, High) for portfolio risk management."
-    - name: "credit_currency"
-      expr: credit_currency
-      comment: "Currency of the credit limit for multi-currency portfolio management."
-    - name: "business_unit"
-      expr: business_unit
-      comment: "Business unit owning the credit relationship for organizational reporting."
-    - name: "region_code"
-      expr: region_code
-      comment: "Geographic region for regional credit risk analysis."
-    - name: "credit_hold_flag"
-      expr: credit_hold_flag
-      comment: "Flag indicating customer is currently on credit hold."
-    - name: "review_date_month"
-      expr: DATE_TRUNC('MONTH', review_date)
-      comment: "Month of next credit review for proactive risk management scheduling."
-  measures:
-    - name: "total_credit_limit_amount"
-      expr: SUM(CAST(credit_limit_amount AS DOUBLE))
-      comment: "Total credit limit extended across all customers; portfolio credit exposure."
-    - name: "total_credit_used_amount"
-      expr: SUM(CAST(credit_used_amount AS DOUBLE))
-      comment: "Total credit currently utilized; outstanding AR exposure against limits."
-    - name: "total_available_credit"
-      expr: SUM(CAST(available_credit AS DOUBLE))
-      comment: "Total available credit headroom; capacity for additional business without credit risk."
-    - name: "total_overdue_amount"
-      expr: SUM(CAST(overdue_amount AS DOUBLE))
-      comment: "Total overdue amount across credit-limited customers; collections urgency."
-    - name: "avg_credit_utilization_pct"
-      expr: AVG(CAST(credit_utilization_pct AS DOUBLE))
-      comment: "Average credit utilization percentage; portfolio-level credit stress indicator."
-    - name: "avg_credit_limit_amount"
-      expr: AVG(CAST(credit_limit_amount AS DOUBLE))
-      comment: "Average credit limit per customer; benchmarks credit policy generosity."
-    - name: "credit_hold_customer_count"
-      expr: COUNT(CASE WHEN credit_hold_flag = TRUE THEN 1 END)
-      comment: "Count of customers currently on credit hold; revenue risk from blocked orders."
-    - name: "portfolio_utilization_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(credit_used_amount AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit_amount AS DOUBLE)), 0), 2)
-      comment: "Portfolio-wide credit utilization rate; key credit risk management KPI for CFO."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dispute`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Invoice dispute and resolution metrics for customer satisfaction and process improvement"
-  source: "`vibe_semiconductors_v1`.`invoice`.`dispute`"
-  dimensions:
-    - name: "opened_date"
-      expr: opened_date
-      comment: "Date the dispute was opened"
-    - name: "dispute_month"
-      expr: DATE_TRUNC('MONTH', opened_date)
-      comment: "Month dispute was opened for trend analysis"
-    - name: "resolved_date"
-      expr: resolved_date
-      comment: "Date the dispute was resolved"
-    - name: "resolution_date"
-      expr: resolution_date
-      comment: "Date of resolution"
-    - name: "expected_settlement_date"
-      expr: expected_settlement_date
-      comment: "Expected date for settlement"
-    - name: "actual_settlement_date"
-      expr: actual_settlement_date
-      comment: "Actual settlement date"
-    - name: "dispute_status"
-      expr: dispute_status
-      comment: "Current status of the dispute"
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "Status of dispute resolution"
-    - name: "dispute_type"
-      expr: dispute_type
-      comment: "Type of dispute (pricing, quality, delivery, etc.)"
-    - name: "reason"
-      expr: reason
-      comment: "Reason for the dispute"
-    - name: "reason_code"
-      expr: reason_code
-      comment: "Coded reason for dispute"
-    - name: "root_cause_category"
-      expr: root_cause_category
-      comment: "Root cause category for analysis"
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the dispute"
-    - name: "escalation_level"
-      expr: escalation_level
-      comment: "Level of escalation"
-    - name: "channel"
-      expr: channel
-      comment: "Channel through which dispute was raised"
-    - name: "source"
-      expr: source
-      comment: "Source of the dispute"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of disputed amounts"
-  measures:
-    - name: "dispute_count"
-      expr: COUNT(DISTINCT dispute_id)
-      comment: "Total number of invoice disputes"
-    - name: "total_disputed_amount"
-      expr: SUM(CAST(disputed_amount AS DOUBLE))
-      comment: "Total amount under dispute"
-    - name: "total_settlement_amount"
-      expr: SUM(CAST(settlement_amount AS DOUBLE))
-      comment: "Total amount settled in dispute resolutions"
-    - name: "avg_disputed_amount"
-      expr: AVG(CAST(disputed_amount AS DOUBLE))
-      comment: "Average amount per dispute"
-    - name: "avg_settlement_amount"
-      expr: AVG(CAST(settlement_amount AS DOUBLE))
-      comment: "Average settlement amount per dispute"
-    - name: "avg_resolution_days"
-      expr: AVG(DATEDIFF(resolved_date, opened_date))
-      comment: "Average number of days to resolve disputes"
-    - name: "settlement_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(settlement_amount AS DOUBLE)) / NULLIF(SUM(CAST(disputed_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of disputed amount that was settled"
-    - name: "dispute_rate_per_customer"
-      expr: COUNT(DISTINCT dispute_id) / NULLIF(COUNT(DISTINCT account_id), 0)
-      comment: "Average number of disputes per customer"
-    - name: "customer_count"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers with disputes"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dunning_notice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Collections dunning and escalation metrics for overdue account management"
-  source: "`vibe_semiconductors_v1`.`invoice`.`dunning_notice`"
-  dimensions:
-    - name: "notice_date"
-      expr: notice_date
-      comment: "Date the dunning notice was sent"
-    - name: "notice_month"
-      expr: DATE_TRUNC('MONTH', notice_date)
-      comment: "Month notice was sent for trend analysis"
-    - name: "original_due_date"
-      expr: original_due_date
-      comment: "Original due date of the overdue invoice"
-    - name: "next_action_date"
-      expr: next_action_date
-      comment: "Date for next collection action"
-    - name: "response_date"
-      expr: response_date
-      comment: "Date customer responded to notice"
-    - name: "dunning_notice_status"
-      expr: dunning_notice_status
-      comment: "Status of the dunning notice"
-    - name: "notice_status"
-      expr: notice_status
-      comment: "Current status of notice"
-    - name: "dunning_level"
-      expr: dunning_level
-      comment: "Escalation level of dunning (1st notice, 2nd notice, final, etc.)"
-    - name: "delivery_method"
-      expr: delivery_method
-      comment: "Method used to deliver notice (email, mail, phone, etc.)"
-    - name: "response_status"
-      expr: response_status
-      comment: "Status of customer response"
-    - name: "credit_hold_flag"
-      expr: credit_hold_flag
-      comment: "Flag indicating if account is on credit hold"
-    - name: "legal_hold_flag"
-      expr: legal_hold_flag
-      comment: "Flag indicating if legal action is pending"
-    - name: "dunning_fee_applied"
-      expr: dunning_fee_applied
-      comment: "Flag indicating if dunning fee was applied"
-    - name: "escalation_threshold_exceeded"
-      expr: escalation_threshold_exceeded
-      comment: "Flag indicating escalation threshold breach"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of overdue amounts"
-  measures:
-    - name: "dunning_notice_count"
-      expr: COUNT(DISTINCT dunning_notice_id)
-      comment: "Total number of dunning notices sent"
-    - name: "total_overdue_amount"
-      expr: SUM(CAST(overdue_amount AS DOUBLE))
-      comment: "Total overdue amount across all notices"
-    - name: "total_due_amount"
-      expr: SUM(CAST(total_due AS DOUBLE))
-      comment: "Total amount due including fees and interest"
-    - name: "total_interest_amount"
-      expr: SUM(CAST(interest_amount AS DOUBLE))
-      comment: "Total interest charged on overdue amounts"
-    - name: "total_dunning_charge"
-      expr: SUM(CAST(dunning_charge AS DOUBLE))
-      comment: "Total dunning fees charged"
-    - name: "avg_overdue_amount"
-      expr: AVG(CAST(overdue_amount AS DOUBLE))
-      comment: "Average overdue amount per notice"
-    - name: "avg_interest_rate"
-      expr: AVG(CAST(interest_rate_percent AS DOUBLE))
-      comment: "Average interest rate applied"
-    - name: "avg_days_overdue"
-      expr: AVG(DATEDIFF(notice_date, original_due_date))
-      comment: "Average number of days overdue at notice date"
-    - name: "interest_to_principal_pct"
-      expr: ROUND(100.0 * SUM(CAST(interest_amount AS DOUBLE)) / NULLIF(SUM(CAST(overdue_amount AS DOUBLE)), 0), 2)
-      comment: "Interest as percentage of overdue principal"
-    - name: "customer_count"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers receiving dunning notices"
-    - name: "invoice_count"
-      expr: COUNT(DISTINCT ar_invoice_id)
-      comment: "Number of unique invoices in dunning process"
+      comment: "Effective tax rate as a percentage of net invoice amount. Used by tax controllers to validate tax calculation accuracy and detect anomalies."
+    - name: "credit_memo_count"
+      expr: COUNT(CASE WHEN is_credit_memo = TRUE THEN 1 END)
+      comment: "Number of credit memo invoices. Elevated credit memo volume signals billing errors, returns, or customer disputes requiring investigation."
+    - name: "credit_memo_amount"
+      expr: SUM(CASE WHEN is_credit_memo = TRUE THEN gross_amount ELSE 0 END)
+      comment: "Total gross amount of credit memos issued. Measures revenue reversals — a key indicator of billing quality and customer satisfaction."
+    - name: "credit_memo_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_credit_memo = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of invoices that are credit memos. Benchmark for billing accuracy — industry best practice is below 2%."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_line`
@@ -476,135 +82,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-level invoice metrics enabling revenue decomposition by product, charge type, sales channel, and region. Used by revenue operations, product finance, and sales leadership to analyze billing mix and margin contribution."
+  comment: "Line-level invoice analytics covering revenue by product, channel, region, and charge type. Used by Revenue Operations, Sales Finance, and Product Controllers to analyze revenue mix and margin at the SKU and order-line level."
   source: "`vibe_semiconductors_v1`.`invoice`.`invoice_line`"
   dimensions:
     - name: "charge_type"
       expr: charge_type
-      comment: "Type of charge on the line (Product, NRE, Royalty, Service) for revenue mix analysis."
+      comment: "Type of charge on the invoice line (e.g. Product, NRE, Royalty, Service) — primary revenue category dimension."
     - name: "line_status"
       expr: line_status
-      comment: "Processing status of the invoice line for billing completeness tracking."
-    - name: "sales_channel"
-      expr: sales_channel
-      comment: "Sales channel (Direct, Distribution, Online) for channel revenue attribution."
-    - name: "sales_region"
-      expr: sales_region
-      comment: "Geographic sales region for regional revenue reporting."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Line-level billing currency for multi-currency analysis."
+      comment: "Current status of the invoice line (e.g. Active, Cancelled, Disputed) — used to filter revenue to recognized lines."
     - name: "revenue_recognition_category"
       expr: revenue_recognition_category
-      comment: "ASC 606 revenue recognition category for compliance and financial reporting."
-    - name: "billing_period_start_month"
+      comment: "ASC 606 revenue recognition category (e.g. Point-in-Time, Over-Time) — critical for revenue accounting compliance."
+    - name: "sales_channel"
+      expr: sales_channel
+      comment: "Sales channel (e.g. Direct, Distribution, Online) — used to analyze revenue mix by go-to-market channel."
+    - name: "sales_region"
+      expr: sales_region
+      comment: "Geographic sales region — used for regional revenue performance analysis and territory management."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Billing currency of the invoice line — used for multi-currency revenue analysis and FX exposure."
+    - name: "billing_month"
       expr: DATE_TRUNC('MONTH', billing_period_start)
-      comment: "Billing period start month for period-over-period revenue trending."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure (Units, Wafers, Dies) for volume analysis."
+      comment: "Month of billing period start — primary time dimension for monthly revenue trend analysis at line level."
     - name: "is_tax_exempt"
       expr: is_tax_exempt
-      comment: "Flag for tax-exempt line items; used in tax compliance reporting."
+      comment: "Flag indicating whether the line is tax-exempt — used for tax compliance and exemption certificate tracking."
     - name: "is_discount_applied"
       expr: is_discount_applied
-      comment: "Flag indicating whether a discount was applied to the line."
+      comment: "Flag indicating whether a discount was applied to this line — used to measure discount penetration rate."
   measures:
     - name: "total_line_items"
       expr: COUNT(1)
-      comment: "Total invoice line items; billing volume baseline."
-    - name: "total_gross_line_amount"
+      comment: "Total number of invoice line items. Baseline volume metric for billing complexity and processing workload."
+    - name: "total_gross_revenue"
       expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross billed amount across all lines; top-line revenue by segment."
-    - name: "total_net_line_amount"
+      comment: "Total gross revenue across all invoice lines before discounts. Primary revenue KPI at the line level for product and channel mix analysis."
+    - name: "total_net_revenue"
       expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net billed amount after discounts; primary revenue measure at line level."
-    - name: "total_extended_amount"
-      expr: SUM(CAST(extended_amount AS DOUBLE))
-      comment: "Total extended amount (quantity × unit price); validates pricing accuracy."
+      comment: "Total net revenue after discounts. Represents actual recognized revenue at line level — used in product P&L and margin analysis."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax charged across invoice lines. Used for tax reconciliation and jurisdiction-level tax liability reporting."
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount granted at line level; measures pricing compliance."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax charged at line level; supports tax liability reconciliation."
+      comment: "Total discounts granted at line level. Measures pricing discipline and discount leakage by product, channel, and region."
     - name: "total_quantity_billed"
       expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total units/wafers/dies billed; volume throughput metric."
+      comment: "Total units billed across invoice lines. Used to compute average selling price and track volume trends by product."
     - name: "avg_unit_price"
       expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across billed lines; pricing trend and ASP (average selling price) indicator."
+      comment: "Average unit selling price across invoice lines. Key pricing KPI — declining ASP signals pricing pressure or mix shift."
     - name: "avg_royalty_rate_pct"
       expr: AVG(CAST(royalty_rate_percent AS DOUBLE))
-      comment: "Average royalty rate applied on billed lines; IP monetization effectiveness."
-    - name: "line_discount_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount AS DOUBLE)), 0), 2)
-      comment: "Discount as a percentage of gross line amount; line-level pricing discipline metric."
-    - name: "tax_exempt_line_count"
-      expr: COUNT(CASE WHEN is_tax_exempt = TRUE THEN 1 END)
-      comment: "Count of tax-exempt line items; compliance exposure and revenue mix indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_nre_billing_milestone`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "NRE (Non-Recurring Engineering) billing milestone metrics tracking milestone amounts, billing status, and schedule adherence. Used by program finance, sales, and CFO to manage NRE revenue recognition and project billing compliance."
-  source: "`vibe_semiconductors_v1`.`invoice`.`nre_billing_milestone`"
-  dimensions:
-    - name: "milestone_status"
-      expr: milestone_status
-      comment: "Current status of the NRE milestone (Planned, In Progress, Completed, Billed)."
-    - name: "nre_billing_milestone_status"
-      expr: nre_billing_milestone_status
-      comment: "Billing-specific status of the NRE milestone for revenue recognition tracking."
-    - name: "billing_trigger_type"
-      expr: billing_trigger_type
-      comment: "Trigger type for billing (Milestone Completion, Date, Delivery) for schedule analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of NRE billing for multi-currency program finance."
-    - name: "planned_date_month"
-      expr: DATE_TRUNC('MONTH', planned_date)
-      comment: "Planned billing month for NRE schedule adherence tracking."
-    - name: "actual_date_month"
-      expr: DATE_TRUNC('MONTH', actual_date)
-      comment: "Actual billing month for schedule variance analysis."
-    - name: "is_recurring"
-      expr: is_recurring
-      comment: "Flag for recurring NRE milestones vs. one-time events."
-    - name: "recurring_interval"
-      expr: recurring_interval
-      comment: "Recurrence interval for recurring NRE billing schedules."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms applicable to the NRE milestone."
-  measures:
-    - name: "total_nre_milestones"
-      expr: COUNT(1)
-      comment: "Total NRE billing milestones; program billing activity volume."
-    - name: "total_milestone_amount"
-      expr: SUM(CAST(milestone_amount AS DOUBLE))
-      comment: "Total NRE milestone amount; contracted NRE revenue pipeline."
-    - name: "total_gross_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross NRE billed amount; top-line NRE revenue."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net NRE billed amount after adjustments; recognized NRE revenue."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on NRE billings; tax liability for NRE revenue."
-    - name: "avg_milestone_amount"
-      expr: AVG(CAST(milestone_amount AS DOUBLE))
-      comment: "Average NRE milestone value; benchmarks NRE deal size and program scope."
-    - name: "billed_milestone_count"
-      expr: COUNT(CASE WHEN nre_billing_milestone_status = 'Billed' THEN 1 END)
-      comment: "Count of milestones successfully billed; NRE revenue realization rate."
-    - name: "billing_completion_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(net_amount AS DOUBLE)) / NULLIF(SUM(CAST(milestone_amount AS DOUBLE)), 0), 2)
-      comment: "Net billed amount as a percentage of contracted milestone amount; NRE billing realization rate."
+      comment: "Average royalty rate applied to invoice lines. Used by IP licensing teams to monitor royalty rate trends and compliance."
+    - name: "discount_penetration_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_discount_applied = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of invoice lines where a discount was applied. Measures how broadly discounts are being granted — high rates signal pricing policy issues."
+    - name: "net_revenue_per_unit"
+      expr: ROUND(SUM(CAST(net_amount AS DOUBLE)) / NULLIF(SUM(CAST(quantity AS DOUBLE)), 0), 4)
+      comment: "Net revenue per unit billed. Effective average selling price net of discounts — primary metric for pricing strategy and margin management."
+    - name: "distinct_skus_billed"
+      expr: COUNT(DISTINCT sku_id)
+      comment: "Number of distinct SKUs appearing on invoice lines. Measures product breadth in billing and identifies revenue concentration risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_payment_receipt`
@@ -612,419 +153,368 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment collection and cash application metrics for accounts receivable performance"
+  comment: "Cash collection and payment receipt KPIs covering payment volumes, methods, FX impact, and overpayment/partial payment rates. Used by Treasury, AR Collections, and CFO to manage cash flow and collection efficiency."
   source: "`vibe_semiconductors_v1`.`invoice`.`payment_receipt`"
   dimensions:
-    - name: "payment_date"
-      expr: payment_date
-      comment: "Date payment was received"
-    - name: "payment_month"
-      expr: DATE_TRUNC('MONTH', payment_date)
-      comment: "Month of payment receipt for period analysis"
-    - name: "receipt_date"
-      expr: receipt_date
-      comment: "Date receipt was recorded"
     - name: "payment_status"
       expr: payment_status
-      comment: "Status of the payment"
-    - name: "receipt_status"
-      expr: receipt_status
-      comment: "Status of the receipt record"
+      comment: "Status of the payment receipt (e.g. Applied, Unapplied, Reversed) — primary filter for cash application efficiency analysis."
     - name: "payment_method"
       expr: payment_method
-      comment: "Method used for payment (wire, check, ACH, etc.)"
+      comment: "Payment method used (e.g. Wire, ACH, Check, Credit Card) — used to analyze payment channel mix and processing costs."
     - name: "payment_type"
       expr: payment_type
-      comment: "Type of payment transaction"
+      comment: "Type of payment (e.g. Standard, Advance, On-Account) — used to classify cash receipts for treasury reporting."
     - name: "payment_channel"
       expr: payment_channel
-      comment: "Channel through which payment was received"
+      comment: "Channel through which payment was received (e.g. Portal, Bank Transfer, Manual) — used to drive digital payment adoption."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the payment"
-    - name: "on_account_payment_flag"
-      expr: on_account_payment_flag
-      comment: "Flag indicating payment on account without specific invoice"
-    - name: "overpayment_flag"
-      expr: overpayment_flag
-      comment: "Flag indicating overpayment received"
-    - name: "partial_payment_flag"
-      expr: partial_payment_flag
-      comment: "Flag indicating partial payment of invoice"
-    - name: "reversal_indicator"
-      expr: reversal_indicator
-      comment: "Flag indicating payment reversal"
+      comment: "Currency of the payment receipt — used for multi-currency cash management and FX gain/loss analysis."
+    - name: "payment_month"
+      expr: DATE_TRUNC('MONTH', payment_date)
+      comment: "Calendar month of payment receipt — primary time dimension for monthly cash collection trend analysis."
     - name: "compliance_check_status"
       expr: compliance_check_status
-      comment: "Status of compliance checks on payment"
+      comment: "Status of compliance screening on the payment (e.g. Cleared, Flagged, Pending) — used for AML/sanctions compliance monitoring."
+    - name: "reversal_indicator"
+      expr: reversal_indicator
+      comment: "Flag indicating whether the payment was reversed — used to identify payment reversal rates and fraud risk."
   measures:
-    - name: "payment_count"
-      expr: COUNT(DISTINCT payment_receipt_id)
-      comment: "Total number of payment receipts"
-    - name: "total_payment_amount"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total amount of payments received"
-    - name: "total_amount_received"
-      expr: SUM(CAST(amount_received AS DOUBLE))
-      comment: "Total amount received including all components"
+    - name: "total_payments_received"
+      expr: COUNT(1)
+      comment: "Total number of payment receipts processed. Baseline volume metric for AR cash application workload."
+    - name: "total_cash_collected"
+      expr: SUM(CAST(total_amount AS DOUBLE))
+      comment: "Total cash collected across all payment receipts. Primary treasury KPI for cash inflow monitoring and liquidity management."
+    - name: "total_net_amount_applied"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net amount applied to invoices after discounts. Measures effective cash application against outstanding AR."
     - name: "total_allocated_amount"
       expr: SUM(CAST(allocated_amount_total AS DOUBLE))
-      comment: "Total amount allocated to invoices"
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net payment amount"
-    - name: "total_discount_amount"
+      comment: "Total amount allocated to specific invoices. Used to measure cash application completeness and identify unapplied cash."
+    - name: "total_functional_currency_amount"
+      expr: SUM(CAST(functional_currency_amount AS DOUBLE))
+      comment: "Total payments converted to functional currency. Used by treasury to measure FX-adjusted cash collections for consolidated reporting."
+    - name: "total_discount_taken"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early payment discounts taken"
-    - name: "total_tax_amount"
+      comment: "Total early payment discounts taken by customers. Measures cost of early payment incentive programs against cash acceleration benefit."
+    - name: "total_tax_collected"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount in payments"
-    - name: "total_residual_open_amount"
-      expr: SUM(CAST(residual_open_amount AS DOUBLE))
-      comment: "Total remaining open amount after allocation"
+      comment: "Total tax amounts collected in payments. Used for tax remittance reconciliation and VAT/GST compliance."
     - name: "avg_payment_amount"
-      expr: AVG(CAST(payment_amount AS DOUBLE))
-      comment: "Average payment amount per receipt"
-    - name: "allocation_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(allocated_amount_total AS DOUBLE)) / NULLIF(SUM(CAST(amount_received AS DOUBLE)), 0), 2)
-      comment: "Percentage of received amount successfully allocated to invoices"
-    - name: "discount_taken_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(payment_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of payment amount representing early payment discounts"
-    - name: "customer_count"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers making payments"
+      expr: AVG(CAST(total_amount AS DOUBLE))
+      comment: "Average payment receipt amount. Tracks customer payment behavior and identifies shifts in payment size patterns."
+    - name: "avg_exchange_rate"
+      expr: AVG(CAST(exchange_rate AS DOUBLE))
+      comment: "Average FX exchange rate applied to payments. Used by treasury to monitor FX rate trends and hedging effectiveness."
+    - name: "overpayment_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN overpayment_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of payments that resulted in overpayments. High rates indicate billing or payment processing errors requiring investigation."
+    - name: "partial_payment_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN partial_payment_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of payments that are partial. High partial payment rates signal customer cash flow stress or invoice disputes."
+    - name: "reversal_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of payments that were reversed. Elevated reversal rates indicate fraud risk, bank errors, or customer disputes."
+    - name: "residual_open_amount_total"
+      expr: SUM(CAST(residual_open_amount AS DOUBLE))
+      comment: "Total residual open amount remaining after payment application. Measures unapplied cash and partial payment exposure in AR."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_payment_term`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dispute`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment term configuration metrics tracking discount rates, penalty rates, and term policy coverage. Used by credit management and finance to govern payment policy and optimize cash collection incentives."
-  source: "`vibe_semiconductors_v1`.`invoice`.`payment_term`"
+  comment: "Invoice dispute KPIs covering dispute volumes, amounts, resolution rates, and aging. Used by AR Director, Customer Success, and CFO to manage dispute resolution efficiency and protect revenue."
+  source: "`vibe_semiconductors_v1`.`invoice`.`dispute`"
   dimensions:
-    - name: "payment_term_status"
-      expr: payment_term_status
-      comment: "Status of the payment term (Active, Inactive, Deprecated)."
-    - name: "term_type"
-      expr: term_type
-      comment: "Type of payment term (Net, Installment, Letter of Credit) for policy classification."
+    - name: "dispute_status"
+      expr: dispute_status
+      comment: "Current status of the dispute (e.g. Open, In Review, Resolved, Escalated) — primary filter for dispute pipeline management."
+    - name: "dispute_type"
+      expr: dispute_type
+      comment: "Type of dispute (e.g. Pricing, Quantity, Quality, Duplicate) — used to identify systemic billing issues by root cause."
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "Root cause category of the dispute — used for process improvement and reducing dispute recurrence."
+    - name: "resolution_status"
+      expr: resolution_status
+      comment: "Resolution outcome (e.g. Accepted, Rejected, Settled) — used to measure dispute win/loss rates and settlement patterns."
+    - name: "escalation_level"
+      expr: escalation_level
+      comment: "Escalation level of the dispute — used to identify disputes requiring executive intervention."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency applicable to the payment term."
-    - name: "applicable_to_customer_type"
-      expr: applicable_to_customer_type
-      comment: "Customer type the term applies to for segmented policy analysis."
-    - name: "is_active"
-      expr: is_active
-      comment: "Flag for currently active payment terms."
-    - name: "is_default"
-      expr: is_default
-      comment: "Flag for default payment terms; policy standardization indicator."
-    - name: "letter_of_credit_required"
-      expr: letter_of_credit_required
-      comment: "Flag for terms requiring letter of credit; high-risk customer policy."
-    - name: "tax_inclusive"
-      expr: tax_inclusive
-      comment: "Flag for tax-inclusive payment terms."
+      comment: "Currency of the disputed amount — used for multi-currency dispute exposure analysis."
+    - name: "dispute_open_month"
+      expr: DATE_TRUNC('MONTH', open_timestamp)
+      comment: "Month the dispute was opened — primary time dimension for dispute trend analysis."
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the dispute (e.g. High, Medium, Low) — used to prioritize resolution resources."
   measures:
-    - name: "total_payment_terms"
+    - name: "total_disputes"
       expr: COUNT(1)
-      comment: "Total payment term configurations; policy portfolio size."
-    - name: "avg_discount_percent"
-      expr: AVG(CAST(discount_percent AS DOUBLE))
-      comment: "Average early-payment discount percentage; cash acceleration cost benchmark."
-    - name: "avg_early_payment_discount_percent"
-      expr: AVG(CAST(early_payment_discount_percent AS DOUBLE))
-      comment: "Average early-payment discount rate; incentive program effectiveness."
-    - name: "avg_late_payment_penalty_percent"
-      expr: AVG(CAST(late_payment_penalty_percent AS DOUBLE))
-      comment: "Average late payment penalty rate; collections deterrence effectiveness."
-    - name: "total_credit_limit_amount"
+      comment: "Total number of disputes raised. Baseline volume metric for billing quality and customer satisfaction monitoring."
+    - name: "total_disputed_amount"
+      expr: SUM(CAST(disputed_amount AS DOUBLE))
+      comment: "Total amount under dispute. Primary financial exposure KPI — high values signal revenue at risk requiring urgent resolution."
+    - name: "total_settlement_amount"
+      expr: SUM(CAST(settlement_amount AS DOUBLE))
+      comment: "Total amount settled in dispute resolution. Measures actual revenue concessions made to resolve disputes."
+    - name: "avg_disputed_amount"
+      expr: AVG(CAST(disputed_amount AS DOUBLE))
+      comment: "Average disputed amount per dispute. Tracks dispute severity trends — rising averages signal escalating billing issues."
+    - name: "settlement_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(settlement_amount AS DOUBLE)) / NULLIF(SUM(CAST(disputed_amount AS DOUBLE)), 0), 2)
+      comment: "Settlement amount as a percentage of disputed amount. Measures revenue concession rate — high values indicate weak dispute defense."
+    - name: "open_dispute_count"
+      expr: COUNT(CASE WHEN dispute_status = 'Open' THEN 1 END)
+      comment: "Number of currently open disputes. Key operational KPI for AR collections team — drives daily dispute resolution prioritization."
+    - name: "open_dispute_amount"
+      expr: SUM(CASE WHEN dispute_status = 'Open' THEN disputed_amount ELSE 0 END)
+      comment: "Total amount in open disputes. Measures current revenue at risk from unresolved disputes — reported to CFO weekly."
+    - name: "distinct_customers_with_disputes"
+      expr: COUNT(DISTINCT account_id)
+      comment: "Number of distinct customer accounts with disputes. Identifies breadth of dispute exposure across the customer base."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_credit_hold`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Credit hold KPIs covering hold volumes, amounts, risk scores, and release rates. Used by Credit Risk, AR Director, and CFO to manage customer credit exposure and order release decisions."
+  source: "`vibe_semiconductors_v1`.`invoice`.`credit_hold`"
+  dimensions:
+    - name: "credit_hold_status"
+      expr: credit_hold_status
+      comment: "Current status of the credit hold (e.g. Active, Released, Expired) — primary filter for active credit risk exposure."
+    - name: "hold_category"
+      expr: hold_category
+      comment: "Category of the credit hold (e.g. Credit Limit Exceeded, Overdue, Risk Score) — used to identify root causes of holds."
+    - name: "hold_reason"
+      expr: hold_reason
+      comment: "Specific reason for the credit hold — used for credit policy analysis and customer communication."
+    - name: "block_level"
+      expr: block_level
+      comment: "Level at which the hold is applied (e.g. Account, Order, Invoice) — used to assess scope of credit restriction."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the hold amount — used for multi-currency credit exposure analysis."
+    - name: "hold_placed_month"
+      expr: DATE_TRUNC('MONTH', hold_placed_timestamp)
+      comment: "Month the credit hold was placed — used for trend analysis of credit hold frequency."
+  measures:
+    - name: "total_credit_holds"
+      expr: COUNT(1)
+      comment: "Total number of credit holds placed. Baseline metric for credit risk management activity and customer financial health."
+    - name: "total_hold_amount"
+      expr: SUM(CAST(hold_amount AS DOUBLE))
+      comment: "Total revenue amount blocked by credit holds. Measures revenue at risk from credit restrictions — key metric for order management and sales."
+    - name: "total_overdue_amount"
+      expr: SUM(CAST(overdue_amount AS DOUBLE))
+      comment: "Total overdue amount across credit holds. Primary indicator of AR collection risk and customer payment delinquency."
+    - name: "total_credit_limit_exposure"
+      expr: SUM(CAST(credit_limit AS DOUBLE))
+      comment: "Total credit limit across all holds. Measures aggregate credit exposure granted to customers under hold."
+    - name: "avg_risk_score"
+      expr: AVG(CAST(risk_score AS DOUBLE))
+      comment: "Average customer risk score across credit holds. Tracks portfolio credit quality — rising scores signal deteriorating customer creditworthiness."
+    - name: "active_hold_count"
+      expr: COUNT(CASE WHEN credit_hold_status = 'Active' THEN 1 END)
+      comment: "Number of currently active credit holds. Operational KPI for order management — active holds block revenue and require daily review."
+    - name: "active_hold_amount"
+      expr: SUM(CASE WHEN credit_hold_status = 'Active' THEN hold_amount ELSE 0 END)
+      comment: "Total revenue blocked by active credit holds. Measures current revenue impact of credit restrictions — reported to VP Sales and CFO."
+    - name: "distinct_customers_on_hold"
+      expr: COUNT(DISTINCT primary_credit_customer_account_id)
+      comment: "Number of distinct customer accounts currently on credit hold. Measures breadth of credit risk exposure across the customer portfolio."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_customer_credit_limit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer credit limit portfolio KPIs covering credit utilization, limit adequacy, and risk classification. Used by Credit Risk Management, CFO, and Treasury to manage credit exposure and set appropriate limits."
+  source: "`vibe_semiconductors_v1`.`invoice`.`customer_credit_limit`"
+  dimensions:
+    - name: "credit_limit_status"
+      expr: credit_limit_status
+      comment: "Status of the credit limit record (e.g. Active, Expired, Under Review) — primary filter for active credit portfolio analysis."
+    - name: "credit_limit_type"
+      expr: credit_limit_type
+      comment: "Type of credit limit (e.g. Standard, Secured, Insured) — used to analyze credit structure and risk mitigation."
+    - name: "credit_risk_classification"
+      expr: credit_risk_classification
+      comment: "Risk classification of the customer (e.g. Low, Medium, High, Watch) — primary dimension for credit risk portfolio analysis."
+    - name: "credit_rating"
+      expr: credit_rating
+      comment: "External or internal credit rating of the customer — used for credit policy compliance and limit-setting governance."
+    - name: "credit_currency"
+      expr: credit_currency
+      comment: "Currency in which the credit limit is denominated — used for multi-currency credit exposure analysis."
+    - name: "business_unit"
+      expr: business_unit
+      comment: "Business unit owning the customer credit relationship — used for credit exposure analysis by business segment."
+    - name: "region_code"
+      expr: region_code
+      comment: "Geographic region of the customer — used for regional credit risk concentration analysis."
+    - name: "credit_hold_flag"
+      expr: credit_hold_flag
+      comment: "Flag indicating whether the customer is currently on credit hold — used to filter active credit risk cases."
+  measures:
+    - name: "total_customers_with_credit_limits"
+      expr: COUNT(DISTINCT account_id)
+      comment: "Number of distinct customers with active credit limits. Measures breadth of credit portfolio and customer base coverage."
+    - name: "total_credit_limit_granted"
       expr: SUM(CAST(credit_limit_amount AS DOUBLE))
-      comment: "Total credit limit amount embedded in payment terms; credit policy exposure."
-    - name: "letter_of_credit_term_count"
-      expr: COUNT(CASE WHEN letter_of_credit_required = TRUE THEN 1 END)
-      comment: "Count of terms requiring letter of credit; high-risk customer policy coverage."
-    - name: "active_term_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Count of currently active payment terms; policy portfolio health."
+      comment: "Total credit limit granted across all customers. Measures aggregate credit exposure — primary KPI for credit risk management and capital allocation."
+    - name: "total_credit_utilized"
+      expr: SUM(CAST(credit_utilization_amount AS DOUBLE))
+      comment: "Total credit currently utilized by customers. Measures actual credit exposure vs. limit — used for liquidity and risk management."
+    - name: "total_overdue_amount"
+      expr: SUM(CAST(overdue_amount AS DOUBLE))
+      comment: "Total overdue amounts across all credit limit records. Key indicator of collection risk and potential bad debt exposure."
+    - name: "avg_credit_utilization_pct"
+      expr: AVG(CAST(credit_utilization_pct AS DOUBLE))
+      comment: "Average credit utilization percentage across customers. High utilization signals customers approaching credit limits — triggers proactive credit review."
+    - name: "avg_credit_limit_amount"
+      expr: AVG(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Average credit limit per customer. Tracks credit policy generosity trends and benchmarks against industry norms."
+    - name: "customers_on_credit_hold"
+      expr: COUNT(CASE WHEN credit_hold_flag = TRUE THEN 1 END)
+      comment: "Number of customers currently on credit hold. Operational KPI for AR and sales — holds block order processing and revenue."
+    - name: "credit_utilization_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(credit_utilization_amount AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit_amount AS DOUBLE)), 0), 2)
+      comment: "Portfolio-level credit utilization rate. Measures how much of the total credit granted is being used — high rates signal elevated credit risk."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_performance_obligation`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dunning_notice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "ASC 606 performance obligation metrics tracking allocated amounts, recognition progress, and obligation fulfillment. Used by accounting and revenue operations to ensure compliant multi-element arrangement accounting."
-  source: "`vibe_semiconductors_v1`.`invoice`.`performance_obligation`"
+  comment: "Dunning and collections KPIs covering overdue amounts, dunning escalation levels, and collection effectiveness. Used by AR Collections, Credit Risk, and CFO to manage delinquent receivables and reduce bad debt."
+  source: "`vibe_semiconductors_v1`.`invoice`.`dunning_notice`"
   dimensions:
-    - name: "obligation_status"
-      expr: obligation_status
-      comment: "Current status of the performance obligation (Open, Partially Satisfied, Fully Satisfied)."
-    - name: "performance_obligation_status"
-      expr: performance_obligation_status
-      comment: "Detailed obligation status for ASC 606 compliance tracking."
-    - name: "obligation_type"
-      expr: obligation_type
-      comment: "Type of obligation (Product Delivery, Service, License, NRE) for revenue policy classification."
-    - name: "revenue_recognition_method"
-      expr: revenue_recognition_method
-      comment: "Recognition method (Point-in-Time, Over-Time) for accounting policy compliance."
-    - name: "satisfaction_method"
-      expr: satisfaction_method
-      comment: "Method of obligation satisfaction for audit documentation."
-    - name: "billing_frequency"
-      expr: billing_frequency
-      comment: "Billing frequency for recurring obligation revenue scheduling."
+    - name: "dunning_notice_status"
+      expr: dunning_notice_status
+      comment: "Current status of the dunning notice (e.g. Sent, Responded, Escalated, Closed) — primary filter for active collections pipeline."
+    - name: "dunning_level"
+      expr: dunning_level
+      comment: "Dunning escalation level (e.g. Level 1, 2, 3, Legal) — measures severity of collection action and customer delinquency."
+    - name: "delivery_method"
+      expr: delivery_method
+      comment: "Method used to deliver the dunning notice (e.g. Email, Post, Phone) — used to optimize collection channel effectiveness."
+    - name: "response_status"
+      expr: response_status
+      comment: "Customer response to the dunning notice (e.g. Promised, Disputed, No Response) — used to forecast collection outcomes."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the obligation for multi-currency revenue management."
-    - name: "effective_start_date_month"
-      expr: DATE_TRUNC('MONTH', effective_start_date)
-      comment: "Month obligation became effective for cohort analysis."
-    - name: "measurement_unit"
-      expr: measurement_unit
-      comment: "Unit of measurement for obligation progress tracking."
+      comment: "Currency of the overdue amount — used for multi-currency collections analysis."
+    - name: "notice_month"
+      expr: DATE_TRUNC('MONTH', notice_date)
+      comment: "Month the dunning notice was issued — primary time dimension for collections activity trend analysis."
+    - name: "legal_hold_flag"
+      expr: legal_hold_flag
+      comment: "Flag indicating whether the account is under legal hold — used to identify accounts in legal collections proceedings."
+    - name: "escalation_threshold_exceeded"
+      expr: escalation_threshold_exceeded
+      comment: "Flag indicating whether the escalation threshold has been exceeded — used to prioritize high-risk collection cases."
   measures:
-    - name: "total_performance_obligations"
+    - name: "total_dunning_notices"
       expr: COUNT(1)
-      comment: "Total performance obligations; ASC 606 contract portfolio size."
-    - name: "total_allocated_amount"
-      expr: SUM(CAST(allocated_amount AS DOUBLE))
-      comment: "Total transaction price allocated to obligations; contracted revenue by obligation."
-    - name: "total_recognized_amount"
-      expr: SUM(CAST(recognized_amount AS DOUBLE))
-      comment: "Total amount recognized from obligations; revenue realization progress."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on performance obligations; tax liability tracking."
-    - name: "total_target_quantity"
-      expr: SUM(CAST(target_quantity AS DOUBLE))
-      comment: "Total target quantity across obligations; contracted volume commitment."
-    - name: "total_actual_quantity"
-      expr: SUM(CAST(actual_quantity AS DOUBLE))
-      comment: "Total actual quantity delivered against obligations; fulfillment progress."
-    - name: "avg_allocated_amount"
-      expr: AVG(CAST(allocated_amount AS DOUBLE))
-      comment: "Average allocated amount per obligation; benchmarks obligation size."
-    - name: "recognition_completion_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(recognized_amount AS DOUBLE)) / NULLIF(SUM(CAST(allocated_amount AS DOUBLE)), 0), 2)
-      comment: "Recognized amount as a percentage of allocated amount; obligation fulfillment and revenue realization rate."
-    - name: "quantity_fulfillment_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(actual_quantity AS DOUBLE)) / NULLIF(SUM(CAST(target_quantity AS DOUBLE)), 0), 2)
-      comment: "Actual quantity delivered as a percentage of target; delivery obligation fulfillment rate."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_pricing_agreement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer pricing agreement metrics tracking contracted prices, rebate accruals, discount rates, and commitment fulfillment. Used by sales finance, pricing, and commercial leadership to manage pricing compliance and rebate liability."
-  source: "`vibe_semiconductors_v1`.`invoice`.`pricing_agreement`"
-  dimensions:
-    - name: "agreement_status"
-      expr: agreement_status
-      comment: "Current status of the pricing agreement (Active, Expired, Pending Approval)."
-    - name: "pricing_agreement_status"
-      expr: pricing_agreement_status
-      comment: "Detailed pricing agreement status for commercial management."
-    - name: "agreement_type"
-      expr: agreement_type
-      comment: "Type of pricing agreement (Volume, Tiered, Fixed, Rebate) for commercial analysis."
-    - name: "pricing_model"
-      expr: pricing_model
-      comment: "Pricing model applied (Cost-Plus, Market-Based, Negotiated) for margin analysis."
-    - name: "rebate_type"
-      expr: rebate_type
-      comment: "Type of rebate (Volume, Growth, Loyalty) for rebate program management."
-    - name: "settlement_frequency"
-      expr: settlement_frequency
-      comment: "Rebate settlement frequency (Monthly, Quarterly, Annual) for cash flow planning."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Agreement currency for multi-currency pricing management."
-    - name: "effective_start_date_month"
-      expr: DATE_TRUNC('MONTH', effective_start_date)
-      comment: "Month agreement became effective for cohort and renewal analysis."
-    - name: "is_exclusive"
-      expr: is_exclusive
-      comment: "Flag for exclusive pricing agreements; strategic customer relationship indicator."
-    - name: "is_confidential"
-      expr: is_confidential
-      comment: "Flag for confidential pricing agreements; compliance and access control."
-  measures:
-    - name: "total_pricing_agreements"
-      expr: COUNT(1)
-      comment: "Total active pricing agreements; commercial portfolio size."
-    - name: "total_price_amount"
-      expr: SUM(CAST(price_amount AS DOUBLE))
-      comment: "Total contracted price amount across agreements; pricing portfolio value."
-    - name: "total_minimum_commitment"
-      expr: SUM(CAST(minimum_commitment_amount AS DOUBLE))
-      comment: "Total minimum purchase commitments; contracted revenue floor."
-    - name: "total_maximum_commitment"
-      expr: SUM(CAST(maximum_commitment_amount AS DOUBLE))
-      comment: "Total maximum purchase commitments; contracted revenue ceiling."
-    - name: "total_rebate_accrued"
-      expr: SUM(CAST(rebate_accrued_amount AS DOUBLE))
-      comment: "Total rebate liability accrued; balance sheet rebate payable exposure."
-    - name: "total_rebate_settled"
-      expr: SUM(CAST(rebate_settled_amount AS DOUBLE))
-      comment: "Total rebate amounts settled; cash outflow from rebate programs."
-    - name: "avg_discount_rate_pct"
-      expr: AVG(CAST(discount_rate AS DOUBLE))
-      comment: "Average discount rate across pricing agreements; pricing discipline benchmark."
-    - name: "avg_rebate_rate_pct"
-      expr: AVG(CAST(rebate_rate AS DOUBLE))
-      comment: "Average rebate rate across agreements; rebate program cost benchmark."
-    - name: "rebate_settlement_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(rebate_settled_amount AS DOUBLE)) / NULLIF(SUM(CAST(rebate_accrued_amount AS DOUBLE)), 0), 2)
-      comment: "Rebate settled as a percentage of accrued; rebate liability resolution rate."
-    - name: "volume_threshold_total"
-      expr: SUM(CAST(volume_threshold AS DOUBLE))
-      comment: "Total volume thresholds across tiered agreements; contracted volume commitment portfolio."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_recognition_schedule`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Revenue recognition schedule metrics tracking scheduled vs. recognized amounts and schedule adherence. Used by accounting and revenue operations to manage deferred revenue amortization and period-close accuracy."
-  source: "`vibe_semiconductors_v1`.`invoice`.`recognition_schedule`"
-  dimensions:
-    - name: "schedule_status"
-      expr: schedule_status
-      comment: "Current status of the recognition schedule (Active, Completed, Cancelled)."
-    - name: "recognition_schedule_status"
-      expr: recognition_schedule_status
-      comment: "Detailed recognition schedule status for close management."
-    - name: "schedule_type"
-      expr: schedule_type
-      comment: "Type of recognition schedule (Straight-Line, Milestone, Usage-Based)."
-    - name: "recognition_method"
-      expr: recognition_method
-      comment: "Revenue recognition method applied on the schedule."
-    - name: "frequency"
-      expr: frequency
-      comment: "Recognition frequency (Monthly, Quarterly, Annual) for schedule management."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the recognition schedule."
-    - name: "scheduled_date_month"
-      expr: DATE_TRUNC('MONTH', scheduled_date)
-      comment: "Month of scheduled recognition for period-close planning."
-    - name: "recognized_flag"
-      expr: recognized_flag
-      comment: "Flag indicating whether the scheduled amount has been recognized."
-    - name: "is_prorated"
-      expr: is_prorated
-      comment: "Flag for prorated recognition schedules; partial-period revenue accuracy."
-  measures:
-    - name: "total_recognition_schedules"
-      expr: COUNT(1)
-      comment: "Total recognition schedule records; deferred revenue amortization portfolio size."
-    - name: "total_scheduled_amount"
-      expr: SUM(CAST(scheduled_amount AS DOUBLE))
-      comment: "Total amount scheduled for recognition; deferred revenue pipeline."
-    - name: "total_amount_per_period"
-      expr: SUM(CAST(amount_per_period AS DOUBLE))
-      comment: "Total periodic recognition amount; revenue run-rate from scheduled recognition."
-    - name: "avg_amount_per_period"
-      expr: AVG(CAST(amount_per_period AS DOUBLE))
-      comment: "Average periodic recognition amount; benchmarks deferred revenue amortization rate."
-    - name: "recognized_schedule_count"
-      expr: COUNT(CASE WHEN recognized_flag = TRUE THEN 1 END)
-      comment: "Count of schedules where recognition has been completed; close completeness indicator."
-    - name: "recognition_completion_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN recognized_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of scheduled recognition events completed; period-close accuracy KPI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_revenue_recognition`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Revenue recognition metrics for financial reporting and compliance with accounting standards"
-  source: "`vibe_semiconductors_v1`.`invoice`.`revenue_recognition_event`"
-  dimensions:
-    - name: "recognition_date"
-      expr: recognition_date
-      comment: "Date revenue was recognized"
-    - name: "recognition_month"
-      expr: DATE_TRUNC('MONTH', recognition_date)
-      comment: "Month of revenue recognition for period reporting"
-    - name: "recognition_quarter"
-      expr: DATE_TRUNC('QUARTER', recognition_date)
-      comment: "Quarter of revenue recognition for quarterly reporting"
-    - name: "accounting_period"
-      expr: accounting_period
-      comment: "Accounting period for the recognition event"
-    - name: "period_start_date"
-      expr: period_start_date
-      comment: "Start date of the recognition period"
-    - name: "period_end_date"
-      expr: period_end_date
-      comment: "End date of the recognition period"
-    - name: "event_type"
-      expr: event_type
-      comment: "Type of revenue recognition event"
-    - name: "event_status"
-      expr: event_status
-      comment: "Status of the recognition event"
-    - name: "revenue_recognition_event_status"
-      expr: revenue_recognition_event_status
-      comment: "Detailed status of revenue recognition"
-    - name: "recognition_method"
-      expr: recognition_method
-      comment: "Method used for revenue recognition (point-in-time, over-time, etc.)"
-    - name: "revenue_category"
-      expr: revenue_category
-      comment: "Category of revenue for classification"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the revenue"
-    - name: "is_reversed"
-      expr: is_reversed
-      comment: "Flag indicating if the recognition was reversed"
-  measures:
-    - name: "recognition_event_count"
-      expr: COUNT(DISTINCT revenue_recognition_event_id)
-      comment: "Total number of revenue recognition events"
-    - name: "total_revenue_amount"
-      expr: SUM(CAST(revenue_amount AS DOUBLE))
-      comment: "Total revenue recognized in the period"
-    - name: "total_recognized_amount"
-      expr: SUM(CAST(recognized_amount AS DOUBLE))
-      comment: "Total amount recognized across all events"
-    - name: "total_deferred_amount"
-      expr: SUM(CAST(deferred_amount AS DOUBLE))
-      comment: "Total amount deferred for future recognition"
-    - name: "total_cogs_amount"
-      expr: SUM(CAST(cost_of_goods_sold_amount AS DOUBLE))
-      comment: "Total cost of goods sold associated with recognized revenue"
-    - name: "total_profit_amount"
-      expr: SUM(CAST(profit_amount AS DOUBLE))
-      comment: "Total profit from recognized revenue"
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount on recognized revenue"
-    - name: "avg_revenue_per_event"
-      expr: AVG(CAST(revenue_amount AS DOUBLE))
-      comment: "Average revenue amount per recognition event"
-    - name: "gross_margin_pct"
-      expr: ROUND(100.0 * SUM(CAST(profit_amount AS DOUBLE)) / NULLIF(SUM(CAST(revenue_amount AS DOUBLE)), 0), 2)
-      comment: "Gross margin percentage on recognized revenue"
-    - name: "deferral_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(deferred_amount AS DOUBLE)) / NULLIF(SUM(CAST(revenue_amount AS DOUBLE)) + SUM(CAST(deferred_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of total revenue that is deferred"
-    - name: "customer_count"
+      comment: "Total number of dunning notices issued. Baseline metric for collections activity volume and AR delinquency breadth."
+    - name: "total_overdue_amount"
+      expr: SUM(CAST(overdue_amount AS DOUBLE))
+      comment: "Total overdue amount across all dunning notices. Primary collections KPI — measures total delinquent AR requiring active collection."
+    - name: "total_dunning_charges"
+      expr: SUM(CAST(dunning_charge AS DOUBLE))
+      comment: "Total dunning/late fees charged. Measures revenue from penalty enforcement and incentive for timely payment."
+    - name: "total_interest_charged"
+      expr: SUM(CAST(interest_amount AS DOUBLE))
+      comment: "Total interest charged on overdue amounts. Measures financial penalty enforcement effectiveness and cost to delinquent customers."
+    - name: "total_due_amount"
+      expr: SUM(CAST(total_due AS DOUBLE))
+      comment: "Total amount due including principal, interest, and fees. Comprehensive collections exposure metric for treasury and credit management."
+    - name: "avg_interest_rate_pct"
+      expr: AVG(CAST(interest_rate_percent AS DOUBLE))
+      comment: "Average interest rate applied to overdue amounts. Used to assess consistency of penalty enforcement across the customer portfolio."
+    - name: "legal_hold_count"
+      expr: COUNT(CASE WHEN legal_hold_flag = TRUE THEN 1 END)
+      comment: "Number of accounts under legal hold for collections. Measures severity of delinquency requiring legal intervention — reported to CFO and General Counsel."
+    - name: "escalation_exceeded_count"
+      expr: COUNT(CASE WHEN escalation_threshold_exceeded = TRUE THEN 1 END)
+      comment: "Number of dunning notices where escalation threshold was exceeded. Identifies high-risk accounts requiring immediate collections action."
+    - name: "distinct_customers_in_dunning"
       expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers with revenue recognition"
+      comment: "Number of distinct customers with active dunning notices. Measures breadth of delinquency across the customer base."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_adjustment_memo`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Invoice adjustment memo KPIs covering credit/debit memo volumes, amounts, approval rates, and settlement efficiency. Used by Revenue Accounting, AR, and Audit to control revenue adjustments and ensure proper authorization."
+  source: "`vibe_semiconductors_v1`.`invoice`.`adjustment_memo`"
+  dimensions:
+    - name: "adjustment_type"
+      expr: adjustment_type
+      comment: "Type of adjustment (e.g. Credit, Debit, Rebate, Write-Off) — primary classification for revenue adjustment analysis."
+    - name: "adjustment_subtype"
+      expr: adjustment_subtype
+      comment: "Sub-type of adjustment providing additional classification granularity — used for detailed adjustment root cause analysis."
+    - name: "adjustment_category"
+      expr: adjustment_category
+      comment: "Business category of the adjustment (e.g. Pricing Error, Return, Dispute Settlement) — used to identify systemic billing issues."
+    - name: "adjustment_memo_status"
+      expr: adjustment_memo_status
+      comment: "Current status of the adjustment memo (e.g. Draft, Pending Approval, Approved, Applied) — used to track adjustment pipeline."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the adjustment (e.g. Pending, Approved, Rejected) — used for authorization control and audit compliance."
+    - name: "settlement_status"
+      expr: settlement_status
+      comment: "Settlement status of the adjustment (e.g. Settled, Pending, Partial) — used to track adjustment application to invoices."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the adjustment — used for multi-currency adjustment analysis."
+    - name: "effective_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month the adjustment is effective — primary time dimension for adjustment trend analysis."
+    - name: "is_manual"
+      expr: is_manual
+      comment: "Flag indicating whether the adjustment was manually created — used to monitor manual override rates and audit risk."
+  measures:
+    - name: "total_adjustment_memos"
+      expr: COUNT(1)
+      comment: "Total number of adjustment memos issued. Baseline metric for revenue adjustment activity and billing correction frequency."
+    - name: "total_applied_amount"
+      expr: SUM(CAST(applied_amount AS DOUBLE))
+      comment: "Total amount applied through adjustment memos. Measures actual revenue adjustments posted — key metric for revenue integrity and audit."
+    - name: "total_approved_amount"
+      expr: SUM(CAST(approved_amount AS DOUBLE))
+      comment: "Total amount approved for adjustment. Measures authorized revenue adjustments — compared to applied amount to detect unauthorized postings."
+    - name: "total_remaining_balance"
+      expr: SUM(CAST(remaining_balance AS DOUBLE))
+      comment: "Total unapplied balance remaining on adjustment memos. Measures pending revenue adjustments not yet applied to invoices."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax component of adjustment memos. Used for tax credit/debit reconciliation in VAT and GST filings."
+    - name: "avg_adjustment_amount"
+      expr: AVG(CAST(total_amount AS DOUBLE))
+      comment: "Average total amount per adjustment memo. Tracks adjustment size trends — large averages signal systemic pricing or billing issues."
+    - name: "manual_adjustment_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_manual = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of adjustments that are manually created. High manual rates indicate process gaps and elevated audit risk — target is below 10%."
+    - name: "approval_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of adjustment memos that received approval. Measures authorization compliance — low rates signal approval bottlenecks."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_revenue_recognition_event`
@@ -1032,70 +522,117 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "ASC 606 revenue recognition event metrics tracking recognized amounts, deferred revenue, COGS, and profit by period. Used by accounting, CFO, and external auditors to ensure compliant revenue recognition and financial reporting accuracy."
+  comment: "ASC 606 revenue recognition KPIs covering recognized revenue, deferred revenue, COGS, and profit by period. Used by Revenue Accounting, CFO, and External Auditors to ensure compliant revenue recognition and accurate financial reporting."
   source: "`vibe_semiconductors_v1`.`invoice`.`revenue_recognition_event`"
   dimensions:
-    - name: "event_status"
-      expr: event_status
-      comment: "Status of the recognition event (Pending, Recognized, Reversed, Deferred)."
     - name: "revenue_recognition_event_status"
       expr: revenue_recognition_event_status
-      comment: "Detailed recognition event status for ASC 606 compliance tracking."
-    - name: "event_type"
-      expr: event_type
-      comment: "Type of recognition event (Point-in-Time, Over-Time) for revenue policy classification."
+      comment: "Status of the recognition event (e.g. Recognized, Deferred, Reversed) — primary filter for revenue recognition pipeline."
     - name: "recognition_method"
       expr: recognition_method
-      comment: "Revenue recognition method applied (Percentage Completion, Milestone, Delivery)."
+      comment: "Revenue recognition method applied (e.g. Point-in-Time, Over-Time, Milestone) — used for ASC 606 compliance analysis."
     - name: "revenue_category"
       expr: revenue_category
-      comment: "Revenue category (Product, Service, License, NRE) for P&L line reporting."
+      comment: "Category of revenue being recognized (e.g. Product, NRE, Royalty, Service) — used for revenue mix analysis in financial reporting."
     - name: "accounting_period"
       expr: accounting_period
-      comment: "Accounting period for financial close and period-over-period analysis."
+      comment: "Accounting period for the recognition event — primary dimension for period-over-period revenue comparison."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of recognition events for multi-currency financial reporting."
-    - name: "recognition_date_month"
-      expr: DATE_TRUNC('MONTH', recognition_date)
-      comment: "Month of revenue recognition for trend and close analysis."
+      comment: "Currency of the recognition event — used for multi-currency revenue reporting and FX analysis."
+    - name: "recognition_month"
+      expr: DATE_TRUNC('MONTH', recognition_timestamp)
+      comment: "Month of revenue recognition — primary time dimension for monthly revenue trend analysis."
     - name: "is_reversed"
       expr: is_reversed
-      comment: "Flag for reversed recognition events; audit trail and restatement risk."
+      comment: "Flag indicating whether the recognition event was reversed — used to identify and investigate revenue reversals."
+    - name: "period_start_month"
+      expr: DATE_TRUNC('MONTH', period_start_date)
+      comment: "Month of the recognition period start — used for over-time revenue spread analysis."
   measures:
-    - name: "total_recognition_events"
-      expr: COUNT(1)
-      comment: "Total revenue recognition events; financial close activity volume."
-    - name: "total_recognized_amount"
-      expr: SUM(CAST(recognized_amount AS DOUBLE))
-      comment: "Total revenue recognized; primary top-line revenue KPI for financial reporting."
-    - name: "total_revenue_amount"
+    - name: "total_revenue_recognized"
       expr: SUM(CAST(revenue_amount AS DOUBLE))
-      comment: "Total revenue amount from recognition events; P&L revenue line."
-    - name: "total_deferred_amount"
+      comment: "Total revenue recognized in the period. Primary financial reporting KPI — directly feeds the income statement and is audited for ASC 606 compliance."
+    - name: "total_deferred_revenue"
       expr: SUM(CAST(deferred_amount AS DOUBLE))
-      comment: "Total deferred revenue balance; balance sheet liability and future revenue pipeline."
+      comment: "Total revenue deferred to future periods. Key balance sheet metric — measures performance obligations not yet satisfied."
     - name: "total_cogs_amount"
       expr: SUM(CAST(cost_of_goods_sold_amount AS DOUBLE))
-      comment: "Total cost of goods sold recognized; gross margin calculation input."
+      comment: "Total cost of goods sold associated with recognized revenue. Used to calculate gross margin and assess product profitability."
     - name: "total_profit_amount"
       expr: SUM(CAST(profit_amount AS DOUBLE))
-      comment: "Total profit from recognized revenue events; gross profit KPI."
+      comment: "Total profit from recognized revenue events. Measures gross profitability of recognized revenue — key P&L metric."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on recognized revenue; tax provision accuracy."
-    - name: "avg_recognized_amount"
-      expr: AVG(CAST(recognized_amount AS DOUBLE))
-      comment: "Average recognized amount per event; benchmarks recognition transaction size."
-    - name: "reversal_count"
-      expr: COUNT(CASE WHEN is_reversed = TRUE THEN 1 END)
-      comment: "Count of reversed recognition events; restatement risk and audit flag."
+      comment: "Total tax associated with revenue recognition events. Used for tax provision calculations and regulatory reporting."
+    - name: "avg_revenue_per_event"
+      expr: AVG(CAST(revenue_amount AS DOUBLE))
+      comment: "Average revenue amount per recognition event. Tracks deal size and revenue concentration trends."
     - name: "gross_margin_pct"
       expr: ROUND(100.0 * SUM(CAST(profit_amount AS DOUBLE)) / NULLIF(SUM(CAST(revenue_amount AS DOUBLE)), 0), 2)
-      comment: "Gross margin percentage from recognized revenue events; profitability KPI for CFO and board."
-    - name: "deferred_revenue_ratio_pct"
-      expr: ROUND(100.0 * SUM(CAST(deferred_amount AS DOUBLE)) / NULLIF(SUM(CAST(revenue_amount AS DOUBLE)), 0), 2)
-      comment: "Deferred revenue as a percentage of total revenue; forward revenue visibility and balance sheet health."
+      comment: "Gross margin percentage on recognized revenue. Primary profitability KPI — directly informs pricing strategy and cost management decisions."
+    - name: "deferred_revenue_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(deferred_amount AS DOUBLE)) / NULLIF(SUM(CAST(revenue_amount AS DOUBLE)) + SUM(CAST(deferred_amount AS DOUBLE)), 0), 2)
+      comment: "Deferred revenue as a percentage of total revenue (recognized + deferred). Measures revenue timing risk and backlog quality under ASC 606."
+    - name: "reversal_count"
+      expr: COUNT(CASE WHEN is_reversed = TRUE THEN 1 END)
+      comment: "Number of reversed revenue recognition events. Elevated reversals signal accounting errors or contract modifications requiring investigation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_performance_obligation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "ASC 606 performance obligation KPIs covering obligation fulfillment, revenue recognition progress, and backlog. Used by Revenue Accounting and CFO to manage contract performance obligations and ensure compliant revenue recognition."
+  source: "`vibe_semiconductors_v1`.`invoice`.`performance_obligation`"
+  dimensions:
+    - name: "performance_obligation_status"
+      expr: performance_obligation_status
+      comment: "Status of the performance obligation (e.g. Open, Partially Satisfied, Fully Satisfied, Cancelled) — primary filter for obligation pipeline."
+    - name: "obligation_type"
+      expr: obligation_type
+      comment: "Type of performance obligation (e.g. Product Delivery, NRE Service, License, Support) — used for revenue category analysis."
+    - name: "revenue_recognition_method"
+      expr: revenue_recognition_method
+      comment: "Method for recognizing this obligation (e.g. Point-in-Time, Over-Time) — used for ASC 606 compliance monitoring."
+    - name: "billing_frequency"
+      expr: billing_frequency
+      comment: "Frequency of billing for the obligation (e.g. Monthly, Quarterly, Milestone) — used for cash flow forecasting."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the performance obligation — used for multi-currency contract analysis."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('MONTH', effective_start_date)
+      comment: "Month the obligation becomes effective — used for obligation cohort analysis and backlog aging."
+  measures:
+    - name: "total_performance_obligations"
+      expr: COUNT(1)
+      comment: "Total number of performance obligations. Baseline metric for contract complexity and revenue recognition workload."
+    - name: "total_obligation_amount"
+      expr: SUM(CAST(total_amount AS DOUBLE))
+      comment: "Total transaction price allocated to performance obligations. Measures total contracted revenue backlog — key metric for revenue forecasting."
+    - name: "total_recognized_amount"
+      expr: SUM(CAST(recognized_amount AS DOUBLE))
+      comment: "Total amount recognized from performance obligations. Measures revenue earned from contract fulfillment — feeds the income statement."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax associated with performance obligations. Used for tax provision and compliance reporting."
+    - name: "total_target_quantity"
+      expr: SUM(CAST(target_quantity AS DOUBLE))
+      comment: "Total target quantity across performance obligations. Used to measure volume commitments and fulfillment progress."
+    - name: "total_actual_quantity"
+      expr: SUM(CAST(actual_quantity AS DOUBLE))
+      comment: "Total actual quantity delivered against performance obligations. Measures fulfillment progress against contractual commitments."
+    - name: "obligation_fulfillment_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(recognized_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
+      comment: "Percentage of total obligation amount that has been recognized. Measures contract fulfillment progress — critical for ASC 606 compliance and revenue forecasting."
+    - name: "quantity_fulfillment_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(actual_quantity AS DOUBLE)) / NULLIF(SUM(CAST(target_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of target quantity actually delivered. Measures operational fulfillment against contractual volume commitments."
+    - name: "avg_obligation_amount"
+      expr: AVG(CAST(total_amount AS DOUBLE))
+      comment: "Average transaction price per performance obligation. Tracks contract size trends and revenue concentration."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_royalty_billing`
@@ -1103,183 +640,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Intellectual property royalty billing metrics for licensing revenue management"
+  comment: "IP royalty billing KPIs covering royalty revenue, rates, audit status, and payment collection. Used by IP Licensing, Finance, and Legal to manage royalty revenue streams and ensure compliance with licensing agreements."
   source: "`vibe_semiconductors_v1`.`invoice`.`royalty_billing`"
   dimensions:
-    - name: "billing_date"
-      expr: billing_date
-      comment: "Date the royalty billing was generated"
-    - name: "billing_month"
-      expr: DATE_TRUNC('MONTH', billing_date)
-      comment: "Month of royalty billing for period analysis"
-    - name: "billing_quarter"
-      expr: DATE_TRUNC('QUARTER', billing_date)
-      comment: "Quarter of royalty billing for quarterly reporting"
-    - name: "billing_period_start"
-      expr: billing_period_start
-      comment: "Start date of the billing period"
-    - name: "billing_period_end"
-      expr: billing_period_end
-      comment: "End date of the billing period"
-    - name: "royalty_period_start"
-      expr: royalty_period_start
-      comment: "Start date of the royalty period"
-    - name: "royalty_period_end"
-      expr: royalty_period_end
-      comment: "End date of the royalty period"
-    - name: "due_date"
-      expr: due_date
-      comment: "Payment due date"
-    - name: "billing_status"
-      expr: billing_status
-      comment: "Status of the royalty billing"
-    - name: "royalty_billing_status"
-      expr: royalty_billing_status
-      comment: "Detailed royalty billing status"
     - name: "royalty_type"
       expr: royalty_type
-      comment: "Type of royalty (per-unit, revenue-based, etc.)"
+      comment: "Type of royalty (e.g. Unit-Based, Revenue-Based, Flat Fee) — used to analyze royalty revenue by licensing structure."
     - name: "royalty_calculation_method"
       expr: royalty_calculation_method
-      comment: "Method used to calculate royalty"
-    - name: "tier_level"
-      expr: tier_level
-      comment: "Tier level for tiered royalty structures"
-    - name: "region_code"
-      expr: region_code
-      comment: "Geographic region for the royalty"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of royalty billing"
+      comment: "Method used to calculate the royalty (e.g. Per Unit, Percentage of Revenue, Tiered) — used for royalty audit and compliance."
+    - name: "billing_status"
+      expr: billing_status
+      comment: "Current billing status (e.g. Billed, Pending, Disputed) — primary filter for royalty billing pipeline management."
     - name: "audit_status"
       expr: audit_status
-      comment: "Audit status of the royalty billing"
+      comment: "Royalty audit status (e.g. Not Audited, In Progress, Completed) — used to track royalty audit coverage and compliance."
     - name: "reconciliation_status"
       expr: reconciliation_status
-      comment: "Reconciliation status"
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Flag indicating if billing is disputed"
-  measures:
-    - name: "royalty_billing_count"
-      expr: COUNT(DISTINCT royalty_billing_id)
-      comment: "Total number of royalty billing records"
-    - name: "total_royalty_amount"
-      expr: SUM(CAST(royalty_amount AS DOUBLE))
-      comment: "Total royalty amount billed"
-    - name: "total_royalty_amount_gross"
-      expr: SUM(CAST(royalty_amount_gross AS DOUBLE))
-      comment: "Total gross royalty amount before adjustments"
-    - name: "total_royalty_amount_net"
-      expr: SUM(CAST(royalty_amount_net AS DOUBLE))
-      comment: "Total net royalty amount after adjustments"
-    - name: "total_adjustment_amount"
-      expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total adjustments to royalty amounts"
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on royalty billings"
-    - name: "total_units_shipped"
-      expr: SUM(CAST(units_shipped AS BIGINT))
-      comment: "Total units shipped triggering royalty"
-    - name: "total_units_sold"
-      expr: SUM(CAST(units_sold AS BIGINT))
-      comment: "Total units sold for royalty calculation"
-    - name: "avg_royalty_rate"
-      expr: AVG(CAST(royalty_rate AS DOUBLE))
-      comment: "Average royalty rate across billings"
-    - name: "avg_royalty_per_unit"
-      expr: SUM(CAST(royalty_amount AS DOUBLE)) / NULLIF(SUM(CAST(units_sold AS BIGINT)), 0)
-      comment: "Average royalty amount per unit sold"
-    - name: "effective_royalty_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(royalty_amount_net AS DOUBLE)) / NULLIF(SUM(CAST(royalty_amount_gross AS DOUBLE)), 0), 2)
-      comment: "Effective royalty rate after adjustments"
-    - name: "customer_count"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique licensees billed"
-    - name: "ip_core_count"
-      expr: COUNT(DISTINCT product_ip_core_id)
-      comment: "Number of unique IP cores generating royalties"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_tax_determination`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tax determination metrics tracking tax amounts, rates, withholding, and exemptions by jurisdiction. Used by tax, finance, and compliance teams to manage tax liability, audit readiness, and regulatory reporting."
-  source: "`vibe_semiconductors_v1`.`invoice`.`tax_determination`"
-  dimensions:
-    - name: "tax_type"
-      expr: tax_type
-      comment: "Type of tax (VAT, GST, Sales Tax, Withholding) for tax liability classification."
-    - name: "tax_category"
-      expr: tax_category
-      comment: "Tax category for financial reporting and tax provision segmentation."
-    - name: "tax_jurisdiction"
-      expr: tax_jurisdiction
-      comment: "Tax jurisdiction for geographic tax liability analysis."
-    - name: "tax_jurisdiction_type"
-      expr: tax_jurisdiction_type
-      comment: "Jurisdiction type (Federal, State, Local) for tax authority reporting."
-    - name: "tax_line_status"
-      expr: tax_line_status
-      comment: "Processing status of the tax determination line."
-    - name: "tax_calculation_method"
-      expr: tax_calculation_method
-      comment: "Method used for tax calculation (Inclusive, Exclusive, Reverse Charge)."
+      comment: "Reconciliation status of the royalty billing — used to identify unreconciled royalty amounts."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of tax determination for multi-currency tax reporting."
-    - name: "tax_reporting_period_month"
-      expr: DATE_TRUNC('MONTH', tax_reporting_period)
-      comment: "Tax reporting period month for periodic tax filing."
-    - name: "is_tax_exempt"
-      expr: is_tax_exempt
-      comment: "Flag for tax-exempt transactions; exemption compliance tracking."
-    - name: "tax_is_reverse_charge"
-      expr: tax_is_reverse_charge
-      comment: "Flag for reverse charge mechanism transactions; VAT compliance."
-    - name: "tax_withholding_flag"
-      expr: tax_withholding_flag
-      comment: "Flag for withholding tax transactions; cross-border payment compliance."
-    - name: "tax_credit_eligible"
-      expr: tax_credit_eligible
-      comment: "Flag for tax credit eligible transactions; tax optimization opportunity."
+      comment: "Currency of the royalty billing — used for multi-currency royalty revenue analysis."
+    - name: "billing_month"
+      expr: DATE_TRUNC('MONTH', billing_date)
+      comment: "Month of royalty billing — primary time dimension for royalty revenue trend analysis."
+    - name: "tier_level"
+      expr: tier_level
+      comment: "Royalty tier level applicable to the billing — used to analyze royalty rate tier distribution."
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Flag indicating whether the royalty billing is under dispute — used to identify disputed royalty revenue."
   measures:
-    - name: "total_tax_determinations"
+    - name: "total_royalty_billings"
       expr: COUNT(1)
-      comment: "Total tax determination records; tax transaction volume baseline."
+      comment: "Total number of royalty billing records. Baseline metric for IP licensing activity volume."
+    - name: "total_royalty_gross_amount"
+      expr: SUM(CAST(royalty_amount_gross AS DOUBLE))
+      comment: "Total gross royalty revenue billed. Primary IP licensing revenue KPI — measures total royalty income before adjustments."
+    - name: "total_royalty_net_amount"
+      expr: SUM(CAST(royalty_amount_net AS DOUBLE))
+      comment: "Total net royalty revenue after adjustments. Measures actual royalty income recognized — used in IP licensing P&L reporting."
+    - name: "total_adjustment_amount"
+      expr: SUM(CAST(adjustment_amount AS DOUBLE))
+      comment: "Total adjustments applied to royalty billings. Measures royalty correction magnitude — large adjustments signal reporting inaccuracies by licensees."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount determined; primary tax liability KPI for tax provision."
-    - name: "total_taxable_amount"
-      expr: SUM(CAST(taxable_amount AS DOUBLE))
-      comment: "Total taxable base amount; tax exposure basis for audit."
-    - name: "total_tax_base_amount"
-      expr: SUM(CAST(tax_base_amount AS DOUBLE))
-      comment: "Total tax base amount for rate verification and audit reconciliation."
-    - name: "total_withholding_amount"
-      expr: SUM(CAST(withholding_amount AS DOUBLE))
-      comment: "Total withholding tax amount; cross-border payment tax compliance."
-    - name: "total_tax_credit_amount"
-      expr: SUM(CAST(tax_credit_amount AS DOUBLE))
-      comment: "Total tax credits applied; tax optimization and net liability reduction."
-    - name: "avg_tax_rate_pct"
-      expr: AVG(CAST(tax_rate AS DOUBLE))
-      comment: "Average effective tax rate applied; tax rate compliance benchmark."
-    - name: "avg_withholding_rate_pct"
-      expr: AVG(CAST(withholding_rate AS DOUBLE))
-      comment: "Average withholding tax rate; cross-border tax cost benchmark."
-    - name: "effective_tax_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(tax_amount AS DOUBLE)) / NULLIF(SUM(CAST(taxable_amount AS DOUBLE)), 0), 2)
-      comment: "Effective tax rate as a percentage of taxable amount; tax burden and compliance KPI."
-    - name: "reverse_charge_count"
-      expr: COUNT(CASE WHEN tax_is_reverse_charge = TRUE THEN 1 END)
-      comment: "Count of reverse charge mechanism transactions; VAT compliance exposure."
-    - name: "tax_exempt_transaction_count"
-      expr: COUNT(CASE WHEN is_tax_exempt = TRUE THEN 1 END)
-      comment: "Count of tax-exempt transactions; exemption certificate compliance tracking."
+      comment: "Total tax on royalty billings. Used for withholding tax compliance and cross-border royalty tax reporting."
+    - name: "total_unit_shipment_volume"
+      expr: SUM(CAST(unit_shipment_volume AS DOUBLE))
+      comment: "Total units shipped by licensees as reported for royalty calculation. Used to verify royalty reports and detect under-reporting."
+    - name: "avg_royalty_rate"
+      expr: AVG(CAST(royalty_rate AS DOUBLE))
+      comment: "Average royalty rate across all billings. Tracks effective royalty rate trends and benchmarks against licensing agreement terms."
+    - name: "avg_exchange_rate_to_usd"
+      expr: AVG(CAST(exchange_rate_to_usd AS DOUBLE))
+      comment: "Average FX rate used for USD conversion of royalty billings. Used by treasury to monitor FX impact on royalty revenue."
+    - name: "disputed_royalty_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of royalty billings under dispute. High rates signal licensee non-compliance or calculation methodology disagreements."
+    - name: "royalty_adjustment_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(adjustment_amount AS DOUBLE)) / NULLIF(SUM(CAST(royalty_amount_gross AS DOUBLE)), 0), 2)
+      comment: "Royalty adjustments as a percentage of gross royalty billed. Measures royalty reporting accuracy — high rates indicate systemic licensee under/over-reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_write_off`
@@ -1287,92 +708,248 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Bad debt write-off metrics for credit loss analysis and financial reporting"
+  comment: "Bad debt write-off KPIs covering write-off volumes, amounts, recovery rates, and financial impact. Used by CFO, Credit Risk, and External Auditors to manage bad debt expense and assess collection effectiveness."
   source: "`vibe_semiconductors_v1`.`invoice`.`write_off`"
   dimensions:
-    - name: "write_off_date"
-      expr: write_off_date
-      comment: "Date the write-off was recorded"
-    - name: "write_off_month"
-      expr: DATE_TRUNC('MONTH', write_off_date)
-      comment: "Month of write-off for trend analysis"
-    - name: "write_off_quarter"
-      expr: DATE_TRUNC('QUARTER', write_off_date)
-      comment: "Quarter of write-off for quarterly reporting"
-    - name: "effective_date"
-      expr: effective_date
-      comment: "Effective date of the write-off"
-    - name: "reversal_date"
-      expr: reversal_date
-      comment: "Date of write-off reversal if applicable"
     - name: "write_off_status"
       expr: write_off_status
-      comment: "Status of the write-off"
+      comment: "Current status of the write-off (e.g. Pending, Approved, Posted, Reversed) — primary filter for write-off pipeline management."
     - name: "write_off_type"
       expr: write_off_type
-      comment: "Type of write-off (bad debt, adjustment, etc.)"
+      comment: "Type of write-off (e.g. Bad Debt, Disputed, Uncollectible) — used to classify bad debt expense by cause."
     - name: "write_off_category"
       expr: write_off_category
-      comment: "Category of write-off"
-    - name: "reason"
-      expr: reason
-      comment: "Reason for the write-off"
-    - name: "reason_code"
-      expr: reason_code
-      comment: "Coded reason for write-off"
-    - name: "write_off_reason"
-      expr: write_off_reason
-      comment: "Detailed write-off reason"
+      comment: "Category of the write-off — used for detailed bad debt analysis and provision adequacy assessment."
     - name: "method"
       expr: method
-      comment: "Method used for write-off"
-    - name: "recovery_status"
-      expr: recovery_status
-      comment: "Status of recovery attempts"
-    - name: "recovery_flag"
-      expr: recovery_flag
-      comment: "Flag indicating if recovery is possible"
-    - name: "is_reversed"
-      expr: is_reversed
-      comment: "Flag indicating if write-off was reversed"
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Flag for compliance requirements"
+      comment: "Write-off method applied (e.g. Direct, Allowance) — used for accounting policy compliance monitoring."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of write-off amounts"
-    - name: "region_code"
-      expr: region_code
-      comment: "Geographic region of write-off"
-    - name: "financial_period"
-      expr: financial_period
-      comment: "Financial period for the write-off"
+      comment: "Currency of the write-off — used for multi-currency bad debt analysis."
+    - name: "write_off_month"
+      expr: DATE_TRUNC('MONTH', write_off_date)
+      comment: "Month the write-off was recorded — primary time dimension for bad debt trend analysis."
+    - name: "recovery_status"
+      expr: recovery_status
+      comment: "Recovery status of the written-off amount (e.g. Not Attempted, In Progress, Recovered) — used to track post-write-off recovery efforts."
+    - name: "is_reversed"
+      expr: is_reversed
+      comment: "Flag indicating whether the write-off was reversed — used to identify recovered write-offs and adjust bad debt expense."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Flag indicating whether the write-off has compliance implications — used for regulatory reporting and audit."
   measures:
-    - name: "write_off_count"
-      expr: COUNT(DISTINCT write_off_id)
-      comment: "Total number of write-off transactions"
-    - name: "total_write_off_amount"
-      expr: SUM(CAST(amount AS DOUBLE))
-      comment: "Total amount written off as bad debt"
-    - name: "total_amount_gross"
+    - name: "total_write_offs"
+      expr: COUNT(1)
+      comment: "Total number of write-off records. Baseline metric for bad debt activity volume and collection failure frequency."
+    - name: "total_gross_write_off_amount"
       expr: SUM(CAST(amount_gross AS DOUBLE))
-      comment: "Total gross amount before adjustments"
-    - name: "total_amount_net"
+      comment: "Total gross amount written off. Primary bad debt KPI — measures total revenue permanently lost to uncollectible receivables."
+    - name: "total_net_write_off_amount"
       expr: SUM(CAST(amount_net AS DOUBLE))
-      comment: "Total net amount written off"
-    - name: "total_amount_adjustment"
+      comment: "Total net write-off amount after adjustments. Measures actual bad debt expense recognized in the P&L."
+    - name: "total_adjustment_amount"
       expr: SUM(CAST(amount_adjustment AS DOUBLE))
-      comment: "Total adjustments to write-off amounts"
+      comment: "Total adjustments applied to write-offs. Used to reconcile gross vs. net write-off amounts and validate allowance adequacy."
     - name: "total_tax_effect_amount"
       expr: SUM(CAST(tax_effect_amount AS DOUBLE))
-      comment: "Total tax effect of write-offs"
+      comment: "Total tax effect of write-offs. Used by tax controllers to calculate deductible bad debt expense for tax filings."
     - name: "avg_write_off_amount"
-      expr: AVG(CAST(amount AS DOUBLE))
-      comment: "Average amount per write-off"
-    - name: "customer_count"
+      expr: AVG(CAST(amount_gross AS DOUBLE))
+      comment: "Average gross write-off amount per record. Tracks write-off severity trends — rising averages signal deteriorating customer credit quality."
+    - name: "recovery_flag_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN recovery_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of write-offs flagged for recovery. Measures post-write-off collection effort coverage — low rates indicate missed recovery opportunities."
+    - name: "reversal_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_reversed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of write-offs that were subsequently reversed. Measures write-off accuracy — high reversal rates indicate premature write-offs."
+    - name: "distinct_customers_written_off"
       expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customers with write-offs"
-    - name: "invoice_count"
-      expr: COUNT(DISTINCT ar_invoice_id)
-      comment: "Number of unique invoices written off"
+      comment: "Number of distinct customers with write-offs. Measures breadth of bad debt exposure across the customer portfolio."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_pricing_agreement`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer pricing agreement and rebate KPIs covering agreement values, rebate accruals, settlement rates, and discount structures. Used by Sales Finance, Revenue Operations, and CFO to manage pricing governance and rebate liability."
+  source: "`vibe_semiconductors_v1`.`invoice`.`pricing_agreement`"
+  dimensions:
+    - name: "pricing_agreement_status"
+      expr: pricing_agreement_status
+      comment: "Current status of the pricing agreement (e.g. Active, Expired, Pending Approval) — primary filter for active pricing governance."
+    - name: "agreement_type"
+      expr: agreement_type
+      comment: "Type of pricing agreement (e.g. Volume Rebate, Special Price, Distribution) — used to analyze pricing structure by agreement type."
+    - name: "rebate_type"
+      expr: rebate_type
+      comment: "Type of rebate (e.g. Volume, Growth, Loyalty) — used to analyze rebate program effectiveness and cost."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the pricing agreement — used for multi-currency pricing analysis."
+    - name: "settlement_frequency"
+      expr: settlement_frequency
+      comment: "Frequency of rebate settlement (e.g. Monthly, Quarterly, Annual) — used for cash flow planning and rebate liability management."
+    - name: "is_exclusive"
+      expr: is_exclusive
+      comment: "Flag indicating whether the pricing agreement is exclusive — used to identify strategic customer pricing commitments."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('MONTH', effective_start_date)
+      comment: "Month the pricing agreement becomes effective — used for agreement cohort analysis."
+  measures:
+    - name: "total_pricing_agreements"
+      expr: COUNT(1)
+      comment: "Total number of pricing agreements. Baseline metric for pricing governance complexity and customer pricing coverage."
+    - name: "total_price_amount"
+      expr: SUM(CAST(price_amount AS DOUBLE))
+      comment: "Total contracted price amount across pricing agreements. Measures total pricing commitment value in the portfolio."
+    - name: "total_rebate_accrued"
+      expr: SUM(CAST(rebate_accrued_amount AS DOUBLE))
+      comment: "Total rebate amount accrued but not yet settled. Measures rebate liability on the balance sheet — key metric for financial close."
+    - name: "total_rebate_settled"
+      expr: SUM(CAST(rebate_settled_amount AS DOUBLE))
+      comment: "Total rebate amount settled with customers. Measures actual cash paid out for rebate programs — used in pricing ROI analysis."
+    - name: "total_minimum_commitment"
+      expr: SUM(CAST(minimum_commitment_amount AS DOUBLE))
+      comment: "Total minimum purchase commitments across pricing agreements. Measures contracted revenue floor and customer volume obligations."
+    - name: "total_maximum_commitment"
+      expr: SUM(CAST(maximum_commitment_amount AS DOUBLE))
+      comment: "Total maximum purchase commitments across pricing agreements. Measures contracted revenue ceiling and capacity planning inputs."
+    - name: "avg_discount_rate_pct"
+      expr: AVG(CAST(discount_rate AS DOUBLE))
+      comment: "Average discount rate across pricing agreements. Tracks pricing discipline — rising averages signal margin erosion from excessive discounting."
+    - name: "avg_rebate_rate_pct"
+      expr: AVG(CAST(rebate_rate AS DOUBLE))
+      comment: "Average rebate rate across pricing agreements. Measures cost of rebate programs — used to optimize rebate structure and ROI."
+    - name: "rebate_settlement_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(rebate_settled_amount AS DOUBLE)) / NULLIF(SUM(CAST(rebate_accrued_amount AS DOUBLE)), 0), 2)
+      comment: "Percentage of accrued rebates that have been settled. Measures rebate settlement efficiency — low rates indicate accrual-to-cash timing gaps."
+    - name: "distinct_customers_with_agreements"
+      expr: COUNT(DISTINCT account_id)
+      comment: "Number of distinct customers with pricing agreements. Measures pricing agreement coverage across the customer base."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_nre_billing_milestone`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "NRE (Non-Recurring Engineering) billing milestone KPIs covering milestone completion, billing amounts, and schedule adherence. Used by Program Management, Finance, and Sales to manage NRE revenue recognition and project billing."
+  source: "`vibe_semiconductors_v1`.`invoice`.`nre_billing_milestone`"
+  dimensions:
+    - name: "nre_billing_milestone_status"
+      expr: nre_billing_milestone_status
+      comment: "Current status of the NRE billing milestone (e.g. Planned, In Progress, Completed, Billed) — primary filter for NRE billing pipeline."
+    - name: "billing_trigger_type"
+      expr: billing_trigger_type
+      comment: "Type of event that triggers billing (e.g. Tapeout, Wafer Start, Delivery, Acceptance) — used to analyze NRE billing structure."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the NRE milestone billing — used for multi-currency NRE revenue analysis."
+    - name: "is_recurring"
+      expr: is_recurring
+      comment: "Flag indicating whether the milestone is recurring — used to separate one-time and recurring NRE revenue streams."
+    - name: "planned_month"
+      expr: DATE_TRUNC('MONTH', planned_date)
+      comment: "Month the milestone was planned — used for NRE schedule adherence analysis."
+    - name: "actual_month"
+      expr: DATE_TRUNC('MONTH', actual_date)
+      comment: "Month the milestone was actually completed — used to measure NRE delivery schedule performance."
+  measures:
+    - name: "total_nre_milestones"
+      expr: COUNT(1)
+      comment: "Total number of NRE billing milestones. Baseline metric for NRE program complexity and billing activity."
+    - name: "total_nre_gross_amount"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross NRE revenue billed across milestones. Primary NRE revenue KPI — measures total engineering services revenue."
+    - name: "total_nre_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net NRE revenue after adjustments. Measures actual NRE revenue recognized — used in program P&L reporting."
+    - name: "total_nre_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax on NRE billings. Used for tax compliance and cross-border NRE service tax reporting."
+    - name: "avg_nre_milestone_amount"
+      expr: AVG(CAST(gross_amount AS DOUBLE))
+      comment: "Average NRE milestone billing amount. Tracks NRE deal size trends and benchmarks against program budgets."
+    - name: "distinct_nre_projects"
+      expr: COUNT(DISTINCT ic_design_project_id)
+      comment: "Number of distinct IC design projects with NRE billing milestones. Measures NRE program breadth and customer engagement depth."
+    - name: "distinct_nre_customers"
+      expr: COUNT(DISTINCT account_id)
+      comment: "Number of distinct customers with NRE billing milestones. Measures NRE customer base breadth and revenue concentration."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_tax_determination`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tax determination and compliance KPIs covering tax amounts, rates, withholding, and reverse charge mechanisms. Used by Tax Controllers, CFO, and Compliance teams to manage tax liability, filing accuracy, and regulatory compliance."
+  source: "`vibe_semiconductors_v1`.`invoice`.`tax_determination`"
+  dimensions:
+    - name: "tax_type"
+      expr: tax_type
+      comment: "Type of tax (e.g. VAT, GST, Sales Tax, Withholding) — primary dimension for tax liability analysis by tax regime."
+    - name: "tax_category"
+      expr: tax_category
+      comment: "Tax category (e.g. Standard Rate, Reduced Rate, Zero Rate, Exempt) — used for tax rate compliance analysis."
+    - name: "tax_jurisdiction_type"
+      expr: tax_jurisdiction_type
+      comment: "Type of tax jurisdiction (e.g. Federal, State, Local, Country) — used for multi-jurisdiction tax reporting."
+    - name: "tax_jurisdiction_code"
+      expr: tax_jurisdiction_code
+      comment: "Tax jurisdiction code — used for jurisdiction-level tax liability analysis and filing."
+    - name: "tax_line_status"
+      expr: tax_line_status
+      comment: "Status of the tax determination line (e.g. Active, Voided, Adjusted) — used to filter valid tax records."
+    - name: "tax_currency"
+      expr: tax_currency
+      comment: "Currency of the tax determination — used for multi-currency tax analysis."
+    - name: "tax_exempt_flag"
+      expr: tax_exempt_flag
+      comment: "Flag indicating whether the transaction is tax-exempt — used for exemption certificate compliance monitoring."
+    - name: "tax_is_reverse_charge"
+      expr: tax_is_reverse_charge
+      comment: "Flag indicating whether reverse charge mechanism applies — used for B2B cross-border VAT compliance."
+    - name: "tax_withholding_flag"
+      expr: tax_withholding_flag
+      comment: "Flag indicating whether withholding tax applies — used for withholding tax compliance and remittance tracking."
+    - name: "tax_reporting_month"
+      expr: DATE_TRUNC('MONTH', tax_reporting_period)
+      comment: "Month of the tax reporting period — primary time dimension for periodic tax filing analysis."
+  measures:
+    - name: "total_tax_determinations"
+      expr: COUNT(1)
+      comment: "Total number of tax determination records. Baseline metric for tax calculation volume and compliance coverage."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount determined. Primary tax liability KPI — used for tax provision, filing, and remittance calculations."
+    - name: "total_tax_base_amount"
+      expr: SUM(CAST(tax_base_amount AS DOUBLE))
+      comment: "Total taxable base amount. Used to validate effective tax rates and detect base erosion or misclassification."
+    - name: "total_tax_credit_amount"
+      expr: SUM(CAST(tax_credit_amount AS DOUBLE))
+      comment: "Total tax credits applied. Measures tax credit utilization — used to optimize tax position and reduce effective tax rate."
+    - name: "total_withholding_amount"
+      expr: SUM(CAST(withholding_amount AS DOUBLE))
+      comment: "Total withholding tax amounts. Used for withholding tax remittance compliance and cross-border payment reporting."
+    - name: "total_taxable_quantity"
+      expr: SUM(CAST(taxable_quantity AS DOUBLE))
+      comment: "Total taxable quantity across tax determinations. Used to validate quantity-based tax calculations."
+    - name: "avg_tax_rate_pct"
+      expr: AVG(CAST(tax_rate AS DOUBLE))
+      comment: "Average effective tax rate across determinations. Used to monitor tax rate consistency and detect anomalies in tax calculation."
+    - name: "avg_withholding_rate_pct"
+      expr: AVG(CAST(withholding_rate AS DOUBLE))
+      comment: "Average withholding tax rate applied. Used to verify withholding rate compliance with treaty rates and local regulations."
+    - name: "effective_tax_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(tax_amount AS DOUBLE)) / NULLIF(SUM(CAST(tax_base_amount AS DOUBLE)), 0), 2)
+      comment: "Effective tax rate as a percentage of taxable base. Key tax compliance KPI — deviations from statutory rates trigger audit investigation."
+    - name: "tax_exempt_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN tax_exempt_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of tax determinations that are tax-exempt. Used to monitor exemption certificate coverage and compliance risk."
+    - name: "reverse_charge_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN tax_is_reverse_charge = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of transactions subject to reverse charge mechanism. Used for cross-border VAT compliance monitoring and reporting."
 $$;

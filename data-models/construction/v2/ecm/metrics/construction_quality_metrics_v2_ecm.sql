@@ -1,339 +1,68 @@
--- Metric views for domain: quality | Business: Construction | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: quality | Business: Construction | Version: 2 | Generated on: 2026-07-10 12:14:04
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_acceptance_test`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_ncr`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Acceptance test performance metrics tracking test outcomes, retest rates, and duration. Governs system commissioning readiness and contractual handover obligations."
-  source: "`vibe_construction_v1`.`quality`.`acceptance_test`"
+  comment: "Non-Conformance Report (NCR) metrics tracking quality failures, cost impacts, and resolution performance across construction projects. NCRs are the primary quality control instrument for identifying and closing non-conformances."
+  source: "`vibe_construction_v1`.`quality`.`ncr`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level acceptance test benchmarking."
-    - name: "test_status"
-      expr: test_status
-      comment: "Current status of the acceptance test (Pending, In Progress, Completed, Failed) for pipeline management."
-    - name: "acceptance_status"
-      expr: acceptance_status
-      comment: "Acceptance outcome (Accepted, Rejected, Conditional) for handover gate analysis."
-    - name: "test_type"
-      expr: test_type
-      comment: "Type of acceptance test (FAT, SAT, Commissioning, Performance) for test-type quality analysis."
-    - name: "test_result"
-      expr: test_result
-      comment: "Test result (Pass, Fail) for acceptance rate analysis."
-    - name: "retest_required"
-      expr: retest_required
-      comment: "Flag indicating retest is required. Retest rate is a key commissioning quality KPI."
-    - name: "test_date_month"
-      expr: DATE_TRUNC('month', test_date)
-      comment: "Month of acceptance testing for trend and commissioning schedule analysis."
-    - name: "compliance_standard"
-      expr: compliance_standard
-      comment: "Compliance standard applied for regulatory and contractual compliance analysis."
-  measures:
-    - name: "total_acceptance_tests"
-      expr: COUNT(1)
-      comment: "Total acceptance tests conducted. Baseline commissioning throughput KPI."
-    - name: "passed_acceptance_tests"
-      expr: COUNT(CASE WHEN test_result = 'Pass' THEN 1 END)
-      comment: "Count of acceptance tests passed. Numerator for acceptance test pass rate."
-    - name: "failed_acceptance_tests"
-      expr: COUNT(CASE WHEN test_result = 'Fail' THEN 1 END)
-      comment: "Count of failed acceptance tests. Failures delay handover and trigger contractual consequences."
-    - name: "acceptance_test_pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN test_result = 'Pass' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of acceptance tests passed. Primary commissioning readiness KPI for project directors."
-    - name: "retest_required_count"
-      expr: COUNT(CASE WHEN retest_required = TRUE THEN 1 END)
-      comment: "Number of acceptance tests requiring retest. High retest rate delays commissioning and handover milestones."
-    - name: "retest_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN retest_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of acceptance tests requiring retest. Key commissioning quality and schedule risk KPI."
-    - name: "avg_test_duration_hours"
-      expr: AVG(CAST(test_duration_hours AS DOUBLE))
-      comment: "Average duration of acceptance tests in hours. Used for commissioning schedule planning and resource allocation."
-    - name: "total_test_duration_hours"
-      expr: SUM(CAST(test_duration_hours AS DOUBLE))
-      comment: "Total hours spent on acceptance testing. Informs commissioning resource planning and cost tracking."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_checklist_execution`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Checklist execution quality metrics tracking compliance rates, critical failure rates, and NCR generation rates. Operational quality assurance KPI layer for site supervisors and QA managers."
-  source: "`vibe_construction_v1`.`quality`.`checklist_execution`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level checklist execution benchmarking."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the checklist execution (Approved, Rejected, Pending) for governance tracking."
-    - name: "overall_result"
-      expr: overall_result
-      comment: "Overall result of the checklist execution (Pass, Fail, Conditional) for quality gate analysis."
-    - name: "inspection_type"
-      expr: inspection_type
-      comment: "Type of inspection associated with the checklist execution."
-    - name: "inspection_stage"
-      expr: inspection_stage
-      comment: "Stage of inspection (Pre-pour, In-process, Final) for stage-level quality analysis."
-    - name: "critical_failure_flag"
-      expr: critical_failure_flag
-      comment: "Flag indicating a critical failure was identified. Critical failures require immediate escalation."
-    - name: "execution_date_month"
-      expr: DATE_TRUNC('month', execution_date)
-      comment: "Month of checklist execution for trend analysis."
-  measures:
-    - name: "total_executions"
-      expr: COUNT(1)
-      comment: "Total checklist executions. Baseline quality assurance activity throughput KPI."
-    - name: "avg_compliance_percentage"
-      expr: AVG(CAST(compliance_percentage AS DOUBLE))
-      comment: "Average compliance percentage across all checklist executions. Primary quality conformance KPI for site management."
-    - name: "critical_failure_count"
-      expr: COUNT(CASE WHEN critical_failure_flag = TRUE THEN 1 END)
-      comment: "Number of checklist executions with critical failures. Critical failures halt work and require immediate corrective action."
-    - name: "critical_failure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN critical_failure_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of checklist executions with critical failures. Key safety and quality risk KPI."
-    - name: "ncr_generated_count"
-      expr: COUNT(CASE WHEN ncr_generated_flag = TRUE THEN 1 END)
-      comment: "Number of checklist executions that generated an NCR. Links checklist quality to formal non-conformance management."
-    - name: "ncr_generation_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_generated_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of checklist executions resulting in an NCR. Measures quality failure frequency at activity level."
-    - name: "witness_signature_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN witness_signature_captured = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN witness_required_flag = TRUE THEN 1 END), 0), 2)
-      comment: "Percentage of required witness signatures captured. Contractual and ITP compliance KPI."
-    - name: "avg_temperature_celsius"
-      expr: AVG(CAST(temperature_celsius AS DOUBLE))
-      comment: "Average ambient temperature during checklist executions. Environmental compliance indicator."
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`quality_concrete_pour`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Concrete pour performance and quality metrics"
-  source: "`construction_ecm`.`quality`.`concrete_pour_record`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Construction project identifier"
-    - name: "pour_date"
-      expr: pour_date
-      comment: "Date the concrete pour occurred"
-    - name: "concrete_grade"
-      expr: concrete_grade
-      comment: "Grade/specification of the concrete used"
-    - name: "supplier_name"
-      expr: supplier_name
-      comment: "Supplier of the concrete mix"
-    - name: "weather_conditions"
-      expr: weather_conditions
-      comment: "Weather conditions during the pour"
-  measures:
-    - name: "total_pours"
-      expr: COUNT(1)
-      comment: "Total number of concrete pour records"
-    - name: "total_volume_m3"
-      expr: SUM(CAST(total_pour_volume_m3 AS DOUBLE))
-      comment: "Cumulative concrete volume poured (cubic meters)"
-    - name: "avg_volume_per_pour"
-      expr: AVG(CAST(total_pour_volume_m3 AS DOUBLE))
-      comment: "Average volume per concrete pour"
-    - name: "slump_test_passed_count"
-      expr: COUNT(CASE WHEN slump_test_passed = TRUE THEN 1 END)
-      comment: "Number of pours where the slump test passed"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_concrete_pour_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Concrete pour quality metrics tracking pour volumes, slump test compliance, sample rates, and NCR rates. Essential for structural quality assurance on civil and building projects."
-  source: "`vibe_construction_v1`.`quality`.`concrete_pour_record`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level concrete quality benchmarking."
-    - name: "pour_status"
-      expr: pour_status
-      comment: "Status of the pour (Completed, In Progress, On Hold) for production tracking."
-    - name: "acceptance_status"
-      expr: acceptance_status
-      comment: "Acceptance status of the pour (Accepted, Rejected, Conditional) for quality gate tracking."
-    - name: "concrete_grade"
-      expr: concrete_grade
-      comment: "Concrete grade/mix design for grade-level quality analysis."
-    - name: "element_type"
-      expr: element_type
-      comment: "Structural element type (Column, Slab, Beam, Foundation) for element-level quality analysis."
-    - name: "pour_date_month"
-      expr: DATE_TRUNC('month', pour_date)
-      comment: "Month of pour for production trend analysis."
-    - name: "curing_method"
-      expr: curing_method
-      comment: "Curing method applied for quality compliance analysis."
-  measures:
-    - name: "total_pours"
-      expr: COUNT(1)
-      comment: "Total concrete pours recorded. Baseline production volume KPI."
-    - name: "total_pour_volume_m3"
-      expr: SUM(CAST(pour_volume_m3 AS DOUBLE))
-      comment: "Total concrete volume poured in cubic metres. Primary production progress KPI for civil works."
-    - name: "avg_pour_volume_m3"
-      expr: AVG(CAST(pour_volume_m3 AS DOUBLE))
-      comment: "Average pour volume per event. Used for productivity benchmarking and resource planning."
-    - name: "slump_test_pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN slump_test_passed = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN slump_test_passed IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of pours where slump test passed. Concrete workability compliance KPI — failures indicate mix design or delivery issues."
-    - name: "ncr_raised_count"
-      expr: COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END)
-      comment: "Number of pours that triggered an NCR. Tracks concrete quality non-conformances for structural assurance."
-    - name: "ncr_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of pours resulting in an NCR. Key concrete quality KPI for structural integrity governance."
-    - name: "avg_concrete_temperature_c"
-      expr: AVG(CAST(concrete_temperature_c AS DOUBLE))
-      comment: "Average concrete temperature at pour. Compliance indicator for temperature-sensitive concrete specifications."
-    - name: "avg_slump_mm"
-      expr: AVG(CAST(slump_mm AS DOUBLE))
-      comment: "Average slump value in mm. Tracks concrete workability against specification limits."
-    - name: "total_volume_poured_m3"
-      expr: SUM(CAST(volume_poured_m3 AS DOUBLE))
-      comment: "Total volume poured (alternate field). Cross-validates pour volume reporting for audit purposes."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_corrective_action`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Corrective action effectiveness and cost metrics. Tracks resolution timeliness, cost of quality remediation, and systemic issue identification to drive continuous improvement."
-  source: "`vibe_construction_v1`.`quality`.`corrective_action`"
-  dimensions:
-    - name: "action_status"
-      expr: action_status
-      comment: "Current status of the corrective action (Open, In Progress, Closed, Verified) for pipeline management."
-    - name: "action_type"
-      expr: action_type
-      comment: "Type of corrective action (Immediate, Preventive, Systemic) for classification and trend analysis."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the corrective action for resource allocation decisions."
-    - name: "effectiveness_review_outcome"
-      expr: effectiveness_review_outcome
-      comment: "Outcome of the effectiveness review to assess whether corrective actions are actually resolving root causes."
-    - name: "is_systemic_issue"
-      expr: is_systemic_issue
-      comment: "Flag indicating whether the NCR represents a systemic quality issue requiring process-level intervention."
-    - name: "assigned_date_month"
-      expr: DATE_TRUNC('month', assigned_date)
-      comment: "Month corrective action was assigned for trend and backlog analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of cost estimates for multi-currency project cost-of-quality reporting."
-  measures:
-    - name: "total_corrective_actions"
-      expr: COUNT(1)
-      comment: "Total corrective actions raised. Baseline volume KPI for quality remediation workload."
-    - name: "open_corrective_actions"
-      expr: COUNT(CASE WHEN action_status = 'Open' THEN 1 END)
-      comment: "Count of open corrective actions. High open count signals unresolved quality risk."
-    - name: "overdue_corrective_actions"
-      expr: COUNT(CASE WHEN action_status != 'Closed' AND target_completion_date < CURRENT_DATE() THEN 1 END)
-      comment: "Corrective actions past their target completion date. Overdue rate is a key quality governance KPI."
-    - name: "total_actual_cost"
-      expr: SUM(CAST(actual_cost AS DOUBLE))
-      comment: "Total actual cost incurred for corrective actions. Core cost-of-quality metric for financial reporting."
-    - name: "total_cost_estimate"
-      expr: SUM(CAST(cost_estimate AS DOUBLE))
-      comment: "Total estimated cost of corrective actions. Used for budget forecasting and cost-of-quality planning."
-    - name: "avg_actual_cost"
-      expr: AVG(CAST(actual_cost AS DOUBLE))
-      comment: "Average actual cost per corrective action. Benchmarks remediation cost efficiency."
-    - name: "cost_overrun_amount"
-      expr: SUM(CAST(actual_cost AS DOUBLE) - CAST(cost_estimate AS DOUBLE))
-      comment: "Total cost overrun across corrective actions (actual minus estimate). Signals estimation accuracy and scope creep."
-    - name: "systemic_issue_count"
-      expr: COUNT(CASE WHEN is_systemic_issue = TRUE THEN 1 END)
-      comment: "Number of corrective actions flagged as systemic issues. Systemic issues require process redesign and executive attention."
-    - name: "requires_design_change_count"
-      expr: COUNT(CASE WHEN requires_design_change = TRUE THEN 1 END)
-      comment: "Corrective actions requiring a design change. Indicates design quality issues with downstream schedule and cost impact."
-    - name: "effective_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN effectiveness_review_outcome = 'Effective' THEN 1 END) / NULLIF(COUNT(CASE WHEN effectiveness_review_outcome IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of reviewed corrective actions deemed effective. Measures whether quality fixes are actually working."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_defect`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Defect tracking and rectification cost metrics. Provides visibility into defect volumes, severity distribution, rectification costs, and DLP exposure for project handover governance."
-  source: "`vibe_construction_v1`.`quality`.`defect`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level defect benchmarking."
-    - name: "defect_status"
-      expr: defect_status
-      comment: "Current status of the defect (Open, In Rectification, Closed, Verified) for pipeline management."
-    - name: "defect_type"
-      expr: defect_type
-      comment: "Type of defect (e.g. Structural, Finishing, MEP) for trade-level quality analysis."
+      comment: "Project context for NCR — enables project-level quality benchmarking."
+    - name: "ncr_status"
+      expr: ncr_status
+      comment: "Current lifecycle status of the NCR (Open, Closed, Under Review, etc.)."
+    - name: "ncr_category"
+      expr: ncr_category
+      comment: "Category of non-conformance (e.g. Material, Workmanship, Design) for root-cause trending."
     - name: "severity"
       expr: severity
-      comment: "Severity of the defect for prioritisation and escalation decisions."
-    - name: "identified_phase"
-      expr: identified_phase
-      comment: "Project phase when defect was identified (Construction, Commissioning, DLP) for phase-gate quality analysis."
-    - name: "trade_discipline"
-      expr: trade_discipline
-      comment: "Trade discipline responsible for the defect for subcontractor performance management."
-    - name: "identified_date_month"
-      expr: DATE_TRUNC('month', identified_date)
-      comment: "Month defect was identified for trend analysis."
-    - name: "impact_on_handover"
-      expr: impact_on_handover
-      comment: "Flag indicating whether the defect impacts project handover. Critical for milestone gate management."
+      comment: "Severity classification of the NCR — drives prioritisation and escalation decisions."
+    - name: "discipline"
+      expr: discipline
+      comment: "Engineering or trade discipline associated with the NCR for discipline-level quality analysis."
+    - name: "disposition"
+      expr: disposition
+      comment: "Final disposition of the NCR (Accept As Is, Rework, Reject) — key quality outcome indicator."
+    - name: "identified_date"
+      expr: identified_date
+      comment: "Date the non-conformance was identified — used for trend analysis over time."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element where the NCR was raised — enables cost-area quality analysis."
   measures:
-    - name: "total_defects"
+    - name: "total_ncr_count"
       expr: COUNT(1)
-      comment: "Total defects identified. Baseline quality KPI for defect density analysis."
-    - name: "open_defects"
-      expr: COUNT(CASE WHEN defect_status = 'Open' THEN 1 END)
-      comment: "Count of open defects. High open count blocks handover and triggers contractual penalties."
-    - name: "closed_defects"
-      expr: COUNT(CASE WHEN defect_status = 'Closed' THEN 1 END)
-      comment: "Count of closed/rectified defects. Used to compute defect closure rate."
-    - name: "defect_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN defect_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of defects closed. Key handover readiness KPI — low rate delays practical completion."
-    - name: "total_rectification_cost"
-      expr: SUM(CAST(rectification_cost AS DOUBLE))
-      comment: "Total cost of defect rectification. Core cost-of-quality metric for financial and contract management."
-    - name: "avg_rectification_cost"
-      expr: AVG(CAST(rectification_cost AS DOUBLE))
-      comment: "Average rectification cost per defect. Benchmarks remediation efficiency and informs DLP provisioning."
-    - name: "handover_blocking_defects"
-      expr: COUNT(CASE WHEN impact_on_handover = TRUE AND defect_status != 'Closed' THEN 1 END)
-      comment: "Open defects that block project handover. Critical milestone gate KPI for project directors."
-    - name: "deferred_to_dlp_count"
-      expr: COUNT(CASE WHEN defect_status = 'Closed' THEN 1 END)
-      comment: "Placeholder aligned to defects tracked through DLP period. Monitors post-handover liability exposure."
-    - name: "overdue_rectification_count"
-      expr: COUNT(CASE WHEN defect_status != 'Closed' AND target_rectification_date < CURRENT_DATE() THEN 1 END)
-      comment: "Defects past their target rectification date. Overdue defects trigger contractual and client escalation."
+      comment: "Total number of NCRs raised. Baseline volume metric for quality performance dashboards."
+    - name: "open_ncr_count"
+      expr: COUNT(CASE WHEN ncr_status = 'Open' THEN 1 END)
+      comment: "Number of currently open NCRs. High open counts signal unresolved quality risk on the project."
+    - name: "closed_ncr_count"
+      expr: COUNT(CASE WHEN ncr_status = 'Closed' THEN 1 END)
+      comment: "Number of closed NCRs. Used to track resolution throughput and backlog clearance."
+    - name: "ncr_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of NCRs that have been closed. A key quality KPI — low closure rate indicates systemic resolution bottlenecks."
+    - name: "total_estimated_cost_impact"
+      expr: SUM(CAST(estimated_cost_impact AS DOUBLE))
+      comment: "Total estimated financial cost of all non-conformances. Directly informs quality cost management and budget risk."
+    - name: "avg_estimated_cost_impact"
+      expr: AVG(CAST(estimated_cost_impact AS DOUBLE))
+      comment: "Average cost impact per NCR. Benchmarks the financial severity of quality failures."
+    - name: "hold_status_ncr_count"
+      expr: COUNT(CASE WHEN hold_status = TRUE THEN 1 END)
+      comment: "Number of NCRs currently on hold. Hold NCRs block construction progress and represent active schedule risk."
+    - name: "ncr_with_client_notification_count"
+      expr: COUNT(CASE WHEN client_notification_required = TRUE THEN 1 END)
+      comment: "Number of NCRs requiring client notification. Tracks contractual notification obligations and client relationship risk."
+    - name: "total_quantity_affected"
+      expr: SUM(CAST(quantity_affected AS DOUBLE))
+      comment: "Total quantity of materials or work affected by non-conformances. Indicates the physical scale of quality failures."
+    - name: "avg_schedule_impact_days"
+      expr: AVG(CAST(schedule_impact_days AS DOUBLE))
+      comment: "Average schedule delay in days caused by NCRs. Links quality failures directly to programme performance."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_inspection`
@@ -341,300 +70,182 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Inspection performance metrics covering pass/fail outcomes, reinspection rates, and inspection throughput. Drives quality assurance governance and ITP compliance monitoring."
+  comment: "Inspection performance metrics covering pass/fail rates, reinspection frequency, and inspection throughput. Inspections are the primary quality gate mechanism on construction projects."
   source: "`vibe_construction_v1`.`quality`.`inspection`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level inspection performance benchmarking."
+      comment: "Project context for the inspection — enables project-level inspection performance comparison."
     - name: "inspection_type"
       expr: inspection_type
-      comment: "Type of inspection (e.g. Hold Point, Witness Point, Review) for compliance tracking."
+      comment: "Type of inspection (e.g. Pre-pour, Weld, Structural) — drives discipline-specific quality analysis."
     - name: "inspection_status"
       expr: inspection_status
-      comment: "Current status of the inspection (Passed, Failed, Pending) for pipeline management."
+      comment: "Current status of the inspection (Pending, Passed, Failed, Reinspection Required)."
     - name: "overall_outcome"
       expr: overall_outcome
-      comment: "Final outcome of the inspection for pass/fail rate analysis."
+      comment: "Final outcome of the inspection — the primary pass/fail quality signal."
+    - name: "inspection_date"
+      expr: inspection_date
+      comment: "Date of inspection — used for trend analysis and inspection frequency reporting."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element inspected — enables cost-area quality performance analysis."
     - name: "location_type"
       expr: location_type
-      comment: "Location type of the inspection for spatial quality analysis."
-    - name: "inspection_date_month"
-      expr: DATE_TRUNC('month', inspection_date)
-      comment: "Month of inspection for trend analysis and workload planning."
-    - name: "inspection_date_week"
-      expr: DATE_TRUNC('week', inspection_date)
-      comment: "Week of inspection for short-term operational throughput monitoring."
+      comment: "Type of location inspected (e.g. Site, Workshop, Factory) — contextualises inspection scope."
   measures:
     - name: "total_inspections"
       expr: COUNT(1)
-      comment: "Total inspections conducted. Baseline throughput KPI for quality assurance activity."
+      comment: "Total number of inspections conducted. Baseline volume metric for inspection programme tracking."
     - name: "passed_inspections"
       expr: COUNT(CASE WHEN overall_outcome = 'Pass' THEN 1 END)
-      comment: "Count of inspections with a passing outcome. Numerator for first-time pass rate."
+      comment: "Number of inspections with a passing outcome. Core quality throughput indicator."
     - name: "failed_inspections"
       expr: COUNT(CASE WHEN overall_outcome = 'Fail' THEN 1 END)
-      comment: "Count of failed inspections. Directly signals quality deficiencies requiring corrective action."
-    - name: "first_time_pass_rate_pct"
+      comment: "Number of inspections that failed. Directly signals quality non-compliance requiring corrective action."
+    - name: "inspection_pass_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN overall_outcome = 'Pass' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of inspections passed on first attempt. Premier quality KPI — low rate indicates systemic workmanship issues."
+      comment: "Percentage of inspections passed on first attempt. A primary quality KPI used in project performance reviews."
     - name: "reinspection_required_count"
       expr: COUNT(CASE WHEN reinspection_required = TRUE THEN 1 END)
-      comment: "Number of inspections requiring reinspection. Indicates rework volume and schedule risk."
+      comment: "Number of inspections requiring reinspection. High reinspection rates indicate systemic quality issues."
     - name: "reinspection_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN reinspection_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of inspections requiring reinspection. High rate signals quality process breakdown."
+      comment: "Percentage of inspections requiring reinspection. A key rework efficiency indicator — high rates increase cost and delay."
     - name: "ncr_raised_count"
       expr: COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END)
-      comment: "Number of inspections that triggered an NCR. Links inspection outcomes to formal non-conformance records."
+      comment: "Number of inspections that triggered an NCR. Links inspection failures to formal non-conformance records."
     - name: "ncr_raise_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of inspections resulting in an NCR. Key quality risk indicator for executive reporting."
-    - name: "corrective_action_required_count"
-      expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
-      comment: "Inspections requiring corrective action. Drives workload planning for quality remediation teams."
-    - name: "avg_humidity_percent"
-      expr: AVG(CAST(humidity_percent AS DOUBLE))
-      comment: "Average ambient humidity during inspections. Environmental quality control indicator for sensitive works."
+      comment: "Percentage of inspections that resulted in an NCR being raised. Measures the severity conversion rate of inspection failures."
     - name: "avg_temperature_celsius"
       expr: AVG(CAST(temperature_celsius AS DOUBLE))
-      comment: "Average ambient temperature during inspections. Environmental compliance indicator for concrete and coating works."
+      comment: "Average ambient temperature during inspections. Environmental context for quality outcome analysis."
+    - name: "avg_humidity_percent"
+      expr: AVG(CAST(humidity_percent AS DOUBLE))
+      comment: "Average humidity during inspections. Environmental factor affecting material and workmanship quality outcomes."
+    - name: "corrective_action_required_count"
+      expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
+      comment: "Number of inspections requiring corrective action. Tracks the volume of quality remediation work generated."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_lab_test`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_defect`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Laboratory test performance metrics tracking pass/fail rates, specification compliance, and retest rates. Governs material quality assurance and regulatory compliance for construction materials."
-  source: "`vibe_construction_v1`.`quality`.`lab_test`"
+  comment: "Defect management metrics tracking defect volumes, rectification costs, closure rates, and DLP exposure. Defects represent quality failures that must be resolved before handover or within the defects liability period."
+  source: "`vibe_construction_v1`.`quality`.`defect`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level lab test quality benchmarking."
-    - name: "test_type"
-      expr: test_type
-      comment: "Type of laboratory test (Compressive Strength, Gradation, Density) for test-type quality analysis."
-    - name: "pass_fail_status"
-      expr: pass_fail_status
-      comment: "Pass/fail outcome of the lab test for compliance rate analysis."
-    - name: "test_status"
-      expr: test_status
-      comment: "Current status of the test (Pending, In Progress, Completed) for pipeline management."
-    - name: "material_type"
-      expr: material_type
-      comment: "Material type tested (Concrete, Steel, Asphalt) for material-level quality analysis."
-    - name: "test_method"
-      expr: test_method
-      comment: "Test method/standard applied for method-level compliance analysis."
-    - name: "test_date_month"
-      expr: DATE_TRUNC('month', test_date)
-      comment: "Month of testing for trend analysis and lab throughput planning."
-    - name: "retest_flag"
-      expr: retest_flag
-      comment: "Flag indicating this is a retest. Retest rate is a key material quality KPI."
-  measures:
-    - name: "total_lab_tests"
-      expr: COUNT(1)
-      comment: "Total laboratory tests conducted. Baseline quality assurance throughput KPI."
-    - name: "passed_tests"
-      expr: COUNT(CASE WHEN pass_fail_status = 'Pass' THEN 1 END)
-      comment: "Count of tests that passed. Numerator for lab test pass rate."
-    - name: "failed_tests"
-      expr: COUNT(CASE WHEN pass_fail_status = 'Fail' THEN 1 END)
-      comment: "Count of failed tests. Triggers material rejection and NCR issuance."
-    - name: "lab_test_pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN pass_fail_status = 'Pass' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of lab tests passing. Primary material quality compliance KPI for QA/QC reporting."
-    - name: "retest_count"
-      expr: COUNT(CASE WHEN retest_flag = TRUE THEN 1 END)
-      comment: "Number of retests conducted. High retest rate signals material quality issues and increases testing cost."
-    - name: "retest_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN retest_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of tests that are retests. Key material quality and cost-of-quality indicator."
-    - name: "avg_measured_result"
-      expr: AVG(CAST(measured_result AS DOUBLE))
-      comment: "Average measured test result value. Used to track material performance against specification requirements."
-    - name: "avg_test_result_value"
-      expr: AVG(CAST(test_result_value AS DOUBLE))
-      comment: "Average test result value across all tests. Tracks material quality trends against specification limits."
-    - name: "specification_compliance_gap"
-      expr: AVG(CAST(measured_result AS DOUBLE) - CAST(specification_requirement AS DOUBLE))
-      comment: "Average gap between measured result and specification requirement. Negative values indicate non-compliance risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_ncr`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Non-Conformance Report (NCR) performance metrics tracking quality failures, cost impacts, closure rates, and systemic risk across construction projects. Core quality KPI layer for executive steering."
-  source: "`vibe_construction_v1`.`quality`.`ncr`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for cross-project NCR benchmarking."
-    - name: "ncr_status"
-      expr: ncr_status
-      comment: "Current lifecycle status of the NCR (Open, Closed, Under Review) for pipeline analysis."
-    - name: "ncr_category"
-      expr: ncr_category
-      comment: "Category of non-conformance (e.g. Material, Workmanship, Design) to identify systemic failure patterns."
+      comment: "Project context for defect analysis — enables cross-project quality benchmarking."
+    - name: "defect_status"
+      expr: defect_status
+      comment: "Current lifecycle status of the defect (Open, In Progress, Closed, Deferred)."
+    - name: "defect_type"
+      expr: defect_type
+      comment: "Classification of defect type — drives root cause analysis and prevention strategies."
     - name: "severity"
       expr: severity
-      comment: "Severity classification of the NCR to prioritise resolution effort and escalation."
-    - name: "discipline"
-      expr: discipline
-      comment: "Engineering or trade discipline associated with the NCR for discipline-level quality benchmarking."
-    - name: "disposition"
-      expr: disposition
-      comment: "Approved disposition of the NCR (e.g. Repair, Accept-as-is, Reject) for trend analysis."
+      comment: "Severity of the defect — determines prioritisation and escalation thresholds."
+    - name: "trade_discipline"
+      expr: trade_discipline
+      comment: "Trade or discipline responsible for the defect — enables trade-level quality accountability."
+    - name: "identified_phase"
+      expr: identified_phase
+      comment: "Construction phase when the defect was identified — earlier detection reduces rectification cost."
     - name: "identified_date"
-      expr: DATE_TRUNC('month', identified_date)
-      comment: "Month of NCR identification for trend and seasonality analysis."
-    - name: "reported_by_organization"
-      expr: reported_by_organization
-      comment: "Organisation that raised the NCR to assess subcontractor vs. self-performed quality performance."
+      expr: identified_date
+      comment: "Date defect was identified — used for trend analysis and ageing reports."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element where the defect was found — enables cost-area defect density analysis."
   measures:
-    - name: "total_ncrs"
+    - name: "total_defects"
       expr: COUNT(1)
-      comment: "Total number of NCRs raised. Baseline volume KPI for quality failure frequency."
-    - name: "open_ncrs"
-      expr: COUNT(CASE WHEN ncr_status = 'Open' THEN 1 END)
-      comment: "Count of NCRs currently open. High open count signals unresolved quality risk on the project."
-    - name: "closed_ncrs"
-      expr: COUNT(CASE WHEN ncr_status = 'Closed' THEN 1 END)
-      comment: "Count of closed NCRs. Used to compute closure rate and track resolution throughput."
-    - name: "ncr_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of NCRs that have been closed. Key quality management KPI — low closure rate indicates backlog risk."
-    - name: "total_estimated_cost_impact"
-      expr: SUM(CAST(estimated_cost_impact AS DOUBLE))
-      comment: "Total estimated financial cost of all NCRs. Directly informs budget risk and cost-of-quality reporting."
-    - name: "avg_estimated_cost_impact"
-      expr: AVG(CAST(estimated_cost_impact AS DOUBLE))
-      comment: "Average cost impact per NCR. Helps benchmark severity and prioritise high-cost non-conformances."
-    - name: "ncrs_with_client_notification"
-      expr: COUNT(CASE WHEN client_notification_required = TRUE THEN 1 END)
-      comment: "Number of NCRs requiring client notification. Tracks contractual compliance and client relationship risk."
-    - name: "ncrs_on_hold"
-      expr: COUNT(CASE WHEN hold_status = TRUE THEN 1 END)
-      comment: "NCRs currently under hold status. Work-stoppage indicator with direct schedule and cost implications."
-    - name: "avg_quantity_affected"
-      expr: AVG(CAST(quantity_affected AS DOUBLE))
-      comment: "Average quantity of material or work affected per NCR. Indicates scope of rework required."
-    - name: "critical_severity_ncrs"
-      expr: COUNT(CASE WHEN severity = 'Critical' THEN 1 END)
-      comment: "Count of critical-severity NCRs. Triggers executive escalation and immediate corrective action."
+      comment: "Total number of defects recorded. Baseline quality volume metric for project performance dashboards."
+    - name: "open_defects"
+      expr: COUNT(CASE WHEN defect_status = 'Open' THEN 1 END)
+      comment: "Number of currently open defects. Open defect backlog is a key handover readiness indicator."
+    - name: "defect_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN defect_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of defects closed. Low closure rate signals handover risk and contractor performance issues."
+    - name: "total_rectification_cost"
+      expr: SUM(CAST(rectification_cost AS DOUBLE))
+      comment: "Total cost of defect rectification. Directly measures the financial impact of quality failures on project budget."
+    - name: "avg_rectification_cost"
+      expr: AVG(CAST(rectification_cost AS DOUBLE))
+      comment: "Average rectification cost per defect. Benchmarks the cost efficiency of quality remediation."
+    - name: "dlp_deferred_defects"
+      expr: COUNT(CASE WHEN impact_on_handover = TRUE THEN 1 END)
+      comment: "Number of defects impacting handover. Directly measures handover readiness risk."
+    - name: "distinct_projects_with_defects"
+      expr: COUNT(DISTINCT construction_project_id)
+      comment: "Number of distinct projects with recorded defects. Portfolio-level quality exposure indicator."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_ndt_record`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_corrective_action`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Non-Destructive Testing (NDT) metrics tracking acceptance rates, repair rates, and retest rates. Critical for structural integrity assurance on pressure vessels, pipelines, and structural steel."
-  source: "`vibe_construction_v1`.`quality`.`ndt_record`"
+  comment: "Corrective action effectiveness metrics tracking resolution rates, cost of quality, systemic issue identification, and timeliness of corrective actions. Corrective actions are the primary mechanism for closing NCRs and preventing recurrence."
+  source: "`vibe_construction_v1`.`quality`.`corrective_action`"
   dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level NDT quality benchmarking."
-    - name: "ndt_method"
-      expr: ndt_method
-      comment: "NDT method applied (RT, UT, MT, PT, VT) for method-level quality analysis."
-    - name: "acceptance_status"
-      expr: acceptance_status
-      comment: "Acceptance status of the NDT result (Accepted, Rejected) for quality gate tracking."
-    - name: "test_status"
-      expr: test_status
-      comment: "Current status of the NDT test for pipeline management."
-    - name: "test_result"
-      expr: test_result
-      comment: "Test result (Pass, Fail) for acceptance rate analysis."
-    - name: "indication_severity"
-      expr: indication_severity
-      comment: "Severity of NDT indications found for risk-based prioritisation."
-    - name: "test_date_month"
-      expr: DATE_TRUNC('month', test_date)
-      comment: "Month of NDT testing for trend analysis."
-  measures:
-    - name: "total_ndt_records"
-      expr: COUNT(1)
-      comment: "Total NDT tests conducted. Baseline structural integrity assurance throughput KPI."
-    - name: "accepted_ndt_records"
-      expr: COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END)
-      comment: "Count of NDT tests with accepted results. Numerator for NDT acceptance rate."
-    - name: "rejected_ndt_records"
-      expr: COUNT(CASE WHEN acceptance_status = 'Rejected' THEN 1 END)
-      comment: "Count of rejected NDT tests. Triggers repair and re-inspection with direct schedule and cost impact."
-    - name: "ndt_acceptance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of NDT tests accepted. Premier structural integrity KPI — industry benchmarks vary by method and code."
-    - name: "repair_required_count"
-      expr: COUNT(CASE WHEN repair_required = TRUE THEN 1 END)
-      comment: "Number of components requiring repair based on NDT findings. Directly impacts schedule and cost."
-    - name: "repair_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN repair_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of NDT tests resulting in repair requirement. Key structural quality and cost-of-quality KPI."
-    - name: "ncr_raised_count"
-      expr: COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END)
-      comment: "NDT tests that triggered an NCR. Links structural defects to formal quality management records."
-    - name: "retest_required_count"
-      expr: COUNT(CASE WHEN retest_required = TRUE THEN 1 END)
-      comment: "NDT tests requiring retest. Retest rate indicates quality process effectiveness and adds cost."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_punch_item`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Punch item granular metrics tracking item-level closure rates, cost impacts, and overdue items. Provides operational detail beneath punch list summaries for trade and area managers."
-  source: "`vibe_construction_v1`.`quality`.`punch_item`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level punch item analysis."
-    - name: "punch_item_status"
-      expr: punch_item_status
-      comment: "Current status of the punch item (Open, In Progress, Closed, Rejected) for pipeline management."
-    - name: "punch_item_category"
-      expr: punch_item_category
-      comment: "Category of the punch item (e.g. Category A, B, C) for priority-based closure tracking."
-    - name: "closure_status"
-      expr: closure_status
-      comment: "Closure status of the punch item for handover gate analysis."
+    - name: "action_status"
+      expr: action_status
+      comment: "Current status of the corrective action (Open, In Progress, Closed, Overdue)."
+    - name: "action_type"
+      expr: action_type
+      comment: "Type of corrective action (Rework, Repair, Replace, Accept As Is) — informs quality strategy."
     - name: "priority"
       expr: priority
-      comment: "Priority of the punch item for resource allocation."
-    - name: "deferred_to_dlp"
-      expr: deferred_to_dlp
-      comment: "Flag indicating item deferred to DLP period. Tracks post-handover liability exposure."
-    - name: "identified_date_month"
-      expr: DATE_TRUNC('month', identified_date)
-      comment: "Month punch item was identified for trend analysis."
+      comment: "Priority level of the corrective action — drives resource allocation decisions."
+    - name: "effectiveness_review_outcome"
+      expr: effectiveness_review_outcome
+      comment: "Outcome of the effectiveness review — measures whether the corrective action actually resolved the root cause."
+    - name: "is_systemic_issue"
+      expr: is_systemic_issue
+      comment: "Flag indicating whether the NCR represents a systemic quality issue requiring process change."
+    - name: "assigned_date"
+      expr: assigned_date
+      comment: "Date the corrective action was assigned — used for ageing and SLA compliance analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of cost estimates — required for multi-currency project cost analysis."
   measures:
-    - name: "total_punch_items"
+    - name: "total_corrective_actions"
       expr: COUNT(1)
-      comment: "Total punch items raised. Baseline volume KPI for handover readiness at item level."
-    - name: "open_punch_items"
-      expr: COUNT(CASE WHEN punch_item_status = 'Open' THEN 1 END)
-      comment: "Count of open punch items. High open count blocks handover milestone."
-    - name: "punch_item_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN punch_item_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of punch items closed. Primary handover readiness KPI at item granularity."
-    - name: "total_cost_impact"
-      expr: SUM(CAST(cost_impact AS DOUBLE))
-      comment: "Total financial cost impact of all punch items. Informs cost-of-quality and contract close-out provisions."
-    - name: "avg_cost_impact"
-      expr: AVG(CAST(cost_impact AS DOUBLE))
-      comment: "Average cost impact per punch item. Benchmarks remediation cost and informs DLP financial provisioning."
-    - name: "deferred_to_dlp_count"
-      expr: COUNT(CASE WHEN deferred_to_dlp = TRUE THEN 1 END)
-      comment: "Punch items deferred to DLP. Tracks post-handover liability and client satisfaction risk."
-    - name: "overdue_punch_items"
-      expr: COUNT(CASE WHEN punch_item_status != 'Closed' AND target_completion_date < CURRENT_DATE() THEN 1 END)
-      comment: "Punch items past their target completion date. Overdue items risk contractual penalties and handover delays."
+      comment: "Total corrective actions raised. Baseline volume metric for quality management workload."
+    - name: "open_corrective_actions"
+      expr: COUNT(CASE WHEN action_status = 'Open' THEN 1 END)
+      comment: "Number of open corrective actions. High open counts indicate unresolved quality risk."
+    - name: "corrective_action_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN action_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of corrective actions closed. Primary KPI for quality resolution effectiveness."
+    - name: "total_actual_cost"
+      expr: SUM(CAST(actual_cost AS DOUBLE))
+      comment: "Total actual cost incurred for corrective actions. Measures the true cost of quality failures."
+    - name: "total_estimated_cost"
+      expr: SUM(CAST(cost_estimate AS DOUBLE))
+      comment: "Total estimated cost of corrective actions. Used for budget forecasting of quality remediation."
+    - name: "cost_overrun_amount"
+      expr: SUM(CAST(actual_cost AS DOUBLE) - CAST(cost_estimate AS DOUBLE))
+      comment: "Total cost overrun on corrective actions (actual minus estimate). Measures estimating accuracy for quality remediation."
+    - name: "systemic_issue_count"
+      expr: COUNT(CASE WHEN is_systemic_issue = TRUE THEN 1 END)
+      comment: "Number of corrective actions flagged as systemic issues. Systemic issues require process-level intervention and are a leading indicator of quality programme maturity."
+    - name: "systemic_issue_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_systemic_issue = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of corrective actions that are systemic. High rates indicate fundamental quality management process failures."
+    - name: "requires_design_change_count"
+      expr: COUNT(CASE WHEN requires_design_change = TRUE THEN 1 END)
+      comment: "Number of corrective actions requiring a design change. Measures the design quality impact on construction quality."
+    - name: "effective_corrective_actions"
+      expr: COUNT(CASE WHEN effectiveness_review_outcome = 'Effective' THEN 1 END)
+      comment: "Number of corrective actions confirmed as effective after review. Measures the true resolution quality of the quality management system."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_punch_list`
@@ -642,164 +253,229 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Punch list completion and handover readiness metrics. Tracks open/closed item ratios, completion percentages, and milestone gate status to govern practical completion and DLP commencement."
+  comment: "Punch list completion metrics tracking handover readiness, open item backlog, and closeout performance. Punch lists are the final quality gate before project handover and DLP commencement."
   source: "`vibe_construction_v1`.`quality`.`punch_list`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level punch list benchmarking."
+      comment: "Project context — enables cross-project handover readiness comparison."
     - name: "punch_list_status"
       expr: punch_list_status
-      comment: "Current status of the punch list (Open, In Progress, Closed) for pipeline management."
+      comment: "Current status of the punch list (Open, In Progress, Closed) — primary handover readiness indicator."
     - name: "discipline"
       expr: discipline
-      comment: "Engineering discipline for the punch list to identify trade-level completion gaps."
+      comment: "Engineering discipline for the punch list — enables discipline-level closeout tracking."
     - name: "milestone_type"
       expr: milestone_type
-      comment: "Milestone type associated with the punch list (e.g. Practical Completion, Handover) for gate management."
-    - name: "handover_gate"
-      expr: handover_gate
-      comment: "Flag indicating whether this punch list is a handover gate requirement."
-    - name: "dlp_commencement_gate"
-      expr: dlp_commencement_gate
-      comment: "Flag indicating whether this punch list gates DLP commencement."
+      comment: "Milestone type associated with the punch list (e.g. Mechanical Completion, Handover) — links quality to project milestones."
     - name: "priority"
       expr: priority
-      comment: "Priority of the punch list for resource allocation and scheduling."
-    - name: "creation_date_month"
-      expr: DATE_TRUNC('month', creation_date)
-      comment: "Month punch list was created for trend analysis."
+      comment: "Priority of the punch list — drives resource allocation for closeout activities."
+    - name: "handover_gate"
+      expr: handover_gate
+      comment: "Flag indicating whether this punch list is a handover gate — critical for project completion tracking."
+    - name: "dlp_commencement_gate"
+      expr: dlp_commencement_gate
+      comment: "Flag indicating whether this punch list gates DLP commencement — directly impacts contractual liability periods."
+    - name: "creation_date"
+      expr: creation_date
+      comment: "Date the punch list was created — used for ageing and closeout velocity analysis."
   measures:
     - name: "total_punch_lists"
       expr: COUNT(1)
-      comment: "Total punch lists created. Baseline volume KPI for handover readiness tracking."
+      comment: "Total number of punch lists. Baseline volume metric for handover management."
     - name: "avg_completion_percentage"
       expr: AVG(CAST(completion_percentage AS DOUBLE))
-      comment: "Average completion percentage across all punch lists. Primary handover readiness KPI for project directors."
-    - name: "fully_closed_punch_lists"
+      comment: "Average completion percentage across all punch lists. Primary handover readiness KPI used in project steering meetings."
+    - name: "handover_gate_punch_lists"
+      expr: COUNT(CASE WHEN handover_gate = TRUE THEN 1 END)
+      comment: "Number of punch lists that are handover gates. Tracks the critical path to project completion."
+    - name: "closed_punch_lists"
       expr: COUNT(CASE WHEN punch_list_status = 'Closed' THEN 1 END)
-      comment: "Number of fully closed punch lists. Tracks handover milestone achievement."
+      comment: "Number of fully closed punch lists. Measures handover completion throughput."
     - name: "punch_list_closure_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN punch_list_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of punch lists fully closed. Key practical completion KPI."
-    - name: "handover_gate_open_count"
-      expr: COUNT(CASE WHEN handover_gate = TRUE AND punch_list_status != 'Closed' THEN 1 END)
-      comment: "Open punch lists that are handover gate requirements. Directly blocks practical completion milestone."
-    - name: "dlp_gate_open_count"
-      expr: COUNT(CASE WHEN dlp_commencement_gate = TRUE AND punch_list_status != 'Closed' THEN 1 END)
-      comment: "Open punch lists blocking DLP commencement. Delays defect liability period start and associated cash flows."
-    - name: "overdue_punch_lists"
-      expr: COUNT(CASE WHEN punch_list_status != 'Closed' AND target_closeout_date < CURRENT_DATE() THEN 1 END)
-      comment: "Punch lists past their target closeout date. Overdue punch lists risk contractual penalties and client disputes."
+      comment: "Percentage of punch lists closed. Key handover readiness KPI reported at project steering level."
+    - name: "distinct_projects_with_open_punch_lists"
+      expr: COUNT(DISTINCT CASE WHEN punch_list_status != 'Closed' THEN construction_project_id END)
+      comment: "Number of projects with open punch lists. Portfolio-level handover risk indicator for programme directors."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_audit`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_punch_item`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Quality audit performance metrics tracking audit findings, non-conformance counts, closure rates, and corrective action timeliness. Drives quality management system effectiveness assessment."
-  source: "`vibe_construction_v1`.`quality`.`quality_audit`"
+  comment: "Punch item granular metrics tracking individual item resolution, cost impact, and DLP deferral rates. Punch items are the line-level quality deficiencies that must be resolved for handover."
+  source: "`vibe_construction_v1`.`quality`.`punch_item`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level quality audit benchmarking."
-    - name: "audit_type"
-      expr: audit_type
-      comment: "Type of audit (Internal, External, Certification, Surveillance) for audit programme analysis."
-    - name: "audit_status"
-      expr: audit_status
-      comment: "Current status of the audit (Planned, In Progress, Closed) for audit programme management."
-    - name: "certification_standard"
-      expr: certification_standard
-      comment: "Certification standard audited (ISO 9001, ISO 14001) for compliance programme tracking."
-    - name: "auditee_department"
-      expr: auditee_department
-      comment: "Department audited for department-level quality performance analysis."
-    - name: "audit_date_month"
-      expr: DATE_TRUNC('month', audit_date)
-      comment: "Month of audit for audit programme trend analysis."
-    - name: "follow_up_audit_required"
-      expr: follow_up_audit_required
-      comment: "Flag indicating follow-up audit required. Tracks unresolved audit findings requiring re-verification."
+      comment: "Project context for punch item analysis."
+    - name: "punch_item_status"
+      expr: punch_item_status
+      comment: "Current status of the punch item (Open, In Progress, Closed, Deferred)."
+    - name: "punch_item_category"
+      expr: punch_item_category
+      comment: "Category of the punch item — enables category-level quality analysis and trend identification."
+    - name: "priority"
+      expr: priority
+      comment: "Priority of the punch item — drives closeout sequencing decisions."
+    - name: "closure_status"
+      expr: closure_status
+      comment: "Closure status of the punch item — tracks formal sign-off on resolution."
+    - name: "deferred_to_dlp"
+      expr: deferred_to_dlp
+      comment: "Flag indicating whether the item was deferred to the DLP — deferred items represent contractual liability exposure."
+    - name: "identified_date"
+      expr: identified_date
+      comment: "Date the punch item was identified — used for ageing analysis."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the punch item — enables cost-area closeout analysis."
   measures:
-    - name: "total_audits"
+    - name: "total_punch_items"
       expr: COUNT(1)
-      comment: "Total quality audits conducted. Baseline audit programme throughput KPI."
-    - name: "closed_audits"
-      expr: COUNT(CASE WHEN audit_status = 'Closed' THEN 1 END)
-      comment: "Count of closed audits. Used to compute audit closure rate."
-    - name: "audit_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN audit_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of audits closed. Key quality management system governance KPI."
-    - name: "avg_audit_duration_hours"
-      expr: AVG(CAST(duration_hours AS DOUBLE))
-      comment: "Average audit duration in hours. Used for audit resource planning and programme scheduling."
-    - name: "follow_up_required_count"
-      expr: COUNT(CASE WHEN follow_up_audit_required = TRUE THEN 1 END)
-      comment: "Number of audits requiring follow-up. High count indicates persistent quality system deficiencies."
-    - name: "follow_up_required_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN follow_up_audit_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of audits requiring follow-up. Measures quality management system maturity and effectiveness."
-    - name: "overdue_corrective_actions"
-      expr: COUNT(CASE WHEN audit_status != 'Closed' AND corrective_action_due_date < CURRENT_DATE() THEN 1 END)
-      comment: "Audits with overdue corrective actions. Signals quality governance breakdown requiring executive intervention."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_submittal`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Quality submittal review performance metrics tracking review cycle times, approval rates, and resubmission rates. Governs material and method approval workflows critical to project schedule."
-  source: "`vibe_construction_v1`.`quality`.`quality_submittal`"
-  dimensions:
-    - name: "construction_project_id"
-      expr: construction_project_id
-      comment: "Project identifier for project-level submittal performance benchmarking."
-    - name: "review_status"
-      expr: review_status
-      comment: "Current review status of the submittal (Approved, Rejected, Under Review, Revise and Resubmit) for pipeline management."
-    - name: "submittal_type"
-      expr: submittal_type
-      comment: "Type of submittal (Material, Method Statement, Shop Drawing) for category-level analysis."
-    - name: "review_priority"
-      expr: review_priority
-      comment: "Priority of the submittal review for resource allocation and scheduling."
-    - name: "resubmission_required"
-      expr: resubmission_required
-      comment: "Flag indicating resubmission is required. High resubmission rate signals quality of contractor submissions."
-    - name: "submission_date_month"
-      expr: DATE_TRUNC('month', submission_date)
-      comment: "Month of submittal submission for trend and workload analysis."
-    - name: "certification_required"
-      expr: certification_required
-      comment: "Flag indicating third-party certification is required for the submittal."
-  measures:
-    - name: "total_submittals"
-      expr: COUNT(1)
-      comment: "Total quality submittals raised. Baseline submittal pipeline volume KPI."
-    - name: "approved_submittals"
-      expr: COUNT(CASE WHEN review_status = 'Approved' THEN 1 END)
-      comment: "Count of approved submittals. Numerator for approval rate."
-    - name: "rejected_submittals"
-      expr: COUNT(CASE WHEN review_status = 'Rejected' THEN 1 END)
-      comment: "Count of rejected submittals. High rejection rate signals poor submission quality and delays procurement."
-    - name: "submittal_approval_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN review_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of submittals approved. Key quality and procurement efficiency KPI."
-    - name: "resubmission_count"
-      expr: COUNT(CASE WHEN resubmission_required = TRUE THEN 1 END)
-      comment: "Number of submittals requiring resubmission. Resubmissions add review cycle time and delay material procurement."
-    - name: "resubmission_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN resubmission_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of submittals requiring resubmission. High rate indicates contractor submission quality issues."
+      comment: "Total number of punch items. Baseline volume metric for handover quality management."
+    - name: "open_punch_items"
+      expr: COUNT(CASE WHEN punch_item_status = 'Open' THEN 1 END)
+      comment: "Number of open punch items. Open item backlog is the primary handover readiness risk indicator."
+    - name: "punch_item_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN punch_item_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of punch items closed. Key handover completion KPI for project managers and clients."
+    - name: "dlp_deferred_items"
+      expr: COUNT(CASE WHEN deferred_to_dlp = TRUE THEN 1 END)
+      comment: "Number of punch items deferred to the DLP. Deferred items represent post-handover liability and contractor obligation."
+    - name: "dlp_deferral_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN deferred_to_dlp = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of punch items deferred to DLP. High deferral rates indicate handover quality risk and potential client disputes."
     - name: "total_cost_impact"
       expr: SUM(CAST(cost_impact AS DOUBLE))
-      comment: "Total cost impact of quality submittals. Tracks financial consequences of submittal delays and rejections."
-    - name: "pending_submittals"
-      expr: COUNT(CASE WHEN review_status = 'Under Review' THEN 1 END)
-      comment: "Count of submittals currently under review. Tracks review backlog and potential schedule risk."
+      comment: "Total financial cost impact of punch items. Measures the budget exposure from outstanding quality deficiencies."
+    - name: "avg_cost_impact"
+      expr: AVG(CAST(cost_impact AS DOUBLE))
+      comment: "Average cost impact per punch item. Benchmarks the financial severity of individual quality deficiencies."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_checklist_execution`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Checklist execution performance metrics tracking compliance rates, critical failures, and NCR generation from quality inspections. Checklist executions are the operational record of quality control activities on site."
+  source: "`vibe_construction_v1`.`quality`.`checklist_execution`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for checklist execution — enables project-level quality compliance analysis."
+    - name: "inspection_type"
+      expr: inspection_type
+      comment: "Type of inspection the checklist supports — enables inspection-type quality benchmarking."
+    - name: "inspection_stage"
+      expr: inspection_stage
+      comment: "Stage of construction at which the checklist was executed — links quality to construction progress."
+    - name: "overall_result"
+      expr: overall_result
+      comment: "Overall pass/fail result of the checklist execution — primary quality outcome indicator."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the checklist execution — tracks formal sign-off on quality activities."
+    - name: "critical_failure_flag"
+      expr: critical_failure_flag
+      comment: "Flag indicating a critical failure was identified — critical failures require immediate escalation."
+    - name: "execution_date"
+      expr: execution_date
+      comment: "Date of checklist execution — used for trend analysis and inspection frequency reporting."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the checklist execution — enables cost-area quality compliance analysis."
+  measures:
+    - name: "total_executions"
+      expr: COUNT(1)
+      comment: "Total number of checklist executions. Baseline quality activity volume metric."
+    - name: "avg_compliance_percentage"
+      expr: AVG(CAST(compliance_percentage AS DOUBLE))
+      comment: "Average compliance percentage across all checklist executions. Primary quality compliance KPI for project steering."
+    - name: "critical_failure_count"
+      expr: COUNT(CASE WHEN critical_failure_flag = TRUE THEN 1 END)
+      comment: "Number of checklist executions with critical failures. Critical failures represent immediate safety and quality risk."
+    - name: "critical_failure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN critical_failure_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of checklist executions with critical failures. A leading quality risk indicator for project directors."
+    - name: "ncr_generated_count"
+      expr: COUNT(CASE WHEN ncr_generated_flag = TRUE THEN 1 END)
+      comment: "Number of checklist executions that generated an NCR. Measures the conversion rate from quality checks to formal non-conformances."
+    - name: "ncr_generation_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_generated_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of checklist executions resulting in an NCR. High rates indicate systemic quality issues in specific work areas."
+    - name: "witness_required_not_captured_count"
+      expr: COUNT(CASE WHEN witness_required_flag = TRUE AND witness_signature_captured = FALSE THEN 1 END)
+      comment: "Number of executions where a witness was required but signature was not captured. Measures contractual compliance with witness point obligations."
+    - name: "avg_temperature_celsius"
+      expr: AVG(CAST(temperature_celsius AS DOUBLE))
+      comment: "Average ambient temperature during checklist executions. Environmental context for quality outcome analysis."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_lab_test`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Laboratory test result metrics tracking material compliance rates, test pass/fail performance, and specification conformance. Lab tests provide objective evidence of material quality for construction projects."
+  source: "`vibe_construction_v1`.`quality`.`lab_test`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for lab tests — enables project-level material quality analysis."
+    - name: "test_result_status"
+      expr: test_result_status
+      comment: "Pass/fail status of the lab test — primary material quality outcome indicator."
+    - name: "material_type"
+      expr: material_type
+      comment: "Type of material tested — enables material-category quality benchmarking."
+    - name: "test_method"
+      expr: test_method
+      comment: "Test method used — ensures comparability of results across test types."
+    - name: "test_standard"
+      expr: test_standard
+      comment: "Standard against which the test was conducted — links results to regulatory and specification requirements."
+    - name: "retest_flag"
+      expr: retest_flag
+      comment: "Flag indicating this is a retest — retest rates measure first-pass material quality."
+    - name: "test_date"
+      expr: test_date
+      comment: "Date of the lab test — used for trend analysis and material quality monitoring over time."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the lab test — enables cost-area material quality analysis."
+  measures:
+    - name: "total_lab_tests"
+      expr: COUNT(1)
+      comment: "Total number of lab tests conducted. Baseline material testing volume metric."
+    - name: "passed_tests"
+      expr: COUNT(CASE WHEN test_result_status = 'Pass' THEN 1 END)
+      comment: "Number of lab tests that passed. Core material quality compliance indicator."
+    - name: "failed_tests"
+      expr: COUNT(CASE WHEN test_result_status = 'Fail' THEN 1 END)
+      comment: "Number of lab tests that failed. Failed tests trigger NCRs and material rejection decisions."
+    - name: "test_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN test_result_status = 'Pass' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of lab tests passing. Primary material quality KPI for procurement and quality management."
+    - name: "retest_count"
+      expr: COUNT(CASE WHEN retest_flag = TRUE THEN 1 END)
+      comment: "Number of retests conducted. High retest volumes indicate material quality issues and increase testing costs."
+    - name: "retest_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN retest_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of tests that are retests. Measures first-pass material quality and testing efficiency."
+    - name: "avg_measured_result"
+      expr: AVG(CAST(measured_result AS DOUBLE))
+      comment: "Average measured test result value. Used for statistical process control and specification compliance trending."
+    - name: "avg_specification_requirement"
+      expr: AVG(CAST(specification_requirement AS DOUBLE))
+      comment: "Average specification requirement value. Provides the benchmark for measured result comparison."
+    - name: "distinct_materials_tested"
+      expr: COUNT(DISTINCT material_type)
+      comment: "Number of distinct material types tested. Measures the breadth of material quality assurance coverage."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_weld_record`
@@ -807,62 +483,295 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Weld quality metrics tracking acceptance rates, NDT outcomes, rework rates, and PWHT compliance. Critical for structural integrity assurance on oil, gas, and infrastructure projects."
+  comment: "Weld quality metrics tracking acceptance rates, NDT results, rework rates, and PWHT compliance. Weld quality is a critical safety and structural integrity indicator in construction and industrial projects."
   source: "`vibe_construction_v1`.`quality`.`weld_record`"
   dimensions:
     - name: "construction_project_id"
       expr: construction_project_id
-      comment: "Project identifier for project-level weld quality benchmarking."
+      comment: "Project context for weld quality analysis — enables project-level weld performance benchmarking."
     - name: "acceptance_status"
       expr: acceptance_status
-      comment: "Weld acceptance status (Accepted, Rejected, Pending) for quality gate tracking."
+      comment: "Acceptance status of the weld (Accepted, Rejected, Pending) — primary weld quality outcome indicator."
     - name: "ndt_method"
       expr: ndt_method
-      comment: "NDT method applied (RT, UT, MT, PT) for method-level quality analysis."
+      comment: "NDT method used to inspect the weld (RT, UT, MT, PT) — enables method-specific quality analysis."
     - name: "ndt_result"
       expr: ndt_result
-      comment: "NDT test result (Pass, Fail) for weld integrity analysis."
+      comment: "Result of the NDT inspection — links weld quality to non-destructive testing outcomes."
     - name: "weld_type"
       expr: weld_type
-      comment: "Type of weld (Butt, Fillet, Socket) for weld-type quality benchmarking."
+      comment: "Type of weld (Butt, Fillet, etc.) — enables weld-type quality benchmarking."
     - name: "joint_type"
       expr: joint_type
-      comment: "Joint type for structural quality analysis."
-    - name: "weld_date_month"
-      expr: DATE_TRUNC('month', weld_date)
-      comment: "Month of welding for trend analysis and welder performance tracking."
-    - name: "wps_number"
-      expr: wps_number
-      comment: "Welding Procedure Specification number for procedure-level quality analysis."
+      comment: "Joint type for the weld — provides structural context for quality analysis."
+    - name: "rework_required_flag"
+      expr: rework_required_flag
+      comment: "Flag indicating weld rework was required — rework rates are a key welder performance indicator."
+    - name: "weld_date"
+      expr: weld_date
+      comment: "Date of welding — used for trend analysis and welder performance monitoring."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the weld — enables cost-area weld quality analysis."
   measures:
     - name: "total_welds"
       expr: COUNT(1)
-      comment: "Total weld records. Baseline volume KPI for weld production throughput."
+      comment: "Total number of weld records. Baseline weld production volume metric."
     - name: "accepted_welds"
       expr: COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END)
-      comment: "Count of accepted welds. Numerator for weld acceptance rate."
+      comment: "Number of welds accepted. Core weld quality throughput indicator."
     - name: "rejected_welds"
       expr: COUNT(CASE WHEN acceptance_status = 'Rejected' THEN 1 END)
-      comment: "Count of rejected welds. High rejection rate signals welder qualification or procedure issues."
+      comment: "Number of welds rejected. Rejected welds require rework and directly impact schedule and cost."
     - name: "weld_acceptance_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of welds accepted on first inspection. Premier structural quality KPI — industry benchmark is typically >97%."
+      comment: "Percentage of welds accepted on first inspection. Primary weld quality KPI — industry benchmark is typically >97%."
     - name: "rework_required_count"
       expr: COUNT(CASE WHEN rework_required_flag = TRUE THEN 1 END)
-      comment: "Number of welds requiring rework. Directly impacts schedule and cost on piping and structural packages."
+      comment: "Number of welds requiring rework. Rework is a direct cost and schedule impact indicator."
     - name: "rework_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN rework_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of welds requiring rework. Key cost-of-quality and schedule risk indicator."
+      comment: "Percentage of welds requiring rework. High rework rates indicate welder qualification or procedure compliance issues."
     - name: "pwht_required_count"
       expr: COUNT(CASE WHEN pwht_required_flag = TRUE THEN 1 END)
-      comment: "Number of welds requiring post-weld heat treatment. Tracks PWHT compliance for pressure vessel and piping codes."
+      comment: "Number of welds requiring post-weld heat treatment. PWHT compliance is a critical structural integrity requirement."
     - name: "total_weld_length_mm"
       expr: SUM(CAST(weld_length_mm AS DOUBLE))
-      comment: "Total weld length in millimetres. Production volume KPI for progress measurement and resource planning."
+      comment: "Total weld length in millimetres. Production volume metric for weld programme progress tracking."
     - name: "avg_weld_length_mm"
       expr: AVG(CAST(weld_length_mm AS DOUBLE))
       comment: "Average weld length per record. Used for productivity benchmarking and resource planning."
-    - name: "ndt_fail_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ndt_result = 'Fail' THEN 1 END) / NULLIF(COUNT(CASE WHEN ndt_result IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of NDT-tested welds that failed. Structural integrity KPI with direct safety and regulatory implications."
+    - name: "avg_preheat_temperature_c"
+      expr: AVG(CAST(preheat_temperature_c AS DOUBLE))
+      comment: "Average preheat temperature applied. Preheat compliance is a critical weld procedure parameter affecting structural integrity."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_audit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Quality audit performance metrics tracking audit findings, corrective action rates, and audit programme effectiveness. Quality audits provide independent assurance of the quality management system."
+  source: "`vibe_construction_v1`.`quality`.`quality_audit`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for quality audits — enables project-level audit performance analysis."
+    - name: "audit_type"
+      expr: audit_type
+      comment: "Type of audit (Internal, External, Certification, Surveillance) — determines audit scope and authority."
+    - name: "audit_status"
+      expr: audit_status
+      comment: "Current status of the audit (Planned, In Progress, Closed) — tracks audit programme execution."
+    - name: "certification_standard"
+      expr: certification_standard
+      comment: "Certification standard audited against (ISO 9001, etc.) — links audits to regulatory and contractual requirements."
+    - name: "auditee_department"
+      expr: auditee_department
+      comment: "Department being audited — enables department-level quality performance analysis."
+    - name: "audit_date"
+      expr: audit_date
+      comment: "Date of the audit — used for audit programme frequency and trend analysis."
+    - name: "follow_up_audit_required"
+      expr: follow_up_audit_required
+      comment: "Flag indicating a follow-up audit is required — indicates unresolved findings requiring re-verification."
+  measures:
+    - name: "total_audits"
+      expr: COUNT(1)
+      comment: "Total number of quality audits conducted. Baseline audit programme volume metric."
+    - name: "closed_audits"
+      expr: COUNT(CASE WHEN audit_status = 'Closed' THEN 1 END)
+      comment: "Number of closed audits. Measures audit programme completion and finding resolution."
+    - name: "audit_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN audit_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of audits closed. Low closure rates indicate unresolved quality system findings."
+    - name: "total_car_raised"
+      expr: SUM(CAST(car_raised_count AS DOUBLE))
+      comment: "Total corrective action requests raised across all audits. Measures the volume of quality system deficiencies identified."
+    - name: "total_major_nc"
+      expr: SUM(CAST(major_nc_count AS DOUBLE))
+      comment: "Total major non-conformances identified in audits. Major NCs represent significant quality system failures requiring urgent corrective action."
+    - name: "total_minor_nc"
+      expr: SUM(CAST(minor_nc_count AS DOUBLE))
+      comment: "Total minor non-conformances identified in audits. Tracks the volume of lower-severity quality system gaps."
+    - name: "follow_up_required_count"
+      expr: COUNT(CASE WHEN follow_up_audit_required = TRUE THEN 1 END)
+      comment: "Number of audits requiring follow-up. High follow-up rates indicate persistent quality system non-compliance."
+    - name: "avg_audit_duration_hours"
+      expr: AVG(CAST(duration_hours AS DOUBLE))
+      comment: "Average audit duration in hours. Used for audit resource planning and programme scheduling."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_concrete_pour_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Concrete pour quality metrics tracking pour volumes, slump test compliance, NCR rates, and curing performance. Concrete quality is a critical structural integrity indicator with direct safety and regulatory implications."
+  source: "`vibe_construction_v1`.`quality`.`concrete_pour_record`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for concrete pour quality analysis."
+    - name: "pour_status"
+      expr: pour_status
+      comment: "Status of the concrete pour (Completed, In Progress, On Hold) — tracks pour programme execution."
+    - name: "acceptance_status"
+      expr: acceptance_status
+      comment: "Acceptance status of the pour — primary concrete quality outcome indicator."
+    - name: "concrete_grade"
+      expr: concrete_grade
+      comment: "Concrete grade/mix design — enables grade-level quality performance analysis."
+    - name: "element_type"
+      expr: element_type
+      comment: "Structural element type being poured (Column, Slab, Beam) — enables element-type quality benchmarking."
+    - name: "slump_test_passed"
+      expr: slump_test_passed
+      comment: "Flag indicating slump test passed — slump compliance is a critical fresh concrete quality indicator."
+    - name: "ncr_raised"
+      expr: ncr_raised
+      comment: "Flag indicating an NCR was raised for this pour — links concrete quality to formal non-conformance management."
+    - name: "pour_date"
+      expr: pour_date
+      comment: "Date of the concrete pour — used for trend analysis and seasonal quality monitoring."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the pour — enables cost-area concrete quality analysis."
+  measures:
+    - name: "total_pours"
+      expr: COUNT(1)
+      comment: "Total number of concrete pours. Baseline concrete production volume metric."
+    - name: "total_pour_volume_m3"
+      expr: SUM(CAST(total_pour_volume_m3 AS DOUBLE))
+      comment: "Total concrete volume poured in cubic metres. Primary concrete production progress metric for project tracking."
+    - name: "avg_pour_volume_m3"
+      expr: AVG(CAST(total_pour_volume_m3 AS DOUBLE))
+      comment: "Average pour volume per pour event. Used for pour planning and resource scheduling."
+    - name: "slump_test_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN slump_test_passed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of pours passing slump test. Critical fresh concrete quality KPI — failures indicate mix design or delivery issues."
+    - name: "ncr_raised_count"
+      expr: COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END)
+      comment: "Number of pours that raised an NCR. Measures the rate of concrete quality non-conformances."
+    - name: "ncr_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of pours resulting in an NCR. High NCR rates indicate systemic concrete quality issues."
+    - name: "avg_concrete_temperature_c"
+      expr: AVG(CAST(concrete_temperature_c AS DOUBLE))
+      comment: "Average concrete temperature at time of pour. Temperature compliance is a critical quality parameter for concrete strength development."
+    - name: "avg_ambient_temperature_c"
+      expr: AVG(CAST(ambient_temperature_c AS DOUBLE))
+      comment: "Average ambient temperature during pours. Extreme temperatures affect concrete curing and require special measures."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_ndt_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Non-Destructive Testing (NDT) metrics tracking test acceptance rates, repair requirements, and technician certification compliance. NDT is a critical quality assurance activity for structural and pressure-containing components."
+  source: "`vibe_construction_v1`.`quality`.`ndt_record`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for NDT analysis — enables project-level NDT performance benchmarking."
+    - name: "ndt_method"
+      expr: ndt_method
+      comment: "NDT method used (RT, UT, MT, PT, VT) — enables method-specific quality analysis."
+    - name: "acceptance_status"
+      expr: acceptance_status
+      comment: "Acceptance status of the NDT result — primary NDT quality outcome indicator."
+    - name: "test_status"
+      expr: test_status
+      comment: "Current status of the NDT test (Pending, Complete, Rejected)."
+    - name: "repair_required"
+      expr: repair_required
+      comment: "Flag indicating repair is required based on NDT findings — directly impacts schedule and cost."
+    - name: "ncr_raised"
+      expr: ncr_raised
+      comment: "Flag indicating an NCR was raised from this NDT result — links NDT failures to formal quality management."
+    - name: "test_date"
+      expr: test_date
+      comment: "Date of NDT test — used for trend analysis and testing programme tracking."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the NDT test — enables cost-area NDT quality analysis."
+  measures:
+    - name: "total_ndt_tests"
+      expr: COUNT(1)
+      comment: "Total number of NDT tests conducted. Baseline NDT programme volume metric."
+    - name: "accepted_ndt_tests"
+      expr: COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END)
+      comment: "Number of NDT tests with accepted results. Core NDT quality throughput indicator."
+    - name: "ndt_acceptance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of NDT tests accepted. Primary NDT quality KPI — low acceptance rates indicate structural quality issues."
+    - name: "repair_required_count"
+      expr: COUNT(CASE WHEN repair_required = TRUE THEN 1 END)
+      comment: "Number of NDT tests requiring repair. Repair requirements directly impact schedule and cost."
+    - name: "repair_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN repair_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of NDT tests requiring repair. High repair rates indicate systemic workmanship quality issues."
+    - name: "ncr_raised_count"
+      expr: COUNT(CASE WHEN ncr_raised = TRUE THEN 1 END)
+      comment: "Number of NDT tests that raised an NCR. Measures the formal non-conformance rate from NDT activities."
+    - name: "retest_required_count"
+      expr: COUNT(CASE WHEN retest_required = TRUE THEN 1 END)
+      comment: "Number of NDT tests requiring retest. Retest requirements increase testing cost and programme duration."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`quality_acceptance_test`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Acceptance test metrics tracking equipment and system commissioning quality, test pass rates, and retest requirements. Acceptance tests are the final quality gate before equipment and systems are handed over to the client."
+  source: "`vibe_construction_v1`.`quality`.`acceptance_test`"
+  dimensions:
+    - name: "construction_project_id"
+      expr: construction_project_id
+      comment: "Project context for acceptance testing — enables project-level commissioning quality analysis."
+    - name: "test_status"
+      expr: test_status
+      comment: "Current status of the acceptance test (Pending, In Progress, Passed, Failed)."
+    - name: "acceptance_status"
+      expr: acceptance_status
+      comment: "Final acceptance status — primary commissioning quality outcome indicator."
+    - name: "test_type"
+      expr: test_type
+      comment: "Type of acceptance test (FAT, SAT, Commissioning, Performance) — enables test-type quality benchmarking."
+    - name: "test_result"
+      expr: test_result
+      comment: "Result of the acceptance test — links test execution to quality outcomes."
+    - name: "retest_required"
+      expr: retest_required
+      comment: "Flag indicating retest is required — retest rates measure first-pass commissioning quality."
+    - name: "test_date"
+      expr: test_date
+      comment: "Date of the acceptance test — used for commissioning programme trend analysis."
+    - name: "wbs_element_id"
+      expr: wbs_element_id
+      comment: "WBS element for the acceptance test — enables cost-area commissioning quality analysis."
+  measures:
+    - name: "total_acceptance_tests"
+      expr: COUNT(1)
+      comment: "Total number of acceptance tests conducted. Baseline commissioning programme volume metric."
+    - name: "passed_acceptance_tests"
+      expr: COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END)
+      comment: "Number of acceptance tests passed. Core commissioning quality throughput indicator."
+    - name: "acceptance_test_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN acceptance_status = 'Accepted' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of acceptance tests passed. Primary commissioning quality KPI for project handover readiness."
+    - name: "retest_required_count"
+      expr: COUNT(CASE WHEN retest_required = TRUE THEN 1 END)
+      comment: "Number of acceptance tests requiring retest. High retest rates indicate commissioning quality issues and schedule risk."
+    - name: "retest_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN retest_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of acceptance tests requiring retest. Measures first-pass commissioning quality — high rates delay handover."
+    - name: "avg_test_duration_hours"
+      expr: AVG(CAST(test_duration_hours AS DOUBLE))
+      comment: "Average acceptance test duration in hours. Used for commissioning programme scheduling and resource planning."
+    - name: "corrective_action_required_count"
+      expr: COUNT(CASE WHEN corrective_action_required IS NOT NULL AND corrective_action_required != '' THEN 1 END)
+      comment: "Number of acceptance tests requiring corrective action. Measures the volume of commissioning deficiencies requiring resolution."
 $$;

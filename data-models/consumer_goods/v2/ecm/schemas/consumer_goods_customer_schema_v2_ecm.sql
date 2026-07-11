@@ -1,5 +1,5 @@
 -- Schema for Domain: customer | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 05:32:05
+-- Generated on: 2026-07-10 13:03:42
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_consumer_goods_v1`.`customer` COMMENT 'SSOT for B2B trade customer and retail account master data. Owns retailer, distributor, wholesaler, and foodservice account profiles, account hierarchies, ACV/TDP metrics, EDI trading partner configurations, VMI agreements, and SLA terms. Distinct from consumer (B2C) — this domain serves the trade channel.';
@@ -8,7 +8,6 @@ CREATE DATABASE IF NOT EXISTS `vibe_consumer_goods_v1`.`customer` COMMENT 'SSOT 
 CREATE OR REPLACE TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` (
     `channel_classification_id` BIGINT COMMENT 'Unique identifier for the channel classification record. Primary key.',
     `parent_channel_classification_id` BIGINT COMMENT 'Reference to the parent channel classification in a hierarchical taxonomy, enabling multi-level channel rollups. Null for top-level classifications.',
-    `trade_account_id` BIGINT COMMENT 'Trade account this channel classification applies to.',
     `active_status` STRING COMMENT 'Current lifecycle status of the channel classification. Active classifications are used for account assignment and reporting; inactive classifications are retained for historical reference.. Valid values are `active|inactive|deprecated|pending`',
     `acv_eligible_flag` BOOLEAN COMMENT 'Indicates whether accounts in this channel are eligible for ACV (All Commodity Volume) measurement and reporting. True if channel participates in syndicated retail measurement services.',
     `applicable_region` STRING COMMENT 'Three-letter ISO country code or regional code indicating the geographic scope where this channel classification applies (e.g., USA, CAN, MEX, EUR).. Valid values are `^[A-Z]{3}$`',
@@ -48,10 +47,8 @@ ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ADD CON
 ALTER SCHEMA `vibe_consumer_goods_v1`.`customer` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_consumer_goods_v1`.`customer` SET TAGS ('dbx_domain' = 'customer');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` SET TAGS ('dbx_vibe_required_structure' = 'v2');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `channel_classification_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Classification ID');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `parent_channel_classification_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Channel Classification ID');
-ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `trade_account_id` SET TAGS ('dbx_business_glossary_term' = 'Trade Account Id');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Active Status');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `active_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deprecated|pending');
 ALTER TABLE `vibe_consumer_goods_v1`.`customer`.`channel_classification` ALTER COLUMN `acv_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'All Commodity Volume (ACV) Eligible Flag');

@@ -1,5 +1,5 @@
--- Schema for Domain: revenue | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:47
+-- Schema for Domain: revenue | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:56
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`revenue` COMMENT 'Authoritative source for pricing strategies, rate plans, yield optimization, and revenue performance. Manages BAR (Best Available Rate), dynamic pricing rules, DRR (Dynamic Rate Rules), rate restrictions, demand forecasting, and competitive benchmarking (STR STAR Report, RGI, MPI, ARI). Tracks ADR, RevPAR, TRevPAR, and GOPPAR metrics. Integrates with IDeaS G3 RMS and Infor EzRMS.';
@@ -14,10 +14,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_pla
     `menu_id` BIGINT COMMENT 'Foreign key linking to fnb.menu. Business justification: Rate plans reference specific menus for included meals (breakfast menu version, dinner package menu). Required for package rate construction, menu version control, guest entitlement verification at ou',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Rate plans must post room revenue to specific GL accounts for revenue recognition and financial statement preparation. Essential for USALI compliance and audit trail.',
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Rate plans enforce tier-specific eligibility (loyalty_tier_required field exists). Business process: validating member tier qualification for rate plan access at booking time. Essential for tier-based',
-    `program_config_id` BIGINT COMMENT 'Foreign key linking to loyalty.program_config. Business justification: Rate plans must validate against loyalty program rules (points eligibility, conversion rates, tier requirements). Business process: ensuring rate plan configuration aligns with active loyalty program ',
+    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_obligation. Business justification: Rate plans must satisfy regulatory obligations (ADA accessible rate availability, rate transparency requirements, consumer protection mandates). Rate loading process validates regulatory compliance be',
     `property_id` BIGINT COMMENT 'Reference to the property or hotel at which this rate plan is applicable. Enables property-level rate plan management across a multi-property portfolio. A null value indicates a chain-wide or global rate plan applicable to all properties.',
     `room_type_id` BIGINT COMMENT 'Reference to the specific room type or room category to which this rate plan applies. A null value indicates the rate plan applies to all room types at the associated property.',
-    `touchpoint_id` BIGINT COMMENT 'Foreign key linking to experience.touchpoint. Business justification: Rate plans are designed around guest journey touchpoints (pre-arrival, check-in, in-stay offers) for targeted pricing strategies. Revenue managers create touchpoint-specific rates to optimize conversi',
     `advance_purchase_days` STRING COMMENT 'Minimum number of days prior to arrival that a booking must be made to qualify for this rate plan. Common values are 7, 14, 21, or 30 days for advance purchase promotional rates. A value of 0 indicates no advance purchase requirement.',
     `approved_by` STRING COMMENT 'Name or identifier of the revenue manager or director who approved this rate plan for distribution. Supports SOX financial controls and internal audit requirements for rate authorization governance.',
     `approved_timestamp` TIMESTAMP COMMENT 'The timestamp when this rate plan was formally approved for activation and distribution. Distinct from created_timestamp; captures the authorization event in the rate plan lifecycle. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
@@ -58,13 +57,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_pla
     `stay_date_restriction` STRING COMMENT 'Defines any day-of-week or date-specific restrictions on when stays under this rate plan are permitted. Weekday-only and weekend-only restrictions are common for corporate and leisure rates respectively; blackout dates exclude specific high-demand periods.. Valid values are `none|weekday_only|weekend_only|blackout_dates|specific_dates`',
     `tax_inclusive` BOOLEAN COMMENT 'Indicates whether the base_rate_amount includes applicable taxes (VAT, occupancy tax, city tax). True for tax-inclusive markets; false for markets where taxes are added at checkout. Critical for accurate revenue recognition under USALI and IFRS/GAAP.',
     CONSTRAINT pk_revenue_rate_plan PRIMARY KEY(`revenue_rate_plan_id`)
-) COMMENT 'Master catalog of all rate plans available across properties, including BAR (Best Available Rate), LRA (Last Room Availability), NRR (Non-Refundable Rate), corporate negotiated rates, package rates, and promotional rates. Defines rate structure, cancellation policy, meal plan inclusions, booking conditions, and distribution eligibility. Sourced from IDeaS G3 RMS and Sabre SynXis CRS. This is the SSOT for rate plan definitions. [SSOT_OWNER] [SSOT MASTER for group revenue.revenue_rate_plan]channel_rate_plan. [SSOT:rate_plan] Domain-specific specialization of the rate_plan concept; canonical SSOT owner is channel.channel_rate_plan.';
+) COMMENT 'Master catalog of all rate plans available across properties, including BAR (Best Available Rate), LRA (Last Room Availability), NRR (Non-Refundable Rate), corporate negotiated rates, package rates, and promotional rates. Defines rate structure, cancellation policy, meal plan inclusions, booking conditions, and distribution eligibility. Sourced from IDeaS G3 RMS and Sabre SynXis CRS. This is the SSOT for rate plan definitions.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` (
     `rate_restriction_id` BIGINT COMMENT 'Unique surrogate identifier for each rate restriction record in the revenue management system. Primary key for the rate_restriction data product in the Databricks Silver Layer.',
-    `cancellation_policy_id` BIGINT COMMENT 'Foreign key linking to reservation.cancellation_policy. Business justification: Revenue managers apply cancellation policy restrictions as part of yield management strategy. Rate restrictions must enforce specific cancellation terms (non-refundable, free cancellation windows) to ',
+    `cancellation_policy_id` BIGINT COMMENT 'Foreign key linking to reservation.cancellation_policy. Business justification: Revenue managers apply cancellation policy restrictions as part of yield management strategy. Rate restrictions must enforce specific cancellation terms (non-refundable, free cancellation windows) to',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Restrictions (stop-sell, min LOS, CTA/CTD) are applied per distribution channel. Revenue managers close channels selectively based on demand - essential inventory control operation. Enables channel-sp',
-    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Revenue managers apply specific rate restrictions (min LOS, CTA/CTD, hurdle rates) when large event bookings create displacement risk. Essential for RMS restriction management around group blocks and ',
+    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Revenue managers apply specific rate restrictions (min LOS, CTA/CTD, hurdle rates) when large event bookings create displacement risk. Essential for RMS restriction management around group blocks and',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Rate restrictions impact revenue posting patterns and require GL account mapping for revenue management adjustments and variance analysis in financial reporting.',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Rate restrictions can be scoped to market segments (e.g., restrict Leisure segment on peak dates). rate_restriction has market_segment_code (STRING) which should be normalized to FK. N rate_restrictio',
     `property_id` BIGINT COMMENT 'Reference to the property (hotel/resort) to which this rate restriction applies. Enables property-level yield optimization and restriction management across the portfolio.',
@@ -116,7 +115,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rul
     `demand_forecast_id` BIGINT COMMENT 'Identifier of the demand forecast record from IDeaS G3 RMS or Infor EzRMS that this forecast-based Dynamic Rate Rule references for its trigger evaluation.',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Dynamic pricing rules target specific channels differently (e.g., OTA rates adjust based on commission costs, direct channel gets best rate). RMS systems apply channel-specific rate optimization strat',
     `segment_id` BIGINT COMMENT 'Foreign key linking to guest.segment. Business justification: Dynamic pricing rules target specific guest segments for personalized rate adjustments. Revenue management systems apply segment-specific pricing logic (e.g., loyalty tier discounts, corporate negotia',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Dynamic pricing adjustments must post to specific GL accounts for audit trail, revenue variance tracking, and SOX compliance in automated pricing systems.',
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Dynamic pricing rules adjust rates based on member tier for personalized revenue optimization. Business process: applying tier-specific rate adjustments in revenue management systems to reward high-va',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Dynamic rate rules can be scoped to specific market segments. dynamic_rate_rule has market_segment_code (STRING) which should be normalized to FK. N DRR records → 1 market_segment. Removes redundant m',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Dynamic pricing rules monitor outlet occupancy for total revenue optimization (restaurant full = adjust room+dining packages). Required for integrated revenue management systems that optimize property',
@@ -124,7 +122,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rul
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property to which this Dynamic Rate Rule applies. Links to the property master record in Oracle OPERA PMS.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Identifier of the rate plan (e.g., BAR, LRA, NRR) to which this Dynamic Rate Rule applies. A null value indicates the rule applies across all eligible rate plans for the property.',
     `room_type_id` BIGINT COMMENT 'Identifier of the specific room type (e.g., standard king, deluxe suite) to which this Dynamic Rate Rule applies. A null value indicates the rule applies across all room types at the property.',
-    `member_id` BIGINT COMMENT 'Foreign key linking to loyalty.member. Business justification: Dynamic rules can target specific high-value members for personalized pricing strategies. Business process: VIP member-specific rate rules for retention and revenue optimization, common in luxury hosp',
     `adjustment_direction` STRING COMMENT 'Indicates whether the Dynamic Rate Rule increases or decreases the rate when triggered. Provides explicit directional intent separate from the sign of adjustment_value to prevent ambiguity in RMS configuration.. Valid values are `increase|decrease`',
     `adjustment_type` STRING COMMENT 'Method by which the Dynamic Rate Rule adjusts the published rate when triggered. Percentage applies a relative increase or decrease to the current rate; absolute_amount adds or subtracts a fixed currency value; bar_offset moves the rate a fixed amount above or below the Best Available Rate (BAR); bar_multiplier applies a multiplier to the BAR.. Valid values are `percentage|absolute_amount|bar_offset|bar_multiplier`',
     `adjustment_value` DECIMAL(18,2) COMMENT 'The magnitude of the rate adjustment applied when the Dynamic Rate Rule is triggered. Interpreted according to adjustment_type: a value of 0.10 with type percentage means a 10% rate increase; a value of 25.00 with type absolute_amount means a $25 rate increase; a value of -15.00 with type bar_offset means $15 below BAR.',
@@ -169,6 +166,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Manual rate overrides often apply to specific channels (e.g., override OTA rate due to parity issue, adjust GDS rate for corporate segment). Revenue managers need to track which channel triggered over',
     `dynamic_rate_rule_id` BIGINT COMMENT 'Reference to the Dynamic Rate Rule (DRR) that was in effect and being superseded by this manual override. Enables analysis of how frequently manual overrides conflict with automated DRR logic and supports RMS rule tuning.',
     `event_booking_id` BIGINT COMMENT 'Reference to a specific event, conference, or MICE (Meetings, Incentives, Conferences, Exhibitions) event that triggered the pricing override when override_reason_code is event_demand. Links to the event master record in Delphi by Amadeus.',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Manual rate overrides require GL posting for revenue variance tracking, management override reporting, and SOX control documentation in financial audits.',
     `primary_pricing_employee_id` BIGINT COMMENT 'Reference to the revenue manager employee who applied or approved the pricing override. Used for accountability tracking and override frequency analysis per individual manager.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property for which the pricing override was applied. Links to the property master record in Oracle OPERA PMS.',
     `reservation_group_block_id` BIGINT COMMENT 'Reference to the group room block associated with this pricing override when override_reason_code is group_wash. Links to the group block record in Oracle OPERA PMS or Delphi by Amadeus for group displacement analysis.',
@@ -261,7 +259,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast`
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Demand forecasts incorporate expected lift from planned marketing campaigns. Forecasters link campaigns to forecast assumptions for post-campaign variance analysis and to refine future campaign lift m',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Revenue analysts generate demand forecasts; employee attribution required for forecast accuracy tracking, performance evaluation, and accountability for override decisions in revenue management foreca',
     `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Demand forecasts incorporate known definite event bookings as constrained demand drivers. Critical for pickup forecasting, unconstrained vs constrained demand modeling, and event impact analysis in re',
-    `finance_budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Demand forecasts are reconciled against financial budgets for variance analysis, reforecasting cycles, and board reporting on revenue performance vs plan.',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Demand forecasts are reconciled against financial budgets for variance analysis, reforecasting cycles, and board reporting on revenue performance vs plan.',
+    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Room demand forecasts drive outlet-level staffing and inventory planning (high occupancy forecast = increase outlet labor/stock). Required for integrated labor scheduling, procurement planning, outlet',
     `member_segment_id` BIGINT COMMENT 'Foreign key linking to loyalty.member_segment. Business justification: Demand forecasting incorporates loyalty segment behavior patterns (booking lead time, LOS, spend). Business process: segment-specific demand modeling for accurate revenue forecasts, essential for hote',
     `market_segment_id` BIGINT COMMENT 'Reference to the market segment (e.g., Transient, Group, Corporate, Leisure, OTA) for which the demand forecast is generated. Null when the forecast is at the property or room-type level only.',
     `property_id` BIGINT COMMENT 'Reference to the hotel or resort property for which this demand forecast was generated. Aligns with the Oracle OPERA PMS property master.',
@@ -360,8 +359,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actu
     `performance_actuals_id` BIGINT COMMENT 'Primary key for performance_actuals',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: RevPAR and room revenue actuals are tracked by cost center for departmental P&L, USALI reporting, and operational performance management.',
     `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Daily actuals track which room nights and revenue came from specific event bookings for segment reporting. Required for event contribution analysis, MICE segment performance reporting, and group vs tr',
-    `finance_budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Actuals are compared against financial budgets for variance reporting, board presentations, and management performance evaluation against approved financial plans.',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Actuals are compared against financial budgets for variance reporting, board presentations, and management performance evaluation against approved financial plans.',
     `fiscal_period_id` BIGINT COMMENT 'Reference to the fiscal calendar period (month/quarter/year) to which this performance date belongs, enabling USALI-aligned financial period reporting and variance analysis against budget.',
+    `gss_score_id` BIGINT COMMENT 'Foreign key linking to experience.gss_score. Business justification: Revenue performance reporting includes GSS scores as a KPI alongside financial metrics for balanced scorecards (SALT program requirement). Daily flash reports show RevPAR and GSS together—mandatory fo',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Actual revenue performance posts to specific GL accounts for financial statement preparation, revenue recognition, and external financial reporting compliance.',
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Performance reporting breaks down revenue contribution by member tier for loyalty program ROI analysis. Business process: tier-level revenue attribution reporting required for evaluating loyalty progr',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Daily actuals track outlet-level F&B revenue for TRevPAR calculation and USALI reporting. Required for total property revenue reporting, GOP analysis, outlet performance attribution in consolidated fi',
@@ -417,7 +417,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` 
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Market segments map to typical loyalty tiers for segmentation alignment and forecasting. Business process: aligning revenue management segments with loyalty tier definitions for consistent guest class',
     `member_segment_id` BIGINT COMMENT 'Foreign key linking to loyalty.member_segment. Business justification: Revenue market segments correlate with loyalty member segments for unified guest profiling. Business process: cross-domain segmentation mapping enables consistent guest targeting across revenue optimi',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Market segments have outlet preferences/restrictions (corporate guests → business center cafe, leisure → poolside bar). Required for outlet positioning strategy, menu design, targeted marketing, guest',
-    `property_id` BIGINT COMMENT '',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - market segments are configured and tracked at property level',
     `ada_accommodation_typical` BOOLEAN COMMENT 'Indicates whether guests in this market segment typically require ADA (Americans with Disabilities Act) accessible accommodations. Relevant for government, medical, and certain group segments. Informs room inventory allocation and accessibility compliance reporting.',
     `avg_lead_time_days` STRING COMMENT 'Average number of days between booking date and arrival date for this market segment. Key input for demand forecasting in IDeaS G3 RMS and Infor EzRMS. Segments with short lead times (e.g., OTA last-minute) require different yield strategies than long-lead corporate or group segments. Represents the MEASUREMENT_OR_VALUE for this resource.',
     `avg_length_of_stay_nights` DECIMAL(18,2) COMMENT 'Average number of nights guests in this segment stay per booking (ALOS — Average Length of Stay). Used in revenue management for LOS (Length of Stay) restriction optimization, demand forecasting, and RevPAR (Revenue Per Available Room) modeling in IDeaS G3 RMS.',
@@ -463,6 +463,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` (
     `competitive_set_id` BIGINT COMMENT 'Primary key for competitive_set',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Revenue managers define competitive sets; employee tracking required for strategic decision audit trail, comp set performance evaluation, and accountability for benchmarking configuration in revenue s',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Competitive benchmarking (RGI, MPI, ARI targets) informs budget planning and strategic financial targets for annual budget approval and strategic planning.',
+    `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Competitive intelligence gathering must comply with antitrust and data privacy policies. Comp set approval validates legal compliance before rate shopping activation. Essential for competitive intelli',
     `property_id` BIGINT COMMENT 'Identifier of the subject property (the home property) that owns this competitive set definition. Links to the property master record in the Property domain.',
     `advance_purchase_window_days` STRING COMMENT 'The booking lead time window in days used for rate shopping comparisons within this competitive set (e.g., 0 = same-day, 7 = 7-day advance, 30 = 30-day advance). Ensures rate intelligence is captured at consistent booking horizons for fair ADR comparison.',
     `approval_date` DATE COMMENT 'The date on which the competitive set definition was formally approved by the revenue management authority. Supports audit trail requirements for comp set governance and STR STAR Report submission integrity.',
@@ -508,7 +510,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` (
     `str_benchmark_id` BIGINT COMMENT 'Primary key for str_benchmark',
     `competitive_set_id` BIGINT COMMENT 'The identifier for the competitive set (comp set) as defined in the STR STAR Report submission. A comp set is the group of competitor properties against which the subject property is benchmarked for ADR, occupancy, and RevPAR performance.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Revenue analysts import and validate STR benchmark data; employee attribution required for data quality accountability, submission workflow tracking, and performance evaluation of competitive intellig',
-    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: STR benchmark data can be segmented by market segment for competitive analysis. str_benchmark has market_segment (STRING) which should be normalized to FK. N str_benchmark records → 1 market_segment. ',
+    `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: STR benchmark data can be segmented by market segment for competitive analysis. str_benchmark has market_segment (STRING) which should be normalized to FK. N str_benchmark records → 1 market_segment.',
     `property_id` BIGINT COMMENT 'Reference to the subject property for which this STR benchmark or rate shop record applies. Links to the property master record in the Property domain.',
     `ari` DECIMAL(18,2) COMMENT 'The Average Rate Index (ARI) measures the subject propertys ADR (Average Daily Rate) relative to its STR competitive set. An ARI above 1.0 (or 100) indicates the property is achieving a higher average rate than its comp set peers.',
     `benchmark_currency_code` STRING COMMENT 'The ISO 4217 three-letter currency code in which all STR STAR Report monetary benchmark values (ADR, RevPAR) are reported for this record (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
@@ -554,13 +556,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` (
     `competitor_rate_id` BIGINT COMMENT 'Unique surrogate identifier for each competitor rate intelligence record in the Silver Layer lakehouse. Primary key for this data product.',
     `competitive_set_id` BIGINT COMMENT 'Foreign key linking to revenue.competitive_set. Business justification: Competitor rate shopping is organized by competitive sets. competitor_rate currently has competitive_set_code (STRING) which should be normalized to FK. N competitor_rate records belong to 1 competiti',
-    `policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Rate shopping activities must comply with terms-of-service and data privacy policies. Rate shopping program requires legal approval to ensure compliant data collection methods. Essential for competiti',
+    `property_id` BIGINT COMMENT 'Reference to the competitor property record against which this rate was shopped. Links to the competitor property master.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Revenue analysts conduct competitor rate shopping; employee attribution required for competitive intelligence workflow tracking, data quality accountability, and performance evaluation of rate shoppin',
     `ari` DECIMAL(18,2) COMMENT 'Average Rate Index (ARI) calculated as Travel Hospitalitys ADR divided by the competitive sets ADR for the same period. ARI > 1.0 indicates rate premium over the competitive set. Sourced from STR STAR Report or computed from shopped rates.',
     `availability_status` STRING COMMENT 'Availability status of the competitor room type and rate plan at the time of the shop. Indicates whether the rate was bookable (available), the room type was sold out, or the rate was closed to arrival. Used in demand and compression analysis.. Valid values are `available|sold_out|on_request|closed`',
     `cancellation_policy` STRING COMMENT 'Cancellation policy associated with the shopped competitor rate. Distinguishes refundable (flexible) rates from NRR (Non-Refundable Rates), which is a key dimension in rate plan competitive analysis.. Valid values are `free_cancellation|non_refundable|partial_refund|conditional`',
     `channel_name` STRING COMMENT 'Specific name of the booking channel or OTA platform where the rate was shopped (e.g., Expedia, Booking.com, Hotels.com, Marriott.com, Amadeus GDS). Provides granular channel-level competitive intelligence beyond the channel category.',
     `channel_shopped` STRING COMMENT 'The distribution channel through which the competitor rate was observed. OTA = Online Travel Agency (e.g., Expedia, Booking.com), GDS = Global Distribution System, direct = competitor brand website. Enables channel-level rate parity and competitive positioning analysis.. Valid values are `OTA|direct|GDS|metasearch|voice|mobile_app`',
+    `competitor_property_name` STRING COMMENT 'Human-readable name of the competitor hotel or resort property as it appears in the competitive set or OTA listing. Supports reporting and analyst review.',
     `country_code` STRING COMMENT 'ISO 3166-1 alpha-3 three-letter country code of the country where the competitor property is located (e.g., USA, GBR, FRA). Supports geographic segmentation and multi-market competitive analysis.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this competitor rate record was first created in the Silver Layer lakehouse. Supports data lineage, audit trail, and SLA monitoring for competitive intelligence data freshness.',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code in which the shopped rate is denominated (e.g., USD, EUR, GBP). Required for multi-currency normalization in global competitive benchmarking.. Valid values are `^[A-Z]{3}$`',
@@ -655,6 +658,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` (
     `employee_id` BIGINT COMMENT 'Reference to the revenue manager or analyst responsible for reviewing and acting on this pickup report. Links to the workforce/employee master. Satisfies TRANSACTION_HEADER PARTY_REFERENCE requirement — the accountable internal party for this revenue management snapshot.',
     `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Pickup velocity reports track room block pickup rates for specific event bookings against cutoff dates. Essential for group pace reporting, attrition risk assessment, and event booking performance mon',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Pickup reports track booking pace by market segment. pickup_report has segment_code (STRING) which should be normalized to FK. N pickup_report records → 1 market_segment. Removes redundant segment_cod',
+    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Pickup reports track outlet reservation pace for outlets accepting reservations (fine dining, specialty restaurants). Required for outlet capacity planning, labor scheduling, inventory management alig',
     `property_id` BIGINT COMMENT 'Reference to the property (hotel, resort, or vacation property) for which this pickup report is generated. Links to the property master record in the Property domain.',
     `adr_on_books` DECIMAL(18,2) COMMENT 'Average Daily Rate (ADR) of all rooms currently on books for the stay_date as of the report_date. Calculated as total room revenue on books divided by rooms_on_books. Core revenue performance indicator alongside occupancy pace. Expressed in the propertys operating currency.',
     `adr_variance_to_forecast` DECIMAL(18,2) COMMENT 'Difference between adr_on_books and forecasted_adr (adr_on_books minus forecasted_adr). Positive value indicates rate is tracking above forecast; negative value indicates rate is below forecast. Used alongside rooms_variance_to_forecast to assess overall revenue pace.',
@@ -749,11 +753,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` 
     `competitive_set_id` BIGINT COMMENT 'Identifier for the STR (Smith Travel Research) competitive set used as the benchmarking reference for RGI, MPI, and ARI targets in this budget. Links to the STR STAR Report competitive set definition.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Revenue budgets are allocated to cost centers for departmental planning, manager accountability, and USALI-compliant departmental budget reporting.',
     `employee_id` BIGINT COMMENT 'Reference to the revenue director or senior leader who formally approved this budget record. Supports governance, audit trail, and owner presentation accountability.',
-    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Budget planning incorporates known definite event bookings as committed revenue for fiscal period forecasting. Required for budget vs actual variance analysis with event segmentation and MICE revenue ',
-    `finance_budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Revenue budgets are components of the overall financial budget and must reconcile for consolidated budget approval, owner reporting, and financial planning.',
+    `event_booking_id` BIGINT COMMENT 'Foreign key linking to event.event_booking. Business justification: Budget planning incorporates known definite event bookings as committed revenue for fiscal period forecasting. Required for budget vs actual variance analysis with event segmentation and MICE revenue',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Revenue budgets are components of the overall financial budget and must reconcile for consolidated budget approval, owner reporting, and financial planning.',
+    `gss_score_id` BIGINT COMMENT 'Foreign key linking to experience.gss_score. Business justification: Annual revenue budgets set GSS score targets alongside financial targets (SALT program requirements). Budget submissions must include target GSS by period—mandatory for brand compliance. Revenue and e',
     `market_segment_id` BIGINT COMMENT 'Reference to the market segment (e.g., transient leisure, transient corporate, group, wholesale, OTA) for which this budget is defined. Enables segment-level revenue planning and variance analysis.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Revenue budgets roll up to profit centers for consolidated financial planning, ownership entity reporting, and portfolio-level budget consolidation.',
     `property_id` BIGINT COMMENT 'Reference to the property for which this revenue budget applies. Links to the property master record in the Property domain.',
+    `ssot_budget_fk` BIGINT COMMENT '',
     `approval_date` DATE COMMENT 'The date on which the revenue director formally approved this budget version. Marks the transition from draft to approved strategy status.',
     `budgeted_available_rooms` STRING COMMENT 'Total number of room-nights planned to be available for sale during the planning period (capacity baseline). Used as the denominator for RevPAR, TRevPAR, and GOPPAR calculations and STR STAR Report benchmarking.',
     `budgeted_cpor` DECIMAL(18,2) COMMENT 'Budgeted Cost Per Occupied Room (CPOR) in the propertys operating currency, representing the planned direct operating cost per occupied room night. Used for profitability planning and variance analysis against actuals.',
@@ -793,7 +799,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` 
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this revenue budget record was most recently modified. Tracks version changes, reforecast updates, and approval workflow transitions for audit and governance purposes.',
     `version` STRING COMMENT 'Indicates the iteration of this budget record: original (initial annual plan), revised (mid-year adjustment), or reforecast (rolling forecast update). Supports version-controlled variance analysis in the Daily Operations Report (DOR) and management reporting.. Valid values are `original|revised|reforecast`',
     CONSTRAINT pk_revenue_budget PRIMARY KEY(`revenue_budget_id`)
-) COMMENT 'Single source of truth is finance.finance_budget. Revenue planning, strategy, and budget records combining strategic revenue targets with financial budget commitments at the property and market segment level, aligned to USALI standards. Captures planning period, property, strategy type (transient, group, total revenue), target and budgeted ADR/occupancy/RevPAR/TRevPAR, budgeted room revenue, key tactical actions and strategic initiatives, budget version (original, revised, reforecast), strategy status (draft, approved, active), planning horizon, and approving revenue director. This is the SSOT for all revenue planning governance — both strategic direction and financial targets — used for variance analysis against actuals in the DOR, management reporting, owner presentations, and strategic revenue governance.finance_budget as single source of truth]finance_budget. [SSOT:budget] Domain-specific specialization of the budget concept; canonical SSOT owner is finance.finance_budget. SSOT: defers to canonical finance.finance_budget (MVM cross-domain dedup).';
+) COMMENT 'Revenue planning, strategy, and budget records combining strategic revenue targets with financial budget commitments at the property and market segment level, aligned to USALI standards. Captures planning period, property, strategy type (transient, group, total revenue), target and budgeted ADR/occupancy/RevPAR/TRevPAR, budgeted room revenue, key tactical actions and strategic initiatives, budget version (original, revised, reforecast), strategy status (draft, approved, active), planning horizon, and approving revenue director. This is the SSOT for all revenue planning governance — both strategic direction and financial targets — used for variance analysis against actuals in the DOR, management reporting, owner presentations, and strategic revenue governance.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` (
     `channel_contribution_id` BIGINT COMMENT 'Unique surrogate identifier for each channel contribution record in the Databricks Silver Layer. Primary key for this transactional summary entity. Entity role: TRANSACTION_HEADER — represents a discrete revenue contribution measurement event per distribution channel, property, and reporting period.',
@@ -850,6 +856,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_ana
     `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: When evaluating group blocks during high-demand periods driven by marketing campaigns, revenue managers need campaign context to assess true displacement cost and whether to accept group business.',
     `demand_forecast_id` BIGINT COMMENT 'Identifier of the demand forecast record used as the basis for transient displacement estimates in this analysis. Links to the revenue.demand_forecast product.',
     `guest_group_block_id` BIGINT COMMENT 'Foreign key linking to guest.guest_group_block. Business justification: Displacement analysis quantifies revenue impact of accepting specific guest group blocks. Revenue managers calculate transient displacement cost, net contribution, and RevPAR impact for each guest.gue',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Displacement decisions impact revenue recognition and require GL posting for group vs transient revenue tracking, profitability analysis, and revenue mix reporting.',
     `market_segment_id` BIGINT COMMENT 'Identifier of the market segment associated with the group or contract business being evaluated (e.g., MICE, corporate group, leisure group). Drives segmentation in revenue reporting.',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property for which the displacement analysis is being conducted. Links to the property master record.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Identifier of the proposed rate plan associated with the group or contract business being evaluated. Used to assess the proposed rate against transient BAR (Best Available Rate).',
@@ -894,8 +901,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_ana
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` (
     `revenue_negotiated_rate_id` BIGINT COMMENT 'Unique surrogate identifier for the negotiated rate agreement record in the lakehouse Silver layer. Primary key for this entity.',
     `account_id` BIGINT COMMENT 'Foreign key linking to event.event_account. Business justification: Negotiated rates are contracted with specific event accounts (corporate, consortia, national accounts). Essential for contract rate management, event planner rate loading, and account-specific pricing',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to marketing.campaign. Business justification: Negotiated corporate rates are sometimes created as part of B2B marketing campaigns. Tracking the originating campaign supports contract performance analysis and measures campaign success in driving c',
     `channel_id` BIGINT COMMENT 'Foreign key linking to channel.channel. Business justification: Corporate negotiated rates are loaded to specific channels (GDS with specific chain codes, OTA corporate programs, direct booking engines). Rate loading and distribution tracking requires knowing whic',
-    `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Corporate negotiated rates include outlet benefits (breakfast at specific outlet, lounge access). Required for contract fulfillment, benefit tracking, outlet revenue attribution, guest entitlement ver',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Negotiated corporate rates post to specific GL accounts for contract revenue tracking, corporate account profitability analysis, and revenue recognition compliance.',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to revenue.market_segment. Business justification: Negotiated rates are classified by market segment (e.g., Corporate, Wholesale). revenue_negotiated_rate has market_segment_code (STRING) which should be normalized to FK. N negotiated_rate records → 1',
     `tier_id` BIGINT COMMENT 'Foreign key linking to loyalty.tier. Business justification: Corporate negotiated rates often include tier-based eligibility or enhanced benefits. Business process: enforcing tier requirements for corporate rate access, common in negotiated contracts that offer',
@@ -904,6 +911,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiat
     `property_id` BIGINT COMMENT 'Reference to the property for which this negotiated rate agreement applies. A single negotiated rate may be scoped to one property or replicated per property for multi-property contracts.',
     `revenue_rate_plan_id` BIGINT COMMENT 'Reference to the parent rate plan definition under which this negotiated rate is structured. Links to the rate plan master in Sabre SynXis CRS or Oracle OPERA PMS.',
     `room_type_id` BIGINT COMMENT 'Reference to the specific room type to which this negotiated rate applies. Null if the rate applies to all room types under the agreement.',
+    `channel_negotiated_rate_id` BIGINT COMMENT '',
     `advance_booking_days` STRING COMMENT 'Minimum number of days in advance a reservation must be made to qualify for this negotiated rate. Zero indicates same-day booking is permitted.',
     `amount` DECIMAL(18,2) COMMENT 'The contracted nightly room rate (Average Daily Rate) agreed upon for this account. Represents the fixed or base rate per room per night in the specified currency. Core pricing field for revenue management and contract compliance.',
     `approval_status` STRING COMMENT 'Approval workflow status for this negotiated rate agreement. Rates must be approved by revenue management leadership before loading into CRS/GDS channels.. Valid values are `approved|pending_approval|rejected|under_review`',
@@ -938,7 +946,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiat
     `source_system_rate_reference` STRING COMMENT 'Native identifier of this negotiated rate record in the originating operational system (Oracle OPERA PMS, Sabre SynXis CRS, or Salesforce CRM). Enables traceability and reconciliation between the lakehouse and source systems.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this negotiated rate record was last modified in the source system. Supports change tracking, audit compliance, and incremental ETL processing.',
     CONSTRAINT pk_revenue_negotiated_rate PRIMARY KEY(`revenue_negotiated_rate_id`)
-) COMMENT 'Corporate and wholesale negotiated rate agreements defining contracted pricing for specific accounts, travel management companies (TMCs), and consortia. Captures account identifier, rate code, negotiated rate amount, LRA (Last Room Availability) obligation, blackout dates, minimum night commitment, contract period, and rate loading status in Sabre SynXis CRS and Oracle OPERA PMS. Distinct from public rate plans — these are account-specific contracted rates. [SSOT_OWNER] [SSOT MASTER for group revenue.revenue_negotiated_rate]channel_negotiated_rate. [SSOT:negotiated_rate] Domain-specific specialization of the negotiated_rate concept; canonical SSOT owner is channel.channel_negotiated_rate.';
+) COMMENT 'Corporate and wholesale negotiated rate agreements defining contracted pricing for specific accounts, travel management companies (TMCs), and consortia. Captures account identifier, rate code, negotiated rate amount, LRA (Last Room Availability) obligation, blackout dates, minimum night commitment, contract period, and rate loading status in Sabre SynXis CRS and Oracle OPERA PMS. Distinct from public rate plans — these are account-specific contracted rates.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` (
     `strategy_id` BIGINT COMMENT 'Primary key for strategy',
@@ -946,7 +954,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` (
     `competitive_set_id` BIGINT COMMENT 'Reference to the competitive set definition used for benchmarking this strategy. The competitor set defines the peer properties against which RGI, MPI, and ARI targets are measured via STR STAR Report.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Revenue strategies are implemented at cost center level for tactical execution, departmental accountability, and operational performance management.',
     `demand_forecast_id` BIGINT COMMENT 'Reference to the demand forecast record that informed and underpins this revenue strategy. Links to the revenue.demand_forecast product to provide the analytical basis for strategy targets and tactical decisions.',
-    `finance_budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Revenue strategies are aligned with financial budgets for strategic planning, ensuring revenue tactics support approved financial targets and ownership expectations.',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Revenue strategies are aligned with financial budgets for strategic planning, ensuring revenue tactics support approved financial targets and ownership expectations.',
+    `gss_score_id` BIGINT COMMENT 'Foreign key linking to experience.gss_score. Business justification: Revenue strategies explicitly target GSS improvement as a demand driver (experience-driven revenue strategy). Strategic plans link rate positioning to satisfaction goals—properties pursuing rate growt',
     `property_id` BIGINT COMMENT 'Identifier of the hotel or resort property to which this revenue strategy applies. Links to the property master record in Oracle OPERA PMS.',
     `superseded_by_strategy_id` BIGINT COMMENT 'Reference to the newer revenue strategy record that replaced this one when status is superseded. Enables lineage tracking of strategy evolution and supports audit trail for revenue governance.',
     `activated_timestamp` TIMESTAMP COMMENT 'Date and time when the strategy status transitioned to active and began governing live pricing and inventory decisions. Distinct from approval timestamp — a strategy may be approved in advance and activated at a later point.',
@@ -1033,7 +1042,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` (
     `total_revenue_actuals_id` BIGINT COMMENT 'Unique surrogate identifier for each daily total revenue actuals record at the property level. Primary key for this Silver Layer data product.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Total revenue actuals are tracked by cost center for USALI departmental reporting, manager accountability, and departmental P&L preparation.',
-    `finance_budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Total revenue actuals are compared against financial budgets for variance analysis, board reporting, and management performance evaluation against approved plans.',
+    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.finance_budget. Business justification: Total revenue actuals are compared against financial budgets for variance analysis, board reporting, and management performance evaluation against approved plans.',
     `fiscal_period_id` BIGINT COMMENT 'Reference to the fiscal calendar period (month/quarter/year) under which this stay date falls, enabling USALI-aligned financial reporting in SAP S/4HANA.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Total revenue actuals post to GL accounts for financial statement preparation, revenue recognition, and external financial reporting compliance.',
     `fnb_outlet_id` BIGINT COMMENT 'Foreign key linking to fnb.fnb_outlet. Business justification: Total revenue actuals aggregate outlet-level F&B for TRevPAR calculation and USALI reporting. Required for financial consolidation, total property performance reporting, outlet contribution analysis t',
@@ -1085,62 +1094,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_ac
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` (
     `segment_program_eligibility_id` BIGINT COMMENT 'Unique surrogate identifier for the segment-program eligibility record. Primary key.',
-    `employee_id` BIGINT COMMENT '',
+    `experience_program_id` BIGINT COMMENT 'Foreign key linking to the experience program for which this market segment is eligible',
     `market_segment_id` BIGINT COMMENT 'Foreign key linking to the market segment that is eligible for this experience program',
-    `member_segment_id` BIGINT COMMENT 'add column member_segment_id (BIGINT) with FK to loyalty.member_segment.member_segment_id - eligibility commonly applies to loyalty member segments alongside market segment.',
-    `property_id` BIGINT COMMENT '',
     `program_id` BIGINT COMMENT 'Foreign key linking to the experience program for which this market segment is eligible',
-    `segment_program_id` BIGINT COMMENT 'Foreign key linking to the experience program for which this market segment is eligible',
-    `tier_id` BIGINT COMMENT 'add column tier_id (BIGINT) with FK to loyalty.tier.tier_id - eligibility frequently varies by loyalty tier, not just market segment.',
-    `advance_booking_days` STRING COMMENT '',
-    `approval_required_flag` BOOLEAN COMMENT '',
-    `approval_status` STRING COMMENT 'Approval state of the eligibility rule in the workflow.',
-    `approved_by` STRING COMMENT 'User or role who approved the eligibility configuration.',
-    `blackout_dates` STRING COMMENT '',
-    `booking_window_days` STRING COMMENT '',
-    `channel_restriction` STRING COMMENT 'Channels eligible under this rule.',
-    `created_at` TIMESTAMP COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT 'Expanded thin product',
-    `currency_code` STRING COMMENT 'Currency for thresholds.',
-    `discount_eligible` STRING COMMENT '',
-    `discount_percentage` DECIMAL(18,2) COMMENT '',
-    `effective_date` DATE COMMENT 'Expanded thin product',
     `effective_end_date` DATE COMMENT 'Date when this segment-program eligibility configuration expires. Null indicates ongoing eligibility.',
     `effective_start_date` DATE COMMENT 'Date when this segment-program eligibility configuration becomes active. Allows for time-bound eligibility rules.',
-    `eligibility_criteria` STRING COMMENT 'Business criteria defining which members qualify.',
-    `eligibility_end_date` DATE COMMENT 'Added to expand thin product per business context.',
-    `eligibility_notes` STRING COMMENT 'Free-text notes for segment program eligibility',
-    `eligibility_priority` STRING COMMENT '',
-    `eligibility_rule_code` STRING COMMENT '',
-    `eligibility_rule_type` STRING COMMENT 'Type of eligibility rule applied.',
-    `eligibility_start_date` DATE COMMENT 'Added to expand thin product per business context.',
-    `eligibility_status` STRING COMMENT 'Expanded thin product',
     `enrollment_eligibility_flag` BOOLEAN COMMENT 'Indicates whether guests in this market segment are eligible to enroll in this experience program. False may indicate restricted or conditional eligibility.',
-    `expiration_date` DATE COMMENT '',
-    `expiry_date` DATE COMMENT 'Expanded thin product',
-    `last_review_date` DATE COMMENT '',
-    `max_discount_pct` DECIMAL(18,2) COMMENT 'Expanded thin product',
-    `max_enrollments` STRING COMMENT '',
-    `max_length_of_stay` STRING COMMENT '',
-    `max_redemptions` STRING COMMENT 'Maximum number of program redemptions allowed under this eligibility.',
-    `maximum_los` STRING COMMENT '',
-    `min_length_of_stay` STRING COMMENT '',
-    `min_los_nights` STRING COMMENT 'Expanded thin product',
-    `min_los_requirement` STRING COMMENT '',
-    `min_nights_required` STRING COMMENT '',
-    `min_revenue_threshold` DECIMAL(18,2) COMMENT 'Minimum revenue threshold for eligibility.',
-    `min_room_nights` STRING COMMENT 'Minimum room nights required for eligibility.',
-    `min_spend_threshold` DECIMAL(18,2) COMMENT '',
-    `minimum_los` STRING COMMENT '',
-    `notes` STRING COMMENT 'Free-text notes about the eligibility rule.',
-    `points_multiplier` STRING COMMENT '',
     `priority_rank` STRING COMMENT 'Numeric ranking indicating the priority or preference level for this segment-program combination. Lower numbers indicate higher priority when multiple programs are available.',
     `program_discount_pct` DECIMAL(18,2) COMMENT 'Segment-specific discount percentage applied to this experience program for guests in this market segment. Null indicates standard program pricing applies.',
-    `rate_discount_pct` DECIMAL(18,2) COMMENT '',
-    `rate_plan_eligibility_code` STRING COMMENT 'Eligible rate plan code.',
-    `rate_plan_restriction` STRING COMMENT '',
-    `updated_at` TIMESTAMP COMMENT '',
-    `updated_timestamp` TIMESTAMP COMMENT 'Expanded thin product',
     CONSTRAINT pk_segment_program_eligibility PRIMARY KEY(`segment_program_eligibility_id`)
 ) COMMENT 'This association product represents the eligibility configuration between market segments and experience programs. It captures which market segments are eligible for which experience programs, along with segment-specific enrollment rules, discounts, and priority rankings. Each record links one market segment to one experience program with attributes that exist only in the context of this eligibility relationship.. Existence Justification: Experience programs are configured to target multiple market segments with segment-specific eligibility rules, discounts, and priority rankings. For example, a Romance Package program may be eligible for Leisure, Couples, and Transient segments, each with different discount percentages and priority levels. Conversely, a single market segment like Transient participates in multiple programs (Romance, Spa, Golf packages) with different eligibility criteria and effective dates for each program.';
 
@@ -1183,48 +1144,31 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility`
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`revenue` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`revenue` SET TAGS ('dbx_domain' = 'revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_concept' = 'rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_group' = 'rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_canonical' = 'revenue.revenue_rate_plan');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_ssot_role' = 'canonical');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Included Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `menu_id` SET TAGS ('dbx_business_glossary_term' = 'Included Menu Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `program_config_id` SET TAGS ('dbx_business_glossary_term' = 'Program Config Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `touchpoint_id` SET TAGS ('dbx_business_glossary_term' = 'Touchpoint Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `advance_purchase_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Purchase Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Approved By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `base_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `base_rate_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `booking_window_close_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Window Close Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `booking_window_open_date` SET TAGS ('dbx_business_glossary_term' = 'Booking Window Open Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `cancellation_policy_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `commission_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `commission_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `discount_pct` SET TAGS ('dbx_business_glossary_term' = 'Discount Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `discount_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `drr_eligible` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Rate Rule (DRR) Eligible Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Effective Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Expiry Date');
@@ -1246,9 +1190,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_category` SET TAGS ('dbx_business_glossary_term' = 'Rate Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_category` SET TAGS ('dbx_value_regex' = 'public|negotiated|wholesale|group|loyalty|employee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_ceiling_amount` SET TAGS ('dbx_business_glossary_term' = 'Rate Ceiling Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_ceiling_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_floor_amount` SET TAGS ('dbx_business_glossary_term' = 'Rate Floor Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_floor_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_level` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_level` SET TAGS ('dbx_value_regex' = 'property|brand|chain|global');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `rate_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Code');
@@ -1266,10 +1208,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `stay_date_restriction` SET TAGS ('dbx_value_regex' = 'none|weekday_only|weekend_only|blackout_dates|specific_dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_rate_plan` ALTER COLUMN `tax_inclusive` SET TAGS ('dbx_business_glossary_term' = 'Tax Inclusive Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `rate_restriction_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Restriction ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `cancellation_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
@@ -1295,7 +1234,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Restriction Effective Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Restriction Expiry Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `hurdle_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Hurdle Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `hurdle_rate_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `is_blackout` SET TAGS ('dbx_business_glossary_term' = 'Blackout Date Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `is_cta` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `is_ctd` SET TAGS ('dbx_business_glossary_term' = 'Closed to Departure (CTD) Flag');
@@ -1325,20 +1263,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `updated_by_user` SET TAGS ('dbx_business_glossary_term' = 'Updated By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_restriction` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `dynamic_rate_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Rate Rule (DRR) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Competitor Set ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `demand_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `segment_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Segment Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Monitored Fnb Outlet Id (Foreign Key)');
@@ -1346,9 +1278,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Target Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `adjustment_direction` SET TAGS ('dbx_business_glossary_term' = 'Rate Adjustment Direction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `adjustment_direction` SET TAGS ('dbx_value_regex' = 'increase|decrease');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `adjustment_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Adjustment Type');
@@ -1372,9 +1301,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `los_max_nights` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `los_min_nights` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `max_rate_ceiling` SET TAGS ('dbx_business_glossary_term' = 'Maximum Rate Ceiling');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `max_rate_ceiling` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `min_rate_floor` SET TAGS ('dbx_business_glossary_term' = 'Minimum Rate Floor');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `min_rate_floor` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `pickup_window_days` SET TAGS ('dbx_business_glossary_term' = 'Pickup Window Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `rms_rule_reference_code` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Rule Reference ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `rule_code` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Rate Rule (DRR) Code');
@@ -1395,36 +1322,28 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`dynamic_rate_rule` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `pricing_override_id` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approver ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `banquet_event_order_id` SET TAGS ('dbx_business_glossary_term' = 'Related Banquet Event Order Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `dynamic_rate_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Rate Rule (DRR) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `primary_pricing_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Manager ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `primary_pricing_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `primary_pricing_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `reservation_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Group Block ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `approval_threshold_pct` SET TAGS ('dbx_business_glossary_term' = 'Approval Threshold Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `approval_threshold_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Override Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `channel_restriction` SET TAGS ('dbx_business_glossary_term' = 'Channel Distribution Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `channel_restriction` SET TAGS ('dbx_value_regex' = 'all_channels|direct_only|ota_excluded|gds_only|brand_website_only');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `closed_to_arrival` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `closed_to_departure` SET TAGS ('dbx_business_glossary_term' = 'Closed to Departure (CTD) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `competitive_rate_reference` SET TAGS ('dbx_business_glossary_term' = 'Competitive Rate Reference');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `competitive_rate_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1437,9 +1356,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `los_restriction_max` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (LOS) Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `los_restriction_min` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS) Restriction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_notes` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_rate` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Reason Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_reason_code` SET TAGS ('dbx_value_regex' = 'competitive_pressure|group_wash|event_demand|error_correction|distressed_inventory|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Reference Number');
@@ -1449,24 +1366,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_status` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `override_status` SET TAGS ('dbx_value_regex' = 'pending|approved|active|expired|reversed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rate_variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Rate Variance Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rate_variance_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rate_variance_pct` SET TAGS ('dbx_business_glossary_term' = 'Rate Variance Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rate_variance_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `reversal_reason` SET TAGS ('dbx_business_glossary_term' = 'Override Reversal Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `reversed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Override Reversed Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_forecast_demand_level` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Forecast Demand Level');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_forecast_demand_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|very_high');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_recommended_rate` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Recommended Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_recommended_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_source_system` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Source System');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `rms_source_system` SET TAGS ('dbx_value_regex' = 'ideas_g3|infor_ezrms|manual');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `submitted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Override Submitted Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pricing_override` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rate_availability_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Availability ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `cancellation_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
@@ -1476,14 +1387,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `advance_purchase_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Purchase Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `availability_status` SET TAGS ('dbx_business_glossary_term' = 'Availability Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `availability_status` SET TAGS ('dbx_value_regex' = 'open|closed|on_request|stop_sell|min_stay_restriction|closed_to_arrival');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `available_rooms` SET TAGS ('dbx_business_glossary_term' = 'Available Rooms Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `bar_rate` SET TAGS ('dbx_business_glossary_term' = 'Best Available Rate (BAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `bar_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `closed_to_arrival` SET TAGS ('dbx_business_glossary_term' = 'Closed to Arrival (CTA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `closed_to_departure` SET TAGS ('dbx_business_glossary_term' = 'Closed to Departure (CTD) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -1497,16 +1405,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `gds_rate_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,8}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `group_block_rooms` SET TAGS ('dbx_business_glossary_term' = 'Group Block Rooms Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `is_package_rate` SET TAGS ('dbx_business_glossary_term' = 'Package Rate Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `is_package_rate` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `los_maximum` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (LOS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `los_minimum` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `max_rate` SET TAGS ('dbx_business_glossary_term' = 'Maximum Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `max_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `meal_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Meal Plan Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `meal_plan_code` SET TAGS ('dbx_value_regex' = 'RO|BB|HB|FB|AI');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `min_rate` SET TAGS ('dbx_business_glossary_term' = 'Minimum Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `min_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `occupancy_forecast_pct` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Forecast Percentage (OCC%)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `ota_rate_code` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Rate ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `out_of_order_rooms` SET TAGS ('dbx_business_glossary_term' = 'Out of Order Rooms Count');
@@ -1514,30 +1419,24 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `pricing_override_flag` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `pricing_override_reason` SET TAGS ('dbx_business_glossary_term' = 'Pricing Override Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rack_rate` SET TAGS ('dbx_business_glossary_term' = 'Rack Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rack_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rate_parity_flag` SET TAGS ('dbx_business_glossary_term' = 'Rate Parity Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rate_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rate_plan_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,20}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `rate_plan_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `revenue_management_system` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Source');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `revenue_management_system` SET TAGS ('dbx_value_regex' = 'ideasg3|infor_ezrms|manual|opera_pms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `revenue_management_system` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `snapshot_date` SET TAGS ('dbx_business_glossary_term' = 'Snapshot Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `stop_sell` SET TAGS ('dbx_business_glossary_term' = 'Stop Sell Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`rate_availability` ALTER COLUMN `total_rooms` SET TAGS ('dbx_business_glossary_term' = 'Total Rooms Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `demand_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Forecasted Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `member_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -1586,10 +1485,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `unconstrained_demand` SET TAGS ('dbx_business_glossary_term' = 'Unconstrained Demand');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`demand_forecast` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `inventory_control_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Control Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `dynamic_rate_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Rate Rule (DRR) ID');
@@ -1599,8 +1495,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Updated By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `allotment_rooms` SET TAGS ('dbx_business_glossary_term' = 'Allotment Room Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `approval_authority` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Approval Authority');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `approval_authority` SET TAGS ('dbx_value_regex' = 'rms_automated|revenue_manager|director_of_revenue|general_manager');
@@ -1643,54 +1537,41 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COL
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_compensation_type` SET TAGS ('dbx_business_glossary_term' = 'Walk Compensation Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_compensation_type` SET TAGS ('dbx_value_regex' = 'cash_equivalent|room_upgrade|loyalty_points|voucher|partner_hotel');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_compensation_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_compensation_type` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_compensation_type` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_policy` SET TAGS ('dbx_business_glossary_term' = 'Walk Policy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`inventory_control` ALTER COLUMN `walk_policy` SET TAGS ('dbx_value_regex' = 'walk_and_compensate|walk_to_partner|upgrade_first|deny_walk');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_subdomain' = 'segment_performance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `performance_actuals_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Actuals Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `gss_score_id` SET TAGS ('dbx_business_glossary_term' = 'Gss Score Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reconciled By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `adr` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `ancillary_revenue` SET TAGS ('dbx_business_glossary_term' = 'Ancillary Revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `ari` SET TAGS ('dbx_business_glossary_term' = 'Average Rate Index (ARI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_adr` SET TAGS ('dbx_business_glossary_term' = 'Budget Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_adr` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_occupancy_rate` SET TAGS ('dbx_business_glossary_term' = 'Budget Occupancy Rate (OCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_occupancy_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_room_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budget Room Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_room_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budget Total Property Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `budget_total_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `channel_direct_rooms` SET TAGS ('dbx_business_glossary_term' = 'Direct Channel Rooms Sold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `channel_ota_rooms` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Channel Rooms Sold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `cpor` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Occupied Room (CPOR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `cpor` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `demand_forecast_rooms` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `ebitda_contribution` SET TAGS ('dbx_business_glossary_term' = 'Earnings Before Interest Taxes Depreciation and Amortization (EBITDA) Contribution');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `ebitda_contribution` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `fb_revenue` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Revenue');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `gop` SET TAGS ('dbx_business_glossary_term' = 'Gross Operating Profit (GOP)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `gop` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `goppar` SET TAGS ('dbx_business_glossary_term' = 'Gross Operating Profit Per Available Room (GOPPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `goppar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `is_reconciled` SET TAGS ('dbx_business_glossary_term' = 'Is Reconciled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `miscellaneous_income` SET TAGS ('dbx_business_glossary_term' = 'Miscellaneous Income');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `mpi` SET TAGS ('dbx_business_glossary_term' = 'Market Penetration Index (MPI)');
@@ -1702,10 +1583,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `record_status` SET TAGS ('dbx_business_glossary_term' = 'Record Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `record_status` SET TAGS ('dbx_value_regex' = 'draft|preliminary|final|adjusted|closed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_business_glossary_term' = 'Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_metric' = 'revpar');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_formula' = 'room_revenue/available_rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_reviewer_directive' = 'VREQ-021');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_supreme_authority' = 'section_2_reviewer_comments');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `rgi` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `rooms_available` SET TAGS ('dbx_business_glossary_term' = 'Rooms Available');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `rooms_complimentary` SET TAGS ('dbx_business_glossary_term' = 'Complimentary Rooms');
@@ -1722,15 +1599,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `trevpar` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue Per Available Room (TRevPAR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`performance_actuals` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_subdomain' = 'segment_performance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Default Loyalty Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `member_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Member Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Preferred Fnb Outlet Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `ada_accommodation_typical` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Accommodation Typical');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `avg_lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Average Lead Time (Days)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `avg_length_of_stay_nights` SET TAGS ('dbx_business_glossary_term' = 'Average Length of Stay (ALOS) Nights');
@@ -1739,7 +1613,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `channel_affinity` SET TAGS ('dbx_business_glossary_term' = 'Channel Affinity');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `commission_eligible` SET TAGS ('dbx_business_glossary_term' = 'Commission Eligible');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `contribution_margin_tier` SET TAGS ('dbx_business_glossary_term' = 'Contribution Margin Tier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `contribution_margin_tier` SET TAGS ('dbx_value_regex' = 'premium|standard|value|low_margin');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -1751,8 +1624,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `gdpr_data_subject_applicable` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Data Subject Applicable');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `gdpr_data_subject_applicable` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `gdpr_data_subject_applicable` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `gds_eligible` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Eligible');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `group_block_eligible` SET TAGS ('dbx_business_glossary_term' = 'Group Block Eligible');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Segment Hierarchy Level');
@@ -1788,20 +1659,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `usali_segment_code` SET TAGS ('dbx_business_glossary_term' = 'Uniform System of Accounts for the Lodging Industry (USALI) Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`market_segment` ALTER COLUMN `usali_segment_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,15}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_subdomain' = 'competitive_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `advance_purchase_window_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Purchase Window Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `ari_target` SET TAGS ('dbx_business_glossary_term' = 'Average Rate Index (ARI) Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `ari_target` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `benchmarking_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Benchmarking Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `benchmarking_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `competitive_set_status` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Status');
@@ -1812,21 +1679,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `geographic_market` SET TAGS ('dbx_business_glossary_term' = 'Geographic Market');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `geographic_market` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `ideass_comp_set_code` SET TAGS ('dbx_business_glossary_term' = 'IDeaS G3 Revenue Management System (RMS) Competitive Set Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `is_str_submitted` SET TAGS ('dbx_business_glossary_term' = 'STR (Smith Travel Research) Submission Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `last_reviewed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reviewed Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `los_benchmark_nights` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Benchmark Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `market_country_code` SET TAGS ('dbx_business_glossary_term' = 'Market Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `market_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `market_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `market_segment` SET TAGS ('dbx_business_glossary_term' = 'Market Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `market_segment` SET TAGS ('dbx_value_regex' = 'luxury|upper_upscale|upscale|upper_midscale|midscale|economy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `max_room_count` SET TAGS ('dbx_business_glossary_term' = 'Maximum Room Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `member_count` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Member Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `min_room_count` SET TAGS ('dbx_business_glossary_term' = 'Minimum Room Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `mpi_target` SET TAGS ('dbx_business_glossary_term' = 'Market Penetration Index (MPI) Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `mpi_target` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `competitive_set_name` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Notes');
@@ -1838,7 +1702,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `rate_shop_frequency` SET TAGS ('dbx_value_regex' = 'real_time|hourly|daily|weekly');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `rate_shopping_enabled` SET TAGS ('dbx_business_glossary_term' = 'Rate Shopping Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `rgi_target` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI) Target');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `rgi_target` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `rms_comp_set_reference` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Competitive Set ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `set_type` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `set_type` SET TAGS ('dbx_value_regex' = 'primary|secondary|custom|str_defined|internal');
@@ -1850,34 +1713,23 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `str_submission_date` SET TAGS ('dbx_business_glossary_term' = 'STR (Smith Travel Research) Submission Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitive_set` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_subdomain' = 'competitive_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `str_benchmark_id` SET TAGS ('dbx_business_glossary_term' = 'Str Benchmark Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set (Comp Set) ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Imported By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `ari` SET TAGS ('dbx_business_glossary_term' = 'Average Rate Index (ARI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `ari` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `benchmark_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `benchmark_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `benchmark_status` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Record Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `benchmark_status` SET TAGS ('dbx_value_regex' = 'active|superseded|pending_review|rejected');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_adr` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set (Comp Set) Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_adr` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_occupancy_rate` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set (Comp Set) Occupancy Rate (OCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_occupancy_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_revpar` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set (Comp Set) Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_revpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `comp_set_rooms_available` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set (Comp Set) Rooms Available');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `competitor_property_code` SET TAGS ('dbx_business_glossary_term' = 'Competitor Property Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `competitor_property_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `competitor_property_name` SET TAGS ('dbx_business_glossary_term' = 'Competitor Property Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `competitor_property_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `data_source` SET TAGS ('dbx_business_glossary_term' = 'Data Source');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `data_source` SET TAGS ('dbx_value_regex' = 'STR|OTA_Insight|RateGain|Infor_EzRMS|manual');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `distribution_channel` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel');
@@ -1889,14 +1741,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `market_location_type` SET TAGS ('dbx_business_glossary_term' = 'Market Location Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `market_location_type` SET TAGS ('dbx_value_regex' = 'urban|suburban|airport|resort|small_metro|interstate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `mpi` SET TAGS ('dbx_business_glossary_term' = 'Market Penetration Index (MPI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `mpi` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `ota_platform_name` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Platform Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_adr` SET TAGS ('dbx_business_glossary_term' = 'Property Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_adr` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_occupancy_rate` SET TAGS ('dbx_business_glossary_term' = 'Property Occupancy Rate (OCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_occupancy_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_revpar` SET TAGS ('dbx_business_glossary_term' = 'Property Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_revpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `property_rooms_available` SET TAGS ('dbx_business_glossary_term' = 'Property Rooms Available');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `rate_availability_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Availability Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `rate_availability_status` SET TAGS ('dbx_value_regex' = 'available|sold_out|restricted|on_request|not_shopped');
@@ -1908,11 +1756,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `report_period_type` SET TAGS ('dbx_business_glossary_term' = 'Report Period Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `report_period_type` SET TAGS ('dbx_value_regex' = 'daily|weekly|monthly|quarterly|annual|year_to_date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `rgi` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `rgi` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `room_type_category` SET TAGS ('dbx_business_glossary_term' = 'Room Type Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `shop_date` SET TAGS ('dbx_business_glossary_term' = 'Shop Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `shopped_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Shopped Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `shopped_rate_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `shopped_rate_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Shopped Rate Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `shopped_rate_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
@@ -1923,16 +1769,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `str_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Smith Travel Research (STR) Submission Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`str_benchmark` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_subdomain' = 'competitive_intelligence');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `competitor_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Competitor Rate ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Competitive Set Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Competitor Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Shopped By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `ari` SET TAGS ('dbx_business_glossary_term' = 'Average Rate Index (ARI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `availability_status` SET TAGS ('dbx_business_glossary_term' = 'Availability Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `availability_status` SET TAGS ('dbx_value_regex' = 'available|sold_out|on_request|closed');
@@ -1941,9 +1782,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `channel_name` SET TAGS ('dbx_business_glossary_term' = 'Channel Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `channel_shopped` SET TAGS ('dbx_business_glossary_term' = 'Channel Shopped');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `channel_shopped` SET TAGS ('dbx_value_regex' = 'OTA|direct|GDS|metasearch|voice|mobile_app');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `competitor_property_name` SET TAGS ('dbx_business_glossary_term' = 'Competitor Property Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1961,19 +1802,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `meal_plan_code` SET TAGS ('dbx_value_regex' = 'RO|BB|HB|FB|AI');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `occupancy_assumption` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Assumption (Guests)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `our_rate` SET TAGS ('dbx_business_glossary_term' = 'Our Rate (BAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `our_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `previous_shopped_rate` SET TAGS ('dbx_business_glossary_term' = 'Previous Shopped Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `previous_shopped_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `property_segment` SET TAGS ('dbx_business_glossary_term' = 'Property Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `property_segment` SET TAGS ('dbx_value_regex' = 'luxury|premium|select_service|extended_stay|resort');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_change_indicator` SET TAGS ('dbx_business_glossary_term' = 'Rate Change Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_change_indicator` SET TAGS ('dbx_value_regex' = 'increased|decreased|unchanged|new|removed');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_delta` SET TAGS ('dbx_business_glossary_term' = 'Rate Delta');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_delta` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_gap` SET TAGS ('dbx_business_glossary_term' = 'Rate Gap');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_gap` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_in_usd` SET TAGS ('dbx_business_glossary_term' = 'Rate in USD');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_in_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_plan_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `rate_plan_type` SET TAGS ('dbx_value_regex' = 'BAR|NRR|AAA|corporate|package|promotional');
@@ -1984,23 +1820,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUM
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `shop_run_reference` SET TAGS ('dbx_business_glossary_term' = 'Rate Shop Run ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `shop_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Rate Shop Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `shopped_rate` SET TAGS ('dbx_business_glossary_term' = 'Shopped Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `shopped_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `special_event_flag` SET TAGS ('dbx_business_glossary_term' = 'Special Event Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `star_rating` SET TAGS ('dbx_business_glossary_term' = 'Star Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `taxes_included` SET TAGS ('dbx_business_glossary_term' = 'Taxes Included Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`competitor_rate` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` SET TAGS ('dbx_subdomain' = 'business_optimization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `group_evaluation_id` SET TAGS ('dbx_business_glossary_term' = 'Group Evaluation ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `member_id` SET TAGS ('dbx_business_glossary_term' = 'Decision Maker Member Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `member_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Group Block Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `banquet_event_order_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Banquet Event Order Id (Foreign Key)');
@@ -2008,12 +1838,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `wash_factor_id` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `ancillary_revenue_estimate` SET TAGS ('dbx_business_glossary_term' = 'Ancillary Revenue Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `ancillary_revenue_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `arrival_date` SET TAGS ('dbx_business_glossary_term' = 'Group Arrival Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `attrition_pct` SET TAGS ('dbx_business_glossary_term' = 'Expected Attrition Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `channel_code` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `counter_offer_rate` SET TAGS ('dbx_business_glossary_term' = 'Counter Offer Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `counter_offer_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2023,15 +1851,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `demand_forecast_occupancy_pct` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast Occupancy (OCC) Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `departure_date` SET TAGS ('dbx_business_glossary_term' = 'Group Departure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `displacement_cost` SET TAGS ('dbx_business_glossary_term' = 'Displacement Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `displacement_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `evaluation_status` SET TAGS ('dbx_business_glossary_term' = 'Group Evaluation Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `evaluation_status` SET TAGS ('dbx_value_regex' = 'pending|under_review|recommended_accept|recommended_decline|accepted|declined');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `evaluation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Group Evaluation Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `fb_revenue_estimate` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Revenue Estimate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `fb_revenue_estimate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `group_name` SET TAGS ('dbx_business_glossary_term' = 'Group Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `group_room_revenue` SET TAGS ('dbx_business_glossary_term' = 'Group Room Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `group_room_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `group_type` SET TAGS ('dbx_business_glossary_term' = 'Group Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `historical_wash_pct` SET TAGS ('dbx_business_glossary_term' = 'Historical Wash Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `inquiry_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Group Inquiry Reference Number');
@@ -2040,39 +1865,29 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLU
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `lead_time_bucket` SET TAGS ('dbx_value_regex' = '0_30_days|31_90_days|91_180_days|181_365_days|over_365_days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `los_nights` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `minimum_acceptable_rate` SET TAGS ('dbx_business_glossary_term' = 'Minimum Acceptable Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `minimum_acceptable_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `net_revenue_impact` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue Impact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `net_revenue_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `peak_night_rooms` SET TAGS ('dbx_business_glossary_term' = 'Peak Night Room Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `proposed_group_rate` SET TAGS ('dbx_business_glossary_term' = 'Proposed Group Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `proposed_group_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revenue_manager_decision` SET TAGS ('dbx_business_glossary_term' = 'Revenue Manager Decision');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revenue_manager_decision` SET TAGS ('dbx_value_regex' = 'accept|decline|counter_offer|pending');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revenue_manager_decision` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revpar_impact` SET TAGS ('dbx_business_glossary_term' = 'Revenue Per Available Room (RevPAR) Impact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `revpar_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `rgi_benchmark` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI) Benchmark');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `rms_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Revenue Management System (RMS) Recommendation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `rms_recommendation` SET TAGS ('dbx_value_regex' = 'accept|decline|counter_offer');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `room_block_size` SET TAGS ('dbx_business_glossary_term' = 'Group Room Block Size');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `transient_adr_displaced` SET TAGS ('dbx_business_glossary_term' = 'Transient Average Daily Rate (ADR) Displaced');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `transient_adr_displaced` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `transient_rooms_displaced` SET TAGS ('dbx_business_glossary_term' = 'Transient Rooms Displaced');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`group_evaluation` ALTER COLUMN `wash_factor_pct` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `pickup_report_id` SET TAGS ('dbx_business_glossary_term' = 'Pickup Report ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Manager ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Monitored Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `adr_on_books` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR) on Books');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `adr_variance_to_forecast` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR) Variance to Forecast');
@@ -2093,7 +1908,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `min_los` SET TAGS ('dbx_business_glossary_term' = 'Minimum Length of Stay (LOS)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Revenue Manager Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `pickup_velocity` SET TAGS ('dbx_business_glossary_term' = 'Pickup Velocity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `pickup_velocity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `prior_year_adr` SET TAGS ('dbx_business_glossary_term' = 'Prior Year Average Daily Rate (ADR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `prior_year_rooms_on_books` SET TAGS ('dbx_business_glossary_term' = 'Prior Year Rooms on Books');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `rate_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Code');
@@ -2119,14 +1933,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `total_available_rooms` SET TAGS ('dbx_business_glossary_term' = 'Total Available Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`pickup_report` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `revenue_overbooking_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Overbooking Policy ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `revenue_overbooking_policy_id` SET TAGS ('dbx_ssot_owner' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Register Id (Foreign Key)');
@@ -2136,7 +1946,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Policy Approval Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `auto_adjust_enabled` SET TAGS ('dbx_business_glossary_term' = 'Auto-Adjust Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `cancellation_rate_assumption_pct` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Rate Assumption Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `cancellation_rate_assumption_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `channel_scope` SET TAGS ('dbx_business_glossary_term' = 'Channel Scope');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `channel_scope` SET TAGS ('dbx_value_regex' = 'all|direct|ota|gds|voice|group');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -2151,14 +1960,10 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `loyalty_points_walk_bonus` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Points Walk Bonus');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `loyalty_tier_exempt` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Tier Exempt Levels');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `min_overbooking_pct` SET TAGS ('dbx_business_glossary_term' = 'Minimum Overbooking Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `min_overbooking_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Policy Review Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `no_show_rate_assumption_pct` SET TAGS ('dbx_business_glossary_term' = 'No-Show Rate Assumption Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `no_show_rate_assumption_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `overbooking_cap` SET TAGS ('dbx_business_glossary_term' = 'Absolute Overbooking Cap (Rooms)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `overbooking_cap` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `overbooking_pct` SET TAGS ('dbx_business_glossary_term' = 'Maximum Overbooking Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `overbooking_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `pms_rule_code` SET TAGS ('dbx_business_glossary_term' = 'Property Management System (PMS) Rule Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `pms_rule_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{1,30}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `policy_notes` SET TAGS ('dbx_business_glossary_term' = 'Overbooking Policy Notes');
@@ -2179,63 +1984,38 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `vip_reservation_exempt` SET TAGS ('dbx_business_glossary_term' = 'VIP Reservation Exempt Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_alert_threshold` SET TAGS ('dbx_business_glossary_term' = 'Walk Alert Threshold (Rooms)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_amount` SET TAGS ('dbx_business_glossary_term' = 'Walk Compensation Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_amount` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_amount` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_currency` SET TAGS ('dbx_business_glossary_term' = 'Walk Compensation Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_currency` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_currency` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_compensation_currency` SET TAGS ('dbx_pii_person' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_policy_type` SET TAGS ('dbx_business_glossary_term' = 'Walk Policy Compensation Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_policy_type` SET TAGS ('dbx_value_regex' = 'comp_room|cash_compensation|upgrade|partner_hotel|voucher');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_overbooking_policy` ALTER COLUMN `walk_transport_included` SET TAGS ('dbx_business_glossary_term' = 'Walk Transportation Included Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_subdomain' = 'segment_performance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_concept' = 'budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_references' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_duplicate' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot' = 'alias');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_authority_defer_to' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_ref' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_group' = 'budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_canonical' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_ssot_role' = 'reference');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `revenue_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Budget ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `revenue_budget_id` SET TAGS ('dbx_ssot_reference' = 'finance.budget');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'STR Competitive Set ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Revenue Director ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `event_booking_id` SET TAGS ('dbx_business_glossary_term' = 'Event Booking Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_ssot_reference' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_ssot_owner' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_ssot_entity' = 'budget');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `gss_score_id` SET TAGS ('dbx_business_glossary_term' = 'Gss Score Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Budget Approval Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_available_rooms` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Available Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_cpor` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost Per Occupied Room (CPOR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_cpor` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_events_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Events and Meetings Revenue (MICE)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_events_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_fb_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Food and Beverage Revenue (F&B)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_fb_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_gop` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Gross Operating Profit (GOP)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_gop` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_occupied_rooms` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Occupied Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_other_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Other Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_other_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_room_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Room Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_room_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Total Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `budgeted_total_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2273,10 +2053,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Budget Version');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_budget` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = 'original|revised|reforecast');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_subdomain' = 'segment_performance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `channel_contribution_id` SET TAGS ('dbx_business_glossary_term' = 'Channel Contribution ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Analyzed Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
@@ -2299,25 +2076,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `channel_type` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `channel_type` SET TAGS ('dbx_value_regex' = 'OTA|GDS|direct_web|voice|corporate|wholesale');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `commission_amount` SET TAGS ('dbx_business_glossary_term' = 'Commission Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `commission_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Average Commission Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `commission_rate_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `contribution_status` SET TAGS ('dbx_business_glossary_term' = 'Channel Contribution Record Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `contribution_status` SET TAGS ('dbx_value_regex' = 'draft|confirmed|adjusted|closed|cancelled');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `cost_per_booking` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Booking (CPA)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `cost_per_booking` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `data_extract_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Data Extract Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `gds_transaction_fees` SET TAGS ('dbx_business_glossary_term' = 'Global Distribution System (GDS) Transaction Fees');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `gds_transaction_fees` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `gross_revenue` SET TAGS ('dbx_business_glossary_term' = 'Gross Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `gross_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `is_direct_channel` SET TAGS ('dbx_business_glossary_term' = 'Is Direct Booking Channel Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `is_ota_channel` SET TAGS ('dbx_business_glossary_term' = 'Is Online Travel Agency (OTA) Channel Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `loyalty_bookings_count` SET TAGS ('dbx_business_glossary_term' = 'Loyalty Program Bookings Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `net_revenue` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue After Commission');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `net_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `no_show_count` SET TAGS ('dbx_business_glossary_term' = 'No-Show Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `nrr_bookings_count` SET TAGS ('dbx_business_glossary_term' = 'Non-Refundable Rate (NRR) Bookings Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `occupancy_pct` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Rate (OCC)');
@@ -2328,22 +2099,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER 
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `reporting_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `reporting_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `revenue_net_of_distribution` SET TAGS ('dbx_business_glossary_term' = 'Revenue Net of Total Distribution Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `revenue_net_of_distribution` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `revpar` SET TAGS ('dbx_business_glossary_term' = 'Revenue Per Available Room (RevPAR)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `rgi` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `room_nights` SET TAGS ('dbx_business_glossary_term' = 'Room Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `total_distribution_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Distribution Cost');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`channel_contribution` ALTER COLUMN `total_distribution_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` SET TAGS ('dbx_subdomain' = 'business_optimization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `displacement_analysis_id` SET TAGS ('dbx_business_glossary_term' = 'Displacement Analysis ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `banquet_event_order_id` SET TAGS ('dbx_business_glossary_term' = 'Related Banquet Event Order Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `demand_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `guest_group_block_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Group Block Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
@@ -2354,7 +2121,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `analysis_type` SET TAGS ('dbx_business_glossary_term' = 'Displacement Analysis Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `analysis_type` SET TAGS ('dbx_value_regex' = 'group_evaluation|contract_evaluation|tour_operator|wholesale');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `ancillary_revenue_contribution` SET TAGS ('dbx_business_glossary_term' = 'Ancillary Revenue Contribution');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `ancillary_revenue_contribution` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `channel_source` SET TAGS ('dbx_business_glossary_term' = 'Channel Source');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `channel_source` SET TAGS ('dbx_value_regex' = 'direct|gds|ota|delphi|crs|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -2366,20 +2132,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `estimated_transient_adr_displaced` SET TAGS ('dbx_business_glossary_term' = 'Estimated Transient Average Daily Rate (ADR) Displaced');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `estimated_transient_rooms_displaced` SET TAGS ('dbx_business_glossary_term' = 'Estimated Transient Rooms Displaced');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `fb_revenue_contribution` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Revenue Contribution');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `fb_revenue_contribution` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `forecast_occupancy_pct` SET TAGS ('dbx_business_glossary_term' = 'Forecast Occupancy Percentage (OCC)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `group_room_revenue` SET TAGS ('dbx_business_glossary_term' = 'Group Room Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `group_room_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `is_peak_period` SET TAGS ('dbx_business_glossary_term' = 'Is Peak Period Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `is_special_event` SET TAGS ('dbx_business_glossary_term' = 'Is Special Event Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `los_nights` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Nights');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `min_acceptable_rate` SET TAGS ('dbx_business_glossary_term' = 'Minimum Acceptable Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `min_acceptable_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `net_revenue_impact` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue Impact');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `net_revenue_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Analysis Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `proposed_group_rate` SET TAGS ('dbx_business_glossary_term' = 'Proposed Group Rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `proposed_group_rate` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `recommendation_outcome` SET TAGS ('dbx_business_glossary_term' = 'Recommendation Outcome');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `recommendation_outcome` SET TAGS ('dbx_value_regex' = 'accept|reject|accept_with_conditions|defer|counter_offer');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `reviewed_by` SET TAGS ('dbx_business_glossary_term' = 'Reviewed By');
@@ -2392,39 +2153,25 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `stay_date_from` SET TAGS ('dbx_business_glossary_term' = 'Stay Date From');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `stay_date_to` SET TAGS ('dbx_business_glossary_term' = 'Stay Date To');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `total_group_spend` SET TAGS ('dbx_business_glossary_term' = 'Total Group Spend');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `total_group_spend` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `transient_room_revenue_displaced` SET TAGS ('dbx_business_glossary_term' = 'Transient Room Revenue Displaced');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`displacement_analysis` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_subdomain' = 'rate_pricing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_mvm_ssot_role' = 'designated');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_concept' = 'negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_group' = 'negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_canonical' = 'revenue.revenue_negotiated_rate');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_ssot_role' = 'canonical');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `revenue_negotiated_rate_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Negotiated Rate ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `revenue_negotiated_rate_id` SET TAGS ('dbx_ssot_reference' = 'channel.channel_negotiated_rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Event Account Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `channel_id` SET TAGS ('dbx_business_glossary_term' = 'Distribution Channel Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Included Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `tier_id` SET TAGS ('dbx_business_glossary_term' = 'Minimum Loyalty Tier Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Negotiated By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `revenue_rate_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `room_type_id` SET TAGS ('dbx_business_glossary_term' = 'Room Type ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Approval Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'approved|pending_approval|rejected|under_review');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
@@ -2432,17 +2179,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `breakfast_included` SET TAGS ('dbx_business_glossary_term' = 'Breakfast Included Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `commission_pct` SET TAGS ('dbx_business_glossary_term' = 'Commission Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `commission_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `committed_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Committed Room Nights');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `committed_room_nights` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `consortia_code` SET TAGS ('dbx_business_glossary_term' = 'Consortia Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `consortia_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_business_glossary_term' = 'Contract End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -2450,7 +2191,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `gds_chain_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `iata_number` SET TAGS ('dbx_business_glossary_term' = 'International Air Transport Association (IATA) Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `iata_number` SET TAGS ('dbx_value_regex' = '^[0-9]{7,8}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `iata_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `is_lra` SET TAGS ('dbx_business_glossary_term' = 'Last Room Availability (LRA) Obligation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `is_non_refundable` SET TAGS ('dbx_business_glossary_term' = 'Non-Refundable Rate (NRR) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `max_los` SET TAGS ('dbx_business_glossary_term' = 'Maximum Length of Stay (LOS)');
@@ -2458,16 +2198,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `min_night_commitment` SET TAGS ('dbx_business_glossary_term' = 'Minimum Night Commitment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `negotiation_owner` SET TAGS ('dbx_business_glossary_term' = 'Negotiation Owner');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_bar_variance_pct` SET TAGS ('dbx_business_glossary_term' = 'Best Available Rate (BAR) Variance Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_bar_variance_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_code` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,20}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_includes_tax` SET TAGS ('dbx_business_glossary_term' = 'Rate Includes Tax Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_loaded_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Rate Loaded Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_loading_status` SET TAGS ('dbx_business_glossary_term' = 'Rate Loading Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_loading_status` SET TAGS ('dbx_value_regex' = 'loaded|pending|failed|not_loaded|deactivated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_name` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_status` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|expired|draft');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `rate_type` SET TAGS ('dbx_business_glossary_term' = 'Negotiated Rate Type');
@@ -2475,16 +2212,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALT
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `source_system_rate_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Rate ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`revenue_negotiated_rate` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `strategy_id` SET TAGS ('dbx_business_glossary_term' = 'Strategy Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `competitive_set_id` SET TAGS ('dbx_business_glossary_term' = 'Competitor Set ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `demand_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `gss_score_id` SET TAGS ('dbx_business_glossary_term' = 'Gss Score Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `superseded_by_strategy_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Strategy ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `activated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Strategy Activation Timestamp');
@@ -2519,26 +2254,19 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `stra
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `strategy_type` SET TAGS ('dbx_business_glossary_term' = 'Revenue Strategy Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `strategy_type` SET TAGS ('dbx_value_regex' = 'transient|group|total_revenue|food_and_beverage|events');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_adr` SET TAGS ('dbx_business_glossary_term' = 'Target Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_adr` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_ari` SET TAGS ('dbx_business_glossary_term' = 'Target Average Rate Index (ARI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_goppar` SET TAGS ('dbx_business_glossary_term' = 'Target Gross Operating Profit Per Available Room (GOPPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_goppar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_mpi` SET TAGS ('dbx_business_glossary_term' = 'Target Market Penetration Index (MPI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_occupancy_pct` SET TAGS ('dbx_business_glossary_term' = 'Target Occupancy Rate (OCC) Percentage');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_revpar` SET TAGS ('dbx_business_glossary_term' = 'Target Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_revpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_rgi` SET TAGS ('dbx_business_glossary_term' = 'Target Revenue Generation Index (RGI)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_trevpar` SET TAGS ('dbx_business_glossary_term' = 'Target Total Revenue Per Available Room (TRevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `target_trevpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Strategy Version Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`strategy` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_subdomain' = 'demand_strategy');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` SET TAGS ('dbx_subdomain' = 'pricing_strategy');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `wash_factor_id` SET TAGS ('dbx_business_glossary_term' = 'Wash Factor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Market Segment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
@@ -2586,138 +2314,68 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `s
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`wash_factor` ALTER COLUMN `wash_pct_variance` SET TAGS ('dbx_business_glossary_term' = 'Wash Percentage Variance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_subdomain' = 'segment_performance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` SET TAGS ('dbx_subdomain' = 'performance_analytics');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_revenue_actuals_id` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue Actuals ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `fnb_outlet_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Fnb Outlet Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reconciled By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `adjustment_flag` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `adjustment_reason` SET TAGS ('dbx_business_glossary_term' = 'Adjustment Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `adr` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `adr` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `ari` SET TAGS ('dbx_business_glossary_term' = 'Average Rate Index (ARI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `ari` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `complimentary_rooms` SET TAGS ('dbx_business_glossary_term' = 'Complimentary Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `cpor` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Occupied Room (CPOR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `cpor` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `day_of_week` SET TAGS ('dbx_business_glossary_term' = 'Day of Week');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `ebitda_contribution` SET TAGS ('dbx_business_glossary_term' = 'Earnings Before Interest Taxes Depreciation and Amortization (EBITDA) Contribution');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `ebitda_contribution` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `fb_revenue` SET TAGS ('dbx_business_glossary_term' = 'Food and Beverage (F&B) Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `fb_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `gl_posting_date` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Posting Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `gop_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Operating Profit (GOP)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `gop_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `goppar` SET TAGS ('dbx_business_glossary_term' = 'Gross Operating Profit Per Available Room (GOPPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `goppar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `house_use_rooms` SET TAGS ('dbx_business_glossary_term' = 'House Use Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `is_holiday` SET TAGS ('dbx_business_glossary_term' = 'Is Holiday Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `is_special_event` SET TAGS ('dbx_business_glossary_term' = 'Is Special Event Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `is_weekend` SET TAGS ('dbx_business_glossary_term' = 'Is Weekend Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `miscellaneous_income` SET TAGS ('dbx_business_glossary_term' = 'Miscellaneous Income');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `miscellaneous_income` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `mpi` SET TAGS ('dbx_business_glossary_term' = 'Market Penetration Index (MPI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `mpi` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `occupancy_pct` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Rate (OCC)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `other_operated_dept_revenue` SET TAGS ('dbx_business_glossary_term' = 'Other Operated Department Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `other_operated_dept_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `out_of_order_rooms` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Order Rooms');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `parking_revenue` SET TAGS ('dbx_business_glossary_term' = 'Parking Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `parking_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `record_status` SET TAGS ('dbx_business_glossary_term' = 'Record Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `record_status` SET TAGS ('dbx_value_regex' = 'draft|posted|adjusted|closed|voided');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `reporting_segment` SET TAGS ('dbx_business_glossary_term' = 'Reporting Segment');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `reporting_segment` SET TAGS ('dbx_value_regex' = 'luxury|premium|select_service|extended_stay|resort');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_business_glossary_term' = 'Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `revpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rgi` SET TAGS ('dbx_business_glossary_term' = 'Revenue Generation Index (RGI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rgi` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_available` SET TAGS ('dbx_business_glossary_term' = 'Rooms Available');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_revenue` SET TAGS ('dbx_business_glossary_term' = 'Rooms Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_revenue_budget` SET TAGS ('dbx_business_glossary_term' = 'Rooms Revenue Budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_revenue_budget` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `rooms_sold` SET TAGS ('dbx_business_glossary_term' = 'Rooms Sold');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `spa_revenue` SET TAGS ('dbx_business_glossary_term' = 'Spa Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `spa_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `stay_date` SET TAGS ('dbx_business_glossary_term' = 'Stay Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_operating_expenses` SET TAGS ('dbx_business_glossary_term' = 'Total Operating Expenses');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_operating_expenses` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_revenue_budget` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue Budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `total_revenue_budget` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `trevpar` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue Per Available Room (TRevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `trevpar` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`total_revenue_actuals` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_subdomain' = 'segment_performance');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_subdomain' = 'business_optimization');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_association_edges' = 'revenue.market_segment,experience.experience_program');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_required_structure' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `segment_program_eligibility_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Program Eligibility Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `experience_program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `market_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Program Eligibility - Market Segment Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Experience Program Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `segment_program_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Program Eligibility - Experience Program Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `advance_booking_days` SET TAGS ('dbx_business_glossary_term' = 'Advance Booking Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `blackout_dates` SET TAGS ('dbx_business_glossary_term' = 'Blackout Dates');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `booking_window_days` SET TAGS ('dbx_business_glossary_term' = 'Booking Window Days');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `channel_restriction` SET TAGS ('dbx_business_glossary_term' = 'Channel Restriction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Created At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `discount_eligible` SET TAGS ('dbx_business_glossary_term' = 'Discount Eligible');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `discount_percentage` SET TAGS ('dbx_business_glossary_term' = 'Discount Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `discount_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `program_id` SET TAGS ('dbx_business_glossary_term' = 'Segment Program Eligibility - Experience Program Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_criteria` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Criteria');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_end_date` SET TAGS ('dbx_business_glossary_term' = 'Eligibility End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_notes` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_rule_code` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Rule Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_rule_type` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Rule Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_start_date` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `eligibility_status` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `enrollment_eligibility_flag` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Eligibility Flag');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `max_discount_pct` SET TAGS ('dbx_business_glossary_term' = 'Max Discount Pct');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `max_enrollments` SET TAGS ('dbx_business_glossary_term' = 'Max Enrollments');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `max_length_of_stay` SET TAGS ('dbx_business_glossary_term' = 'Max Length Of Stay');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `max_redemptions` SET TAGS ('dbx_business_glossary_term' = 'Max Redemptions');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_length_of_stay` SET TAGS ('dbx_business_glossary_term' = 'Min Length Of Stay');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_los_nights` SET TAGS ('dbx_business_glossary_term' = 'Min Los Nights');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_los_requirement` SET TAGS ('dbx_business_glossary_term' = 'Min Los Requirement');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_nights_required` SET TAGS ('dbx_business_glossary_term' = 'Min Nights Required');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_revenue_threshold` SET TAGS ('dbx_business_glossary_term' = 'Min Revenue Threshold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Min Room Nights');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `min_spend_threshold` SET TAGS ('dbx_business_glossary_term' = 'Min Spend Threshold');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
 ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `program_discount_pct` SET TAGS ('dbx_business_glossary_term' = 'Program Discount Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `rate_plan_eligibility_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Eligibility Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `rate_plan_restriction` SET TAGS ('dbx_business_glossary_term' = 'Rate Plan Restriction');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Updated At');
-ALTER TABLE `vibe_travel_hospitality_v1`.`revenue`.`segment_program_eligibility` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

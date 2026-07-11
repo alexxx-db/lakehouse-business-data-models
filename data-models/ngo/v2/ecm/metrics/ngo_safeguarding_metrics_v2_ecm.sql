@@ -1,74 +1,92 @@
--- Metric views for domain: safeguarding | Business: Ngo | Version: 2 | Generated on: 2026-07-03 05:04:58
+-- Metric views for domain: safeguarding | Business: Ngo | Version: 2 | Generated on: 2026-07-10 18:25:58
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_incident`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPI view over safeguarding incidents. Tracks incident volume, severity distribution, donor notification compliance, and closure rates. Primary steering dashboard for the Chief of Safeguarding and Country Directors. Incident data is highly sensitive (pii_beneficiary_protected); apply dynamic masking on location_description and incident_description in non-prod environments per VREQ-022."
+  comment: "Core safeguarding incident KPIs tracking volume, severity distribution, investigation rates, survivor involvement, and donor notification compliance. Drives executive oversight of organizational safeguarding performance."
   source: "`vibe_ngo_v1`.`safeguarding`.`safeguarding_incident`"
   dimensions:
-    - name: "incident_category"
-      expr: incident_category
-      comment: "Category of safeguarding incident (SEA, child protection, harassment, etc.) — primary grouping for trend analysis."
     - name: "incident_type"
-      expr: incident_type
-      comment: "Specific incident type within category, enabling granular breakdown for case management review."
-    - name: "severity_level"
+      expr: safeguarding_incident_type
+      comment: "Type of safeguarding incident (e.g. SEA, child protection, harassment) for categorical breakdown."
+    - name: "incident_severity_level"
       expr: severity_level
-      comment: "Severity classification (critical, high, medium, low) — used to prioritise response resources."
+      comment: "Severity classification of the incident (critical, high, medium, low) for risk-tiered reporting."
     - name: "incident_status"
-      expr: incident_status
-      comment: "Current lifecycle status of the incident (open, under investigation, closed, etc.)."
-    - name: "confidentiality_level"
-      expr: confidentiality_level
-      comment: "Confidentiality classification governing data access and sharing — critical for audit and donor reporting."
-    - name: "involves_minor_flag"
-      expr: involves_minor_flag
-      comment: "Boolean flag indicating whether the incident involves a minor — triggers mandatory escalation protocols."
-    - name: "donor_notification_required_flag"
-      expr: donor_notification_required_flag
-      comment: "Boolean flag indicating whether donor notification is contractually required for this incident."
-    - name: "referred_to_authorities_flag"
-      expr: referred_to_authorities_flag
-      comment: "Boolean flag indicating whether the incident was referred to law enforcement or statutory authorities."
-    - name: "incident_month"
-      expr: DATE_TRUNC('MONTH', incident_date)
-      comment: "Month of incident occurrence — used for trend analysis and periodic reporting."
+      expr: safeguarding_incident_status
+      comment: "Current workflow status of the incident (open, under investigation, closed) for pipeline monitoring."
+    - name: "incident_subtype"
+      expr: subtype
+      comment: "Sub-classification of the incident type for granular categorization."
+    - name: "location_country"
+      expr: location_country
+      comment: "Country where the incident occurred, enabling geographic risk analysis."
+    - name: "location_region"
+      expr: location_region
+      comment: "Region where the incident occurred for regional performance monitoring."
+    - name: "reporter_type"
+      expr: reporter_type
+      comment: "Category of person who reported the incident (staff, beneficiary, partner, anonymous) to assess reporting culture."
+    - name: "reporting_channel"
+      expr: reporting_channel
+      comment: "Channel through which the incident was reported (hotline, email, in-person) for channel effectiveness analysis."
+    - name: "survivor_gender"
+      expr: survivor_gender
+      comment: "Gender of the survivor for equity and disaggregated safeguarding analysis."
+    - name: "survivor_age_group"
+      expr: survivor_age_group
+      comment: "Age group of the survivor (child, adult, elderly) for vulnerability-focused reporting."
     - name: "incident_year"
-      expr: YEAR(incident_date)
-      comment: "Year of incident occurrence — used for annual reporting and year-over-year comparison."
-    - name: "reported_month"
-      expr: DATE_TRUNC('MONTH', reported_date)
-      comment: "Month the incident was reported — used to measure reporting timeliness."
+      expr: DATE_TRUNC('YEAR', safeguarding_incident_date)
+      comment: "Year the incident occurred for annual trend analysis."
+    - name: "incident_month"
+      expr: DATE_TRUNC('MONTH', safeguarding_incident_date)
+      comment: "Month the incident occurred for seasonal and monthly trend analysis."
+    - name: "investigation_outcome"
+      expr: investigation_outcome
+      comment: "Outcome of the investigation (substantiated, unsubstantiated, inconclusive) for accountability tracking."
   measures:
     - name: "total_incidents"
       expr: COUNT(1)
-      comment: "Total number of safeguarding incidents recorded. Core volume KPI for executive dashboards and donor reporting."
+      comment: "Total number of safeguarding incidents recorded. Baseline KPI for organizational safeguarding load and trend monitoring."
+    - name: "incidents_requiring_investigation"
+      expr: COUNT(CASE WHEN investigation_required_flag = TRUE THEN 1 END)
+      comment: "Number of incidents flagged as requiring formal investigation. Indicates severity and accountability burden."
+    - name: "investigation_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN investigation_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of incidents that triggered a formal investigation. High rates signal systemic risk; low rates may indicate under-reporting or under-response."
+    - name: "incidents_with_survivor_involved"
+      expr: COUNT(CASE WHEN survivor_involved_flag = TRUE THEN 1 END)
+      comment: "Number of incidents where a survivor was directly involved. Critical for survivor-centered response planning and resource allocation."
+    - name: "survivor_support_provided_count"
+      expr: COUNT(CASE WHEN survivor_support_provided_flag = TRUE THEN 1 END)
+      comment: "Number of incidents where survivor support was provided. Measures organizational duty-of-care fulfillment."
+    - name: "survivor_support_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN survivor_support_provided_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN survivor_involved_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of survivor-involved incidents where support was provided. Key accountability metric for survivor-centered safeguarding standards."
+    - name: "donor_notification_required_count"
+      expr: COUNT(CASE WHEN donor_notification_required_flag = TRUE THEN 1 END)
+      comment: "Number of incidents requiring donor notification. Drives compliance tracking against donor safeguarding requirements."
+    - name: "donor_notified_count"
+      expr: COUNT(CASE WHEN donor_notified_date IS NOT NULL THEN 1 END)
+      comment: "Number of incidents where the donor was actually notified. Paired with donor_notification_required_count to compute compliance rate."
+    - name: "donor_notification_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN donor_notified_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN donor_notification_required_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of required donor notifications that were completed. Directly tied to grant compliance risk and donor relationship management."
+    - name: "law_enforcement_notified_count"
+      expr: COUNT(CASE WHEN law_enforcement_notified_flag = TRUE THEN 1 END)
+      comment: "Number of incidents escalated to law enforcement. Indicates severity of the incident portfolio and legal risk exposure."
     - name: "open_incidents"
-      expr: COUNT(CASE WHEN incident_status NOT IN ('closed', 'Closed') THEN 1 END)
-      comment: "Number of incidents currently open or under investigation. Drives resource allocation and case management prioritisation."
-    - name: "critical_incidents"
-      expr: COUNT(CASE WHEN severity_level IN ('critical', 'Critical') THEN 1 END)
-      comment: "Count of critical-severity incidents. Triggers immediate escalation to senior leadership and donor notification review."
-    - name: "incidents_involving_minors"
-      expr: COUNT(CASE WHEN involves_minor_flag = TRUE THEN 1 END)
-      comment: "Count of incidents involving minors. Mandatory child safeguarding KPI for CHS compliance and donor reporting."
-    - name: "donor_notification_pending"
-      expr: COUNT(CASE WHEN donor_notification_required_flag = TRUE AND donor_notification_date IS NULL THEN 1 END)
-      comment: "Incidents requiring donor notification where notification has not yet been sent. Compliance risk indicator for grant management."
-    - name: "referred_to_authorities_count"
-      expr: COUNT(CASE WHEN referred_to_authorities_flag = TRUE THEN 1 END)
-      comment: "Number of incidents referred to law enforcement or statutory authorities. Indicates severity and legal compliance posture."
-    - name: "closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN incident_status IN ('closed', 'Closed') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of incidents that have been closed. Key throughput metric for case management effectiveness."
-    - name: "avg_days_to_report"
-      expr: AVG(DATEDIFF(reported_date, incident_date))
-      comment: "Average number of days between incident occurrence and formal reporting. Measures reporting timeliness — a core CHS accountability indicator."
-    - name: "avg_days_to_close"
-      expr: AVG(DATEDIFF(closure_date, reported_date))
-      comment: "Average days from report to closure. Measures case resolution speed — used in operational steering reviews."
+      expr: COUNT(CASE WHEN safeguarding_incident_status NOT IN ('closed', 'Closed') THEN 1 END)
+      comment: "Number of incidents not yet closed. Operational backlog metric for safeguarding team capacity planning."
+    - name: "avg_days_to_investigation_start"
+      expr: AVG(DATEDIFF(investigation_start_date, safeguarding_incident_date))
+      comment: "Average number of days between incident date and investigation start. Measures organizational response speed against safeguarding standards."
+    - name: "avg_days_to_investigation_completion"
+      expr: AVG(DATEDIFF(investigation_completion_date, investigation_start_date))
+      comment: "Average number of days to complete an investigation once started. Tracks investigation efficiency and compliance with timeframe commitments."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_investigation`
@@ -76,548 +94,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "KPI view over safeguarding investigations. Tracks investigation throughput, timeliness, and outcome quality. Used by the Head of Safeguarding and Legal/Compliance teams to monitor case resolution and accountability. Investigation data is highly sensitive (pii_beneficiary_protected, pii_staff); apply masking on findings_summary and conclusion in non-prod per VREQ-022."
+  comment: "Investigation-level KPIs covering caseload, cost, completion rates, and external reporting compliance. Enables leadership to assess investigation capacity, quality, and accountability outcomes."
   source: "`vibe_ngo_v1`.`safeguarding`.`investigation`"
   dimensions:
-    - name: "investigation_status"
-      expr: investigation_status
-      comment: "Current status of the investigation (open, in progress, concluded, closed) — primary lifecycle dimension."
     - name: "investigation_type"
       expr: investigation_type
-      comment: "Type of investigation (internal, external, joint) — determines resource requirements and governance."
+      comment: "Type of investigation (internal, external, joint) for resource and methodology analysis."
+    - name: "investigation_category"
+      expr: investigation_category
+      comment: "Category of misconduct being investigated for thematic trend analysis."
+    - name: "investigation_status"
+      expr: investigation_status
+      comment: "Current status of the investigation (open, in progress, closed) for pipeline management."
     - name: "confidentiality_level"
       expr: confidentiality_level
-      comment: "Confidentiality classification governing who can access investigation records."
-    - name: "evidence_collected_flag"
-      expr: evidence_collected_flag
-      comment: "Boolean flag indicating whether evidence was formally collected — quality indicator for investigation rigour."
-    - name: "external_referral_flag"
-      expr: external_referral_flag
-      comment: "Boolean flag indicating whether the investigation was referred to an external body (police, UN oversight, etc.)."
-    - name: "initiation_month"
-      expr: DATE_TRUNC('MONTH', initiation_date)
-      comment: "Month the investigation was initiated — used for trend and workload analysis."
-    - name: "initiation_year"
-      expr: YEAR(initiation_date)
-      comment: "Year the investigation was initiated — used for annual reporting."
+      comment: "Confidentiality classification of the investigation for access control and reporting segmentation."
+    - name: "final_determination"
+      expr: final_determination
+      comment: "Final outcome determination (substantiated, unsubstantiated, inconclusive) for accountability reporting."
+    - name: "law_enforcement_referral_flag"
+      expr: law_enforcement_referral_flag
+      comment: "Whether the investigation was referred to law enforcement, indicating severity tier."
+    - name: "investigation_year"
+      expr: DATE_TRUNC('YEAR', start_date)
+      comment: "Year the investigation was initiated for annual trend and capacity analysis."
+    - name: "investigation_month"
+      expr: DATE_TRUNC('MONTH', start_date)
+      comment: "Month the investigation was initiated for monthly workload tracking."
   measures:
     - name: "total_investigations"
       expr: COUNT(1)
-      comment: "Total number of investigations opened. Core volume KPI for accountability reporting."
+      comment: "Total number of investigations opened. Baseline measure of investigation caseload and organizational accountability activity."
     - name: "open_investigations"
-      expr: COUNT(CASE WHEN investigation_status NOT IN ('closed', 'Closed', 'concluded', 'Concluded') THEN 1 END)
-      comment: "Number of investigations currently open. Drives investigator workload management and resource allocation."
-    - name: "concluded_investigations"
-      expr: COUNT(CASE WHEN investigation_status IN ('concluded', 'Concluded', 'closed', 'Closed') THEN 1 END)
-      comment: "Number of investigations that have reached a conclusion. Measures throughput and accountability delivery."
-    - name: "external_referral_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN external_referral_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of investigations referred to external bodies. Indicates severity profile and inter-agency accountability engagement."
-    - name: "avg_days_to_complete"
-      expr: AVG(DATEDIFF(actual_completion_date, initiation_date))
-      comment: "Average days from investigation initiation to actual completion. Core timeliness KPI — CHS and donor requirements typically mandate completion within 30-90 days."
+      expr: COUNT(CASE WHEN investigation_status NOT IN ('closed', 'Closed', 'completed', 'Completed') THEN 1 END)
+      comment: "Number of investigations currently open. Operational backlog metric for investigation team capacity planning."
+    - name: "completed_investigations"
+      expr: COUNT(CASE WHEN actual_completion_date IS NOT NULL THEN 1 END)
+      comment: "Number of investigations that have been formally completed. Measures throughput and closure rate."
+    - name: "investigation_completion_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_completion_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of investigations that have been completed. Key performance indicator for investigation team effectiveness."
+    - name: "total_investigation_cost_usd"
+      expr: SUM(CAST(cost_usd AS DOUBLE))
+      comment: "Total financial cost of all investigations in USD. Drives budget planning and cost-per-case analysis for safeguarding operations."
+    - name: "avg_investigation_cost_usd"
+      expr: AVG(CAST(cost_usd AS DOUBLE))
+      comment: "Average cost per investigation in USD. Benchmarking metric for investigation efficiency and resource allocation decisions."
+    - name: "external_reporting_required_count"
+      expr: COUNT(CASE WHEN external_reporting_required_flag = TRUE THEN 1 END)
+      comment: "Number of investigations requiring external reporting to regulators or donors. Compliance risk indicator."
+    - name: "external_reporting_completed_count"
+      expr: COUNT(CASE WHEN external_reporting_required_flag = TRUE AND external_reporting_date IS NOT NULL THEN 1 END)
+      comment: "Number of investigations where required external reporting was completed. Paired with required count to compute compliance rate."
+    - name: "external_reporting_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN external_reporting_required_flag = TRUE AND external_reporting_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN external_reporting_required_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of investigations requiring external reporting where reporting was completed on time. Critical compliance KPI for donor and regulatory accountability."
+    - name: "law_enforcement_referral_count"
+      expr: COUNT(CASE WHEN law_enforcement_referral_flag = TRUE THEN 1 END)
+      comment: "Number of investigations referred to law enforcement. Indicates severity of the investigation portfolio and legal risk exposure."
+    - name: "avg_days_to_completion"
+      expr: AVG(DATEDIFF(actual_completion_date, start_date))
+      comment: "Average number of days from investigation start to completion. Measures investigation cycle time against organizational and donor standards."
     - name: "overdue_investigations"
-      expr: COUNT(CASE WHEN investigation_status NOT IN ('closed', 'Closed', 'concluded', 'Concluded') AND target_completion_date < CURRENT_DATE() THEN 1 END)
-      comment: "Investigations past their target completion date and still open. Compliance risk indicator requiring immediate management attention."
-    - name: "evidence_collection_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN evidence_collected_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of investigations where evidence was formally collected. Quality indicator for investigation rigour and legal defensibility."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_training_completion`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over safeguarding training completions for staff and volunteers. Tracks training coverage, pass rates, and certification currency. Used by HR, Safeguarding Focal Points, and donors to verify mandatory training compliance. Training records may contain pii_staff data; apply masking on certificate_number in non-prod per VREQ-022."
-  source: "`vibe_ngo_v1`.`safeguarding`.`safeguarding_training_completion`"
-  dimensions:
-    - name: "delivery_modality"
-      expr: delivery_modality
-      comment: "Training delivery method (in-person, e-learning, blended) — used to assess reach and cost-effectiveness."
-    - name: "passed_flag"
-      expr: passed_flag
-      comment: "Boolean flag indicating whether the participant passed the training assessment."
-    - name: "completion_month"
-      expr: DATE_TRUNC('MONTH', completion_date)
-      comment: "Month of training completion — used for trend analysis and compliance reporting periods."
-    - name: "completion_year"
-      expr: YEAR(completion_date)
-      comment: "Year of training completion — used for annual compliance reporting."
-    - name: "expiry_month"
-      expr: DATE_TRUNC('MONTH', expiry_date)
-      comment: "Month certification expires — used to forecast renewal workload."
-  measures:
-    - name: "total_completions"
-      expr: COUNT(1)
-      comment: "Total number of safeguarding training completions recorded. Core compliance volume KPI for donor and CHS reporting."
-    - name: "passed_completions"
-      expr: COUNT(CASE WHEN passed_flag = TRUE THEN 1 END)
-      comment: "Number of training completions where the participant passed. Measures effective training coverage."
-    - name: "pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN passed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of training completions resulting in a pass. Quality indicator for training effectiveness and participant preparedness."
-    - name: "avg_score_pct"
-      expr: AVG(CAST(score_percent AS DOUBLE))
-      comment: "Average assessment score across all completions. Measures training comprehension quality — low scores may indicate curriculum gaps."
-    - name: "expired_certifications"
-      expr: COUNT(CASE WHEN expiry_date < CURRENT_DATE() AND passed_flag = TRUE THEN 1 END)
-      comment: "Number of certifications that have passed their expiry date. Compliance risk indicator — expired certifications may breach donor requirements."
-    - name: "unique_staff_trained"
-      expr: COUNT(DISTINCT staff_member_id)
-      comment: "Number of distinct staff members who have completed safeguarding training. Measures organisational training coverage breadth."
-    - name: "unique_volunteers_trained"
-      expr: COUNT(DISTINCT volunteer_id)
-      comment: "Number of distinct volunteers who have completed safeguarding training. Measures volunteer safeguarding coverage — critical for community-facing programmes."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_partner_psea_assessment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over partner PSEA assessments. Tracks partner safeguarding capacity scores, assessment coverage, and capacity-building needs. Used by Partnership and Safeguarding teams to manage partner risk and comply with UN PSEA network requirements. Assessment scores are sensitive operational data."
-  source: "`vibe_ngo_v1`.`safeguarding`.`partner_psea_assessment`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of PSEA assessment (initial, periodic, follow-up) — determines assessment depth and frequency requirements."
-    - name: "overall_rating"
-      expr: overall_rating
-      comment: "Overall PSEA capacity rating assigned to the partner (e.g., strong, adequate, needs improvement) — primary risk classification."
-    - name: "capacity_building_required_flag"
-      expr: capacity_building_required_flag
-      comment: "Boolean flag indicating whether the partner requires capacity building following assessment."
-    - name: "assessment_year"
-      expr: YEAR(assessment_date)
-      comment: "Year of assessment — used for annual partner risk review cycles."
-    - name: "assessment_month"
-      expr: DATE_TRUNC('MONTH', assessment_date)
-      comment: "Month of assessment — used for workload planning and periodic reporting."
-  measures:
-    - name: "total_assessments"
-      expr: COUNT(1)
-      comment: "Total number of partner PSEA assessments conducted. Measures assessment programme coverage."
-    - name: "partners_requiring_capacity_building"
-      expr: COUNT(CASE WHEN capacity_building_required_flag = TRUE THEN 1 END)
-      comment: "Number of partner assessments where capacity building was identified as required. Drives capacity building programme planning and resource allocation."
-    - name: "capacity_building_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN capacity_building_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of assessed partners requiring capacity building. Key risk indicator for the partner portfolio's overall PSEA readiness."
-    - name: "avg_overall_score"
-      expr: AVG(CAST(overall_score AS DOUBLE))
-      comment: "Average overall PSEA score across all partner assessments. Portfolio-level safeguarding capacity benchmark."
-    - name: "avg_policy_score"
-      expr: AVG(CAST(policy_score AS DOUBLE))
-      comment: "Average policy domain score. Identifies whether partners have adequate PSEA policies in place."
-    - name: "avg_training_score"
-      expr: AVG(CAST(training_score AS DOUBLE))
-      comment: "Average training domain score. Identifies gaps in partner staff safeguarding training coverage."
-    - name: "avg_reporting_score"
-      expr: AVG(CAST(reporting_score AS DOUBLE))
-      comment: "Average reporting domain score. Measures partner capacity to receive and process safeguarding complaints."
-    - name: "avg_procedures_score"
-      expr: AVG(CAST(procedures_score AS DOUBLE))
-      comment: "Average procedures domain score. Measures partner operational safeguarding procedure quality."
-    - name: "expired_assessments"
-      expr: COUNT(CASE WHEN valid_until_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of partner assessments that have passed their validity date. Compliance risk — expired assessments may breach donor due diligence requirements."
-    - name: "unique_partners_assessed"
-      expr: COUNT(DISTINCT partner_org_id)
-      comment: "Number of distinct partner organisations assessed. Measures PSEA assessment programme reach across the partner portfolio."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_risk_assessment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over safeguarding risk assessments at programme and site level. Tracks risk scores across SEA, child safeguarding, and sexual harassment dimensions. Used by programme managers and safeguarding leads to prioritise mitigation investments. Risk data is operationally sensitive."
-  source: "`vibe_ngo_v1`.`safeguarding`.`risk_assessment`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of risk assessment (programme design, site-level, periodic review) — determines scope and methodology."
-    - name: "assessment_status"
-      expr: assessment_status
-      comment: "Current status of the risk assessment (draft, finalised, under review) — lifecycle tracking."
-    - name: "overall_risk_level"
-      expr: overall_risk_level
-      comment: "Overall risk classification (critical, high, medium, low) — primary dimension for risk prioritisation."
-    - name: "residual_risk_level"
-      expr: residual_risk_level
-      comment: "Residual risk level after mitigation measures — measures effectiveness of safeguarding controls."
-    - name: "assessment_year"
-      expr: YEAR(assessment_date)
-      comment: "Year of assessment — used for annual risk review and trend analysis."
-    - name: "assessment_month"
-      expr: DATE_TRUNC('MONTH', assessment_date)
-      comment: "Month of assessment — used for periodic reporting and workload planning."
-  measures:
-    - name: "total_risk_assessments"
-      expr: COUNT(1)
-      comment: "Total number of safeguarding risk assessments conducted. Measures risk management programme coverage."
-    - name: "high_critical_risk_sites"
-      expr: COUNT(CASE WHEN overall_risk_level IN ('high', 'High', 'critical', 'Critical') THEN 1 END)
-      comment: "Number of assessments rated high or critical risk. Drives prioritisation of safeguarding resources and mitigation investment."
-    - name: "avg_sea_risk_score"
-      expr: AVG(CAST(sea_risk_score AS DOUBLE))
-      comment: "Average SEA (Sexual Exploitation and Abuse) risk score across all assessed sites/programmes. Portfolio-level SEA risk benchmark."
-    - name: "avg_child_safeguarding_risk_score"
-      expr: AVG(CAST(child_safeguarding_risk_score AS DOUBLE))
-      comment: "Average child safeguarding risk score. Critical KPI for child protection compliance and donor reporting."
-    - name: "avg_sh_risk_score"
-      expr: AVG(CAST(sh_risk_score AS DOUBLE))
-      comment: "Average sexual harassment risk score. Measures workplace safeguarding risk across programme sites."
-    - name: "overdue_reviews"
-      expr: COUNT(CASE WHEN next_review_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of risk assessments past their scheduled review date. Compliance risk indicator — outdated assessments may not reflect current operating context."
-    - name: "risk_reduction_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN residual_risk_level IN ('low', 'Low', 'medium', 'Medium') AND overall_risk_level IN ('high', 'High', 'critical', 'Critical') THEN 1 END) / NULLIF(COUNT(CASE WHEN overall_risk_level IN ('high', 'High', 'critical', 'Critical') THEN 1 END), 0), 2)
-      comment: "Percentage of high/critical risk assessments where mitigation reduced residual risk to medium or low. Measures effectiveness of safeguarding mitigation measures."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_disciplinary_outcome`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over disciplinary outcomes from safeguarding investigations. Tracks outcome types, appeal rates, and misconduct disclosure rates. Used by HR leadership and the Board to assess accountability and deterrence effectiveness. Disciplinary data is highly sensitive (pii_staff); apply strict access controls and masking in non-prod per VREQ-022."
-  source: "`vibe_ngo_v1`.`safeguarding`.`disciplinary_outcome`"
-  dimensions:
-    - name: "outcome_type"
-      expr: outcome_type
-      comment: "Type of disciplinary outcome (dismissal, warning, suspension, no action, etc.) — primary accountability classification."
-    - name: "outcome_status"
-      expr: outcome_status
-      comment: "Current status of the disciplinary outcome (pending, implemented, appealed, overturned)."
-    - name: "appeal_flag"
-      expr: appeal_flag
-      comment: "Boolean flag indicating whether the disciplinary outcome was appealed."
-    - name: "misconduct_disclosure_flag"
-      expr: misconduct_disclosure_flag
-      comment: "Boolean flag indicating whether a misconduct disclosure was made to future employers or inter-agency databases."
-    - name: "decision_year"
-      expr: YEAR(decision_date)
-      comment: "Year the disciplinary decision was made — used for annual accountability reporting."
-    - name: "decision_month"
-      expr: DATE_TRUNC('MONTH', decision_date)
-      comment: "Month of disciplinary decision — used for trend analysis."
-  measures:
-    - name: "total_disciplinary_outcomes"
-      expr: COUNT(1)
-      comment: "Total number of disciplinary outcomes recorded. Core accountability volume KPI."
-    - name: "dismissals"
-      expr: COUNT(CASE WHEN outcome_type IN ('dismissal', 'Dismissal', 'termination', 'Termination') THEN 1 END)
-      comment: "Number of cases resulting in dismissal or termination. Strongest accountability signal — monitored by donors and oversight bodies."
-    - name: "appeal_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN appeal_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of disciplinary outcomes that were appealed. High appeal rates may indicate procedural fairness concerns."
-    - name: "misconduct_disclosure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN misconduct_disclosure_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of outcomes where misconduct was disclosed to inter-agency databases. Measures compliance with inter-agency information-sharing commitments (e.g., UN ClearCheck)."
-    - name: "implemented_outcomes"
-      expr: COUNT(CASE WHEN outcome_status IN ('implemented', 'Implemented') THEN 1 END)
-      comment: "Number of disciplinary outcomes that have been fully implemented. Measures follow-through on accountability decisions."
-    - name: "implementation_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN outcome_status IN ('implemented', 'Implemented') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of disciplinary outcomes that have been implemented. Accountability effectiveness KPI — low rates indicate systemic follow-through failures."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_psea_policy`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over PSEA policies. Tracks policy currency, mandatory training coverage, and whistleblower protection provisions. Used by the Safeguarding Director and Compliance team to ensure policy governance meets CHS, UN, and donor standards. Policy metadata is operational data with no direct PII."
-  source: "`vibe_ngo_v1`.`safeguarding`.`psea_policy`"
-  dimensions:
-    - name: "policy_status"
-      expr: policy_status
-      comment: "Current status of the PSEA policy (active, draft, expired, under review) — lifecycle governance dimension."
-    - name: "compliance_framework"
-      expr: compliance_framework
-      comment: "Compliance framework the policy aligns to (CHS, UN PSEA, donor-specific) — used for framework-level compliance reporting."
-    - name: "mandatory_training_flag"
-      expr: mandatory_training_flag
-      comment: "Boolean flag indicating whether the policy mandates training for all staff."
-    - name: "whistleblower_protection_flag"
-      expr: whistleblower_protection_flag
-      comment: "Boolean flag indicating whether the policy includes whistleblower protection provisions — CHS requirement."
-    - name: "zero_tolerance_statement_flag"
-      expr: zero_tolerance_statement_flag
-      comment: "Boolean flag indicating whether the policy contains an explicit zero-tolerance statement — donor and UN requirement."
-    - name: "effective_year"
-      expr: YEAR(effective_date)
-      comment: "Year the policy became effective — used for policy age and review cycle analysis."
-  measures:
-    - name: "total_policies"
-      expr: COUNT(1)
-      comment: "Total number of PSEA policies on record. Governance coverage baseline."
-    - name: "active_policies"
-      expr: COUNT(CASE WHEN policy_status IN ('active', 'Active') THEN 1 END)
-      comment: "Number of currently active PSEA policies. Ensures the organisation maintains current, enforceable safeguarding policy coverage."
-    - name: "expired_policies"
-      expr: COUNT(CASE WHEN expiry_date < CURRENT_DATE() AND policy_status NOT IN ('expired', 'Expired') THEN 1 END)
-      comment: "Policies past their expiry date that have not been formally marked expired. Compliance risk — expired policies may not meet donor requirements."
-    - name: "policies_due_for_review"
-      expr: COUNT(CASE WHEN next_review_date <= DATE_ADD(CURRENT_DATE(), 30) AND policy_status IN ('active', 'Active') THEN 1 END)
-      comment: "Active policies due for review within the next 30 days. Proactive governance indicator for the Safeguarding Director."
-    - name: "policies_with_whistleblower_protection_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN whistleblower_protection_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN policy_status IN ('active', 'Active') THEN 1 END), 0), 2)
-      comment: "Percentage of active policies that include whistleblower protection. CHS Standard 5 compliance indicator."
-    - name: "policies_with_zero_tolerance_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN zero_tolerance_statement_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN policy_status IN ('active', 'Active') THEN 1 END), 0), 2)
-      comment: "Percentage of active policies containing an explicit zero-tolerance statement. UN and major donor compliance requirement."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_policy_acknowledgment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over safeguarding policy acknowledgments by staff and volunteers. Tracks acknowledgment coverage, renewal compliance, and method distribution. Used by HR and Safeguarding teams to demonstrate workforce compliance to donors and auditors. Acknowledgment records contain pii_staff data; apply masking in non-prod per VREQ-022."
-  source: "`vibe_ngo_v1`.`safeguarding`.`safeguarding_policy_acknowledgment`"
-  dimensions:
-    - name: "acknowledgment_method"
-      expr: acknowledgment_method
-      comment: "Method used to acknowledge the policy (digital signature, paper, e-learning completion) — used for audit trail quality assessment."
-    - name: "renewal_required_flag"
-      expr: renewal_required_flag
-      comment: "Boolean flag indicating whether periodic renewal of acknowledgment is required."
-    - name: "acknowledgment_year"
-      expr: YEAR(acknowledgment_date)
-      comment: "Year of acknowledgment — used for annual compliance reporting."
-    - name: "acknowledgment_month"
-      expr: DATE_TRUNC('MONTH', acknowledgment_date)
-      comment: "Month of acknowledgment — used for trend analysis and onboarding compliance monitoring."
-  measures:
-    - name: "total_acknowledgments"
-      expr: COUNT(1)
-      comment: "Total number of policy acknowledgments recorded. Core compliance volume KPI for donor and CHS reporting."
-    - name: "unique_staff_acknowledged"
-      expr: COUNT(DISTINCT staff_member_id)
-      comment: "Number of distinct staff members who have acknowledged a safeguarding policy. Measures staff compliance coverage."
-    - name: "unique_volunteers_acknowledged"
-      expr: COUNT(DISTINCT volunteer_id)
-      comment: "Number of distinct volunteers who have acknowledged a safeguarding policy. Measures volunteer compliance coverage."
-    - name: "renewals_overdue"
-      expr: COUNT(CASE WHEN renewal_required_flag = TRUE AND next_renewal_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of acknowledgments where renewal is required and the renewal date has passed. Compliance risk indicator — overdue renewals may breach donor requirements."
-    - name: "renewal_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN renewal_required_flag = TRUE AND next_renewal_date >= CURRENT_DATE() THEN 1 END) / NULLIF(COUNT(CASE WHEN renewal_required_flag = TRUE THEN 1 END), 0), 2)
-      comment: "Percentage of renewal-required acknowledgments that are currently up to date. Key compliance KPI for HR and donor audits."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_audit`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over safeguarding audits. Tracks audit completion, findings volume, and overall ratings. Used by the Safeguarding Director and Board to assess organisational safeguarding system quality. Audit data is governance-sensitive operational data."
-  source: "`vibe_ngo_v1`.`safeguarding`.`audit`"
-  dimensions:
-    - name: "audit_type"
-      expr: audit_type
-      comment: "Type of audit (internal, external, donor-commissioned) — determines scope and authority of findings."
-    - name: "audit_status"
-      expr: audit_status
-      comment: "Current status of the audit (planned, in progress, completed, report issued) — lifecycle tracking."
-    - name: "overall_rating"
-      expr: overall_rating
-      comment: "Overall audit rating (satisfactory, partially satisfactory, unsatisfactory) — primary quality classification."
-    - name: "audit_year"
-      expr: YEAR(start_date)
-      comment: "Year the audit commenced — used for annual governance reporting."
-    - name: "audit_month"
-      expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the audit commenced — used for workload and scheduling analysis."
-  measures:
-    - name: "total_audits"
-      expr: COUNT(1)
-      comment: "Total number of safeguarding audits conducted. Governance coverage baseline."
-    - name: "completed_audits"
-      expr: COUNT(CASE WHEN audit_status IN ('completed', 'Completed', 'report issued', 'Report Issued') THEN 1 END)
-      comment: "Number of audits that have been completed. Measures audit programme throughput."
-    - name: "unsatisfactory_audits"
-      expr: COUNT(CASE WHEN overall_rating IN ('unsatisfactory', 'Unsatisfactory') THEN 1 END)
-      comment: "Number of audits rated unsatisfactory. Critical risk indicator requiring immediate corrective action planning."
-    - name: "unsatisfactory_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN overall_rating IN ('unsatisfactory', 'Unsatisfactory') THEN 1 END) / NULLIF(COUNT(CASE WHEN audit_status IN ('completed', 'Completed', 'report issued', 'Report Issued') THEN 1 END), 0), 2)
-      comment: "Percentage of completed audits rated unsatisfactory. Trend in this metric signals systemic safeguarding system deterioration."
-    - name: "avg_audit_duration_days"
-      expr: AVG(DATEDIFF(end_date, start_date))
-      comment: "Average duration of audits in days. Measures audit efficiency and resource planning accuracy."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_audit_recommendation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over audit recommendations. Tracks implementation status, overdue recommendations, and priority distribution. Used by the Safeguarding Director and Compliance team to drive corrective action follow-through. Recommendation data is governance-sensitive."
-  source: "`vibe_ngo_v1`.`safeguarding`.`audit_recommendation`"
-  dimensions:
-    - name: "implementation_status"
-      expr: implementation_status
-      comment: "Current implementation status of the recommendation (open, in progress, implemented, overdue) — primary tracking dimension."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the recommendation (critical, high, medium, low) — drives sequencing of corrective actions."
-    - name: "verification_method"
-      expr: verification_method
-      comment: "Method used to verify implementation (document review, site visit, management confirmation) — quality of evidence dimension."
-    - name: "target_year"
-      expr: YEAR(target_date)
-      comment: "Year the recommendation is targeted for implementation — used for workload planning."
-  measures:
-    - name: "total_recommendations"
-      expr: COUNT(1)
-      comment: "Total number of audit recommendations issued. Measures corrective action workload."
-    - name: "implemented_recommendations"
-      expr: COUNT(CASE WHEN implementation_status IN ('implemented', 'Implemented', 'closed', 'Closed') THEN 1 END)
-      comment: "Number of recommendations that have been fully implemented. Measures corrective action follow-through."
-    - name: "implementation_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN implementation_status IN ('implemented', 'Implemented', 'closed', 'Closed') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of audit recommendations that have been implemented. Core accountability KPI for Board and donor reporting."
-    - name: "overdue_recommendations"
-      expr: COUNT(CASE WHEN implementation_status NOT IN ('implemented', 'Implemented', 'closed', 'Closed') AND target_date < CURRENT_DATE() THEN 1 END)
-      comment: "Recommendations past their target date and not yet implemented. Compliance risk indicator requiring escalation."
-    - name: "critical_high_open_recommendations"
-      expr: COUNT(CASE WHEN priority_level IN ('critical', 'Critical', 'high', 'High') AND implementation_status NOT IN ('implemented', 'Implemented', 'closed', 'Closed') THEN 1 END)
-      comment: "Number of open critical or high priority recommendations. Immediate risk indicator for the Safeguarding Director and Board."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_community_awareness_session`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over community safeguarding awareness sessions. Tracks reach, participation, and feedback collection. Used by programme managers and safeguarding focal points to measure community engagement and PSEA awareness-raising effectiveness. Session data may contain location information sensitive in conflict contexts."
-  source: "`vibe_ngo_v1`.`safeguarding`.`community_awareness_session`"
-  dimensions:
-    - name: "session_type"
-      expr: session_type
-      comment: "Type of awareness session (PSEA, child protection, GBV prevention, etc.) — used for thematic coverage analysis."
-    - name: "topic"
-      expr: topic
-      comment: "Specific topic covered in the session — enables content-level analysis of awareness-raising activities."
-    - name: "language_code"
-      expr: language_code
-      comment: "Language in which the session was conducted — measures linguistic accessibility of safeguarding messaging."
-    - name: "feedback_collected_flag"
-      expr: feedback_collected_flag
-      comment: "Boolean flag indicating whether participant feedback was collected — quality indicator for session accountability."
-    - name: "session_month"
-      expr: DATE_TRUNC('MONTH', session_date)
-      comment: "Month the session was held — used for trend analysis and programme reporting."
-    - name: "session_year"
-      expr: YEAR(session_date)
-      comment: "Year the session was held — used for annual reporting."
-  measures:
-    - name: "total_sessions"
-      expr: COUNT(1)
-      comment: "Total number of community awareness sessions conducted. Core outreach volume KPI."
-    - name: "sessions_with_feedback"
-      expr: COUNT(CASE WHEN feedback_collected_flag = TRUE THEN 1 END)
-      comment: "Number of sessions where participant feedback was collected. Measures accountability and quality assurance coverage."
-    - name: "feedback_collection_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN feedback_collected_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of sessions where feedback was collected. Quality indicator for community accountability mechanisms."
-    - name: "unique_communities_reached"
-      expr: COUNT(DISTINCT community_id)
-      comment: "Number of distinct communities reached through awareness sessions. Measures geographic and community coverage breadth."
-    - name: "unique_reporting_channels_promoted"
-      expr: COUNT(DISTINCT reporting_channel_id)
-      comment: "Number of distinct reporting channels promoted across sessions. Measures diversity of safeguarding reporting pathways communicated to communities."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_donor_safeguarding_requirement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over donor safeguarding requirements attached to awards. Tracks compliance status, overdue reporting, and requirement type distribution. Used by Grant Management and Safeguarding teams to ensure donor contractual safeguarding obligations are met. Requirement data is grant-sensitive operational data."
-  source: "`vibe_ngo_v1`.`safeguarding`.`donor_safeguarding_requirement`"
-  dimensions:
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Current compliance status of the donor safeguarding requirement (compliant, non-compliant, pending, overdue)."
-    - name: "requirement_type"
-      expr: requirement_type
-      comment: "Type of donor requirement (incident reporting, policy submission, training evidence, audit) — used for requirement category analysis."
-    - name: "reporting_frequency"
-      expr: reporting_frequency
-      comment: "Required reporting frequency (monthly, quarterly, annual, ad hoc) — used for workload planning."
-    - name: "due_year"
-      expr: YEAR(due_date)
-      comment: "Year the requirement is due — used for annual compliance planning."
-    - name: "due_month"
-      expr: DATE_TRUNC('MONTH', due_date)
-      comment: "Month the requirement is due — used for near-term compliance workload management."
-  measures:
-    - name: "total_requirements"
-      expr: COUNT(1)
-      comment: "Total number of donor safeguarding requirements tracked. Measures compliance obligation portfolio size."
-    - name: "non_compliant_requirements"
-      expr: COUNT(CASE WHEN compliance_status IN ('non-compliant', 'Non-Compliant', 'overdue', 'Overdue') THEN 1 END)
-      comment: "Number of requirements currently non-compliant or overdue. Critical risk indicator — non-compliance may trigger donor sanctions or award suspension."
-    - name: "compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_status IN ('compliant', 'Compliant') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of donor safeguarding requirements currently in compliance. Primary KPI for grant compliance dashboards."
-    - name: "overdue_requirements"
-      expr: COUNT(CASE WHEN due_date < CURRENT_DATE() AND compliance_status NOT IN ('compliant', 'Compliant') THEN 1 END)
-      comment: "Requirements past their due date and not yet compliant. Immediate escalation trigger for Grant Management."
-    - name: "unique_awards_with_requirements"
-      expr: COUNT(DISTINCT award_id)
-      comment: "Number of distinct awards with active donor safeguarding requirements. Measures breadth of grant portfolio subject to safeguarding compliance obligations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_support_service_referral`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "KPI view over support service referrals for survivors. Tracks referral completion rates, consent compliance, and follow-up coverage. Used by case managers and safeguarding focal points to monitor survivor support quality. Referral data is highly sensitive (pii_beneficiary_protected); apply strict masking in non-prod per VREQ-022."
-  source: "`vibe_ngo_v1`.`safeguarding`.`support_service_referral`"
-  dimensions:
-    - name: "referral_type"
-      expr: referral_type
-      comment: "Type of support service referral (medical, psychosocial, legal, shelter, livelihood) — used for service gap analysis."
-    - name: "referral_status"
-      expr: referral_status
-      comment: "Current status of the referral (pending, accepted, completed, declined) — lifecycle tracking."
-    - name: "consent_obtained_flag"
-      expr: consent_obtained_flag
-      comment: "Boolean flag indicating whether survivor consent was obtained before referral — mandatory ethical and legal requirement."
-    - name: "follow_up_required_flag"
-      expr: follow_up_required_flag
-      comment: "Boolean flag indicating whether follow-up is required for this referral."
-    - name: "referral_month"
-      expr: DATE_TRUNC('MONTH', referral_date)
-      comment: "Month the referral was made — used for trend analysis and service demand planning."
-    - name: "referral_year"
-      expr: YEAR(referral_date)
-      comment: "Year the referral was made — used for annual reporting."
-  measures:
-    - name: "total_referrals"
-      expr: COUNT(1)
-      comment: "Total number of support service referrals made. Core survivor support volume KPI."
-    - name: "completed_referrals"
-      expr: COUNT(CASE WHEN referral_status IN ('completed', 'Completed') THEN 1 END)
-      comment: "Number of referrals that have been completed. Measures survivor support service delivery effectiveness."
-    - name: "referral_completion_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN referral_status IN ('completed', 'Completed') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of referrals that have been completed. Key survivor support quality KPI."
-    - name: "consent_compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN consent_obtained_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of referrals where survivor consent was obtained. Ethical compliance KPI — any value below 100% requires immediate investigation."
-    - name: "pending_follow_ups"
-      expr: COUNT(CASE WHEN follow_up_required_flag = TRUE AND referral_status NOT IN ('completed', 'Completed') THEN 1 END)
-      comment: "Number of referrals requiring follow-up that have not yet been completed. Drives case manager workload prioritisation."
-    - name: "avg_days_to_acceptance"
-      expr: AVG(DATEDIFF(acceptance_date, referral_date))
-      comment: "Average days from referral to service acceptance. Measures timeliness of survivor support service access — critical for trauma-informed care standards."
+      expr: COUNT(CASE WHEN actual_completion_date IS NULL AND target_completion_date < CURRENT_DATE() THEN 1 END)
+      comment: "Number of investigations past their target completion date without being closed. Operational risk metric requiring immediate management attention."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_alleged_perpetrator`
@@ -625,34 +165,517 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Alleged perpetrator case management metrics tracking investigation outcomes, disciplinary actions, criminal referrals, and misconduct database reporting for accountability and organizational protection"
+  comment: "Alleged perpetrator case KPIs tracking allegation volume, severity, investigation outcomes, disciplinary actions, and misconduct database reporting. Supports accountability and organizational risk management decisions."
   source: "`vibe_ngo_v1`.`safeguarding`.`alleged_perpetrator`"
   dimensions:
+    - name: "allegation_type"
+      expr: allegation_type
+      comment: "Type of allegation (SEA, harassment, abuse of authority) for thematic analysis of misconduct patterns."
+    - name: "allegation_severity"
+      expr: allegation_severity
+      comment: "Severity level of the allegation for risk-tiered case management."
+    - name: "investigation_status"
+      expr: investigation_status
+      comment: "Current status of the investigation related to this alleged perpetrator."
     - name: "investigation_outcome"
       expr: investigation_outcome
-      comment: "Outcome of the investigation (substantiated, unsubstantiated, etc.)"
+      comment: "Outcome of the investigation (substantiated, unsubstantiated) for accountability reporting."
+    - name: "case_outcome"
+      expr: case_outcome
+      comment: "Final case outcome including disciplinary result for executive accountability reporting."
+    - name: "employment_status_at_incident"
+      expr: employment_status_at_incident
+      comment: "Employment status of the alleged perpetrator at the time of the incident for workforce risk analysis."
+    - name: "relationship_to_organization"
+      expr: relationship_to_organization
+      comment: "Relationship of the alleged perpetrator to the organization (staff, volunteer, partner, contractor) for systemic risk identification."
+    - name: "rehire_eligibility"
+      expr: rehire_eligibility
+      comment: "Whether the individual is eligible for rehire, critical for preventing re-engagement of substantiated perpetrators."
+    - name: "allegation_year"
+      expr: DATE_TRUNC('YEAR', allegation_date)
+      comment: "Year of the allegation for annual trend analysis."
+    - name: "country_office_at_incident"
+      expr: country_office_at_incident
+      comment: "Country office where the incident occurred for geographic risk analysis."
   measures:
     - name: "total_alleged_perpetrators"
       expr: COUNT(1)
-      comment: "Total number of alleged perpetrator records"
+      comment: "Total number of alleged perpetrator records. Baseline measure of accountability caseload."
+    - name: "criminal_referral_count"
+      expr: COUNT(CASE WHEN criminal_referral_made = TRUE THEN 1 END)
+      comment: "Number of cases where a criminal referral was made. Indicates severity of substantiated misconduct and legal risk exposure."
+    - name: "criminal_referral_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN criminal_referral_made = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of alleged perpetrator cases resulting in criminal referral. Tracks severity profile of the misconduct portfolio."
+    - name: "misconduct_database_reported_count"
+      expr: COUNT(CASE WHEN misconduct_database_reported = TRUE THEN 1 END)
+      comment: "Number of cases reported to the inter-agency misconduct disclosure database. Measures compliance with inter-agency accountability obligations."
+    - name: "misconduct_database_reporting_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN misconduct_database_reported = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of cases reported to the misconduct database. Critical compliance KPI for inter-agency safeguarding standards."
+    - name: "cases_with_disciplinary_action"
+      expr: COUNT(CASE WHEN disciplinary_action_date IS NOT NULL THEN 1 END)
+      comment: "Number of cases where disciplinary action was taken. Measures organizational accountability follow-through."
+    - name: "disciplinary_action_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN disciplinary_action_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of alleged perpetrator cases resulting in disciplinary action. Key accountability metric for organizational culture and donor reporting."
+    - name: "cases_with_termination"
+      expr: COUNT(CASE WHEN termination_date IS NOT NULL THEN 1 END)
+      comment: "Number of cases resulting in termination of employment. Tracks the most severe disciplinary outcome for executive accountability reporting."
+    - name: "avg_days_investigation_duration"
+      expr: AVG(DATEDIFF(investigation_completion_date, investigation_start_date))
+      comment: "Average number of days from investigation start to completion for alleged perpetrator cases. Measures investigation timeliness."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_survivor_record`
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_training_completion`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Survivor support metrics tracking survivor demographics, support provision, case management, and confidentiality compliance for survivor-centered response"
-  source: "`vibe_ngo_v1`.`safeguarding`.`survivor_record`"
+  comment: "Safeguarding training compliance KPIs tracking completion rates, pass rates, cost efficiency, and overdue training. Enables leadership to assess organizational readiness and compliance with mandatory safeguarding training requirements."
+  source: "`vibe_ngo_v1`.`safeguarding`.`safeguarding_training_completion`"
   dimensions:
-    - name: "age_group"
-      expr: age_group
-      comment: "Age group of the survivor"
-    - name: "support_status"
-      expr: support_status
-      comment: "Current status of support provision (active, completed, declined, etc.)"
+    - name: "participant_type"
+      expr: participant_type
+      comment: "Type of participant (staff, volunteer, partner) for disaggregated compliance reporting."
+    - name: "training_status"
+      expr: safeguarding_training_completion_status
+      comment: "Current status of the training completion record (completed, in progress, overdue) for pipeline monitoring."
+    - name: "pass_fail_status"
+      expr: pass_fail_status
+      comment: "Whether the participant passed or failed the training assessment for quality analysis."
+    - name: "mandatory_training_flag"
+      expr: mandatory_training_flag
+      comment: "Whether the training was mandatory, enabling compliance rate calculation for required vs optional training."
+    - name: "overdue_flag"
+      expr: overdue_flag
+      comment: "Whether the training completion is overdue, for immediate operational escalation."
+    - name: "channel"
+      expr: channel
+      comment: "Delivery channel of the training (online, in-person, blended) for modality effectiveness analysis."
+    - name: "language"
+      expr: language
+      comment: "Language in which training was delivered for accessibility and inclusion analysis."
+    - name: "completion_year"
+      expr: DATE_TRUNC('YEAR', safeguarding_training_completion_date)
+      comment: "Year of training completion for annual compliance trend analysis."
+    - name: "completion_month"
+      expr: DATE_TRUNC('MONTH', safeguarding_training_completion_date)
+      comment: "Month of training completion for monthly compliance monitoring."
+    - name: "refresher_required_flag"
+      expr: refresher_required_flag
+      comment: "Whether a refresher training is required, for forward-looking compliance planning."
   measures:
-    - name: "total_survivors"
+    - name: "total_training_completions"
       expr: COUNT(1)
-      comment: "Total number of survivor records"
+      comment: "Total number of safeguarding training completion records. Baseline measure of training activity volume."
+    - name: "mandatory_training_completions"
+      expr: COUNT(CASE WHEN mandatory_training_flag = TRUE THEN 1 END)
+      comment: "Number of mandatory safeguarding training completions. Core compliance metric for organizational safeguarding standards."
+    - name: "passed_training_count"
+      expr: COUNT(CASE WHEN pass_fail_status = 'pass' OR pass_fail_status = 'Pass' OR pass_fail_status = 'PASS' THEN 1 END)
+      comment: "Number of training completions where the participant passed the assessment. Measures training effectiveness."
+    - name: "pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN pass_fail_status IN ('pass', 'Pass', 'PASS') THEN 1 END) / NULLIF(COUNT(CASE WHEN pass_fail_status IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of assessed training completions where participants passed. Indicates training quality and participant preparedness."
+    - name: "overdue_training_count"
+      expr: COUNT(CASE WHEN overdue_flag = TRUE THEN 1 END)
+      comment: "Number of training completions that are overdue. Operational risk metric requiring immediate management intervention."
+    - name: "overdue_mandatory_training_count"
+      expr: COUNT(CASE WHEN overdue_flag = TRUE AND mandatory_training_flag = TRUE THEN 1 END)
+      comment: "Number of mandatory training completions that are overdue. Critical compliance risk metric for donor and regulatory reporting."
+    - name: "total_training_cost_usd"
+      expr: SUM(CAST(cost_usd AS DOUBLE))
+      comment: "Total cost of safeguarding training in USD. Drives budget planning and cost-per-participant analysis."
+    - name: "avg_training_cost_usd"
+      expr: AVG(CAST(cost_usd AS DOUBLE))
+      comment: "Average cost per training completion in USD. Benchmarking metric for training efficiency and modality cost comparison."
+    - name: "avg_assessment_score"
+      expr: AVG(CAST(assessment_score AS DOUBLE))
+      comment: "Average assessment score across all training completions. Measures overall participant knowledge retention and training effectiveness."
+    - name: "avg_training_duration_hours"
+      expr: AVG(CAST(training_duration_hours AS DOUBLE))
+      comment: "Average duration of training in hours. Used for capacity planning and comparing modality efficiency."
+    - name: "total_training_hours"
+      expr: SUM(CAST(training_duration_hours AS DOUBLE))
+      comment: "Total safeguarding training hours delivered. Measures organizational investment in safeguarding capacity building."
+    - name: "waiver_granted_count"
+      expr: COUNT(CASE WHEN waiver_granted_flag = TRUE THEN 1 END)
+      comment: "Number of training waivers granted. High waiver rates may indicate compliance gaps requiring executive attention."
+    - name: "waiver_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN waiver_granted_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN mandatory_training_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of mandatory training completions where a waiver was granted instead of actual completion. Risk indicator for compliance culture."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_audit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Safeguarding audit KPIs covering compliance scores, finding rates, corrective action requirements, and follow-up audit rates. Enables leadership to assess organizational safeguarding maturity and audit-driven improvement."
+  source: "`vibe_ngo_v1`.`safeguarding`.`audit`"
+  dimensions:
+    - name: "audit_type"
+      expr: audit_type
+      comment: "Type of audit (internal, external, donor-commissioned) for source and methodology analysis."
+    - name: "audit_category"
+      expr: audit_category
+      comment: "Category of audit (PSEA, child protection, general safeguarding) for thematic analysis."
+    - name: "audit_status"
+      expr: audit_status
+      comment: "Current status of the audit (planned, in progress, completed) for pipeline management."
+    - name: "overall_safeguarding_maturity_rating"
+      expr: overall_safeguarding_maturity_rating
+      comment: "Overall safeguarding maturity rating assigned by the audit for organizational benchmarking."
+    - name: "confidentiality_level"
+      expr: confidentiality_level
+      comment: "Confidentiality classification of the audit for access control and reporting segmentation."
+    - name: "corrective_action_plan_required_flag"
+      expr: corrective_action_plan_required_flag
+      comment: "Whether a corrective action plan was required as a result of the audit."
+    - name: "follow_up_audit_required_flag"
+      expr: follow_up_audit_required_flag
+      comment: "Whether a follow-up audit was required, indicating unresolved findings."
+    - name: "audit_year"
+      expr: DATE_TRUNC('YEAR', start_date)
+      comment: "Year the audit was initiated for annual trend analysis."
+  measures:
+    - name: "total_audits"
+      expr: COUNT(1)
+      comment: "Total number of safeguarding audits conducted. Baseline measure of audit activity and organizational oversight intensity."
+    - name: "avg_compliance_score"
+      expr: AVG(CAST(compliance_score AS DOUBLE))
+      comment: "Average compliance score across all audits. Primary KPI for organizational safeguarding compliance health, tracked by leadership and donors."
+    - name: "total_audit_cost_usd"
+      expr: SUM(CAST(cost_amount AS DOUBLE))
+      comment: "Total cost of safeguarding audits in USD. Drives budget planning for the safeguarding oversight function."
+    - name: "avg_audit_cost_usd"
+      expr: AVG(CAST(cost_amount AS DOUBLE))
+      comment: "Average cost per audit in USD. Benchmarking metric for audit efficiency and vendor management."
+    - name: "audits_requiring_corrective_action"
+      expr: COUNT(CASE WHEN corrective_action_plan_required_flag = TRUE THEN 1 END)
+      comment: "Number of audits that required a corrective action plan. Indicates the volume of compliance gaps identified."
+    - name: "corrective_action_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN corrective_action_plan_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of audits resulting in a corrective action plan requirement. Key indicator of systemic compliance weaknesses."
+    - name: "audits_requiring_follow_up"
+      expr: COUNT(CASE WHEN follow_up_audit_required_flag = TRUE THEN 1 END)
+      comment: "Number of audits requiring a follow-up audit due to unresolved findings. Measures persistence of compliance gaps."
+    - name: "follow_up_audit_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN follow_up_audit_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of audits requiring follow-up. High rates indicate systemic issues not being resolved between audit cycles."
+    - name: "management_response_received_count"
+      expr: COUNT(CASE WHEN management_response_received_flag = TRUE THEN 1 END)
+      comment: "Number of audits where management formally responded to findings. Measures organizational accountability and engagement with audit outcomes."
+    - name: "management_response_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN management_response_received_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of audits where management provided a formal response. Tracks organizational accountability culture."
+    - name: "avg_days_to_completion"
+      expr: AVG(DATEDIFF(actual_completion_date, start_date))
+      comment: "Average number of days from audit start to completion. Measures audit efficiency and timeliness."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_risk_assessment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Safeguarding risk assessment KPIs tracking risk levels, mitigation costs, and reassessment compliance. Enables leadership to prioritize safeguarding investments and monitor organizational risk exposure."
+  source: "`vibe_ngo_v1`.`safeguarding`.`risk_assessment`"
+  dimensions:
+    - name: "risk_assessment_type"
+      expr: risk_assessment_type
+      comment: "Type of risk assessment (program, organizational, partner) for scope-based analysis."
+    - name: "risk_assessment_status"
+      expr: risk_assessment_status
+      comment: "Current status of the risk assessment (draft, approved, expired) for pipeline management."
+    - name: "overall_safeguarding_risk_level"
+      expr: overall_safeguarding_risk_level
+      comment: "Overall safeguarding risk level (critical, high, medium, low) for risk-tiered portfolio management."
+    - name: "mitigation_plan_status"
+      expr: mitigation_plan_status
+      comment: "Status of the mitigation plan (in place, partial, not started) for action tracking."
+    - name: "beneficiary_consultation_conducted"
+      expr: beneficiary_consultation_conducted
+      comment: "Whether beneficiary consultation was conducted as part of the assessment, for participatory safeguarding standards compliance."
+    - name: "assessment_year"
+      expr: DATE_TRUNC('YEAR', risk_assessment_date)
+      comment: "Year the risk assessment was conducted for annual trend analysis."
+    - name: "power_imbalance_risk_rating"
+      expr: power_imbalance_risk_rating
+      comment: "Rating of power imbalance risk, a key driver of SEA incidents, for targeted mitigation planning."
+    - name: "operational_environment_risk_rating"
+      expr: operational_environment_risk_rating
+      comment: "Rating of operational environment risk for context-sensitive safeguarding planning."
+  measures:
+    - name: "total_risk_assessments"
+      expr: COUNT(1)
+      comment: "Total number of safeguarding risk assessments conducted. Baseline measure of organizational risk management activity."
+    - name: "high_critical_risk_assessments"
+      expr: COUNT(CASE WHEN overall_safeguarding_risk_level IN ('high', 'High', 'critical', 'Critical') THEN 1 END)
+      comment: "Number of assessments rated high or critical risk. Drives prioritization of safeguarding investments and interventions."
+    - name: "high_critical_risk_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN overall_safeguarding_risk_level IN ('high', 'High', 'critical', 'Critical') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of risk assessments rated high or critical. Key portfolio risk indicator for executive safeguarding oversight."
+    - name: "total_estimated_mitigation_cost_usd"
+      expr: SUM(CAST(estimated_mitigation_cost_usd AS DOUBLE))
+      comment: "Total estimated cost of safeguarding risk mitigation across all assessments. Drives budget planning for safeguarding risk management."
+    - name: "avg_estimated_mitigation_cost_usd"
+      expr: AVG(CAST(estimated_mitigation_cost_usd AS DOUBLE))
+      comment: "Average estimated mitigation cost per risk assessment. Benchmarking metric for safeguarding investment planning."
+    - name: "avg_risk_score"
+      expr: AVG(CAST(risk_score AS DOUBLE))
+      comment: "Average risk score across all assessments. Tracks overall organizational safeguarding risk level over time."
+    - name: "assessments_with_mitigation_in_place"
+      expr: COUNT(CASE WHEN mitigation_plan_status IN ('in place', 'In Place', 'complete', 'Complete') THEN 1 END)
+      comment: "Number of assessments where a mitigation plan is fully in place. Measures risk management follow-through."
+    - name: "mitigation_coverage_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN mitigation_plan_status IN ('in place', 'In Place', 'complete', 'Complete') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of risk assessments with a mitigation plan fully in place. Key indicator of organizational risk management maturity."
+    - name: "overdue_reassessments"
+      expr: COUNT(CASE WHEN reassessment_due_date < CURRENT_DATE() AND risk_assessment_status NOT IN ('expired', 'Expired', 'superseded', 'Superseded') THEN 1 END)
+      comment: "Number of risk assessments past their reassessment due date. Operational risk metric indicating gaps in ongoing risk monitoring."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_partner_psea_assessment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Partner PSEA capacity assessment KPIs tracking partner safeguarding readiness, capacity scores, critical gaps, and reassessment compliance. Enables leadership to manage partner safeguarding risk and capacity building investments."
+  source: "`vibe_ngo_v1`.`safeguarding`.`partner_psea_assessment`"
+  dimensions:
+    - name: "assessment_type"
+      expr: partner_psea_assessment_type
+      comment: "Type of partner PSEA assessment (initial, periodic, triggered) for assessment lifecycle analysis."
+    - name: "assessment_status"
+      expr: partner_psea_assessment_status
+      comment: "Current status of the assessment (completed, in progress, expired) for pipeline management."
+    - name: "overall_capacity_rating"
+      expr: overall_capacity_rating
+      comment: "Overall PSEA capacity rating assigned to the partner for risk-tiered partner management."
+    - name: "partnership_approval_status"
+      expr: partnership_approval_status
+      comment: "Whether the partnership was approved, conditionally approved, or rejected based on the assessment."
+    - name: "critical_gap_flag"
+      expr: critical_gap_flag
+      comment: "Whether a critical safeguarding gap was identified, requiring immediate capacity building or partnership suspension."
+    - name: "capacity_building_plan_triggered_flag"
+      expr: capacity_building_plan_triggered_flag
+      comment: "Whether the assessment triggered a capacity building plan for the partner."
+    - name: "reassessment_required_flag"
+      expr: reassessment_required_flag
+      comment: "Whether a reassessment is required, for forward-looking compliance planning."
+    - name: "assessment_year"
+      expr: DATE_TRUNC('YEAR', partner_psea_assessment_date)
+      comment: "Year the assessment was conducted for annual trend analysis."
+  measures:
+    - name: "total_partner_assessments"
+      expr: COUNT(1)
+      comment: "Total number of partner PSEA assessments conducted. Baseline measure of partner safeguarding due diligence activity."
+    - name: "partners_with_critical_gaps"
+      expr: COUNT(CASE WHEN critical_gap_flag = TRUE THEN 1 END)
+      comment: "Number of partner assessments identifying critical safeguarding gaps. Drives immediate risk management decisions on partnership continuation."
+    - name: "critical_gap_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN critical_gap_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of partner assessments identifying critical gaps. Key risk indicator for the partner portfolio safeguarding health."
+    - name: "avg_capacity_score"
+      expr: AVG(CAST(capacity_score AS DOUBLE))
+      comment: "Average PSEA capacity score across all partner assessments. Tracks overall partner portfolio safeguarding readiness."
+    - name: "avg_capacity_score_pct"
+      expr: ROUND(100.0 * AVG(CAST(capacity_score AS DOUBLE)) / NULLIF(AVG(CAST(maximum_possible_score AS DOUBLE)), 0), 2)
+      comment: "Average capacity score as a percentage of the maximum possible score. Normalized benchmark for partner safeguarding capacity across different assessment frameworks."
+    - name: "capacity_building_plans_triggered"
+      expr: COUNT(CASE WHEN capacity_building_plan_triggered_flag = TRUE THEN 1 END)
+      comment: "Number of assessments that triggered a capacity building plan. Measures the volume of partners requiring safeguarding investment."
+    - name: "capacity_building_trigger_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN capacity_building_plan_triggered_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of partner assessments triggering a capacity building plan. Indicates the proportion of partners below acceptable safeguarding standards."
+    - name: "overdue_reassessments"
+      expr: COUNT(CASE WHEN reassessment_due_date < CURRENT_DATE() AND partner_psea_assessment_status NOT IN ('expired', 'Expired') THEN 1 END)
+      comment: "Number of partner assessments past their reassessment due date. Compliance risk metric for partner safeguarding oversight."
+    - name: "approved_partnerships"
+      expr: COUNT(CASE WHEN partnership_approval_status IN ('approved', 'Approved') THEN 1 END)
+      comment: "Number of partner assessments resulting in full partnership approval. Measures the volume of safeguarding-cleared partners."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_disciplinary_outcome`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Disciplinary outcome KPIs tracking accountability actions, appeal rates, law enforcement referrals, and restitution. Enables leadership to assess the effectiveness and consistency of the organizational accountability system."
+  source: "`vibe_ngo_v1`.`safeguarding`.`disciplinary_outcome`"
+  dimensions:
+    - name: "disciplinary_outcome_type"
+      expr: disciplinary_outcome_type
+      comment: "Type of disciplinary outcome (termination, suspension, warning, demotion) for accountability pattern analysis."
+    - name: "disciplinary_outcome_status"
+      expr: disciplinary_outcome_status
+      comment: "Current status of the disciplinary outcome (pending, final, appealed) for pipeline management."
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity level of the disciplinary outcome for risk-tiered accountability reporting."
+    - name: "appeal_filed_flag"
+      expr: appeal_filed_flag
+      comment: "Whether an appeal was filed against the disciplinary outcome, for due process monitoring."
+    - name: "appeal_outcome"
+      expr: appeal_outcome
+      comment: "Outcome of the appeal (upheld, overturned, modified) for accountability system quality assessment."
+    - name: "law_enforcement_referral_flag"
+      expr: law_enforcement_referral_flag
+      comment: "Whether the case was referred to law enforcement for criminal prosecution."
+    - name: "mds_reported_flag"
+      expr: mds_reported_flag
+      comment: "Whether the outcome was reported to the misconduct disclosure scheme, for inter-agency accountability compliance."
+    - name: "outcome_year"
+      expr: DATE_TRUNC('YEAR', disciplinary_outcome_date)
+      comment: "Year the disciplinary outcome was issued for annual accountability trend analysis."
+  measures:
+    - name: "total_disciplinary_outcomes"
+      expr: COUNT(1)
+      comment: "Total number of disciplinary outcomes issued. Baseline measure of organizational accountability activity."
+    - name: "appeal_filed_count"
+      expr: COUNT(CASE WHEN appeal_filed_flag = TRUE THEN 1 END)
+      comment: "Number of disciplinary outcomes where an appeal was filed. High appeal rates may indicate inconsistency in disciplinary decisions."
+    - name: "appeal_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN appeal_filed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of disciplinary outcomes that were appealed. Indicator of perceived fairness and consistency in the accountability system."
+    - name: "law_enforcement_referral_count"
+      expr: COUNT(CASE WHEN law_enforcement_referral_flag = TRUE THEN 1 END)
+      comment: "Number of disciplinary outcomes resulting in law enforcement referral. Tracks the most severe accountability actions."
+    - name: "mds_reported_count"
+      expr: COUNT(CASE WHEN mds_reported_flag = TRUE THEN 1 END)
+      comment: "Number of outcomes reported to the misconduct disclosure scheme. Measures inter-agency accountability compliance."
+    - name: "mds_reporting_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN mds_reported_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of disciplinary outcomes reported to the misconduct disclosure scheme. Critical compliance KPI for inter-agency safeguarding standards."
+    - name: "total_restitution_amount_usd"
+      expr: SUM(CAST(restitution_amount_usd AS DOUBLE))
+      comment: "Total restitution amount ordered across all disciplinary outcomes in USD. Financial accountability metric."
+    - name: "restitution_required_count"
+      expr: COUNT(CASE WHEN restitution_required_flag = TRUE THEN 1 END)
+      comment: "Number of disciplinary outcomes requiring financial restitution. Tracks financial accountability actions."
+    - name: "training_required_count"
+      expr: COUNT(CASE WHEN training_required_flag = TRUE THEN 1 END)
+      comment: "Number of disciplinary outcomes requiring remedial training. Measures rehabilitative accountability actions alongside punitive ones."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_policy_acknowledgment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Policy acknowledgment compliance KPIs tracking acknowledgment rates, renewal compliance, and training completion linkage. Enables leadership to monitor organizational compliance with mandatory safeguarding policy acknowledgment requirements."
+  source: "`vibe_ngo_v1`.`safeguarding`.`safeguarding_policy_acknowledgment`"
+  dimensions:
+    - name: "acknowledger_type"
+      expr: acknowledger_type
+      comment: "Type of acknowledger (staff, volunteer, partner) for disaggregated compliance reporting."
+    - name: "acknowledgment_status"
+      expr: safeguarding_policy_acknowledgment_status
+      comment: "Current status of the acknowledgment (active, expired, pending renewal) for compliance pipeline management."
+    - name: "method"
+      expr: method
+      comment: "Method of acknowledgment (digital, paper, in-person) for process efficiency analysis."
+    - name: "renewal_required_flag"
+      expr: renewal_required_flag
+      comment: "Whether periodic renewal of the acknowledgment is required."
+    - name: "training_completion_required_flag"
+      expr: training_completion_required_flag
+      comment: "Whether training completion was required alongside the policy acknowledgment."
+    - name: "language"
+      expr: language
+      comment: "Language in which the policy was acknowledged for accessibility and inclusion analysis."
+    - name: "acknowledgment_year"
+      expr: DATE_TRUNC('YEAR', safeguarding_policy_acknowledgment_date)
+      comment: "Year of acknowledgment for annual compliance trend analysis."
+    - name: "country_code"
+      expr: country_code
+      comment: "Country where the acknowledgment was made for geographic compliance analysis."
+  measures:
+    - name: "total_acknowledgments"
+      expr: COUNT(1)
+      comment: "Total number of safeguarding policy acknowledgments recorded. Baseline compliance measure."
+    - name: "active_acknowledgments"
+      expr: COUNT(CASE WHEN safeguarding_policy_acknowledgment_status IN ('active', 'Active') THEN 1 END)
+      comment: "Number of currently active policy acknowledgments. Measures current compliance coverage."
+    - name: "expired_acknowledgments"
+      expr: COUNT(CASE WHEN valid_until_date < CURRENT_DATE() THEN 1 END)
+      comment: "Number of acknowledgments that have expired. Compliance gap metric requiring renewal action."
+    - name: "expiry_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN valid_until_date < CURRENT_DATE() THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of acknowledgments that have expired. Tracks the scale of the compliance renewal backlog."
+    - name: "training_completion_linked_count"
+      expr: COUNT(CASE WHEN training_completion_required_flag = TRUE AND training_completion_date IS NOT NULL THEN 1 END)
+      comment: "Number of acknowledgments where required training was also completed. Measures holistic compliance with safeguarding policy requirements."
+    - name: "training_completion_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN training_completion_required_flag = TRUE AND training_completion_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN training_completion_required_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of acknowledgments requiring training where training was also completed. Measures end-to-end safeguarding compliance."
+    - name: "consent_to_process_data_count"
+      expr: COUNT(CASE WHEN consent_to_process_data_flag = TRUE THEN 1 END)
+      comment: "Number of acknowledgments where data processing consent was obtained. Tracks GDPR and data protection compliance alongside safeguarding compliance."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`safeguarding_community_awareness_session`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Community safeguarding awareness session KPIs tracking reach, participation, incident reporting rates, and referral rates. Enables leadership to assess the effectiveness of community-level safeguarding prevention activities."
+  source: "`vibe_ngo_v1`.`safeguarding`.`community_awareness_session`"
+  dimensions:
+    - name: "session_type"
+      expr: community_awareness_session_type
+      comment: "Type of awareness session (PSEA, child protection, GBV) for thematic reach analysis."
+    - name: "session_status"
+      expr: community_awareness_session_status
+      comment: "Current status of the session (planned, completed, cancelled) for activity pipeline management."
+    - name: "location_country_code"
+      expr: location_country_code
+      comment: "Country where the session was held for geographic reach analysis."
+    - name: "location_region"
+      expr: location_region
+      comment: "Region where the session was held for sub-national reach analysis."
+    - name: "language_used"
+      expr: language_used
+      comment: "Language used in the session for accessibility and inclusion analysis."
+    - name: "translation_provided_flag"
+      expr: translation_provided_flag
+      comment: "Whether translation was provided, for language accessibility monitoring."
+    - name: "incident_reported_flag"
+      expr: incident_reported_flag
+      comment: "Whether an incident was reported during or following the session, linking awareness activities to reporting outcomes."
+    - name: "referral_made_flag"
+      expr: referral_made_flag
+      comment: "Whether a referral was made as a result of the session, measuring session-to-action conversion."
+    - name: "session_year"
+      expr: DATE_TRUNC('YEAR', community_awareness_session_date)
+      comment: "Year the session was held for annual reach trend analysis."
+    - name: "session_month"
+      expr: DATE_TRUNC('MONTH', community_awareness_session_date)
+      comment: "Month the session was held for monthly activity monitoring."
+  measures:
+    - name: "total_sessions"
+      expr: COUNT(1)
+      comment: "Total number of community awareness sessions conducted. Baseline measure of prevention activity volume."
+    - name: "sessions_with_incident_reported"
+      expr: COUNT(CASE WHEN incident_reported_flag = TRUE THEN 1 END)
+      comment: "Number of sessions where an incident was reported. Measures the disclosure-enabling effect of awareness sessions."
+    - name: "incident_reporting_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN incident_reported_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of sessions that resulted in an incident report. Tracks the effectiveness of sessions in enabling safe disclosure."
+    - name: "sessions_with_referral"
+      expr: COUNT(CASE WHEN referral_made_flag = TRUE THEN 1 END)
+      comment: "Number of sessions resulting in a referral to support services. Measures session-to-action conversion rate."
+    - name: "referral_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN referral_made_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of sessions resulting in a referral. Tracks the practical impact of awareness sessions on survivor support pathways."
+    - name: "sessions_with_translation"
+      expr: COUNT(CASE WHEN translation_provided_flag = TRUE THEN 1 END)
+      comment: "Number of sessions where translation was provided. Measures language accessibility of safeguarding awareness activities."
+    - name: "translation_provision_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN translation_provided_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of sessions where translation was provided. Tracks inclusion and accessibility standards compliance."
 $$;

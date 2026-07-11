@@ -1,13 +1,13 @@
 -- Schema for Domain: beneficiary | Business:  | Version: v2_ecm
--- Generated on: 2026-07-03 04:47:14
+-- Generated on: 2026-07-10 18:48:23
 
 -- ========= DATABASE =========
-CREATE DATABASE IF NOT EXISTS `vibe_ngo_v1`.`beneficiary` COMMENT 'Systems of record: Primero (child protection & GBV case management), proGres v4 (UNHCR registration), Kobo Toolbox (field data collection), SCOPE (WFP beneficiary management), CommCare (community health). Note: Salesforce Nonprofit Cloud may apply for National Committee CRM use cases but is not the primary SoR for field operations.';
+CREATE DATABASE IF NOT EXISTS `vibe_ngo_v1`.`beneficiary` COMMENT 'Single source of truth for all individuals, households, and communities served by humanitarian and development programs. Owns beneficiary identity, registration, vulnerability profiling, needs assessments, consent management, and case management. Covers IDPs, PoCs (Persons of Concern), GBV survivors, and all target populations tracked in CommCare and KoboToolbox.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` (
     `registrant_id` BIGINT COMMENT 'Unique surrogate identifier for each registrant record in the beneficiary domain. Serves as the primary key and identity anchor for all beneficiary-domain transactions across CommCare, KoboToolbox, and interoperability mappings to UNHCR proGres v4, WFP SCOPE, and RAIS.',
-    `deduplication_master_registrant_id` BIGINT COMMENT 'The beneficiary_id of the authoritative master record when this registrant has been identified as a duplicate. Null for unique records. Enables lineage tracing from duplicate to canonical record for audit and reporting.',
+    `dedup_master_registrant_id` BIGINT COMMENT 'The beneficiary_id of the authoritative master record when this registrant has been identified as a duplicate. Null for unique records. Enables lineage tracing from duplicate to canonical record for audit and reporting.',
     `household_id` BIGINT COMMENT 'Identifier linking this registrant to their household unit. Enables household-level aggregation for NFI distribution, WASH targeting, and food security assessments. Household head registrant carries the authoritative household record.',
     `intervention_id` BIGINT COMMENT 'Externally-known unique beneficiary identifier assigned at registration, used for cross-system interoperability with UNHCR proGres v4, WFP SCOPE, and RAIS case records. Printed on beneficiary cards and referenced in all program transactions.',
     `project_site_id` BIGINT COMMENT 'Foreign key linking to field.project_site. Business justification: Beneficiary registration occurs at specific field sites (health posts, distribution points, registration centers). Essential for geographic program planning, site-level performance reporting, and link',
@@ -49,7 +49,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` (
     `vulnerability_category` STRING COMMENT 'Categorical classification of the registrants vulnerability level derived from the vulnerability_score. Drives program targeting decisions, priority service access, and donor reporting on most-vulnerable population coverage.. Valid values are `critical|high|medium|low`',
     `vulnerability_score` DECIMAL(18,2) COMMENT 'Composite vulnerability index score calculated from the needs assessment, capturing food insecurity, protection risks, health status, and displacement severity. Used for program prioritization, targeting, and MEL outcome tracking. Score range and methodology defined per program LogFrame.',
     CONSTRAINT pk_registrant PRIMARY KEY(`registrant_id`)
-) COMMENT 'Individual registered for humanitarian assistance. Source systems: Primero, proGres v4, SCOPE, Kobo Toolbox. Replaces prior Salesforce-only framing. SSOT for beneficiary identity. Source systems: Primero, proGres v4, SCOPE, Kobo Toolbox. Protection-sensitive: contains PII requiring dynamic masking in non-prod environments. Layered with household, household_member for demographic composition and vulnerability_profile for needs scoring. Systems-of-record: Primero (child protection), SCOPE (WFP), proGres (UNHCR), Kobo Toolbox (registration forms). Framework: IASC Data Responsibility Guidelines / Sphere Standards.';
+) COMMENT 'Core master entity for every individual registered as a beneficiary or person of concern (PoC). Stores biographic data (name, date of birth, sex, nationality), unique beneficiary ID, registration source system (CommCare, KoboToolbox), protection flags, deduplication status, and full registration metadata including registration date, location, modality (in-person, mobile, remote), registration tool, registering staff, verification documents presented, completeness score, and deduplication check results. Supports re-registration tracking with historical registration events. Serves as the single identity anchor for all beneficiary-domain transactions. Interoperable with UNHCR proGres v4 individual records, WFP SCOPE beneficiary records, and RAIS case records via standard beneficiary ID mapping.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household` (
     `household_id` BIGINT COMMENT 'Unique system-generated identifier for the household record. Primary key for the household master entity in the beneficiary domain. Role: MASTER_AGREEMENT — a household registration is a long-running binding container linking individuals to service delivery.',
@@ -100,7 +100,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household` (
     `vulnerability_score` DECIMAL(18,2) COMMENT 'Composite numeric score representing the households overall vulnerability level, calculated from a standardised vulnerability assessment tool (e.g., Proxy Means Test, Household Economy Analysis). Used for priority targeting, programme tiering, and MEL outcome baseline establishment. Score range and methodology defined per programme.',
     `water_source_type` STRING COMMENT 'Classification of the households primary drinking water source. Core WASH (Water, Sanitation and Hygiene) indicator required for SPHERE minimum standards compliance, OCHA WASH cluster reporting, and DHIS2 WASH indicator tracking. [ENUM-REF-CANDIDATE: piped|borehole|protected_spring|unprotected_spring|surface_water|trucked|rainwater — promote to reference product]',
     CONSTRAINT pk_household PRIMARY KEY(`household_id`)
-) COMMENT 'Household unit for humanitarian targeting and assistance delivery. Source systems: Primero, SCOPE, Kobo Toolbox, CommCare. Household unit linked to registrant (head of household) as SSOT. Source systems: SCOPE, proGres v4, Kobo Toolbox, CommCare. Protection-aware: household composition data (female-headed, PWD, UAM) drives vulnerability scoring and targeting.';
+) COMMENT 'Master record for a household unit as the primary unit of registration and service delivery in humanitarian contexts. Captures household composition count, head-of-household reference (FK to registrant), geographic location, community/settlement reference, shelter type, displacement status, and household-level vulnerability indicators. Links individual registrants to their household grouping via household_member association for NFI distribution, WASH assessments, and food security programming. Supports WFP SCOPE household registration and UNHCR proGres family composition interoperability.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` (
     `household_member_id` BIGINT COMMENT 'Unique surrogate identifier for each household member association record in the beneficiary domain. Primary key for this entity.',
@@ -110,6 +110,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` (
     `staff_member_id` BIGINT COMMENT 'Identifier of the field enumerator or data collector who registered this household member. Used for data quality audits, enumerator performance monitoring, and traceability of field data in KoboToolbox and CommCare.',
     `age_estimated` BOOLEAN COMMENT 'Indicates whether the recorded age or date of birth is an estimate rather than a verified value. Common in humanitarian field contexts where documentation is unavailable. Affects data quality scoring for MEL reporting.',
     `age_years` STRING COMMENT 'Recorded or estimated age of the household member in years at time of registration. Used when exact date of birth is unknown, which is common in humanitarian contexts. Supports age-band disaggregation for NFI sizing and program targeting.',
+    `household_member_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying this household member association, used in field operations, PDM (Post-Distribution Monitoring) forms, and inter-agency data sharing.. Valid values are `^HHM-[A-Z0-9]{6,12}$`',
     `consent_date` DATE COMMENT 'Date on which informed consent was obtained from this household member or their legal guardian. Required for GDPR compliance audit trails and CHS (Core Humanitarian Standard) accountability reporting.',
     `consent_given` BOOLEAN COMMENT 'Indicates whether this household member (or their guardian) has provided informed consent for data collection, storage, and use in program delivery. Mandatory per CHS (Core Humanitarian Standard) and GDPR data protection requirements.',
     `consent_withdrawal_date` DATE COMMENT 'Date on which this household member or their guardian withdrew consent for data processing. Triggers data anonymisation or deletion workflows per GDPR Article 17 right to erasure.',
@@ -126,8 +127,6 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` (
     `is_female_headed` BOOLEAN COMMENT 'Indicates whether this member is the head of a female-headed household. Used for gender-disaggregated reporting, targeted programming for female-headed households, and DAC (Development Assistance Committee) gender marker compliance.',
     `is_head_of_household` BOOLEAN COMMENT 'Indicates whether this member is the designated head of household. Only one member per household should have this flag set to true. Used for primary contact identification, distribution authorization, and household-level reporting.',
     `livelihood_status` STRING COMMENT 'Current livelihood or employment status of the household member. Used for economic vulnerability assessment, cash transfer program eligibility, and livelihoods program targeting.. Valid values are `employed|self_employed|unemployed|student|unable_to_work|not_applicable`',
-    `member_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying this household member association, used in field operations, PDM (Post-Distribution Monitoring) forms, and inter-agency data sharing.. Valid values are `^HHM-[A-Z0-9]{6,12}$`',
-    `member_role` STRING COMMENT 'Functional role of this individual within the household structure, used for program targeting, NFI kit sizing, and household vulnerability profiling. Distinct from relationship_to_head which captures kinship; this captures programmatic classification.. Valid values are `head|spouse|child|dependent|elderly|other`',
     `membership_end_date` DATE COMMENT 'Date on which this individuals membership in the household ended, due to departure, transfer, death, or administrative closure. Null if membership is currently active.',
     `membership_end_reason` STRING COMMENT 'Reason code explaining why this individuals household membership ended. Required for attrition analysis, household composition tracking, and MEL (Monitoring Evaluation and Learning) reporting.. Valid values are `deceased|transferred_household|relocated|voluntary_exit|administrative_closure|other`',
     `membership_start_date` DATE COMMENT 'Date on which this individual formally joined or was registered as a member of the household. Used to determine eligibility windows for program benefits and historical household composition analysis.',
@@ -142,6 +141,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` (
     `registration_date` DATE COMMENT 'Date on which this household member was formally registered in the beneficiary management system (CommCare or KoboToolbox). Establishes the start of the individuals program eligibility timeline.',
     `registration_location_code` STRING COMMENT 'Code identifying the geographic location (camp, settlement, community, or administrative unit) where this household member was registered. Used for geographic disaggregation in MEL reporting and GIS (Geographic Information System) mapping.. Valid values are `^[A-Z]{2,3}-[A-Z0-9]{3,10}$`',
     `relationship_to_head` STRING COMMENT 'Describes the kinship or social relationship of this member to the designated head of household. Used for dependency ratio calculations, vulnerability scoring, and NFI distribution entitlement. [ENUM-REF-CANDIDATE: head|spouse|child|parent|sibling|dependent|other_relative|non_relative — promote to reference product]',
+    `role` STRING COMMENT 'Functional role of this individual within the household structure, used for program targeting, NFI kit sizing, and household vulnerability profiling. Distinct from relationship_to_head which captures kinship; this captures programmatic classification.. Valid values are `head|spouse|child|dependent|elderly|other`',
     `school_enrollment_status` STRING COMMENT 'Current school enrollment status for household members of school age. Used for education program targeting, out-of-school children identification, and SDG 4 indicator tracking in DHIS2.. Valid values are `enrolled|not_enrolled|dropout|graduated|not_applicable`',
     `sex` STRING COMMENT 'Biological sex of the household member as recorded at registration. Used for gender disaggregation in MEL reporting, GBV (Gender-Based Violence) program targeting, and SPHERE/DAC (Development Assistance Committee) compliance reporting.. Valid values are `male|female|intersex|prefer_not_to_say`',
     `unaccompanied_minor` BOOLEAN COMMENT 'Indicates whether this household member is an unaccompanied or separated child (UASC). Triggers child protection protocols, case management escalation in CommCare, and mandatory reporting to child protection clusters.',
@@ -150,7 +150,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` (
     `verification_status` STRING COMMENT 'Status of identity and eligibility verification for this household member. verified indicates documentation has been reviewed and confirmed; rejected indicates the member failed verification and is ineligible for program benefits.. Valid values are `unverified|pending|verified|rejected`',
     `vulnerability_category` STRING COMMENT 'Primary vulnerability classification for this household member, used for program targeting, priority distribution, and MEL (Monitoring Evaluation and Learning) disaggregation. GBV (Gender-Based Violence) survivors and unaccompanied minors receive heightened protection protocols. [ENUM-REF-CANDIDATE: child_under_5|unaccompanied_minor|pregnant_lactating|elderly|gbv_survivor|disability|chronic_illness|other — promote to reference product]',
     CONSTRAINT pk_household_member PRIMARY KEY(`household_member_id`)
-) COMMENT 'Association entity linking an individual registrant to their household. Captures role (head, spouse, child, dependent, elderly), relationship to head-of-household, membership start/end dates, and demographic attributes relevant to household composition analysis. Enables NFI distribution sizing, dependency ratio calculations, and vulnerability scoring at household level. Individual members within a household, linked to registrant SSOT. Source systems: Primero, proGres v4, SCOPE. Protection-sensitive: individual-level vulnerability and protection concern data requires strict access controls.';
+) COMMENT 'Association entity linking an individual registrant to their household. Captures role (head, spouse, child, dependent, elderly), relationship to head-of-household, membership start/end dates, and demographic attributes relevant to household composition analysis. Enables NFI distribution sizing, dependency ratio calculations, and vulnerability scoring at household level.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` (
     `vulnerability_profile_id` BIGINT COMMENT 'Unique system-generated identifier for the vulnerability profile record. Primary key for this entity.',
@@ -164,10 +164,12 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` (
     `children_under5_count` STRING COMMENT 'Number of children under 5 years of age in the household. Children under 5 are the primary target group for acute malnutrition screening (MUAC), vaccination campaigns, and early childhood development programs. Used for nutrition and child protection program sizing.',
     `chronic_illness_flag` BOOLEAN COMMENT 'Indicates whether the beneficiary has one or more documented chronic illnesses (e.g., HIV/AIDS, tuberculosis, diabetes, hypertension) that increase vulnerability and require sustained health service access. Drives health program targeting and DHIS2 health indicator reporting.',
     `chronic_illness_type` STRING COMMENT 'Coded description of the primary chronic illness condition affecting the beneficiary (e.g., HIV_AIDS, tuberculosis, diabetes, hypertension, malnutrition_chronic). Populated only when chronic_illness_flag is True. Aligned with ICD-11 coding where applicable.',
+    `vulnerability_profile_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying this vulnerability profile record, used in field operations, donor reporting, and inter-agency data sharing (e.g., VP-SOM-000123456).. Valid values are `^VP-[A-Z]{2,4}-[0-9]{6,10}$`',
     `composite_vulnerability_score` DECIMAL(18,2) COMMENT 'Aggregated multi-dimensional vulnerability score derived from weighted combination of food insecurity (IPC phase), protection risk, disability, nutritional status, displacement category, and other assessed indicators. Used for program targeting, beneficiary prioritization, and Results-Based Management (RBM) reporting. Score range typically 0.00–100.00.',
     `consent_date` DATE COMMENT 'Date on which informed consent was obtained from the beneficiary or their legal guardian. Required for data protection compliance and audit trail purposes.',
     `consent_obtained_flag` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from the beneficiary or their legal guardian prior to data collection and vulnerability profiling. Mandatory for compliance with data protection regulations and CHS accountability standards.',
     `country_code` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the country where the beneficiary is located. Used for multi-country program management, IATI reporting, and donor country-level disaggregation.. Valid values are `^[A-Z]{3}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this vulnerability profile record was first created in the system. Used for audit trail and data lineage tracking.',
     `data_sharing_consent_flag` BOOLEAN COMMENT 'Indicates whether the beneficiary has consented to their vulnerability data being shared with partner organizations and inter-agency coordination bodies (e.g., UNHCR, OCHA clusters). Governs data sharing under inter-agency data sharing agreements.',
     `disability_classification` STRING COMMENT 'Functional difficulty domain identified using the Washington Group Short Set on Functioning (WG-SS) questions. Captures the primary domain of disability: seeing, hearing, mobility, cognition, self-care, or communication. Used for inclusive programming and disability-disaggregated reporting per CRPD. [ENUM-REF-CANDIDATE: none|seeing|hearing|mobility|cognition|self_care|communication|multiple — promote to reference product]',
     `disability_severity` STRING COMMENT 'Severity of functional difficulty as measured by the Washington Group Short Set (WG-SS) response scale: no difficulty, some difficulty, a lot of difficulty, or cannot do at all. Used alongside disability_classification for disaggregated disability reporting.. Valid values are `no_difficulty|some_difficulty|a_lot_of_difficulty|cannot_do`',
@@ -183,15 +185,13 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` (
     `notes` STRING COMMENT 'Free-text field for field officers to record contextual observations, qualitative vulnerability factors, or case-specific notes that are not captured by structured indicators. Handled as confidential due to potential sensitivity of content.',
     `nutritional_status` STRING COMMENT 'Nutritional status classification based on anthropometric screening. Severe Acute Malnutrition (SAM) indicates MUAC < 115mm or WHZ < -3; Moderate Acute Malnutrition (MAM) indicates MUAC 115–124mm or WHZ -2 to -3; normal indicates adequate nutritional status. Used for therapeutic feeding program targeting and Global Acute Malnutrition (GAM) rate reporting.. Valid values are `SAM|MAM|normal|overweight`',
     `pregnant_lactating_flag` BOOLEAN COMMENT 'Indicates whether the household includes a pregnant or lactating woman (PLW). PLWs are a priority group for nutrition programming (supplementary feeding), antenatal care, and maternal health services. Used for CMAM and nutrition program targeting.',
-    `profile_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying this vulnerability profile record, used in field operations, donor reporting, and inter-agency data sharing (e.g., VP-SOM-000123456).. Valid values are `^VP-[A-Z]{2,4}-[0-9]{6,10}$`',
-    `profile_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this vulnerability profile record was first created in the system. Used for audit trail and data lineage tracking.',
-    `profile_source` STRING COMMENT 'Indicates the operational process or event that triggered the creation or update of this vulnerability profile. post_distribution_monitoring refers to Post-Distribution Monitoring (PDM) assessments; emergency_screening refers to rapid assessments during acute crises. Used for MEL data quality analysis.. Valid values are `initial_registration|periodic_reassessment|post_distribution_monitoring|emergency_screening|referral|other`',
-    `profile_status` STRING COMMENT 'Current lifecycle state of the vulnerability profile record. active indicates the current consolidated vulnerability state; superseded indicates a newer profile has replaced this one; pending_review indicates awaiting validation by a protection or MEL officer.. Valid values are `active|archived|pending_review|superseded|draft`',
-    `profile_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this vulnerability profile was last modified, reflecting the most recent update to any vulnerability indicator. Triggers downstream re-targeting and prioritization workflows.',
     `protection_risk_level` STRING COMMENT 'Assessed level of protection risk for the individual or household, encompassing threats of violence, exploitation, abuse, and discrimination. Classified by a trained protection officer. Drives case prioritization and referral pathways per UNHCR Protection Framework.. Valid values are `critical|high|medium|low|none`',
     `pss_need_flag` BOOLEAN COMMENT 'Indicates whether the beneficiary has been assessed as requiring Psychosocial Support (PSS) services, including mental health support, trauma counselling, or community-based psychosocial activities. Triggers referral to PSS programming.',
     `shelter_adequacy` STRING COMMENT 'Assessment of the beneficiarys shelter situation against SPHERE minimum standards. none indicates no shelter; inadequate indicates shelter below minimum standards; transitional indicates temporary/emergency shelter; adequate indicates shelter meeting minimum standards. Drives NFI and shelter program targeting.. Valid values are `adequate|inadequate|none|transitional`',
+    `source` STRING COMMENT 'Indicates the operational process or event that triggered the creation or update of this vulnerability profile. post_distribution_monitoring refers to Post-Distribution Monitoring (PDM) assessments; emergency_screening refers to rapid assessments during acute crises. Used for MEL data quality analysis.. Valid values are `initial_registration|periodic_reassessment|post_distribution_monitoring|emergency_screening|referral|other`',
+    `vulnerability_profile_status` STRING COMMENT 'Current lifecycle state of the vulnerability profile record. active indicates the current consolidated vulnerability state; superseded indicates a newer profile has replaced this one; pending_review indicates awaiting validation by a protection or MEL officer.. Valid values are `active|archived|pending_review|superseded|draft`',
     `unaccompanied_minor_flag` BOOLEAN COMMENT 'Indicates whether the beneficiary is an unaccompanied or separated child (UASC) — a child under 18 separated from both parents and other relatives and not being cared for by a responsible adult. Triggers child protection case management and family tracing and reunification (FTR) services.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this vulnerability profile was last modified, reflecting the most recent update to any vulnerability indicator. Triggers downstream re-targeting and prioritization workflows.',
     `vulnerability_tier` STRING COMMENT 'Categorical tier derived from the composite vulnerability score, used for operational targeting and prioritization decisions. critical indicates immediate life-saving intervention required; high indicates priority program enrollment; medium and low indicate standard program eligibility. Distinct from composite_vulnerability_score which is the numeric value.. Valid values are `critical|high|medium|low`',
     `wash_access_flag` BOOLEAN COMMENT 'Indicates whether the beneficiary household has adequate access to safe water, sanitation, and hygiene (WASH) facilities meeting SPHERE minimum standards. False indicates a WASH vulnerability requiring intervention. Used for WASH sector targeting and OCHA cluster reporting.',
     CONSTRAINT pk_vulnerability_profile PRIMARY KEY(`vulnerability_profile_id`)
@@ -199,65 +199,58 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` (
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` (
     `beneficiary_needs_assessment_id` BIGINT COMMENT 'Unique system-generated identifier for each needs assessment record. Primary key for the needs_assessment data product within the beneficiary domain.',
+    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to the beneficiary compliance corrective action plan associated with this needs assessment',
     `commodity_id` BIGINT COMMENT 'Foreign key linking to supply.commodity. Business justification: Needs assessments identify specific commodity requirements (NFI kits, food baskets, WASH items, shelter materials) for beneficiaries. Essential for humanitarian needs-based procurement planning and Sp',
     `community_engagement_event_id` BIGINT COMMENT 'Foreign key linking to communication.community_engagement_event. Business justification: Needs assessments are frequently conducted during community engagement events (focus group discussions, community consultations, participatory assessments). Links assessment data to the event context,',
     `community_id` BIGINT COMMENT 'Reference to the community or settlement unit that is the subject of this assessment when assessment_level is community. Nullable when assessment_level is individual or household.',
-    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action_plan. Business justification: When internal reviews or audits identify needs assessment quality issues (sampling bias, incomplete data, targeting errors), corrective action plans document remediation measures. Essential for qualit',
     `data_collection_tool_id` BIGINT COMMENT 'The unique identifier of the data collection instrument used to conduct this assessment. For KoboToolbox, this is the form UID (e.g., aXmK3p9QrT). For CommCare, this is the module ID. Enables traceability back to the specific questionnaire version and supports data quality audits.',
     `volunteer_id` BIGINT COMMENT 'Foreign key linking to volunteer.volunteer. Business justification: Volunteers conduct needs assessments in many NGO operations (household surveys, vulnerability assessments, rapid assessments). Standard practice for community-based data collection. Required for track',
     `household_id` BIGINT COMMENT 'Reference to the household unit that is the subject of this assessment when assessment_level is household. Nullable when assessment_level is individual or community.',
     `intervention_id` BIGINT COMMENT 'Reference to the humanitarian or development program under which this needs assessment was commissioned. Links the assessment to the programs Theory of Change (ToC) and LogFrame targeting criteria.',
-    `needs_assessment_id` BIGINT COMMENT 'Primary key for needs_assessment',
+    `mel_needs_assessment_id` BIGINT COMMENT 'FK to SSOT owner mel.mel_needs_assessment for entity needs_assessment',
     `partner_org_id` BIGINT COMMENT 'Foreign key linking to partnership.partner_org. Business justification: Partners conduct needs assessments in their operational areas under consortium or sub-award arrangements. Tracking the assessing partner is required for data quality oversight, capacity assessment val',
     `staff_member_id` BIGINT COMMENT 'Reference to the staff member or volunteer who conducted the field assessment. Used for quality assurance, inter-rater reliability checks, and enumerator performance monitoring.',
     `registrant_id` BIGINT COMMENT 'Reference to the individual beneficiary (IDP, PoC, GBV survivor, or other target population member) who is the subject of this assessment when assessment_level is individual. Nullable when assessment_level is household or community.',
     `admin1_name` STRING COMMENT 'Name of the first-level administrative division (e.g., province, state, region) where the assessment was conducted. Sourced from OCHA Common Operational Datasets (CODs) administrative boundary reference. Used for geographic aggregation in SitReps and donor reports.',
     `admin2_name` STRING COMMENT 'Name of the second-level administrative division (e.g., district, county, department) where the assessment was conducted. Sourced from OCHA CODs. Enables sub-national geographic disaggregation for targeting and cluster coordination reporting.',
-    `assessment_date` DATE COMMENT 'The calendar date on which the needs assessment was physically conducted in the field. This is the principal real-world event date, distinct from the record submission or validation timestamps. Used for temporal targeting analysis and periodic reassessment scheduling.',
-    `assessment_level` STRING COMMENT 'The unit of analysis at which this needs assessment was conducted. individual targets a single beneficiary (e.g., GBV survivor, SAM case); household targets a family unit; community targets a settlement or geographic cluster. Determines which of beneficiary_id, household_id, or community_id is populated.. Valid values are `individual|household|community`',
-    `assessment_location_code` STRING COMMENT 'P-code or admin location code where assessment was conducted. Present in MVM stub, carried forward for ECM completeness.',
-    `assessment_reference_code` STRING COMMENT 'Externally-known alphanumeric reference code assigned to this needs assessment, used in field reports, SitReps, and donor communications. Format: NA-{COUNTRY}-{YEAR}-{SEQUENCE}. Sourced from KoboToolbox or CommCare submission ID.. Valid values are `^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$`',
-    `assessment_status` STRING COMMENT 'Current workflow lifecycle state of the needs assessment record. draft indicates field data entry in progress; submitted indicates enumerator submission pending review; validated indicates supervisor-approved and usable for targeting; rejected indicates data quality failure requiring re-assessment.. Valid values are `draft|submitted|under_review|validated|rejected|archived`',
-    `assessment_tool_version` STRING COMMENT 'Version number or deployment date of the assessment tool/form used. Critical for longitudinal comparability — when a KoboToolbox form or CommCare module is updated, findings from different versions may not be directly comparable without version-aware analysis.',
-    `assessment_type` STRING COMMENT 'Classification of the assessments purpose and methodology. initial_registration is conducted at first beneficiary contact; periodic_reassessment is a scheduled follow-up to update vulnerability status; post_crisis_rapid is an emergency rapid assessment following a shock event; sector_specific_deep is an in-depth assessment for a single sector (e.g., nutrition MUAC screening, WASH facility survey).. Valid values are `initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep`',
     `children_under5_count` STRING COMMENT 'Number of children under 5 years of age in the assessed household. Key vulnerability indicator for nutrition (SAM/GAM screening), WASH (diarrhoea risk), and child protection programming. Required for UNICEF and WFP programme targeting.',
     `consent_obtained` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from the beneficiary or household head prior to conducting the assessment. Mandatory per CHS Commitment 4 (Accountability to Affected Populations) and GDPR Article 6 for data processing lawfulness. Must be TRUE for the record to be validated.',
     `consent_type` STRING COMMENT 'The form of informed consent obtained. verbal is spoken consent recorded by enumerator; written is signed consent form; proxy is consent given by a guardian or community leader on behalf of a vulnerable individual (e.g., child, person with disability). Relevant for legal compliance and data protection audits.. Valid values are `verbal|written|proxy`',
     `country_code` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the country where the assessment was conducted (e.g., SOM, SSD, HTI). Used for IATI reporting, donor country-level aggregation, and cross-country comparative analysis.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this needs assessment record was first created in the data platform (Silver layer ingestion timestamp). Distinct from assessment_date (field event date). Used for data pipeline monitoring and audit trail compliance.',
     `data_collection_method` STRING COMMENT 'The primary method used to gather assessment data. face_to_face is direct in-person interview; remote_phone is telephone-based; fgd is a Focus Group Discussion (FGD); kii is a Key Informant Interview (KII); observation is direct field observation without interview; secondary_data is derived from existing records. Affects data quality weighting in vulnerability scoring.. Valid values are `face_to_face|remote_phone|fgd|kii|observation|secondary_data`',
+    `beneficiary_needs_assessment_date` DATE COMMENT 'The calendar date on which the needs assessment was physically conducted in the field. This is the principal real-world event date, distinct from the record submission or validation timestamps. Used for temporal targeting analysis and periodic reassessment scheduling.',
     `displacement_status` STRING COMMENT 'The displacement classification of the assessed individual or household at the time of assessment. idp = Internally Displaced Person (IDP); refugee = person with international protection status; returnee = person returning to place of origin; host_community = non-displaced community member hosting displaced persons. Critical for UNHCR/OCHA population movement tracking.. Valid values are `idp|refugee|returnee|host_community|stateless|non_displaced`',
     `education_score` DECIMAL(18,2) COMMENT 'Numeric score for the education sector assessment findings. Null if education was not included in sectors_assessed. Covers school access, enrollment barriers, learning environment safety, and teacher availability against SPHERE/INEE minimum standards.',
     `enumerator_notes` STRING COMMENT 'Free-text qualitative observations recorded by the field enumerator during the assessment. Captures contextual information not covered by structured questions (e.g., security constraints, access limitations, observed conditions). Used by supervisors during validation review.',
     `female_headed_household` BOOLEAN COMMENT 'Indicates whether the assessed household is headed by a female. Female-headed households are a standard vulnerability marker in humanitarian targeting criteria and are required for gender disaggregation in donor reports (USAID, DFID/FCDO, UN Women standards).',
-    `food_security_score` DECIMAL(18,2) COMMENT 'IPC/CH food security classification score (0-4 scale mapped to decimal). Present in MVM stub, carried forward for ECM completeness.',
     `gbv_risk_flag` BOOLEAN COMMENT 'Indicates whether the assessment identified elevated Gender-Based Violence (GBV) risk for the assessed individual or household. When TRUE, triggers referral to GBV case management pathway and PSS services. Classified as restricted PHI due to extreme sensitivity of GBV disclosure data.',
     `gps_accuracy_meters` DECIMAL(18,2) COMMENT 'Estimated GPS accuracy in meters at the time of coordinate capture, as reported by the mobile device. KoboToolbox and CommCare record this automatically. Values above 30 meters may indicate unreliable location data and trigger data quality flags.',
-    `health_score` DECIMAL(18,2) COMMENT 'Health sector vulnerability score. Present in MVM stub, carried forward for ECM completeness.',
     `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate (WGS84 decimal degrees) of the assessment location captured by the field enumerators device via KoboToolbox or CommCare GPS capture. Used for GIS mapping, cluster analysis, and geographic targeting in humanitarian response planning.',
+    `beneficiary_needs_assessment_level` STRING COMMENT 'The unit of analysis at which this needs assessment was conducted. individual targets a single beneficiary (e.g., GBV survivor, SAM case); household targets a family unit; community targets a settlement or geographic cluster. Determines which of beneficiary_id, household_id, or community_id is populated.. Valid values are `individual|household|community`',
     `livelihoods_score` DECIMAL(18,2) COMMENT 'Numeric score for the livelihoods sector assessment findings. Null if livelihoods was not included in sectors_assessed. Covers income sources, asset ownership, market access, and economic vulnerability indicators.',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate (WGS84 decimal degrees) of the assessment location captured by the field enumerators device. Used alongside latitude for GIS mapping, spatial clustering, and geographic targeting in humanitarian response planning.',
     `muac_mm` DECIMAL(18,2) COMMENT 'Mid-Upper Arm Circumference (MUAC) measurement in millimetres for children under 5 or pregnant/lactating women, used to screen for acute malnutrition. MUAC < 115mm indicates SAM; 115–125mm indicates MAM. Classified as PHI as it is a direct health measurement linked to an individual. Null if not applicable to assessment subject.',
-    `mvm_migration_reference` STRING COMMENT 'Reference code linking this record to the legacy MVM needs_assessment stub for migration traceability.',
     `nutrition_score` DECIMAL(18,2) COMMENT 'Numeric score for the nutrition sector assessment findings. Null if nutrition was not included in sectors_assessed. Incorporates Global Acute Malnutrition (GAM) and Severe Acute Malnutrition (SAM) indicators where applicable. Feeds into DHIS2 nutrition indicator tracking.',
     `overall_vulnerability_score` DECIMAL(18,2) COMMENT 'Composite numeric score representing the assessed subjects overall vulnerability level, calculated from sector-specific findings using the programs scoring methodology (e.g., 0–100 scale). Feeds into vulnerability_profile updates when the score materially changes vulnerability classification. This is a raw assessment output, not a derived KPI.',
     `persons_with_disability_count` STRING COMMENT 'Number of household members with a physical, sensory, intellectual, or psychosocial disability. Required for disability-inclusive programming per IASC Guidelines on Inclusion of Persons with Disabilities in Humanitarian Action and CRPD compliance reporting.',
-    `preferred_cva_modality` STRING COMMENT 'Beneficiary preferred CVA transfer modality: cash, voucher, in-kind, hybrid.',
-    `priority_ranking` STRING COMMENT 'Computed priority rank for targeting. Present in MVM stub, carried forward for ECM completeness.',
     `protection_score` DECIMAL(18,2) COMMENT 'Numeric score for the protection sector assessment findings. Null if protection was not included in sectors_assessed. Covers GBV risk, child protection, housing land and property rights, and documentation status. Sensitive findings are handled per GBV information management protocols.',
-    `reassessment_due_date` DATE COMMENT 'Date by which reassessment must occur per programme cycle. Present in MVM stub, carried forward for ECM completeness.',
+    `reference_code` STRING COMMENT 'Externally-known alphanumeric reference code assigned to this needs assessment, used in field reports, SitReps, and donor communications. Format: NA-{COUNTRY}-{YEAR}-{SEQUENCE}. Sourced from KoboToolbox or CommCare submission ID.. Valid values are `^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$`',
     `referral_recommended` BOOLEAN COMMENT 'Indicates whether the assessment findings recommend referral of the beneficiary or household to one or more service providers or program interventions. When TRUE, a referral pathway is initiated in CommCare case management. Drives downstream case management workflow.',
     `referral_sectors` STRING COMMENT 'Pipe-delimited list of sectors to which the beneficiary or household is being referred based on assessment findings (e.g., nutrition|PSS|WASH). Populated only when referral_recommended is TRUE. Drives service pathway activation in CommCare and Microsoft Dynamics 365 case management.',
     `sectors_assessed` STRING COMMENT 'Pipe-delimited list of humanitarian/development sectors covered in this assessment (e.g., WASH|nutrition|shelter|protection|livelihoods|education). Sectors align with IASC cluster system. Determines which sector-specific scored findings fields are populated. [ENUM-REF-CANDIDATE: WASH|nutrition|shelter|protection|livelihoods|education|health|food_security|NFI|PSS — promote to reference product]',
     `shelter_score` DECIMAL(18,2) COMMENT 'Numeric score for the shelter sector assessment findings. Null if shelter was not included in sectors_assessed. Assessed against SPHERE minimum standards for covered living space, structural safety, and thermal comfort.',
     `source_submission_reference` STRING COMMENT 'The native submission or case ID from the originating source system (KoboToolbox submission UUID or CommCare case ID). Enables exact record traceability back to the source system for data reconciliation, duplicate detection, and audit purposes.',
+    `beneficiary_needs_assessment_status` STRING COMMENT 'Current workflow lifecycle state of the needs assessment record. draft indicates field data entry in progress; submitted indicates enumerator submission pending review; validated indicates supervisor-approved and usable for targeting; rejected indicates data quality failure requiring re-assessment.. Valid values are `draft|submitted|under_review|validated|rejected|archived`',
     `supervisor_validation_notes` STRING COMMENT 'Free-text notes entered by the supervising data manager or MEL officer during the assessment review and validation process. Documents reasons for rejection, data quality concerns, or approval rationale. Populated when assessment_status transitions to validated or rejected.',
+    `tool_version` STRING COMMENT 'Version number or deployment date of the assessment tool/form used. Critical for longitudinal comparability — when a KoboToolbox form or CommCare module is updated, findings from different versions may not be directly comparable without version-aware analysis.',
+    `beneficiary_needs_assessment_type` STRING COMMENT 'Classification of the assessments purpose and methodology. initial_registration is conducted at first beneficiary contact; periodic_reassessment is a scheduled follow-up to update vulnerability status; post_crisis_rapid is an emergency rapid assessment following a shock event; sector_specific_deep is an in-depth assessment for a single sector (e.g., nutrition MUAC screening, WASH facility survey).. Valid values are `initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep`',
     `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this needs assessment record was most recently modified in the data platform. Tracks post-ingestion corrections, validation status changes, and supervisor note additions. Required for Silver layer change data capture (CDC) processing.',
     `validation_timestamp` TIMESTAMP COMMENT 'The date and time when the assessment record was validated or rejected by the supervising staff member. Distinct from assessment_date (field event) and created_timestamp (record creation). Used for SLA monitoring of data quality review turnaround.',
     `vulnerability_category` STRING COMMENT 'Categorical classification of the assessed subjects vulnerability level derived from the overall_vulnerability_score and program-specific thresholds. Used for beneficiary targeting, prioritization, and service referral decisions. critical triggers immediate case management escalation.. Valid values are `critical|high|medium|low|not_vulnerable`',
     `wash_score` DECIMAL(18,2) COMMENT 'Numeric score for the Water, Sanitation and Hygiene (WASH) sector assessment findings. Null if WASH was not included in sectors_assessed. Scored against SPHERE minimum standards for water access, sanitation facilities, and hygiene promotion.',
     CONSTRAINT pk_beneficiary_needs_assessment PRIMARY KEY(`beneficiary_needs_assessment_id`)
-) COMMENT 'ECM-canonical needs assessment entity. Supersedes the MVM-tier stub needs_assessment and is a strict superset of its attributes. Source systems: Kobo Toolbox, ODK, CommCare, ONA, eTools (UNICEF), Primero (child protection). Captures multi-sector vulnerability scoring at individual/household level for targeting and prioritization.';
+) COMMENT 'Transactional record of a formal needs assessment conducted for an individual beneficiary, household, or community to determine eligibility, vulnerability level, and appropriate service referrals. Captures assessment date, assessment level (individual, household, community), assessment type (initial registration assessment, periodic reassessment, post-crisis rapid assessment, sector-specific deep assessment), sectors assessed (WASH, nutrition, shelter, protection, livelihoods, education), assessment tool identifier (KoboToolbox form ID, CommCare module), field enumerator, geographic coordinates, and scored findings per sector. Owned by beneficiary domain as it determines beneficiary status and targeting — distinct from MEL post-distribution monitoring which measures program effectiveness. Assessment findings feed into vulnerability_profile updates when they materially change vulnerability classification.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` (
     `consent_record_id` BIGINT COMMENT 'Unique system-generated identifier for each consent record. Primary key for the consent_record data product within the beneficiary domain.',
@@ -299,7 +292,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` (
     `withdrawal_reason` STRING COMMENT 'Free-text description of the reason provided by the beneficiary or their representative for withdrawing consent. Populated only when consent_status is withdrawn. Used for accountability reporting and program improvement.',
     `witness_name` STRING COMMENT 'Full name of the field staff member or community witness who witnessed the consent process. Required for verbal and thumbprint consent methods to ensure accountability and legal validity.',
     CONSTRAINT pk_consent_record PRIMARY KEY(`consent_record_id`)
-) COMMENT 'Formal consent management record capturing a beneficiarys informed consent for data collection, storage, sharing, and program participation. Stores consent type (data processing, photography, case referral, biometric enrollment), consent status (given, withdrawn, pending), consent date, consent method (verbal, written, digital), language of consent, witness details, and CHS (Core Humanitarian Standard) accountability compliance flags. Informed consent record for data collection, sharing, and biometric enrollment. Source systems: Primero, SCOPE, proGres v4. CHS-compliant: tracks consent scope, withdrawal, proxy consent for minors, and GDPR applicability. Linked to registrant SSOT; consent withdrawal triggers data retention policy enforcement.';
+) COMMENT 'Formal consent management record capturing a beneficiarys informed consent for data collection, storage, sharing, and program participation. Stores consent type (data processing, photography, case referral, biometric enrollment), consent status (given, withdrawn, pending), consent date, consent method (verbal, written, digital), language of consent, witness details, and CHS (Core Humanitarian Standard) accountability compliance flags.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` (
     `case_record_id` BIGINT COMMENT 'Unique surrogate identifier for the longitudinal case management record within the beneficiary domain. Primary key for all case-level joins and lineage tracking.',
@@ -349,12 +342,11 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` (
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp recording the most recent modification to the case record. Used for change detection, incremental data loading in the Databricks Silver layer, and audit compliance.',
     `vulnerability_score` STRING COMMENT 'Composite numeric score derived from the beneficiary needs assessment, reflecting overall vulnerability level (e.g., 0–100 scale). Used for prioritization, targeting, and MEL disaggregation. Higher scores indicate greater vulnerability.',
     CONSTRAINT pk_case_record PRIMARY KEY(`case_record_id`)
-) COMMENT 'Case management record for protection, child welfare, or GBV response. Source systems: Primero (child protection & GBV), proGres v4 (refugee status determination).';
+) COMMENT 'Longitudinal case management record for an individual beneficiary requiring structured follow-up. Captures case type (protection, GBV, child protection, PSS, nutrition, health, livelihoods), status (open, in-progress, on-hold, closed), priority level, assigned caseworker, opening/closing dates, referral pathway, outcome classification, and case narrative. Primary operational entity for CommCare case management workflows.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` (
     `case_action_id` BIGINT COMMENT 'Unique system-generated identifier for each case action record within the beneficiary case management system. Primary key for the case_action data product.',
     `case_record_id` BIGINT COMMENT 'Reference to the parent beneficiary case to which this action belongs. Links the action to the overarching case record for the individual, household, or community being served.',
-    `commodity_id` BIGINT COMMENT 'Foreign key linking to supply.commodity. Business justification: Case actions document specific items provided during interventions (dignity kits for GBV survivors, hygiene supplies, emergency NFI). Critical for case management audit trails, protection monitoring, ',
     `component_id` BIGINT COMMENT 'Reference to the humanitarian or development program under which this case action is being delivered. Enables program-level aggregation of service delivery activities.',
     `constituent_message_id` BIGINT COMMENT 'Foreign key linking to communication.constituent_message. Business justification: Case workers send SMS/email confirmations, appointment reminders, and follow-up messages during case actions (home visits, counseling). Tracking which message was sent during which action is essential',
     `feedback_submission_id` BIGINT COMMENT 'Foreign key linking to communication.feedback_submission. Business justification: Post-service satisfaction surveys and feedback collection are triggered by case actions (service delivery, counseling sessions). Links feedback to the specific action being evaluated, enabling service',
@@ -363,20 +355,15 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` (
     `registrant_id` BIGINT COMMENT 'Reference to the primary beneficiary (individual, household head, or community representative) who is the subject of this case action. Enables direct beneficiary-level reporting without joining through the case.',
     `staff_member_id` BIGINT COMMENT 'Reference to the staff member or case worker responsible for executing this case action. Supports workload management, supervision, and accountability tracking.',
     `volunteer_id` BIGINT COMMENT 'Foreign key linking to volunteer.volunteer. Business justification: Case management actions are frequently performed by trained volunteers (community health workers, protection monitors, PSS facilitators). Essential for tracking who delivered services, accountability,',
-    `action_category` STRING COMMENT 'Humanitarian sector or thematic category under which this action falls, aligned with OCHA cluster system and IATI sector codes. Enables cross-sector analysis and cluster reporting. [ENUM-REF-CANDIDATE: protection|health|nutrition|wash|shelter|education|livelihoods|psychosocial|food_security|cash_and_voucher — promote to reference product]',
-    `action_date` DATE COMMENT 'The actual calendar date on which the case action was performed or delivered in the field. This is the principal real-world event date used for MEL reporting, PDM analysis, and donor reporting.',
-    `action_outcome` STRING COMMENT 'The result or outcome of the case action as assessed by the case worker at the time of completion. Used for MEL indicator tracking, Results-Based Management (RBM) reporting, and LogFrame output measurement.. Valid values are `successful|partially_successful|unsuccessful|pending|referred_out`',
-    `action_reference_number` STRING COMMENT 'Externally visible, human-readable reference number assigned to this case action for use in field reports, SitReps, and donor reporting. Follows the format CA-YYYY-NNNNNN.. Valid values are `^CA-[0-9]{4}-[0-9]{6}$`',
-    `action_status` STRING COMMENT 'Current lifecycle status of the case action, tracking progression from planning through completion or cancellation. Used for workload management and case progress monitoring.. Valid values are `planned|in_progress|completed|cancelled|missed|rescheduled`',
-    `action_timestamp` TIMESTAMP COMMENT 'Precise date and time at which the case action was recorded or submitted in the system, including timezone offset. Used for audit trails, data quality checks, and real-time field monitoring.',
-    `action_type` STRING COMMENT 'Classification of the type of intervention or activity performed during this case action. Drives workflow routing, reporting disaggregation, and MEL indicator tracking. [ENUM-REF-CANDIDATE: home_visit|counseling_session|referral|service_provision|follow_up_call|group_session|needs_assessment|distribution|medical_consultation|legal_aid|psychosocial_support|community_mobilization — promote to reference product]. Valid values are `home_visit|counseling_session|referral|service_provision|follow_up_call|group_session`',
     `admin_level1_code` STRING COMMENT 'ISO 3166-2 or OCHA P-Code for the first administrative division (e.g., state, province, region) where the action was conducted. Used for geographic disaggregation in donor and cluster reports.',
     `admin_level2_code` STRING COMMENT 'OCHA P-Code for the second administrative division (e.g., district, county, woreda) where the action was conducted. Enables sub-national geographic disaggregation for MEL and cluster reporting.',
+    `case_action_category` STRING COMMENT 'Humanitarian sector or thematic category under which this action falls, aligned with OCHA cluster system and IATI sector codes. Enables cross-sector analysis and cluster reporting. [ENUM-REF-CANDIDATE: protection|health|nutrition|wash|shelter|education|livelihoods|psychosocial|food_security|cash_and_voucher — promote to reference product]',
     `consent_obtained` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from the beneficiary prior to conducting this case action, in compliance with data protection and humanitarian accountability standards.',
     `consent_type` STRING COMMENT 'Method by which informed consent was obtained from the beneficiary for this case action. Supports accountability and protection mainstreaming requirements.. Valid values are `verbal|written|digital|proxy|not_required`',
     `country_code` STRING COMMENT 'ISO 3166-1 alpha-3 three-letter country code of the country where the case action was conducted. Required for multi-country INGO operations and IATI reporting.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this case action record was first created in the system. Used for audit trail, data lineage, and Silver Layer ingestion tracking.',
     `data_collection_method` STRING COMMENT 'Method used to collect data for this case action. FGD = Focus Group Discussion, KII = Key Informant Interview. Supports data quality assessment and ICT4D (Information and Communication Technology for Development) tracking.. Valid values are `mobile_app|paper_form|phone_interview|direct_observation|fgd|kii`',
+    `case_action_date` DATE COMMENT 'The actual calendar date on which the case action was performed or delivered in the field. This is the principal real-world event date used for MEL reporting, PDM analysis, and donor reporting.',
     `duration_minutes` STRING COMMENT 'Duration in minutes of the case action or intervention session. Used for workload analysis, staff time tracking, and service intensity measurement in MEL frameworks.',
     `escalation_reason` STRING COMMENT 'Free-text description of the reason this case action was escalated to a higher authority or inter-agency body. Confidential case management information.',
     `escalation_required` BOOLEAN COMMENT 'Indicates whether this case action has triggered an escalation to a supervisor, protection officer, or inter-agency coordination body due to severity, risk, or unresolved needs.',
@@ -388,19 +375,24 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` (
     `muac_measurement_mm` DECIMAL(18,2) COMMENT 'Mid-Upper Arm Circumference (MUAC) measurement in millimetres recorded during a nutrition screening action. Used to classify Global Acute Malnutrition (GAM) and Severe Acute Malnutrition (SAM) status per SPHERE standards.',
     `next_action_due_date` DATE COMMENT 'The date by which the next follow-up action or intervention for this case must be completed. Drives case worker task queues and escalation alerts in CommCare and Dynamics 365.',
     `nutrition_status` STRING COMMENT 'Nutritional status classification of the beneficiary as assessed during this action, based on MUAC or weight-for-height z-score. SAM = Severe Acute Malnutrition, MAM = Moderate Acute Malnutrition, per SPHERE and WHO standards.. Valid values are `sam|mam|normal|not_assessed`',
+    `outcome` STRING COMMENT 'The result or outcome of the case action as assessed by the case worker at the time of completion. Used for MEL indicator tracking, Results-Based Management (RBM) reporting, and LogFrame output measurement.. Valid values are `successful|partially_successful|unsuccessful|pending|referred_out`',
     `outcome_notes` STRING COMMENT 'Free-text narrative describing the outcome of the case action, observations made during the visit or session, and any contextual information relevant to case progress. Confidential case management information.',
     `protection_concern_type` STRING COMMENT 'Specific protection concern category associated with this case action, used for disaggregated protection cluster reporting. Confidential and access-restricted. [ENUM-REF-CANDIDATE: gbv|child_protection|trafficking|idp_displacement|statelessness|forced_recruitment|detention|none — promote to reference product]. Valid values are `gbv|child_protection|trafficking|idp_displacement|statelessness|none`',
     `pss_session_number` STRING COMMENT 'Sequential session number for Psychosocial Support (PSS) interventions, tracking the beneficiarys progression through a structured PSS program. Applicable when action_type is counseling_session.',
+    `reference_number` STRING COMMENT 'Externally visible, human-readable reference number assigned to this case action for use in field reports, SitReps, and donor reporting. Follows the format CA-YYYY-NNNNNN.. Valid values are `^CA-[0-9]{4}-[0-9]{6}$`',
     `referral_destination` STRING COMMENT 'Name or identifier of the organization, facility, or service to which the beneficiary was referred during this action. Applicable when action_type is referral. Supports referral pathway tracking and inter-agency coordination.',
     `referral_reason` STRING COMMENT 'Description of the reason the beneficiary was referred to another service or organization. Confidential case management information used for inter-agency coordination and case continuity.',
     `scheduled_date` DATE COMMENT 'The originally planned date on which this case action was scheduled to occur. Compared against action_date to measure timeliness and adherence to case plans.',
     `service_items_provided` STRING COMMENT 'Description of specific Non-Food Items (NFIs), services, or assistance items provided to the beneficiary during this action (e.g., hygiene kit, food ration, cash transfer amount). Used for distribution tracking and PDM.',
     `source_record_reference` STRING COMMENT 'The native record identifier from the originating operational system (CommCare case_id, KoboToolbox submission_id, or Dynamics 365 activityid). Enables traceability back to the source system for reconciliation.',
+    `case_action_status` STRING COMMENT 'Current lifecycle status of the case action, tracking progression from planning through completion or cancellation. Used for workload management and case progress monitoring.. Valid values are `planned|in_progress|completed|cancelled|missed|rescheduled`',
     `supervisor_review_date` DATE COMMENT 'Date on which a supervisor reviewed and validated this case action record. Populated when supervisor_reviewed is true.',
     `supervisor_reviewed` BOOLEAN COMMENT 'Indicates whether a supervisor or team leader has reviewed and validated this case action record. Supports quality assurance, accountability, and CHS compliance verification.',
+    `timestamp` TIMESTAMP COMMENT 'Precise date and time at which the case action was recorded or submitted in the system, including timezone offset. Used for audit trails, data quality checks, and real-time field monitoring.',
+    `case_action_type` STRING COMMENT 'Classification of the type of intervention or activity performed during this case action. Drives workflow routing, reporting disaggregation, and MEL indicator tracking. [ENUM-REF-CANDIDATE: home_visit|counseling_session|referral|service_provision|follow_up_call|group_session|needs_assessment|distribution|medical_consultation|legal_aid|psychosocial_support|community_mobilization — promote to reference product]. Valid values are `home_visit|counseling_session|referral|service_provision|follow_up_call|group_session`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this case action record was last modified in the system. Used for change data capture, audit trails, and incremental Silver Layer processing.',
     CONSTRAINT pk_case_action PRIMARY KEY(`case_action_id`)
-) COMMENT 'Transactional log of individual actions, interventions, and follow-up activities taken within a beneficiary case. Captures action type (home visit, counseling session, referral, service provision, follow-up call), action date, action outcome, responsible staff or volunteer, next action due date, and action notes. Enables case progress tracking and workload management for case workers. Individual actions/interventions within a case record. Source systems: Primero, CommCare, case management platforms. Protection-sensitive: tracks PSS sessions, protection referrals, service delivery. Linked to case_record and registrant SSOT; supports supervisor review workflow.';
+) COMMENT 'Transactional log of individual actions, interventions, and follow-up activities taken within a beneficiary case. Captures action type (home visit, counseling session, referral, service provision, follow-up call), action date, action outcome, responsible staff or volunteer, next action due date, and action notes. Enables case progress tracking and workload management for case workers.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`referral` (
     `referral_id` BIGINT COMMENT 'Unique identifier for the referral transaction. Primary key for the referral data product.',
@@ -425,6 +417,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`referral` (
     `consent_obtained_flag` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from the beneficiary or their guardian before making the referral, in compliance with protection and data privacy standards.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this referral record was first created in the system.',
     `data_source_system` STRING COMMENT 'Name of the operational system from which this referral record originated, such as CommCare, KoboToolbox, or Microsoft Dynamics 365.',
+    `referral_date` DATE COMMENT 'The date when the referral was initiated and submitted to the receiving organization or service provider.',
     `decline_reason` STRING COMMENT 'Explanation provided when a referral is declined by the receiving organization or rejected by the beneficiary.',
     `expected_response_date` DATE COMMENT 'Target date by which the receiving organization is expected to acknowledge or respond to the referral.',
     `feedback_received_flag` BOOLEAN COMMENT 'Indicates whether feedback was received from the beneficiary regarding their satisfaction with the referral process and services received.',
@@ -433,6 +426,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`referral` (
     `gbv_case_flag` BOOLEAN COMMENT 'Indicates whether this referral is related to a Gender-Based Violence (GBV) case, requiring adherence to specialized GBV referral pathways and confidentiality protocols.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this referral record was last updated or modified in the system.',
     `notes` STRING COMMENT 'Additional free-text notes, observations, or context about the referral that may be relevant for case management and coordination.',
+    `number` STRING COMMENT 'Human-readable business identifier for the referral, used for tracking and communication across organizations.. Valid values are `^REF-[0-9]{8}$`',
     `outcome` STRING COMMENT 'Detailed description of the outcome of the referral, including services provided, beneficiary response, and any follow-up actions required.',
     `outcome_category` STRING COMMENT 'Standardized classification of the referral outcome for reporting and analysis purposes.. Valid values are `successful|partially_successful|unsuccessful|beneficiary_declined|service_unavailable|lost_to_follow_up`',
     `priority_level` STRING COMMENT 'Urgency classification of the referral indicating how quickly the beneficiary needs to receive services.. Valid values are `low|medium|high|critical`',
@@ -441,19 +435,18 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`referral` (
     `receiving_organization_name` STRING COMMENT 'Name of the organization or service provider receiving the referral, for tracking and reporting purposes.',
     `receiving_service_type` STRING COMMENT 'Specific type of service or program that the beneficiary is being referred to at the receiving organization.',
     `receiving_staff_name` STRING COMMENT 'Full name of the staff member at the receiving organization who accepted or is processing the referral.',
-    `referral_date` DATE COMMENT 'The date when the referral was initiated and submitted to the receiving organization or service provider.',
-    `referral_number` STRING COMMENT 'Human-readable business identifier for the referral, used for tracking and communication across organizations.. Valid values are `^REF-[0-9]{8}$`',
-    `referral_status` STRING COMMENT 'Current lifecycle status of the referral indicating whether it has been accepted, is being processed, completed, or declined by the receiving organization.. Valid values are `pending|accepted|in_progress|completed|declined|cancelled`',
-    `referral_type` STRING COMMENT 'Classification of the referral based on organizational scope and urgency. Internal referrals are within the same organization, external are to partner organizations, emergency referrals require immediate action.. Valid values are `internal|external|emergency|routine|urgent`',
     `referring_staff_contact` STRING COMMENT 'Phone number or email address of the referring staff member for coordination and follow-up communication.',
     `referring_staff_name` STRING COMMENT 'Full name of the staff member who initiated the referral, for contact and follow-up purposes.',
     `service_delivery_date` DATE COMMENT 'Date when the service was actually delivered to the beneficiary by the receiving organization.',
+    `referral_status` STRING COMMENT 'Current lifecycle status of the referral indicating whether it has been accepted, is being processed, completed, or declined by the receiving organization.. Valid values are `pending|accepted|in_progress|completed|declined|cancelled`',
+    `referral_type` STRING COMMENT 'Classification of the referral based on organizational scope and urgency. Internal referrals are within the same organization, external are to partner organizations, emergency referrals require immediate action.. Valid values are `internal|external|emergency|routine|urgent`',
     CONSTRAINT pk_referral PRIMARY KEY(`referral_id`)
 ) COMMENT 'Transactional record of a formal referral of a beneficiary from one service provider, program, or organization to another. Captures referral date, referring organization, receiving organization or service, referral reason, referral type (internal, external, emergency), referral status (pending, accepted, completed, declined), follow-up date, and outcome. Supports inter-agency coordination, GBV referral pathways, and protection case management.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` (
     `biometric_record_id` BIGINT COMMENT 'Unique identifier for the biometric enrollment record.',
     `component_id` BIGINT COMMENT 'Reference to the humanitarian or development program under which this biometric enrollment was conducted.',
+    `donor_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.donor_requirement. Business justification: Biometric enrollment often required by specific donor compliance frameworks (WFP SCOPE, UNHCR ProGres). Links biometric records to the specific donor requirement they fulfill for audit verification an',
     `duplicate_record_biometric_record_id` BIGINT COMMENT 'Reference to another biometric record that was identified as a potential duplicate during deduplication processing.',
     `registrant_id` BIGINT COMMENT 'Reference to the beneficiary individual or household whose biometric data was captured.',
     `staff_member_id` BIGINT COMMENT 'Reference to the staff member or volunteer who performed the biometric enrollment.',
@@ -492,7 +485,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` (
     `verification_date` DATE COMMENT 'Date when the biometric record was last successfully verified during a distribution or service access event.',
     `verification_status` STRING COMMENT 'Current status of the biometric record in the verification lifecycle (enrolled, verified, failed, pending review, expired, or revoked).. Valid values are `enrolled|verified|failed|pending|expired|revoked`',
     CONSTRAINT pk_biometric_record PRIMARY KEY(`biometric_record_id`)
-) COMMENT 'Biometric enrollment and verification record for humanitarian beneficiaries following UNHCR BIMS (Biometric Identity Management System) and WFP SCOPE standards. Captures iris scan, fingerprint, or facial recognition data for deduplication and identity verification. Carries highest PII sensitivity (biometric data). Source systems: UNHCR BIMS, WFP SCOPE, Simprints.';
+) COMMENT 'Secure record of biometric enrollment data for identity verification during distributions and service access. Captures biometric modality (fingerprint, iris scan, facial recognition), enrollment date, device identifier, quality score, template reference, verification status, and deduplication match results. Critical for preventing duplicate registrations and ghost beneficiaries in large-scale responses.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` (
     `protection_flag_id` BIGINT COMMENT 'Unique identifier for the protection flag record. Primary key.',
@@ -504,20 +497,17 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` (
     `staff_member_id` BIGINT COMMENT 'Reference to the protection officer or case worker currently responsible for managing this protection flag and coordinating response.',
     `user_account_id` BIGINT COMMENT 'Reference to the user account that created this protection flag record. Used for audit trail and accountability.',
     `registrant_id` BIGINT COMMENT 'Reference to the beneficiary or household associated with this protection flag. Links to the beneficiary master record.',
+    `protection_flag_code` STRING COMMENT 'Standardized code identifying the protection flag type. Used for system integration and reporting aggregation.. Valid values are `^[A-Z]{3,6}$`',
     `confidentiality_level` STRING COMMENT 'Data classification level for this protection flag record. Most protection flags are Restricted due to sensitive nature of protection concerns.. Valid values are `Restricted|Confidential|Internal|Public`',
     `consent_date` DATE COMMENT 'Date when informed consent was obtained from the beneficiary or guardian for protection case management.',
     `consent_obtained` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from the beneficiary or guardian for recording and managing this protection flag.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this protection flag record was first created in the system. Audit trail field for data governance.',
     `data_source_system` STRING COMMENT 'Name of the operational system from which this protection flag record originated. Typically CommCare, KoboToolbox, or partner case management systems.',
+    `protection_flag_date` DATE COMMENT 'Date when the protection concern was first identified or flagged. Represents the business event timestamp for this protection record.',
     `escalation_date` DATE COMMENT 'Date when the protection flag was escalated to higher authority or specialized protection services.',
     `escalation_reason` STRING COMMENT 'Explanation of why the protection flag required escalation, including severity factors or complexity of the case.',
     `escalation_required` BOOLEAN COMMENT 'Indicates whether this protection flag requires escalation to senior management, specialized protection teams, or external authorities.',
     `external_reference_code` STRING COMMENT 'External identifier from the source system or partner organization. Used for cross-system reconciliation and data integration.',
-    `flag_code` STRING COMMENT 'Standardized code identifying the protection flag type. Used for system integration and reporting aggregation.. Valid values are `^[A-Z]{3,6}$`',
-    `flag_date` DATE COMMENT 'Date when the protection concern was first identified or flagged. Represents the business event timestamp for this protection record.',
-    `flag_severity` STRING COMMENT 'Severity level of the protection concern indicating urgency of response and level of risk to the beneficiary.. Valid values are `Critical|High|Medium|Low`',
-    `flag_status` STRING COMMENT 'Current lifecycle status of the protection flag indicating whether it requires active intervention, ongoing monitoring, or has been resolved.. Valid values are `Active|Monitoring|Resolved|Closed|Escalated|Referred`',
-    `flag_type` STRING COMMENT 'Category of protection concern. GBV (Gender-Based Violence), SGBV (Sexual and Gender-Based Violence), UASC (Unaccompanied and Separated Children). [ENUM-REF-CANDIDATE: GBV Risk|Child Protection|SGBV Survivor|Unaccompanied Minor|UASC|Trafficking Risk|Forced Recruitment|Disability Protection|Elderly at Risk|Medical Vulnerability — 10 candidates stripped; promote to reference product]',
     `flagging_source` STRING COMMENT 'Name of the organization, program, or system that originally flagged this protection concern. May reference partner organizations or internal programs.',
     `follow_up_required` BOOLEAN COMMENT 'Indicates whether ongoing follow-up monitoring or case management is required for this protection flag.',
     `identification_method` STRING COMMENT 'Method or channel through which the protection concern was identified. FGD (Focus Group Discussion), KII (Key Informant Interview). [ENUM-REF-CANDIDATE: Field Assessment|Community Referral|Self-Reported|Partner Organization|Health Screening|Household Survey|Focus Group Discussion|Key Informant Interview — 8 candidates stripped; promote to reference product]',
@@ -536,6 +526,9 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` (
     `resolution_date` DATE COMMENT 'Date when the protection concern was resolved or the flag was closed. Null if the flag is still active or under monitoring.',
     `resolution_notes` STRING COMMENT 'Narrative description of how the protection concern was resolved, interventions provided, and outcomes achieved.',
     `risk_description` STRING COMMENT 'Detailed narrative description of the specific protection risk or concern. Contains sensitive information about the nature of the threat or vulnerability.',
+    `severity` STRING COMMENT 'Severity level of the protection concern indicating urgency of response and level of risk to the beneficiary.. Valid values are `Critical|High|Medium|Low`',
+    `protection_flag_status` STRING COMMENT 'Current lifecycle status of the protection flag indicating whether it requires active intervention, ongoing monitoring, or has been resolved.. Valid values are `Active|Monitoring|Resolved|Closed|Escalated|Referred`',
+    `protection_flag_type` STRING COMMENT 'Category of protection concern. GBV (Gender-Based Violence), SGBV (Sexual and Gender-Based Violence), UASC (Unaccompanied and Separated Children). [ENUM-REF-CANDIDATE: GBV Risk|Child Protection|SGBV Survivor|Unaccompanied Minor|UASC|Trafficking Risk|Forced Recruitment|Disability Protection|Elderly at Risk|Medical Vulnerability — 10 candidates stripped; promote to reference product]',
     CONSTRAINT pk_protection_flag PRIMARY KEY(`protection_flag_id`)
 ) COMMENT 'Master record of active protection concerns and risk flags associated with a beneficiary or household. Captures flag type (GBV risk, child protection, SGBV survivor, unaccompanied minor, UASC, trafficking risk, forced recruitment), flag severity, flag date, flagging source, current status (active, resolved, monitoring), assigned protection officer, and confidentiality classification. Enables protection mainstreaming across all program sectors.';
 
@@ -581,7 +574,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` (
     `verification_document_type` STRING COMMENT 'Type of identity or verification document presented during registration (e.g., national ID, passport, birth certificate, ration card, IDP card). [ENUM-REF-CANDIDATE: national_id|passport|birth_certificate|ration_card|idp_card|refugee_certificate|voter_id|driver_license|none — promote to reference product]',
     `vulnerability_assessment_conducted` BOOLEAN COMMENT 'Indicates whether a vulnerability or needs assessment was conducted as part of this registration event.',
     CONSTRAINT pk_registration_event PRIMARY KEY(`registration_event_id`)
-) COMMENT 'Transactional record of a beneficiary registration or re-registration event capturing the specific registration session details. Stores registration date, registration location, registration modality (in-person, mobile, remote), registration tool (KoboToolbox, CommCare, paper), registering staff, verification documents presented, registration completeness score, and any deduplication checks performed. Provides full audit trail of how and when a beneficiary entered the system. Systems-of-record: Primero, Kobo Toolbox, SCOPE. Framework: IASC Data Responsibility Guidelines.';
+) COMMENT 'Transactional record of a beneficiary registration or re-registration event capturing the specific registration session details. Stores registration date, registration location, registration modality (in-person, mobile, remote), registration tool (KoboToolbox, CommCare, paper), registering staff, verification documents presented, registration completeness score, and any deduplication checks performed. Provides full audit trail of how and when a beneficiary entered the system.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` (
     `displacement_history_id` BIGINT COMMENT 'Unique identifier for each displacement episode record. Primary key for the displacement history tracking system.',
@@ -626,7 +619,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` (
     `verification_date` DATE COMMENT 'Date when the displacement episode was verified through field assessment or documentation review. Null for unverified cases.',
     `verification_method` STRING COMMENT 'Method used to verify the displacement episode. Field visit and document review are considered most reliable.. Valid values are `field_visit|document_review|key_informant|community_leader|self_reported`',
     CONSTRAINT pk_displacement_history PRIMARY KEY(`displacement_history_id`)
-) COMMENT 'Tracks displacement episodes for persons of concern (PoC) following UNHCR population statistics categories (refugees, IDPs, asylum-seekers, stateless, returnees). Records origin, transit, and current location with OCHA P-codes. Supports durable solutions tracking (voluntary repatriation, local integration, resettlement). Source systems: UNHCR proGres v4, IOM DTM, OCHA HDX.';
+) COMMENT 'Longitudinal record tracking the displacement journey of an IDP, refugee, or asylum-seeker beneficiary over time. Each record represents a displacement episode with origin location, displacement trigger (armed conflict, generalized violence, natural disaster, climate event, development project), displacement date, transit locations, current settlement/camp/host community, displacement status per IASC framework (newly displaced, protracted displaced, returned, resettled, locally integrated), and duration. Multiple records per registrant enable full journey mapping. Supports durable solutions planning, return and reintegration programming, OCHA displacement tracking, UNHCR population statistics reporting, and IOM Displacement Tracking Matrix (DTM) data exchange. Interoperable with UNHCR proGres displacement records and OCHA HDX displacement datasets.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` (
     `exit_record_id` BIGINT COMMENT 'Unique identifier for the beneficiary exit record. Primary key for the exit_record product.',
@@ -726,7 +719,6 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`community` (
     `admin4_code` STRING COMMENT 'Fourth-level administrative division code (village, neighborhood, locality) where the community is located. Aligns with OCHA COD-AB P-codes where available.',
     `admin4_name` STRING COMMENT 'Name of the fourth-level administrative division (village, neighborhood, locality) where the community is located. Human-readable complement to admin4_code.',
     `community_code` STRING COMMENT 'Externally-known unique business identifier or code for the community, used in field operations, 3W (Who does What Where) reporting, and inter-agency coordination. May align with OCHA P-codes or agency-specific community identifiers.',
-    `community_status` STRING COMMENT 'Current lifecycle status of the community registration. Active: community is currently served by programs. Inactive: temporarily not served. Closed: community no longer exists or is no longer a target. Planned: community identified for future programming. Suspended: operations temporarily halted due to access constraints or security incidents.. Valid values are `active|inactive|closed|planned|suspended`',
     `consent_date` DATE COMMENT 'Date when community consent was obtained for data collection and program activities. Used for consent tracking and compliance documentation.',
     `consent_obtained_flag` BOOLEAN COMMENT 'Indicates whether informed consent was obtained from community leadership or representatives for data collection, program implementation, and data sharing. True if consent obtained, False otherwise. Supports CHS (Core Humanitarian Standard) accountability commitments and GDPR compliance where applicable.',
     `country_code` STRING COMMENT 'ISO 3166-1 alpha-3 three-letter country code where the community is located. Used for country-level aggregation, compliance reporting, and IATI (International Aid Transparency Initiative) transparency reporting.. Valid values are `^[A-Z]{3}$`',
@@ -753,6 +745,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`community` (
     `registration_source` STRING COMMENT 'Source system or tool used to register the community (e.g., KoboToolbox, CommCare, DHIS2, manual field assessment). Used for data lineage tracking and quality assessment.',
     `sanitation_coverage_percent` DECIMAL(18,2) COMMENT 'Percentage of households in the community with access to adequate sanitation facilities (latrines, toilets) meeting Sphere minimum standards (1 toilet per 20 people). Used for WASH gap analysis and intervention planning.',
     `settlement_type` STRING COMMENT 'Classification of the community or settlement type. Formal camp: officially designated refugee or IDP (Internally Displaced Person) camp. Informal settlement: spontaneous or unplanned settlement. Host community: existing community hosting displaced populations. Collective center: shared facility (school, warehouse) used for temporary shelter. Transit site: temporary waypoint for displaced populations. Urban area: city or town neighborhood.. Valid values are `formal_camp|informal_settlement|host_community|collective_center|transit_site|urban_area`',
+    `community_status` STRING COMMENT 'Current lifecycle status of the community registration. Active: community is currently served by programs. Inactive: temporarily not served. Closed: community no longer exists or is no longer a target. Planned: community identified for future programming. Suspended: operations temporarily halted due to access constraints or security incidents.. Valid values are `active|inactive|closed|planned|suspended`',
     `vulnerability_category` STRING COMMENT 'Categorical classification of community vulnerability level derived from vulnerability_score. Critical: immediate life-saving assistance required. High: urgent multi-sectoral needs. Medium: moderate needs requiring monitoring. Low: stable with minimal humanitarian needs. Used for targeting and resource allocation decisions.. Valid values are `critical|high|medium|low`',
     `vulnerability_score` DECIMAL(18,2) COMMENT 'Composite vulnerability score for the community based on multi-sectoral needs assessment indicators (WASH, shelter, food security, protection, health). Higher scores indicate greater vulnerability and higher priority for humanitarian assistance. Scoring methodology aligns with agency-specific vulnerability assessment frameworks.',
     `water_access_flag` BOOLEAN COMMENT 'Indicates whether the community has adequate access to safe water sources according to Sphere minimum standards (15 liters per person per day within 500 meters). True if adequate access exists, False otherwise. Used for WASH (Water Sanitation and Hygiene) needs prioritization.',
@@ -764,8 +757,8 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` (
     `registrant_id` BIGINT COMMENT 'Foreign key linking to the beneficiary registrant receiving services from the volunteer',
     `staff_member_id` BIGINT COMMENT 'Identifier of the program coordinator or case manager who made this volunteer-beneficiary assignment.',
     `volunteer_id` BIGINT COMMENT 'Foreign key linking to the volunteer providing services to the beneficiary',
-    `assignment_date` DATE COMMENT 'The date when this volunteer was formally assigned to this beneficiary by program coordination staff.',
     `case_load_priority` STRING COMMENT 'Priority level of this beneficiary within the volunteers caseload. Explicitly identified in detection reasoning as relationship data.',
+    `service_assignment_date` DATE COMMENT 'The date when this volunteer was formally assigned to this beneficiary by program coordination staff.',
     `end_date` DATE COMMENT 'The date when the volunteer stopped or is scheduled to stop providing services to this beneficiary. Null indicates ongoing service. Explicitly identified in detection reasoning as relationship data.',
     `frequency` STRING COMMENT 'How frequently the volunteer provides services to this beneficiary. Explicitly identified in detection reasoning as relationship data.',
     `location` STRING COMMENT 'The location where services are delivered (community center, home visit, health post, etc.). Explicitly identified in detection reasoning as relationship data.',
@@ -782,14 +775,14 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignm
     `household_id` BIGINT COMMENT 'Foreign key linking to the household receiving volunteer services',
     `service_assignment_id` BIGINT COMMENT 'Unique system-generated identifier for the household-volunteer assignment record. Primary key.',
     `volunteer_id` BIGINT COMMENT 'Foreign key linking to the volunteer assigned to provide services',
-    `assignment_date` DATE COMMENT 'Calendar date when the volunteer was formally assigned to this household for service delivery. Marks the beginning of the assignment relationship.',
-    `assignment_end_date` DATE COMMENT 'Calendar date when the assignment was formally ended or closed. Null for active assignments. Used for historical tracking and volunteer engagement reporting.',
-    `assignment_status` STRING COMMENT 'Current lifecycle state of the volunteer-household assignment. Active indicates ongoing service delivery, Suspended indicates temporary pause, Completed indicates assignment ended successfully, Transferred indicates household reassigned to another volunteer.',
-    `assignment_type` STRING COMMENT 'Classification of the service delivery type for this assignment. Defines the primary program area or service category the volunteer provides to the household.',
+    `household_volunteer_assignment_date` DATE COMMENT 'Calendar date when the volunteer was formally assigned to this household for service delivery. Marks the beginning of the assignment relationship.',
+    `end_date` DATE COMMENT 'Calendar date when the assignment was formally ended or closed. Null for active assignments. Used for historical tracking and volunteer engagement reporting.',
     `geographic_area` STRING COMMENT 'Geographic zone, sector, or catchment area identifier for this assignment. Used to group households by volunteer service area for workload balancing and geographic coverage planning.',
     `last_visit_date` DATE COMMENT 'Calendar date of the most recent visit by this volunteer to this household. Updated after each completed visit for monitoring and follow-up scheduling.',
     `next_visit_date` DATE COMMENT 'Calendar date of the next scheduled visit by this volunteer to this household. Used for volunteer scheduling and workload planning.',
     `notes` STRING COMMENT 'Free-text field for capturing assignment-specific notes, special instructions, household preferences, or contextual information relevant to service delivery.',
+    `household_volunteer_assignment_status` STRING COMMENT 'Current lifecycle state of the volunteer-household assignment. Active indicates ongoing service delivery, Suspended indicates temporary pause, Completed indicates assignment ended successfully, Transferred indicates household reassigned to another volunteer.',
+    `household_volunteer_assignment_type` STRING COMMENT 'Classification of the service delivery type for this assignment. Defines the primary program area or service category the volunteer provides to the household.',
     `visit_frequency` STRING COMMENT 'Expected frequency of volunteer visits to the household based on program requirements and household needs assessment.',
     CONSTRAINT pk_household_volunteer_assignment PRIMARY KEY(`household_volunteer_assignment_id`)
 ) COMMENT 'This association product represents the assignment relationship between households and volunteers in community-based service delivery programs. It captures the operational assignment of volunteers to specific households for ongoing service delivery, visit tracking, and workload management. Each record links one household to one volunteer with attributes that track assignment lifecycle, visit schedules, and service delivery context.. Existence Justification: In community-based humanitarian service delivery, volunteers are operationally assigned to multiple households within their geographic catchment area (a community health worker may serve 20-30 households), and households receive services from multiple volunteers over time across different program areas (health, nutrition, protection, livelihoods). The assignment relationship is actively managed by program coordinators who create assignments, track visit schedules, monitor service delivery, and reassign households based on volunteer availability and workload balancing.';
@@ -797,220 +790,60 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignm
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` (
     `community_intervention_id` BIGINT COMMENT 'Unique identifier for this specific community-intervention implementation record',
     `community_id` BIGINT COMMENT 'Foreign key linking to the community where this intervention is being implemented',
-    `partner_org_id` BIGINT COMMENT 'Partner organization leading the community intervention.',
-    `community_partner_org_id` BIGINT COMMENT 'FK to the implementing partner organization responsible for this intervention.',
-    `staff_member_id` BIGINT COMMENT 'Staff member facilitating the intervention.',
+    `award_id` BIGINT COMMENT 'add column grant_award_id (BIGINT) with FK to grant.award.award_id - community interventions are funded by grants and this financial traceability link is missing',
     `intervention_id` BIGINT COMMENT 'Foreign key linking to the intervention being implemented in this community',
-    `actual_expenditure_amount` DECIMAL(18,2) COMMENT 'Actual expenditure on the intervention.',
-    `admin1_pcode` STRING COMMENT 'Admin level 1 place code (p-code) for geographic reporting.',
-    `admin2_pcode` STRING COMMENT 'Admin level 2 place code (p-code) for geographic reporting.',
-    `beneficiary_feedback_score` DECIMAL(18,2) COMMENT 'Average beneficiary satisfaction or feedback score for this community intervention.',
-    `budget_allocated` STRING COMMENT 'Attribute capturing the budget allocated information for the community intervention entity.',
-    `budget_amount` DECIMAL(18,2) COMMENT 'Budget allocated to the intervention.',
-    `budget_spent` DECIMAL(18,2) COMMENT 'Total budget spent to date on this community intervention.',
-    `children_reached_count` STRING COMMENT 'Number of children (under 18) reached by this community intervention.',
-    `cluster_sector` STRING COMMENT 'Humanitarian cluster or sector under which this intervention is coordinated (e.g., WASH, Protection, Nutrition).',
-    `community_participation_rate` DECIMAL(18,2) COMMENT 'Community participation rate as a percentage.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the created event occurred for this community intervention.',
-    `currency_code` STRING COMMENT 'Standardized code representing the currency classification or category.',
-    `data_collection_method` STRING COMMENT 'Attribute capturing the data collection method information for the community intervention entity.',
-    `delivery_modality` STRING COMMENT 'Modality of intervention delivery (e.g., in-kind, cash, voucher, service).',
-    `disability_inclusive_flag` BOOLEAN COMMENT 'Whether the intervention is designed to be inclusive of persons with disabilities.',
     `end_date` DATE COMMENT 'Date when intervention activities concluded or are planned to conclude in this specific community. Explicitly identified in detection phase as relationship data.',
-    `expenditure_to_date` DATE COMMENT 'Total expenditure incurred to date for this community intervention.',
-    `female_reached_count` STRING COMMENT 'Number of female individuals reached by this community intervention.',
-    `frequency` STRING COMMENT 'Frequency of the intervention delivery (e.g., one-time, weekly, monthly).',
     `geographic_coverage_type` STRING COMMENT 'Classification of how the intervention covers this community. Explicitly identified in detection phase as relationship data. Full community: all households eligible; Partial - targeted households: specific vulnerability-based targeting; Partial - geographic zone: specific neighborhoods/sectors; Pilot: test implementation.',
     `implementation_status` STRING COMMENT 'Current status of intervention implementation in this specific community. Explicitly identified in detection phase as relationship data. Values: Planned (not yet started), Active (ongoing), Suspended (temporarily halted), Completed (activities finished), Closed (administratively closed).',
-    `implementing_partner_name` STRING COMMENT 'Name of the implementing partner organization delivering the intervention in the community.',
-    `intervention_theme` STRING COMMENT 'Thematic sector of the community intervention.',
-    `intervention_type` STRING COMMENT 'Type of community intervention (e.g., WASH, nutrition, livelihoods, protection, education).',
-    `is_protection_mainstreamed` BOOLEAN COMMENT 'Whether protection mainstreaming principles are integrated into this intervention.',
-    `lead_partner_name` STRING COMMENT 'Name of the lead implementing partner for this community intervention.',
-    `male_reached_count` STRING COMMENT 'Number of male individuals reached by this community intervention.',
-    `modality` STRING COMMENT 'Attribute capturing the modality information for the community intervention entity.',
-    `modified_timestamp` TIMESTAMP COMMENT 'Date and time when the modified event occurred for this community intervention.',
-    `monitoring_frequency` STRING COMMENT 'Frequency of monitoring visits for this intervention (e.g., weekly, bi-weekly, monthly).',
-    `monitoring_visit_count` STRING COMMENT 'Number of monitoring visits conducted.',
-    `notes` STRING COMMENT 'Attribute capturing the notes information for the community intervention entity.',
-    `outcome_summary` STRING COMMENT 'Narrative summary of intervention outcomes.',
     `reached_household_count` STRING COMMENT 'Actual number of households reached by this intervention in this specific community. Explicitly identified in detection phase as relationship data. Used for coverage calculation and donor reporting.',
-    `reached_individual_count` STRING COMMENT 'Count or number of reached individual items associated with this record.',
-    `sector_code` STRING COMMENT 'Standardized code representing the sector classification or category.',
-    `session_count` STRING COMMENT 'Number of sessions or activities delivered.',
     `start_date` DATE COMMENT 'Date when intervention activities commenced in this specific community. Explicitly identified in detection phase as relationship data.',
     `target_household_count` STRING COMMENT 'Number of households this intervention aims to reach in this specific community. Explicitly identified in detection phase as relationship data.',
-    `target_individual_count` STRING COMMENT 'Count or number of target individual items associated with this record.',
-    `three_w_reported_flag` BOOLEAN COMMENT 'Boolean flag indicating whether the three w reported condition applies.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this community intervention record was last updated.',
-    `verification_status` STRING COMMENT 'Current status indicator for the verification workflow state.',
     CONSTRAINT pk_community_intervention PRIMARY KEY(`community_intervention_id`)
-) COMMENT 'Links a community-level humanitarian intervention (WASH, nutrition, protection, livelihoods) to beneficiary communities. Tracks household reach against targets for community-based programming. Supports OCHA 3W reporting at community level. Source systems: eTools, Kobo Toolbox, partner reports.';
+) COMMENT 'This association product represents the implementation relationship between a community and an intervention. It captures the operational deployment of a humanitarian or development intervention to a specific community, including implementation timeline, household targeting and reach metrics, coverage status, and geographic implementation type. Each record links one community to one intervention with attributes that exist only in the context of this specific implementation deployment.. Existence Justification: In humanitarian operations, one intervention is routinely deployed across multiple communities (multi-site implementation is standard for area-based programming), and one community simultaneously receives multiple interventions from different sectors (integrated programming is a core humanitarian principle - e.g., a refugee camp receives WASH, health, nutrition, and education interventions concurrently). NGOs actively manage these implementation relationships as operational entities, tracking start/end dates, household targeting vs. reach, and coverage status for each community-intervention pairing to support geographic reporting, cluster coordination (3W reporting), and community-level program monitoring required by humanitarian coordination mechanisms.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` (
-    `enrollment_id` BIGINT COMMENT 'Primary key for enrollment',
-    `component_id` BIGINT COMMENT 'FK to program component',
-    `financial_service_provider_id` BIGINT COMMENT 'FK to the financial service provider for CVA delivery.',
-    `registrant_id` BIGINT COMMENT 'FK to registrant',
-    `staff_member_id` BIGINT COMMENT 'FK to staff member',
-    `attendance_rate` DECIMAL(18,2) COMMENT 'Attendance rate percentage',
-    `completion_date` DATE COMMENT 'Date enrollment was completed',
-    `consent_for_component` BOOLEAN COMMENT 'Whether consent was given for this component',
-    `created_at` TIMESTAMP COMMENT 'Record creation timestamp',
-    `cva_transfer_modality` STRING COMMENT 'Cash and Voucher Assistance transfer modality for this enrollment: cash, voucher, in-kind, hybrid.',
-    `enrollment_date` DATE COMMENT 'Date of enrollment',
-    `enrollment_status` STRING COMMENT 'Current status of enrollment',
-    `exit_reason` STRING COMMENT 'Reason for exiting enrollment',
-    `location` STRING COMMENT 'Location of enrollment',
-    `referral_source` STRING COMMENT 'Source of referral',
-    `service_delivery_modality` STRING COMMENT 'Modality of service delivery',
-    `updated_at` TIMESTAMP COMMENT 'Record last update timestamp',
+    `enrollment_id` BIGINT COMMENT 'Unique identifier for this enrollment record. Primary key for the enrollment association.',
+    `component_id` BIGINT COMMENT 'Foreign key to program.component. Identifies the program component in which the beneficiary is enrolled.',
+    `award_id` BIGINT COMMENT 'add column grant_award_id (BIGINT) with FK to grant.award.award_id - beneficiary enrollments into program components are funded by specific grants',
+    `registrant_id` BIGINT COMMENT 'Foreign key linking to the beneficiary registrant participating in this component enrollment',
+    `staff_member_id` BIGINT COMMENT 'Identifier of the NGO staff member or partner organization staff who processed this enrollment. Used for accountability, quality assurance, and workload tracking.',
+    `program_id` BIGINT COMMENT '',
+    `attendance_rate` DECIMAL(18,2) COMMENT 'Percentage of scheduled component activities or sessions that the registrant attended. Calculated as (sessions_attended / sessions_scheduled) * 100. Used for engagement monitoring, outcome correlation analysis, and donor reporting on program participation quality. Explicitly identified in detection phase.',
+    `completion_date` DATE COMMENT 'The date on which the registrant completed or exited this component enrollment. Null for active enrollments. Used for outcome tracking, retention analysis, and donor reporting on program completion rates. Explicitly identified in detection phase.',
+    `consent_for_component` BOOLEAN COMMENT 'Indicates whether the registrant (or guardian) provided informed consent specifically for participation in this component. Some components (e.g., health screening, psychosocial support) require additional consent beyond general registration consent.',
+    `created_at` TIMESTAMP COMMENT 'System timestamp when this enrollment record was created in the database. Used for audit trail and data lineage.',
+    `enrollment_date` DATE COMMENT 'The date on which the registrant was formally enrolled into this program component. Used for cohort analysis, eligibility determination, and donor reporting on enrollment timelines. Explicitly identified in detection phase as enrollment_date.',
+    `exit_reason` STRING COMMENT 'Classification of the reason for enrollment termination or exit. Used for attrition analysis, program improvement, and donor reporting on retention and completion. Values include: completed (successfully finished), relocated (moved out of service area), deceased, ineligible (no longer meets criteria), voluntary-withdrawal, lost-to-follow-up, program-closure, other. Null for active enrollments. Explicitly identified in detection phase.',
+    `location` STRING COMMENT 'Geographic location (site, camp, community, district) where this enrollment was processed. Used for geographic disaggregation in MEL reporting and operational planning.',
+    `referral_source` STRING COMMENT 'Source of referral into this component enrollment (self-referral, community health worker, partner organization, internal program referral, vulnerability assessment). Used for referral pathway analysis and partnership coordination.',
+    `service_delivery_modality` STRING COMMENT 'The method or channel through which this components services are delivered to the registrant. Distinguishes in-person group sessions, mobile outreach, remote/digital delivery, hybrid approaches, cash transfers, vouchers, or direct provision of goods/services. Critical for modality-disaggregated MEL reporting required by donors. Explicitly identified in detection phase.',
+    `enrollment_status` STRING COMMENT 'Current lifecycle status of this enrollment record. Controls eligibility for component-specific services and activities. Values: enrolled (registered but not yet active), active (currently participating), suspended (temporarily paused), completed (successfully finished component), withdrawn (voluntarily left), exited (administratively removed). Explicitly identified in detection phase as enrollment_status.',
+    `updated_at` TIMESTAMP COMMENT 'System timestamp when this enrollment record was last modified. Used for audit trail and change tracking.',
     CONSTRAINT pk_enrollment PRIMARY KEY(`enrollment_id`)
-) COMMENT 'Tracks beneficiary enrollment into program components';
+) COMMENT 'This association product represents the enrollment relationship between a registrant and a program component. It captures the operational record of a beneficiarys participation in a specific component of a program intervention, including enrollment lifecycle, service delivery tracking, and component-specific outcome data required for donor reporting and MEL frameworks. Each record links one registrant to one component with attributes that exist only in the context of this enrollment relationship.. Existence Justification: In NGO operations, a single beneficiary registrant participates in multiple program components simultaneously or over time (e.g., a child receives nutrition screening, education support, and WASH services as separate component enrollments). Conversely, each program component serves multiple registrants. The enrollment relationship is actively managed by program staff who track enrollment dates, participation status, attendance, service delivery modality, and exit reasons for each registrant-component pairing. This enrollment data is essential for component-level reach reporting, disaggregated MEL indicators, and donor logframe reporting.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` (
     `entitlement_id` BIGINT COMMENT 'Unique surrogate identifier for each beneficiary-commodity entitlement record',
     `commodity_id` BIGINT COMMENT 'Foreign key linking to the humanitarian commodity that the beneficiary is entitled to receive',
-    `constituent_id` BIGINT COMMENT 'Identifier of the donor funding this specific entitlement, if donor-restricted commodities are involved. Used for donor reporting and compliance with donor-imposed restrictions on commodity use.',
-    `user_account_id` BIGINT COMMENT 'Identifier of the system user who most recently modified this entitlement record. Used for accountability and audit purposes.',
-    `entitlement_user_account_id` BIGINT COMMENT 'Identifier of the system user or program officer who created this entitlement record. Used for accountability and audit purposes.',
-    `financial_service_provider_id` BIGINT COMMENT 'FK to the Financial Service Provider used for CVA delivery.',
+    `user_account_id` BIGINT COMMENT 'Identifier of the system user or program officer who created this entitlement record. Used for accountability and audit purposes.',
+    `entitlement_last_modified_by_user_user_account_id` BIGINT COMMENT 'Identifier of the system user who most recently modified this entitlement record. Used for accountability and audit purposes.',
     `intervention_id` BIGINT COMMENT 'Identifier of the humanitarian program or intervention under which this entitlement is granted (e.g., General Food Distribution, Blanket Supplementary Feeding, Emergency NFI Distribution). Links entitlement to funding source and program reporting.',
-    `minimum_expenditure_basket_id` BIGINT COMMENT 'FK to the Minimum Expenditure Basket used to calculate this entitlement amount.',
     `registrant_id` BIGINT COMMENT 'Foreign key linking to the beneficiary registrant who holds this commodity entitlement',
+    `approving_user_account_id` BIGINT COMMENT '',
     `created_date` TIMESTAMP COMMENT 'Timestamp when this entitlement record was created in the system. Used for audit trail and entitlement history tracking.',
-    `cva_transfer_modality` STRING COMMENT 'Transfer modality for this entitlement: cash, voucher, in-kind, hybrid.',
     `end_date` DATE COMMENT 'The date on which this entitlement expires or is scheduled to end. Null indicates ongoing entitlement subject to program continuation. Used for entitlement lifecycle management and program phase-out planning.',
-    `entitlement_status` STRING COMMENT 'Current lifecycle status of this entitlement record. Controls whether the beneficiary is currently eligible to receive this commodity in distribution operations.',
     `frequency` STRING COMMENT 'The frequency at which the beneficiary is entitled to receive this commodity (e.g., monthly food ration, one-time NFI kit, weekly fresh food distribution). Drives distribution cycle planning.',
     `last_modified_date` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this entitlement record. Used for change tracking and synchronization.',
     `quantity` DECIMAL(18,2) COMMENT 'The quantity of the commodity that the beneficiary is entitled to receive per distribution cycle, expressed in the commoditys standard unit of measure. Used for ration calculation and distribution planning.',
     `special_dietary_requirement` STRING COMMENT 'Free-text description of any special dietary requirements, restrictions, or substitutions applicable to this beneficiary-commodity entitlement (e.g., halal, kosher, allergen-free, therapeutic food for MAM/SAM cases). Used for commodity substitution and specialized ration planning.',
     `start_date` DATE COMMENT 'The date from which this entitlement becomes active and the beneficiary is eligible to receive the commodity. Used for entitlement verification and distribution eligibility checks.',
-    `transfer_modality` STRING COMMENT 'CVA transfer modality: cash / voucher / in-kind / hybrid',
+    `entitlement_status` STRING COMMENT 'Current lifecycle status of this entitlement record. Controls whether the beneficiary is currently eligible to receive this commodity in distribution operations.',
     `vulnerability_based_adjustment` DECIMAL(18,2) COMMENT 'Multiplier or adjustment factor applied to the base entitlement quantity based on the beneficiarys vulnerability category, protection status, or special needs (e.g., 1.5x for pregnant/lactating women, 2.0x for severely malnourished children). Applied during ration calculation.',
     CONSTRAINT pk_entitlement PRIMARY KEY(`entitlement_id`)
 ) COMMENT 'This association product represents the entitlement relationship between registrant and commodity. It captures the humanitarian assistance entitlement rules that define which commodities each beneficiary is entitled to receive, in what quantities, at what frequency, and for what duration. Each record links one registrant to one commodity with entitlement-specific parameters including quantity per distribution cycle, distribution frequency, entitlement validity period, vulnerability-based adjustments, and special dietary requirements. This is the operational SSOT for ration planning, distribution planning, and beneficiary entitlement verification in food security and NFI distribution programs.. Existence Justification: In humanitarian operations, beneficiaries are entitled to receive multiple commodities simultaneously as part of their assistance package (e.g., a monthly food basket includes rice, oil, beans, salt, and a household receives multiple NFI items like blankets, jerry cans, soap). Each commodity is entitled to thousands of beneficiaries across the program. The entitlement relationship is an operational business entity actively managed by program officers, carrying specific data about quantity per distribution cycle, frequency, validity period, vulnerability-based adjustments, and special dietary requirements that belong to neither the beneficiary nor the commodity alone.';
 
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` (
-    `cva_transfer_id` BIGINT COMMENT 'Unique identifier for the cva transfer record.',
-    `financial_service_provider_id` BIGINT COMMENT 'Financial service provider',
-    `household_id` BIGINT COMMENT 'Reference identifier linking to the associated household entity.',
-    `intervention_id` BIGINT COMMENT 'Program intervention',
-    `registrant_id` BIGINT COMMENT 'Beneficiary',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the created event occurred for this cva transfer.',
-    `currency_code` STRING COMMENT 'Standardized code representing the currency classification or category.',
-    `delivery_mechanism` STRING COMMENT 'Delivery mechanism (mobile money, ATM, etc.)',
-    `reconciliation_status` STRING COMMENT 'Current status indicator for the reconciliation workflow state.',
-    `cva_transfer_status` STRING COMMENT 'Current status indicator for the cva transfer workflow state.',
-    `transfer_amount` DECIMAL(18,2) COMMENT 'Numeric value representing the transfer quantity or measurement.',
-    `transfer_date` DATE COMMENT 'Date of transfer',
-    `transfer_modality` STRING COMMENT 'Transfer modality enum: cash / voucher / in-kind / hybrid',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the updated event occurred for this cva transfer.',
-    CONSTRAINT pk_cva_transfer PRIMARY KEY(`cva_transfer_id`)
-) COMMENT 'Cash and Voucher Assistance transfer to beneficiary';
-
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` (
-    `financial_service_provider_id` BIGINT COMMENT 'Unique identifier for the financial service provider record.',
-    `country_id` BIGINT COMMENT 'Operating country',
-    `contract_end_date` DATE COMMENT 'Contract end',
-    `contract_start_date` DATE COMMENT 'Contract start',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the created event occurred for this financial service provider.',
-    `fsp_name` STRING COMMENT 'Human-readable name or label for the fsp.',
-    `fsp_type` STRING COMMENT 'Type (mobile money, bank, card network, voucher platform)',
-    `financial_service_provider_status` STRING COMMENT 'Current status indicator for the financial service provider workflow state.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the updated event occurred for this financial service provider.',
-    CONSTRAINT pk_financial_service_provider PRIMARY KEY(`financial_service_provider_id`)
-) COMMENT 'Financial Service Provider for CVA (e.g., M-Pesa, RedRose, ATM card networks)';
-
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` (
-    `minimum_expenditure_basket_id` BIGINT COMMENT 'Unique identifier for the minimum expenditure basket record.',
-    `country_id` BIGINT COMMENT 'Reference identifier linking to the associated country entity.',
-    `intervention_id` BIGINT COMMENT 'Reference identifier linking to the associated intervention entity.',
-    `calculation_method` STRING COMMENT 'Attribute capturing the calculation method information for the minimum expenditure basket entity.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the created event occurred for this minimum expenditure basket.',
-    `currency_code` STRING COMMENT 'Standardized code representing the currency classification or category.',
-    `data_source` STRING COMMENT 'Attribute capturing the data source information for the minimum expenditure basket entity.',
-    `effective_date` DATE COMMENT 'Date and time when the effective event occurred for this minimum expenditure basket.',
-    `food_component_amount` DECIMAL(18,2) COMMENT 'Food component',
-    `household_size_assumption` STRING COMMENT 'Attribute capturing the household size assumption information for the minimum expenditure basket entity.',
-    `household_size_basis` STRING COMMENT 'Household size basis for calculation',
-    `is_active` BOOLEAN COMMENT 'Boolean indicator specifying whether the record active.',
-    `location_code` STRING COMMENT 'Standardized code representing the location classification or category.',
-    `meb_amount` DECIMAL(18,2) COMMENT 'MEB amount per household',
-    `meb_code` STRING COMMENT 'Standardized code representing the meb classification or category.',
-    `meb_name` STRING COMMENT 'Human-readable name or label for the meb.',
-    `meb_value_amount` DECIMAL(18,2) COMMENT 'Numeric value representing the meb value quantity or measurement.',
-    `nonfood_component_amount` DECIMAL(18,2) COMMENT 'Non-food component',
-    `minimum_expenditure_basket_status` STRING COMMENT 'Current status indicator for the minimum expenditure basket workflow state.',
-    `survival_meb_value_amount` DECIMAL(18,2) COMMENT 'Numeric value representing the survival meb value quantity or measurement.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the updated event occurred for this minimum expenditure basket.',
-    `valid_from_date` DATE COMMENT 'Date and time when the valid from event occurred for this minimum expenditure basket.',
-    `valid_to_date` DATE COMMENT 'Date and time when the valid to event occurred for this minimum expenditure basket.',
-    CONSTRAINT pk_minimum_expenditure_basket PRIMARY KEY(`minimum_expenditure_basket_id`)
-) COMMENT 'Minimum Expenditure Basket (MEB) reference table for Cash and Voucher Assistance.';
-
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` (
-    `end_user_verification_id` BIGINT COMMENT 'Unique identifier for the end user verification record.',
-    `cva_transfer_id` BIGINT COMMENT 'Transfer verified',
-    `entitlement_id` BIGINT COMMENT 'Reference identifier linking to the associated entitlement entity.',
-    `field_financial_service_provider_id` BIGINT COMMENT 'Reference identifier linking to the associated financial service provider entity.',
-    `household_id` BIGINT COMMENT 'Reference identifier linking to the associated household entity.',
-    `minimum_expenditure_basket_id` BIGINT COMMENT 'Reference identifier linking to the associated minimum expenditure basket entity.',
-    `registrant_id` BIGINT COMMENT 'Beneficiary verified',
-    `staff_member_id` BIGINT COMMENT 'Reference identifier linking to the associated staff member entity.',
-    `amount_received_confirmed` STRING COMMENT 'Amount confirmed received',
-    `beneficiary_name` STRING COMMENT 'End-user beneficiary name',
-    `beneficiary_phone` STRING COMMENT 'Attribute capturing the beneficiary phone information for the end user verification entity.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the created event occurred for this end user verification.',
-    `discrepancy_flag` BOOLEAN COMMENT 'Whether discrepancy found',
-    `grievance_raised_flag` BOOLEAN COMMENT 'Boolean flag indicating whether the grievance raised condition applies.',
-    `national_id_number` STRING COMMENT 'Count or number of national id items associated with this record.',
-    `notes` STRING COMMENT 'Attribute capturing the notes information for the end user verification entity.',
-    `end_user_verification_status` STRING COMMENT 'Current status indicator for the end user verification workflow state.',
-    `transfer_modality` STRING COMMENT 'Attribute capturing the transfer modality information for the end user verification entity.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the updated event occurred for this end user verification.',
-    `verification_code` STRING COMMENT 'Standardized code representing the verification classification or category.',
-    `verification_date` DATE COMMENT 'Date of verification',
-    `verification_method` STRING COMMENT 'Method (phone, in-person, digital)',
-    `verification_status` STRING COMMENT 'Current status indicator for the verification workflow state.',
-    `verified_amount` DECIMAL(18,2) COMMENT 'Numeric value representing the verified quantity or measurement.',
-    `verified_flag` BOOLEAN COMMENT 'Boolean flag indicating whether the verified condition applies.',
-    CONSTRAINT pk_end_user_verification PRIMARY KEY(`end_user_verification_id`)
-) COMMENT 'End-user verification records for CVA transfers to beneficiaries.';
-
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` (
-    `needs_assessment_id` BIGINT COMMENT 'Primary key for needs_assessment',
-    `commodity_id` BIGINT COMMENT 'Foreign key linking to supply.commodity. Business justification: Needs assessments identify specific commodity requirements (NFI kits, food baskets, WASH items, shelter materials) for beneficiaries. Essential for humanitarian needs-based procurement planning and Sp',
-    `community_engagement_event_id` BIGINT COMMENT 'Foreign key linking to communication.community_engagement_event. Business justification: Needs assessments are frequently conducted during community engagement events (focus group discussions, community consultations, participatory assessments). Links assessment data to the event context,',
-    `community_id` BIGINT COMMENT 'Reference to the community or settlement unit that is the subject of this assessment when assessment_level is community. Nullable when assessment_level is individual or household.',
-    `data_collection_tool_id` BIGINT COMMENT 'The unique identifier of the data collection instrument used to conduct this assessment. For KoboToolbox, this is the form UID (e.g., aXmK3p9QrT). For CommCare, this is the module ID. Enables traceability back to the specific questionnaire version and supports data quality audits.',
-    `volunteer_id` BIGINT COMMENT 'Foreign key linking to volunteer.volunteer. Business justification: Volunteers conduct needs assessments in many NGO operations (household surveys, vulnerability assessments, rapid assessments). Standard practice for community-based data collection. Required for track',
-    `household_id` BIGINT COMMENT 'Reference to the household unit that is the subject of this assessment when assessment_level is household. Nullable when assessment_level is individual or community.',
-    `intervention_id` BIGINT COMMENT 'Reference to the humanitarian or development program under which this needs assessment was commissioned. Links the assessment to the programs Theory of Change (ToC) and LogFrame targeting criteria.',
-    `partner_org_id` BIGINT COMMENT 'Foreign key linking to partnership.partner_org. Business justification: Partners conduct needs assessments in their operational areas under consortium or sub-award arrangements. Tracking the assessing partner is required for data quality oversight, capacity assessment val',
-    `staff_member_id` BIGINT COMMENT 'Reference to the staff member or volunteer who conducted the field assessment. Used for quality assurance, inter-rater reliability checks, and enumerator performance monitoring.',
-    `registrant_id` BIGINT COMMENT 'Reference to the individual beneficiary (IDP, PoC, GBV survivor, or other target population member) who is the subject of this assessment when assessment_level is individual. Nullable when assessment_level is household or community.',
-    `assessment_date` DATE COMMENT 'The calendar date on which the needs assessment was physically conducted in the field. This is the principal real-world event date, distinct from the record submission or validation timestamps. Used for temporal targeting analysis and periodic reassessment scheduling.',
-    `assessment_reference_code` STRING COMMENT 'Externally-known alphanumeric reference code assigned to this needs assessment, used in field reports, SitReps, and donor communications. Format: NA-{COUNTRY}-{YEAR}-{SEQUENCE}. Sourced from KoboToolbox or CommCare submission ID.. Valid values are `^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$`',
-    `assessment_status` STRING COMMENT 'Current workflow lifecycle state of the needs assessment record. draft indicates field data entry in progress; submitted indicates enumerator submission pending review; validated indicates supervisor-approved and usable for targeting; rejected indicates data quality failure requiring re-assessment.. Valid values are `draft|submitted|under_review|validated|rejected|archived`',
-    `assessment_type` STRING COMMENT 'Classification of the assessments purpose and methodology. initial_registration is conducted at first beneficiary contact; periodic_reassessment is a scheduled follow-up to update vulnerability status; post_crisis_rapid is an emergency rapid assessment following a shock event; sector_specific_deep is an in-depth assessment for a single sector (e.g., nutrition MUAC screening, WASH facility survey).. Valid values are `initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep`',
-    `consent_type` STRING COMMENT 'The form of informed consent obtained. verbal is spoken consent recorded by enumerator; written is signed consent form; proxy is consent given by a guardian or community leader on behalf of a vulnerable individual (e.g., child, person with disability). Relevant for legal compliance and data protection audits.. Valid values are `verbal|written|proxy`',
-    `country_code` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the country where the assessment was conducted (e.g., SOM, SSD, HTI). Used for IATI reporting, donor country-level aggregation, and cross-country comparative analysis.. Valid values are `^[A-Z]{3}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this needs assessment record was first created in the data platform (Silver layer ingestion timestamp). Distinct from assessment_date (field event date). Used for data pipeline monitoring and audit trail compliance.',
-    `displacement_status` STRING COMMENT 'The displacement classification of the assessed individual or household at the time of assessment. idp = Internally Displaced Person (IDP); refugee = person with international protection status; returnee = person returning to place of origin; host_community = non-displaced community member hosting displaced persons. Critical for UNHCR/OCHA population movement tracking.. Valid values are `idp|refugee|returnee|host_community|stateless|non_displaced`',
-    `education_score` DECIMAL(18,2) COMMENT 'Numeric score for the education sector assessment findings. Null if education was not included in sectors_assessed. Covers school access, enrollment barriers, learning environment safety, and teacher availability against SPHERE/INEE minimum standards.',
-    `livelihoods_score` DECIMAL(18,2) COMMENT 'Numeric score for the livelihoods sector assessment findings. Null if livelihoods was not included in sectors_assessed. Covers income sources, asset ownership, market access, and economic vulnerability indicators.',
-    `nutrition_score` DECIMAL(18,2) COMMENT 'Numeric score for the nutrition sector assessment findings. Null if nutrition was not included in sectors_assessed. Incorporates Global Acute Malnutrition (GAM) and Severe Acute Malnutrition (SAM) indicators where applicable. Feeds into DHIS2 nutrition indicator tracking.',
-    `overall_vulnerability_score` DECIMAL(18,2) COMMENT 'Composite numeric score representing the assessed subjects overall vulnerability level, calculated from sector-specific findings using the programs scoring methodology (e.g., 0–100 scale). Feeds into vulnerability_profile updates when the score materially changes vulnerability classification. This is a raw assessment output, not a derived KPI.',
-    `protection_score` DECIMAL(18,2) COMMENT 'Numeric score for the protection sector assessment findings. Null if protection was not included in sectors_assessed. Covers GBV risk, child protection, housing land and property rights, and documentation status. Sensitive findings are handled per GBV information management protocols.',
-    `shelter_score` DECIMAL(18,2) COMMENT 'Numeric score for the shelter sector assessment findings. Null if shelter was not included in sectors_assessed. Assessed against SPHERE minimum standards for covered living space, structural safety, and thermal comfort.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this needs assessment record was most recently modified in the data platform. Tracks post-ingestion corrections, validation status changes, and supervisor note additions. Required for Silver layer change data capture (CDC) processing.',
-    CONSTRAINT pk_needs_assessment PRIMARY KEY(`needs_assessment_id`)
-) COMMENT 'MVM-tier stub for needs_assessment; the ECM-tier superset is beneficiary_needs_assessment which contains all attributes from this product plus additional detail columns.';
-
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ADD CONSTRAINT `fk_beneficiary_registrant_deduplication_master_registrant_id` FOREIGN KEY (`deduplication_master_registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ADD CONSTRAINT `fk_beneficiary_registrant_dedup_master_registrant_id` FOREIGN KEY (`dedup_master_registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ADD CONSTRAINT `fk_beneficiary_registrant_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ADD CONSTRAINT `fk_beneficiary_household_community_id` FOREIGN KEY (`community_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`community`(`community_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ADD CONSTRAINT `fk_beneficiary_household_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
@@ -1022,7 +855,6 @@ ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ADD CONSTRAINT `
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ADD CONSTRAINT `fk_beneficiary_vulnerability_profile_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ADD CONSTRAINT `fk_beneficiary_beneficiary_needs_assessment_community_id` FOREIGN KEY (`community_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`community`(`community_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ADD CONSTRAINT `fk_beneficiary_beneficiary_needs_assessment_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ADD CONSTRAINT `fk_beneficiary_beneficiary_needs_assessment_needs_assessment_id` FOREIGN KEY (`needs_assessment_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`needs_assessment`(`needs_assessment_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ADD CONSTRAINT `fk_beneficiary_beneficiary_needs_assessment_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ADD CONSTRAINT `fk_beneficiary_consent_record_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ADD CONSTRAINT `fk_beneficiary_case_record_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
@@ -1044,1824 +876,1216 @@ ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ADD CONSTRAINT `fk_
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ADD CONSTRAINT `fk_beneficiary_household_volunteer_assignment_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ADD CONSTRAINT `fk_beneficiary_household_volunteer_assignment_service_assignment_id` FOREIGN KEY (`service_assignment_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`service_assignment`(`service_assignment_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ADD CONSTRAINT `fk_beneficiary_community_intervention_community_id` FOREIGN KEY (`community_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`community`(`community_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ADD CONSTRAINT `fk_beneficiary_enrollment_financial_service_provider_id` FOREIGN KEY (`financial_service_provider_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`financial_service_provider`(`financial_service_provider_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ADD CONSTRAINT `fk_beneficiary_enrollment_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ADD CONSTRAINT `fk_beneficiary_entitlement_financial_service_provider_id` FOREIGN KEY (`financial_service_provider_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`financial_service_provider`(`financial_service_provider_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ADD CONSTRAINT `fk_beneficiary_entitlement_minimum_expenditure_basket_id` FOREIGN KEY (`minimum_expenditure_basket_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket`(`minimum_expenditure_basket_id`);
 ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ADD CONSTRAINT `fk_beneficiary_entitlement_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` ADD CONSTRAINT `fk_beneficiary_cva_transfer_financial_service_provider_id` FOREIGN KEY (`financial_service_provider_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`financial_service_provider`(`financial_service_provider_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` ADD CONSTRAINT `fk_beneficiary_cva_transfer_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` ADD CONSTRAINT `fk_beneficiary_cva_transfer_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ADD CONSTRAINT `fk_beneficiary_end_user_verification_cva_transfer_id` FOREIGN KEY (`cva_transfer_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`cva_transfer`(`cva_transfer_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ADD CONSTRAINT `fk_beneficiary_end_user_verification_entitlement_id` FOREIGN KEY (`entitlement_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`entitlement`(`entitlement_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ADD CONSTRAINT `fk_beneficiary_end_user_verification_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ADD CONSTRAINT `fk_beneficiary_end_user_verification_minimum_expenditure_basket_id` FOREIGN KEY (`minimum_expenditure_basket_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket`(`minimum_expenditure_basket_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ADD CONSTRAINT `fk_beneficiary_end_user_verification_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ADD CONSTRAINT `fk_beneficiary_needs_assessment_community_id` FOREIGN KEY (`community_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`community`(`community_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ADD CONSTRAINT `fk_beneficiary_needs_assessment_household_id` FOREIGN KEY (`household_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`household`(`household_id`);
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ADD CONSTRAINT `fk_beneficiary_needs_assessment_registrant_id` FOREIGN KEY (`registrant_id`) REFERENCES `vibe_ngo_v1`.`beneficiary`.`registrant`(`registrant_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_ngo_v1`.`beneficiary` SET TAGS ('pii_division' = 'business');
-ALTER SCHEMA `vibe_ngo_v1`.`beneficiary` SET TAGS ('pii_domain' = 'beneficiary');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('pii_column_comment_framework' = 'IASC + Sphere');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Registrant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_master_registrant_id` SET TAGS ('pii_business_glossary_term' = 'Deduplication Master Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_master_registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `household_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Registration Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sanctions_screening_id` SET TAGS ('pii_business_glossary_term' = 'Sanctions Screening Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Registering Staff Member ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `age_years` SET TAGS ('pii_business_glossary_term' = 'Age in Years');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `age_years` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `completeness_score` SET TAGS ('pii_business_glossary_term' = 'Registration Completeness Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_given` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Given Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_given` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_given` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_business_glossary_term' = 'Country of Origin Code (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('pii_business_glossary_term' = 'Date of Birth');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('pii_dob' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_status` SET TAGS ('pii_business_glossary_term' = 'Deduplication Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_status` SET TAGS ('pii_value_regex' = 'pending|unique|duplicate|merged|flagged');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('pii_business_glossary_term' = 'Disability Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('pii_business_glossary_term' = 'Family Name (Surname)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('pii_business_glossary_term' = 'Given Name (First Name)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('pii_business_glossary_term' = 'Disability Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Survivor Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('pii_business_glossary_term' = 'Pregnant or Lactating Woman (PLW) Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('pii_business_glossary_term' = 'Unaccompanied Minor Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `last_verification_date` SET TAGS ('pii_business_glossary_term' = 'Last Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_business_glossary_term' = 'Nationality Code (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `poc_category` SET TAGS ('pii_business_glossary_term' = 'Person of Concern (PoC) Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `poc_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `poc_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('pii_business_glossary_term' = 'Preferred Language Code (ISO 639)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('pii_value_regex' = '^[a-z]{2,3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('pii_business_glossary_term' = 'Protection Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `re_registration_count` SET TAGS ('pii_business_glossary_term' = 'Re-Registration Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `re_registration_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_date` SET TAGS ('pii_business_glossary_term' = 'Registration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_modality` SET TAGS ('pii_business_glossary_term' = 'Registration Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_modality` SET TAGS ('pii_value_regex' = 'in_person|mobile|remote|self_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_modality` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_source_system` SET TAGS ('pii_business_glossary_term' = 'Registration Source System');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_source_system` SET TAGS ('pii_value_regex' = 'commcare|kobotoolbox|progres_v4|wfp_scope|rais|manual');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_source_system` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_status` SET TAGS ('pii_business_glossary_term' = 'Registration Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_status` SET TAGS ('pii_value_regex' = 'active|inactive|deceased|departed|duplicate|suspended');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_tool` SET TAGS ('pii_business_glossary_term' = 'Registration Tool');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_tool` SET TAGS ('pii_value_regex' = 'kobotoolbox|commcare|paper_form|progres_v4|scope|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_tool` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_type` SET TAGS ('pii_business_glossary_term' = 'Registration Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_type` SET TAGS ('pii_value_regex' = 'individual|household_head|household_member|community');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_business_glossary_term' = 'Sex');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_value_regex' = 'male|female|other|unknown');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('pii_business_glossary_term' = 'Verification Document Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_type` SET TAGS ('pii_business_glossary_term' = 'Verification Document Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_type` SET TAGS ('pii_value_regex' = 'national_id|passport|unhcr_card|birth_certificate|community_attestation|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `household_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `community_id` SET TAGS ('pii_business_glossary_term' = 'Community / Settlement ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Programme ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Registration Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanctions_screening_id` SET TAGS ('pii_business_glossary_term' = 'Sanctions Screening Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Enumerator / Field Staff ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `warehouse_id` SET TAGS ('pii_business_glossary_term' = 'Warehouse Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Head of Household Registrant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin1_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 1 Name (Region/Province)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin1_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin1_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin2_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 2 Name (District/County)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin2_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin2_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `children_under5_count` SET TAGS ('pii_business_glossary_term' = 'Children Under 5 Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `children_under5_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `commcare_case_reference` SET TAGS ('pii_business_glossary_term' = 'CommCare Case ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `commcare_case_reference` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('pii_business_glossary_term' = 'Country of Origin (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `current_country` SET TAGS ('pii_business_glossary_term' = 'Current Country of Residence (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `current_country` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `deregistration_date` SET TAGS ('pii_business_glossary_term' = 'Household Deregistration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `deregistration_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_date` SET TAGS ('pii_business_glossary_term' = 'Displacement Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('pii_value_regex' = 'idp|refugee|returnee|host_community|stateless|asylum_seeker');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `elderly_count` SET TAGS ('pii_business_glossary_term' = 'Elderly Member Count (60+)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `exit_reason` SET TAGS ('pii_business_glossary_term' = 'Programme Exit Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `female_count` SET TAGS ('pii_business_glossary_term' = 'Female Member Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `food_security_status` SET TAGS ('pii_business_glossary_term' = 'Food Security Status (IPC Phase)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `food_security_status` SET TAGS ('pii_value_regex' = 'food_secure|mildly_insecure|moderately_insecure|severely_insecure');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `food_security_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('pii_business_glossary_term' = 'GPS Latitude Coordinate');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('pii_business_glossary_term' = 'GPS Longitude Coordinate');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_pregnant_lactating` SET TAGS ('pii_business_glossary_term' = 'Pregnant or Lactating Woman Present Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_pregnant_lactating` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_pregnant_lactating` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_unaccompanied_minor` SET TAGS ('pii_business_glossary_term' = 'Unaccompanied or Separated Child (UASC) Present Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_unaccompanied_minor` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_unaccompanied_minor` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `is_female_headed` SET TAGS ('pii_business_glossary_term' = 'Female-Headed Household Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `kobo_submission_reference` SET TAGS ('pii_business_glossary_term' = 'KoboToolbox Submission ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `last_assessment_date` SET TAGS ('pii_business_glossary_term' = 'Last Needs Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `male_count` SET TAGS ('pii_business_glossary_term' = 'Male Member Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Household Case Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `pwd_count` SET TAGS ('pii_business_glossary_term' = 'Persons with Disabilities (PWD) Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_date` SET TAGS ('pii_business_glossary_term' = 'Household Registration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_number` SET TAGS ('pii_business_glossary_term' = 'Household Registration Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_number` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_status` SET TAGS ('pii_business_glossary_term' = 'Household Registration Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_status` SET TAGS ('pii_value_regex' = 'active|suspended|closed|pending_verification|archived');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_type` SET TAGS ('pii_business_glossary_term' = 'Household Registration Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_type` SET TAGS ('pii_value_regex' = 'initial|re-registration|update|verification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanitation_facility_type` SET TAGS ('pii_business_glossary_term' = 'Sanitation Facility Type (WASH)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanitation_facility_type` SET TAGS ('pii_value_regex' = 'flush_toilet|pit_latrine|ventilated_pit|open_defecation|communal_latrine|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_ownership` SET TAGS ('pii_business_glossary_term' = 'Shelter Ownership Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_ownership` SET TAGS ('pii_value_regex' = 'owned|rented|informal|provided_by_org|communal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_type` SET TAGS ('pii_business_glossary_term' = 'Shelter Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `size` SET TAGS ('pii_business_glossary_term' = 'Household Size (Total Members)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_business_glossary_term' = 'Household Vulnerability Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Household Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `water_source_type` SET TAGS ('pii_business_glossary_term' = 'Primary Water Source Type (WASH)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('pii_business_glossary_term' = 'Household Member ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `case_record_id` SET TAGS ('pii_business_glossary_term' = 'Case ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `case_record_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Registrant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Enumerator ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_estimated` SET TAGS ('pii_business_glossary_term' = 'Age Estimated Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_estimated` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_years` SET TAGS ('pii_business_glossary_term' = 'Age in Years');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_years` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_given` SET TAGS ('pii_business_glossary_term' = 'Consent Given Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_given` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_given` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_withdrawal_date` SET TAGS ('pii_business_glossary_term' = 'Consent Withdrawal Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_withdrawal_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_withdrawal_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_business_glossary_term' = 'Country of Origin Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `data_collection_method` SET TAGS ('pii_business_glossary_term' = 'Data Collection Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `data_collection_method` SET TAGS ('pii_value_regex' = 'kobo_survey|commcare_mobile|paper_form|fgd|kii|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('pii_business_glossary_term' = 'Date of Birth');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('pii_dob' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('pii_business_glossary_term' = 'Disability Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `education_level` SET TAGS ('pii_business_glossary_term' = 'Education Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `education_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `education_level` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('pii_business_glossary_term' = 'Family Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('pii_business_glossary_term' = 'Gender Identity');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('pii_business_glossary_term' = 'Given Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_female_headed` SET TAGS ('pii_business_glossary_term' = 'Is Female-Headed Household Member Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_head_of_household` SET TAGS ('pii_business_glossary_term' = 'Is Head of Household Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_head_of_household` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `livelihood_status` SET TAGS ('pii_business_glossary_term' = 'Livelihood Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `livelihood_status` SET TAGS ('pii_value_regex' = 'employed|self_employed|unemployed|student|unable_to_work|not_applicable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `livelihood_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `member_code` SET TAGS ('pii_business_glossary_term' = 'Household Member Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `member_code` SET TAGS ('pii_value_regex' = '^HHM-[A-Z0-9]{6,12}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `member_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `member_role` SET TAGS ('pii_business_glossary_term' = 'Household Member Role');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `member_role` SET TAGS ('pii_value_regex' = 'head|spouse|child|dependent|elderly|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_date` SET TAGS ('pii_business_glossary_term' = 'Household Membership End Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_reason` SET TAGS ('pii_business_glossary_term' = 'Household Membership End Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_reason` SET TAGS ('pii_value_regex' = 'deceased|transferred_household|relocated|voluntary_exit|administrative_closure|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_start_date` SET TAGS ('pii_business_glossary_term' = 'Household Membership Start Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_status` SET TAGS ('pii_business_glossary_term' = 'Household Membership Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_status` SET TAGS ('pii_value_regex' = 'active|inactive|transferred|deceased|departed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_assessment_date` SET TAGS ('pii_business_glossary_term' = 'MUAC Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_assessment_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_assessment_date` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_business_glossary_term' = 'Nationality Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Member Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('pii_business_glossary_term' = 'Pregnant or Lactating Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('pii_business_glossary_term' = 'Primary Language Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('pii_value_regex' = '^[a-z]{2,3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_business_glossary_term' = 'Protection Concern Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_date` SET TAGS ('pii_business_glossary_term' = 'Registration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_location_code` SET TAGS ('pii_business_glossary_term' = 'Registration Location Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_location_code` SET TAGS ('pii_value_regex' = '^[A-Z]{2,3}-[A-Z0-9]{3,10}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_location_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `relationship_to_head` SET TAGS ('pii_business_glossary_term' = 'Relationship to Head of Household');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `school_enrollment_status` SET TAGS ('pii_business_glossary_term' = 'School Enrollment Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `school_enrollment_status` SET TAGS ('pii_value_regex' = 'enrolled|not_enrolled|dropout|graduated|not_applicable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `school_enrollment_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_business_glossary_term' = 'Sex');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_value_regex' = 'male|female|intersex|prefer_not_to_say');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('pii_business_glossary_term' = 'Unaccompanied Minor Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_date` SET TAGS ('pii_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_status` SET TAGS ('pii_business_glossary_term' = 'Verification Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_status` SET TAGS ('pii_value_regex' = 'unverified|pending|verified|rejected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` SET TAGS ('pii_subdomain' = 'protection_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_id` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Profile ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `household_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `previous_profile_vulnerability_profile_id` SET TAGS ('pii_business_glossary_term' = 'Previous Vulnerability Profile ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `previous_profile_vulnerability_profile_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Registrant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Assessed By Staff ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_date` SET TAGS ('pii_business_glossary_term' = 'Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_tool` SET TAGS ('pii_business_glossary_term' = 'Assessment Tool');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_tool` SET TAGS ('pii_value_regex' = 'KoboToolbox|CommCare|DHIS2|ODK|paper_based|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `children_under5_count` SET TAGS ('pii_business_glossary_term' = 'Children Under 5 Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `children_under5_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('pii_business_glossary_term' = 'Chronic Illness Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('pii_business_glossary_term' = 'Chronic Illness Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `composite_vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Composite Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `composite_vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `composite_vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_business_glossary_term' = 'Inter-Agency Data Sharing Consent Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('pii_business_glossary_term' = 'Disability Classification (Washington Group Questions)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_business_glossary_term' = 'Disability Severity Level (Washington Group Questions)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_value_regex' = 'no_difficulty|some_difficulty|a_lot_of_difficulty|cannot_do');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('pii_business_glossary_term' = 'Displacement Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('pii_value_regex' = 'IDP|refugee|returnee|stateless|asylum_seeker|host_community');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `elderly_member_flag` SET TAGS ('pii_business_glossary_term' = 'Elderly Household Member Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `female_headed_household_flag` SET TAGS ('pii_business_glossary_term' = 'Female-Headed Household Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `female_headed_household_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Exposure Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `geographic_area_code` SET TAGS ('pii_business_glossary_term' = 'Geographic Area Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `geographic_area_code` SET TAGS ('pii_value_regex' = '^[A-Z]{2,3}-[A-Z0-9]{2,10}(-[A-Z0-9]{2,10})?$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `ipc_phase` SET TAGS ('pii_business_glossary_term' = 'Integrated Food Security Phase Classification (IPC) Phase');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `livelihood_status` SET TAGS ('pii_business_glossary_term' = 'Livelihood Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `livelihood_status` SET TAGS ('pii_value_regex' = 'none|disrupted|partial|stable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `livelihood_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `next_reassessment_date` SET TAGS ('pii_business_glossary_term' = 'Next Reassessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Profile Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_business_glossary_term' = 'Nutritional Status (GAM/SAM Classification)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_value_regex' = 'SAM|MAM|normal|overweight');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('pii_business_glossary_term' = 'Pregnant or Lactating Woman (PLW) Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_code` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Profile Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_code` SET TAGS ('pii_value_regex' = '^VP-[A-Z]{2,4}-[0-9]{6,10}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Profile Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_source` SET TAGS ('pii_business_glossary_term' = 'Profile Source');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_source` SET TAGS ('pii_value_regex' = 'initial_registration|periodic_reassessment|post_distribution_monitoring|emergency_screening|referral|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_status` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Profile Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_status` SET TAGS ('pii_value_regex' = 'active|archived|pending_review|superseded|draft');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `profile_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Profile Last Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_business_glossary_term' = 'Protection Risk Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_value_regex' = 'critical|high|medium|low|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('pii_business_glossary_term' = 'Psychosocial Support (PSS) Need Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `shelter_adequacy` SET TAGS ('pii_business_glossary_term' = 'Shelter Adequacy Classification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `shelter_adequacy` SET TAGS ('pii_value_regex' = 'adequate|inadequate|none|transitional');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('pii_business_glossary_term' = 'Unaccompanied Minor Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Tier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('pii_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `wash_access_flag` SET TAGS ('pii_business_glossary_term' = 'Water Sanitation and Hygiene (WASH) Access Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_subdomain' = 'protection_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_ssot' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_ssot_scope' = 'beneficiary_individual_needs');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_ssot_owner' = 'beneficiary');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_ssot_boundary' = 'individual_needs');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_disambiguated_from' = 'mel.mel_needs_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_ecm_reconciled' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('pii_mvm_stub' = 'needs_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_id` SET TAGS ('pii_business_glossary_term' = 'Needs Assessment ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `commodity_id` SET TAGS ('pii_business_glossary_term' = 'Commodity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `community_engagement_event_id` SET TAGS ('pii_business_glossary_term' = 'Community Engagement Event Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `community_engagement_event_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `community_id` SET TAGS ('pii_business_glossary_term' = 'Community ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('pii_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_tool_id` SET TAGS ('pii_business_glossary_term' = 'Assessment Tool Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Enumerator Volunteer Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `household_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner Org Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Field Enumerator ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin1_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 1 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin1_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin1_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin2_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 2 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin2_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin2_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_date` SET TAGS ('pii_business_glossary_term' = 'Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_level` SET TAGS ('pii_business_glossary_term' = 'Assessment Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_level` SET TAGS ('pii_value_regex' = 'individual|household|community');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_location_code` SET TAGS ('pii_business_glossary_term' = 'Assessment Location Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_location_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_reference_code` SET TAGS ('pii_business_glossary_term' = 'Assessment Reference Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_reference_code` SET TAGS ('pii_value_regex' = '^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_status` SET TAGS ('pii_business_glossary_term' = 'Assessment Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_status` SET TAGS ('pii_value_regex' = 'draft|submitted|under_review|validated|rejected|archived');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_tool_version` SET TAGS ('pii_business_glossary_term' = 'Assessment Tool Version');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_type` SET TAGS ('pii_business_glossary_term' = 'Assessment Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `assessment_type` SET TAGS ('pii_value_regex' = 'initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `children_under5_count` SET TAGS ('pii_business_glossary_term' = 'Children Under 5 Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `children_under5_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_business_glossary_term' = 'Consent Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_value_regex' = 'verbal|written|proxy');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_method` SET TAGS ('pii_business_glossary_term' = 'Data Collection Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_method` SET TAGS ('pii_value_regex' = 'face_to_face|remote_phone|fgd|kii|observation|secondary_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_value_regex' = 'idp|refugee|returnee|host_community|stateless|non_displaced');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `education_score` SET TAGS ('pii_business_glossary_term' = 'Education Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `enumerator_notes` SET TAGS ('pii_business_glossary_term' = 'Field Enumerator Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `enumerator_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `female_headed_household` SET TAGS ('pii_business_glossary_term' = 'Female-Headed Household Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `female_headed_household` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `food_security_score` SET TAGS ('pii_business_glossary_term' = 'Food Security Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_business_glossary_term' = 'GPS Accuracy (Meters)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `health_score` SET TAGS ('pii_business_glossary_term' = 'Health Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `health_score` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `health_score` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `health_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'GPS Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `livelihoods_score` SET TAGS ('pii_business_glossary_term' = 'Livelihoods Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'GPS Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `mvm_migration_reference` SET TAGS ('pii_business_glossary_term' = 'MVM Migration Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `mvm_migration_reference` SET TAGS ('pii_ecm_reconciliation' = 'mvm_stub_needs_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_business_glossary_term' = 'Nutrition Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Overall Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('pii_business_glossary_term' = 'Persons with Disability Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `preferred_cva_modality` SET TAGS ('pii_business_glossary_term' = 'Preferred CVA Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `priority_ranking` SET TAGS ('pii_business_glossary_term' = 'Priority Ranking');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_business_glossary_term' = 'Protection Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `reassessment_due_date` SET TAGS ('pii_business_glossary_term' = 'Reassessment Due Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `referral_recommended` SET TAGS ('pii_business_glossary_term' = 'Service Referral Recommended');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `referral_sectors` SET TAGS ('pii_business_glossary_term' = 'Referral Sectors');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `sectors_assessed` SET TAGS ('pii_business_glossary_term' = 'Sectors Assessed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `shelter_score` SET TAGS ('pii_business_glossary_term' = 'Shelter Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `source_submission_reference` SET TAGS ('pii_business_glossary_term' = 'Source System Submission ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `supervisor_validation_notes` SET TAGS ('pii_business_glossary_term' = 'Supervisor Validation Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `supervisor_validation_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `validation_timestamp` SET TAGS ('pii_business_glossary_term' = 'Validation Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_value_regex' = 'critical|high|medium|low|not_vulnerable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `wash_score` SET TAGS ('pii_business_glossary_term' = 'Water Sanitation and Hygiene (WASH) Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` SET TAGS ('pii_subdomain' = 'protection_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_record_id` SET TAGS ('pii_business_glossary_term' = 'Consent Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_record_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `component_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `donor_requirement_id` SET TAGS ('pii_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Witness Staff Member ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('pii_business_glossary_term' = 'Biometric Enrollment Permitted Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('pii_biometric' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `chs_compliance_flag` SET TAGS ('pii_business_glossary_term' = 'Core Humanitarian Standard (CHS) Compliance Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_country_code` SET TAGS ('pii_business_glossary_term' = 'Consent Collection Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_location` SET TAGS ('pii_business_glossary_term' = 'Consent Collection Location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_location` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('pii_business_glossary_term' = 'Consent Form Version');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('pii_value_regex' = '^v[0-9]+.[0-9]+(.[0-9]+)?$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('pii_business_glossary_term' = 'Consent Language');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('pii_value_regex' = '^[a-z]{2,3}(-[A-Z]{2,3})?$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('pii_business_glossary_term' = 'Consent Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('pii_value_regex' = 'verbal|written|digital|thumbprint|proxy');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('pii_business_glossary_term' = 'Consent Reference Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('pii_value_regex' = '^CNS-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('pii_business_glossary_term' = 'Consent Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('pii_value_regex' = 'given|withdrawn|pending|expired|refused');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('pii_business_glossary_term' = 'Consent Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('pii_value_regex' = 'data_processing|photography_media|case_referral|biometric_enrollment|program_participation|research_survey');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `data_retention_period_days` SET TAGS ('pii_business_glossary_term' = 'Data Retention Period (Days)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `data_scope` SET TAGS ('pii_business_glossary_term' = 'Consent Data Scope');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('pii_business_glossary_term' = 'Digital Signature Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `effective_from_date` SET TAGS ('pii_business_glossary_term' = 'Consent Effective From Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `expiry_date` SET TAGS ('pii_business_glossary_term' = 'Consent Expiry Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `form_attachment_reference` SET TAGS ('pii_business_glossary_term' = 'Consent Form Attachment Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `form_attachment_reference` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `gdpr_applicable` SET TAGS ('pii_business_glossary_term' = 'GDPR Applicable Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `informed_consent_verified` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Verified Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `informed_consent_verified` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `informed_consent_verified` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `is_proxy_consent` SET TAGS ('pii_business_glossary_term' = 'Is Proxy Consent Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `is_proxy_consent` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `is_proxy_consent` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Consent Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `photography_permitted` SET TAGS ('pii_business_glossary_term' = 'Photography and Media Use Permitted Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `photography_permitted` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('pii_business_glossary_term' = 'Proxy Consent Giver Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_relationship` SET TAGS ('pii_business_glossary_term' = 'Proxy Relationship to Beneficiary');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_relationship` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_relationship` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `sharing_permitted` SET TAGS ('pii_business_glossary_term' = 'Data Sharing Permitted Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `sharing_restrictions` SET TAGS ('pii_business_glossary_term' = 'Data Sharing Restrictions');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `source_record_reference` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `verification_date` SET TAGS ('pii_business_glossary_term' = 'Consent Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `withdrawal_date` SET TAGS ('pii_business_glossary_term' = 'Consent Withdrawal Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `withdrawal_reason` SET TAGS ('pii_business_glossary_term' = 'Consent Withdrawal Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('pii_business_glossary_term' = 'Consent Witness Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` SET TAGS ('pii_subdomain' = 'case_management');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_record_id` SET TAGS ('pii_business_glossary_term' = 'Case Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `award_id` SET TAGS ('pii_business_glossary_term' = 'Grant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `compliance_incident_id` SET TAGS ('pii_business_glossary_term' = 'Compliance Incident Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('pii_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `country_office_id` SET TAGS ('pii_business_glossary_term' = 'Location ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner Org Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Service Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Caseworker ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('pii_business_glossary_term' = 'Case Narrative');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_number` SET TAGS ('pii_business_glossary_term' = 'Case Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_number` SET TAGS ('pii_value_regex' = '^CASE-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_plan_developed` SET TAGS ('pii_business_glossary_term' = 'Case Plan Developed Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_stage` SET TAGS ('pii_business_glossary_term' = 'Case Stage');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_stage` SET TAGS ('pii_value_regex' = 'intake|assessment|planning|intervention|monitoring|closure');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_status` SET TAGS ('pii_business_glossary_term' = 'Case Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_status` SET TAGS ('pii_value_regex' = 'open|in_progress|on_hold|closed|cancelled');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_type` SET TAGS ('pii_business_glossary_term' = 'Case Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `close_date` SET TAGS ('pii_business_glossary_term' = 'Case Close Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `closure_reason` SET TAGS ('pii_business_glossary_term' = 'Case Closure Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `commcare_case_reference` SET TAGS ('pii_business_glossary_term' = 'CommCare Case ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `data_collection_method` SET TAGS ('pii_business_glossary_term' = 'Data Collection Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `data_collection_method` SET TAGS ('pii_value_regex' = 'commcare_mobile|kobo_form|paper_form|phone_interview|fgd|kii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_child_case` SET TAGS ('pii_business_glossary_term' = 'Child Case Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_child_case` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Case Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_idp_case` SET TAGS ('pii_business_glossary_term' = 'Internally Displaced Person (IDP) Case Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `last_followup_date` SET TAGS ('pii_business_glossary_term' = 'Last Follow-Up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `legal_aid_required` SET TAGS ('pii_business_glossary_term' = 'Legal Aid Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `legal_aid_required` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `legal_aid_required` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `next_followup_date` SET TAGS ('pii_business_glossary_term' = 'Next Follow-Up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('pii_business_glossary_term' = 'Nutrition Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('pii_value_regex' = 'sam|mam|normal|at_risk');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `on_hold_reason` SET TAGS ('pii_business_glossary_term' = 'On-Hold Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `open_date` SET TAGS ('pii_business_glossary_term' = 'Case Open Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `outcome_classification` SET TAGS ('pii_business_glossary_term' = 'Case Outcome Classification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `outcome_classification` SET TAGS ('pii_value_regex' = 'goal_achieved|partially_achieved|not_achieved|lost_to_followup|referred_out|deceased');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('pii_business_glossary_term' = 'Presenting Issue');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `priority_level` SET TAGS ('pii_business_glossary_term' = 'Case Priority Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `priority_level` SET TAGS ('pii_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_business_glossary_term' = 'Protection Risk Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_value_regex' = 'extreme|high|medium|low|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `pss_session_count` SET TAGS ('pii_business_glossary_term' = 'Psychosocial Support (PSS) Session Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `pss_session_count` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `pss_session_count` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_date` SET TAGS ('pii_business_glossary_term' = 'Referral Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_destination` SET TAGS ('pii_business_glossary_term' = 'Referral Destination');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_source` SET TAGS ('pii_business_glossary_term' = 'Referral Source');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('pii_business_glossary_term' = 'Safety Plan In Place Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `service_modality` SET TAGS ('pii_business_glossary_term' = 'Service Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `service_modality` SET TAGS ('pii_value_regex' = 'in_person|remote|mobile_outreach|group_session|home_visit');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `supervisor_review_required` SET TAGS ('pii_business_glossary_term' = 'Supervisor Review Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` SET TAGS ('pii_subdomain' = 'case_management');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_id` SET TAGS ('pii_business_glossary_term' = 'Case Action ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_record_id` SET TAGS ('pii_business_glossary_term' = 'Case ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `commodity_id` SET TAGS ('pii_business_glossary_term' = 'Commodity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `component_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `constituent_message_id` SET TAGS ('pii_business_glossary_term' = 'Constituent Message Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `feedback_submission_id` SET TAGS ('pii_business_glossary_term' = 'Feedback Submission Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner Org Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Assigned Staff ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Volunteer Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_category` SET TAGS ('pii_business_glossary_term' = 'Case Action Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_date` SET TAGS ('pii_business_glossary_term' = 'Case Action Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_outcome` SET TAGS ('pii_business_glossary_term' = 'Case Action Outcome');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_outcome` SET TAGS ('pii_value_regex' = 'successful|partially_successful|unsuccessful|pending|referred_out');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_reference_number` SET TAGS ('pii_business_glossary_term' = 'Case Action Reference Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_reference_number` SET TAGS ('pii_value_regex' = '^CA-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_status` SET TAGS ('pii_business_glossary_term' = 'Case Action Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_status` SET TAGS ('pii_value_regex' = 'planned|in_progress|completed|cancelled|missed|rescheduled');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_timestamp` SET TAGS ('pii_business_glossary_term' = 'Case Action Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_type` SET TAGS ('pii_business_glossary_term' = 'Case Action Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `action_type` SET TAGS ('pii_value_regex' = 'home_visit|counseling_session|referral|service_provision|follow_up_call|group_session');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `admin_level1_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 1 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `admin_level2_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 2 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('pii_business_glossary_term' = 'Consent Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('pii_value_regex' = 'verbal|written|digital|proxy|not_required');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `data_collection_method` SET TAGS ('pii_business_glossary_term' = 'Data Collection Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `data_collection_method` SET TAGS ('pii_value_regex' = 'mobile_app|paper_form|phone_interview|direct_observation|fgd|kii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `duration_minutes` SET TAGS ('pii_business_glossary_term' = 'Action Duration (Minutes)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_reason` SET TAGS ('pii_business_glossary_term' = 'Escalation Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_reason` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_required` SET TAGS ('pii_business_glossary_term' = 'Escalation Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_required` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_type` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Action Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_type` SET TAGS ('pii_value_regex' = 'home_visit|phone_call|facility_visit|group_session|referral_follow_up');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `is_sensitive_case` SET TAGS ('pii_business_glossary_term' = 'Sensitive Case Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `is_sensitive_case` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `is_sensitive_case` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'Action GPS Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'Action GPS Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('pii_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `next_action_due_date` SET TAGS ('pii_business_glossary_term' = 'Next Action Due Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('pii_business_glossary_term' = 'Nutrition Status Classification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('pii_value_regex' = 'sam|mam|normal|not_assessed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome_notes` SET TAGS ('pii_business_glossary_term' = 'Action Outcome Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome_notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('pii_business_glossary_term' = 'Protection Concern Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('pii_value_regex' = 'gbv|child_protection|trafficking|idp_displacement|statelessness|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `pss_session_number` SET TAGS ('pii_business_glossary_term' = 'Psychosocial Support (PSS) Session Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `pss_session_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `pss_session_number` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_destination` SET TAGS ('pii_business_glossary_term' = 'Referral Destination');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_reason` SET TAGS ('pii_business_glossary_term' = 'Referral Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_reason` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `scheduled_date` SET TAGS ('pii_business_glossary_term' = 'Scheduled Action Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `service_items_provided` SET TAGS ('pii_business_glossary_term' = 'Service Items Provided');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `source_record_reference` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `supervisor_review_date` SET TAGS ('pii_business_glossary_term' = 'Supervisor Review Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `supervisor_reviewed` SET TAGS ('pii_business_glossary_term' = 'Supervisor Reviewed Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` SET TAGS ('pii_subdomain' = 'case_management');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_id` SET TAGS ('pii_business_glossary_term' = 'Referral Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `case_record_id` SET TAGS ('pii_business_glossary_term' = 'Case Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `constituent_message_id` SET TAGS ('pii_business_glossary_term' = 'Constituent Message Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('pii_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Referring Program Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Referring Organization Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Referring Staff Member Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Destination Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Receiving Organization Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Receiving Staff Member Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Referring Volunteer Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `acceptance_date` SET TAGS ('pii_business_glossary_term' = 'Acceptance Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `beneficiary_satisfaction_rating` SET TAGS ('pii_business_glossary_term' = 'Beneficiary Satisfaction Rating');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_business_glossary_term' = 'Cancellation Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_category` SET TAGS ('pii_business_glossary_term' = 'Referral Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `completion_date` SET TAGS ('pii_business_glossary_term' = 'Completion Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_value_regex' = 'standard|sensitive|highly_sensitive');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `data_source_system` SET TAGS ('pii_business_glossary_term' = 'Data Source System');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `decline_reason` SET TAGS ('pii_business_glossary_term' = 'Decline Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `expected_response_date` SET TAGS ('pii_business_glossary_term' = 'Expected Response Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `feedback_received_flag` SET TAGS ('pii_business_glossary_term' = 'Feedback Received Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `follow_up_completed_flag` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Completed Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `follow_up_date` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `gbv_case_flag` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Case Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `gbv_case_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `gbv_case_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `last_modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Referral Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome` SET TAGS ('pii_business_glossary_term' = 'Referral Outcome');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome_category` SET TAGS ('pii_business_glossary_term' = 'Outcome Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome_category` SET TAGS ('pii_value_regex' = 'successful|partially_successful|unsuccessful|beneficiary_declined|service_unavailable|lost_to_follow_up');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `priority_level` SET TAGS ('pii_business_glossary_term' = 'Priority Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `priority_level` SET TAGS ('pii_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_business_glossary_term' = 'Protection Concern Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `reason` SET TAGS ('pii_business_glossary_term' = 'Referral Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_name` SET TAGS ('pii_business_glossary_term' = 'Receiving Organization Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_service_type` SET TAGS ('pii_business_glossary_term' = 'Receiving Service Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('pii_business_glossary_term' = 'Receiving Staff Member Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_date` SET TAGS ('pii_business_glossary_term' = 'Referral Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_number` SET TAGS ('pii_business_glossary_term' = 'Referral Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_number` SET TAGS ('pii_value_regex' = '^REF-[0-9]{8}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_status` SET TAGS ('pii_business_glossary_term' = 'Referral Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_status` SET TAGS ('pii_value_regex' = 'pending|accepted|in_progress|completed|declined|cancelled');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_type` SET TAGS ('pii_business_glossary_term' = 'Referral Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_type` SET TAGS ('pii_value_regex' = 'internal|external|emergency|routine|urgent');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('pii_business_glossary_term' = 'Referring Staff Contact Information');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('pii_business_glossary_term' = 'Referring Staff Member Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `service_delivery_date` SET TAGS ('pii_business_glossary_term' = 'Service Delivery Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('pii_business_glossary_term' = 'Biometric Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('pii_biometric' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `component_id` SET TAGS ('pii_business_glossary_term' = 'Program Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('pii_business_glossary_term' = 'Duplicate Biometric Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('pii_biometric' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Enrollment Operator Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('pii_business_glossary_term' = 'Biometric Modality Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('pii_value_regex' = 'fingerprint|iris_scan|facial_recognition|palm_vein|voice_recognition|multimodal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `capture_method` SET TAGS ('pii_business_glossary_term' = 'Biometric Capture Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `capture_method` SET TAGS ('pii_value_regex' = 'optical|capacitive|ultrasonic|thermal|camera|scanner');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Biometric Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('pii_business_glossary_term' = 'Consent Collection Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('pii_value_regex' = 'written|verbal|digital|witnessed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Biometric Consent Obtained Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `data_retention_period_days` SET TAGS ('pii_business_glossary_term' = 'Data Retention Period in Days');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_match_found` SET TAGS ('pii_business_glossary_term' = 'Deduplication Match Found Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_match_score` SET TAGS ('pii_business_glossary_term' = 'Deduplication Match Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_performed` SET TAGS ('pii_business_glossary_term' = 'Deduplication Check Performed Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('pii_business_glossary_term' = 'Biometric Device Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_manufacturer` SET TAGS ('pii_business_glossary_term' = 'Device Manufacturer Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_model` SET TAGS ('pii_business_glossary_term' = 'Device Model Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `encryption_algorithm` SET TAGS ('pii_business_glossary_term' = 'Encryption Algorithm Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `encryption_applied` SET TAGS ('pii_business_glossary_term' = 'Encryption Applied Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_date` SET TAGS ('pii_business_glossary_term' = 'Biometric Enrollment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('pii_business_glossary_term' = 'Enrollment Geographic Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_location` SET TAGS ('pii_business_glossary_term' = 'Enrollment Location Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_location` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_location` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('pii_business_glossary_term' = 'Enrollment Geographic Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_number` SET TAGS ('pii_business_glossary_term' = 'Biometric Enrollment Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_number` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_purpose` SET TAGS ('pii_business_glossary_term' = 'Biometric Enrollment Purpose');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_timestamp` SET TAGS ('pii_business_glossary_term' = 'Biometric Enrollment Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `expiry_date` SET TAGS ('pii_business_glossary_term' = 'Biometric Record Expiry Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Active Record Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Enrollment Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `notes` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `quality_score` SET TAGS ('pii_business_glossary_term' = 'Biometric Quality Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `quality_threshold_met` SET TAGS ('pii_business_glossary_term' = 'Quality Threshold Met Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_format` SET TAGS ('pii_business_glossary_term' = 'Biometric Template Format Standard');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_format` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_format` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('pii_business_glossary_term' = 'Biometric Template Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_size_bytes` SET TAGS ('pii_business_glossary_term' = 'Template Size in Bytes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_count` SET TAGS ('pii_business_glossary_term' = 'Verification Event Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_date` SET TAGS ('pii_business_glossary_term' = 'Last Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_status` SET TAGS ('pii_business_glossary_term' = 'Biometric Verification Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_status` SET TAGS ('pii_value_regex' = 'enrolled|verified|failed|pending|expired|revoked');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` SET TAGS ('pii_subdomain' = 'protection_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_id` SET TAGS ('pii_business_glossary_term' = 'Protection Flag ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `case_record_id` SET TAGS ('pii_business_glossary_term' = 'Case ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `compliance_incident_id` SET TAGS ('pii_business_glossary_term' = 'Compliance Incident Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `country_office_id` SET TAGS ('pii_business_glossary_term' = 'Location ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `feedback_submission_id` SET TAGS ('pii_business_glossary_term' = 'Feedback Submission Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Assigned Protection Officer ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `user_account_id` SET TAGS ('pii_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `user_account_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_value_regex' = 'Restricted|Confidential|Internal|Public');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `data_source_system` SET TAGS ('pii_business_glossary_term' = 'Data Source System');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_date` SET TAGS ('pii_business_glossary_term' = 'Escalation Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_reason` SET TAGS ('pii_business_glossary_term' = 'Escalation Reason');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_reason` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_required` SET TAGS ('pii_business_glossary_term' = 'Escalation Required');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `external_reference_code` SET TAGS ('pii_business_glossary_term' = 'External Reference ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_code` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3,6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_date` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_severity` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Severity');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_severity` SET TAGS ('pii_value_regex' = 'Critical|High|Medium|Low');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_status` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_status` SET TAGS ('pii_value_regex' = 'Active|Monitoring|Resolved|Closed|Escalated|Referred');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flag_type` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flagging_source` SET TAGS ('pii_business_glossary_term' = 'Flagging Source');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `follow_up_required` SET TAGS ('pii_business_glossary_term' = 'Follow-up Required');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `identification_method` SET TAGS ('pii_business_glossary_term' = 'Identification Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('pii_business_glossary_term' = 'Immediate Needs');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `last_follow_up_date` SET TAGS ('pii_business_glossary_term' = 'Last Follow-up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `legal_action_required` SET TAGS ('pii_business_glossary_term' = 'Legal Action Required');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `legal_action_required` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `legal_action_required` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `next_follow_up_date` SET TAGS ('pii_business_glossary_term' = 'Next Follow-up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Protection Flag Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `pss_provided` SET TAGS ('pii_business_glossary_term' = 'Psychosocial Support (PSS) Provided');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `pss_provided` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `pss_provided` SET TAGS ('pii_sensitivity' = 'high');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_date` SET TAGS ('pii_business_glossary_term' = 'Referral Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_made` SET TAGS ('pii_business_glossary_term' = 'Referral Made');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_organization` SET TAGS ('pii_business_glossary_term' = 'Referral Organization');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_organization` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `reporting_period` SET TAGS ('pii_business_glossary_term' = 'Reporting Period');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `reporting_period` SET TAGS ('pii_value_regex' = '^d{4}-Q[1-4]$|^d{4}-d{2}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_date` SET TAGS ('pii_business_glossary_term' = 'Resolution Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_notes` SET TAGS ('pii_business_glossary_term' = 'Resolution Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_notes` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `risk_description` SET TAGS ('pii_business_glossary_term' = 'Risk Description');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `risk_description` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `risk_description` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('pii_column_comment_framework' = 'IASC');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_event_id` SET TAGS ('pii_business_glossary_term' = 'Registration Event ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `project_site_id` SET TAGS ('pii_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Registering Staff ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('pii_business_glossary_term' = 'Biometric Captured Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('pii_biometric' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_business_glossary_term' = 'Biometric Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_value_regex' = 'fingerprint|iris_scan|facial_recognition|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_biometric' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_sensitivity' = 'pii_beneficiary_protected');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('pii_business_glossary_term' = 'Consent Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('pii_value_regex' = 'verbal|written|digital_signature|guardian_consent');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `data_quality_flag` SET TAGS ('pii_business_glossary_term' = 'Data Quality Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `data_source_system` SET TAGS ('pii_business_glossary_term' = 'Data Source System');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_check_performed` SET TAGS ('pii_business_glossary_term' = 'Deduplication Check Performed Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_method` SET TAGS ('pii_business_glossary_term' = 'Deduplication Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_method` SET TAGS ('pii_value_regex' = 'biometric|demographic|document_number|manual_review|none');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_found` SET TAGS ('pii_business_glossary_term' = 'Duplicate Found Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_resolution_status` SET TAGS ('pii_business_glossary_term' = 'Duplicate Resolution Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_resolution_status` SET TAGS ('pii_value_regex' = 'no_duplicate|duplicate_confirmed|duplicate_resolved|pending_review');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `household_head` SET TAGS ('pii_business_glossary_term' = 'Household Head Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `household_registration` SET TAGS ('pii_business_glossary_term' = 'Household Registration Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `interpreter_used` SET TAGS ('pii_business_glossary_term' = 'Interpreter Used Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `last_modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `referral_required` SET TAGS ('pii_business_glossary_term' = 'Referral Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `referral_type` SET TAGS ('pii_business_glossary_term' = 'Referral Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_organization` SET TAGS ('pii_business_glossary_term' = 'Registering Organization');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_business_glossary_term' = 'Registering Staff Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_person_type' = 'person_name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_masking_policy' = 'mask_non_prod');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('pii_staff' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_completeness_score` SET TAGS ('pii_business_glossary_term' = 'Registration Completeness Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_date` SET TAGS ('pii_business_glossary_term' = 'Registration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('pii_business_glossary_term' = 'Registration Language');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('pii_value_regex' = '^[a-z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('pii_business_glossary_term' = 'Registration Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('pii_business_glossary_term' = 'Registration Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_modality` SET TAGS ('pii_business_glossary_term' = 'Registration Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_modality` SET TAGS ('pii_value_regex' = 'in_person|mobile_outreach|remote_digital|phone_interview|community_based');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_notes` SET TAGS ('pii_business_glossary_term' = 'Registration Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_number` SET TAGS ('pii_business_glossary_term' = 'Registration Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_number` SET TAGS ('pii_value_regex' = '^[A-Z]{3}-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_status` SET TAGS ('pii_business_glossary_term' = 'Registration Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_status` SET TAGS ('pii_value_regex' = 'draft|pending_verification|verified|approved|rejected|incomplete');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_timestamp` SET TAGS ('pii_business_glossary_term' = 'Registration Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_tool` SET TAGS ('pii_business_glossary_term' = 'Registration Tool');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_tool` SET TAGS ('pii_value_regex' = 'kobotoolbox|commcare|paper_form|unhcr_primes|custom_app|other');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_type` SET TAGS ('pii_business_glossary_term' = 'Registration Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_type` SET TAGS ('pii_value_regex' = 'initial|re-registration|update|verification|biometric_enrollment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('pii_business_glossary_term' = 'Verification Document Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_type` SET TAGS ('pii_business_glossary_term' = 'Verification Document Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `vulnerability_assessment_conducted` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Assessment Conducted Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `vulnerability_assessment_conducted` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `vulnerability_assessment_conducted` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_history_id` SET TAGS ('pii_business_glossary_term' = 'Displacement History ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_history_id` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Registrant ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Enumerator ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_admin1_code` SET TAGS ('pii_business_glossary_term' = 'Current Administrative Level 1 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_admin2_code` SET TAGS ('pii_business_glossary_term' = 'Current Administrative Level 2 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_country_code` SET TAGS ('pii_business_glossary_term' = 'Current Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('pii_business_glossary_term' = 'Current Location Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('pii_business_glossary_term' = 'Current Location Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_name` SET TAGS ('pii_business_glossary_term' = 'Current Settlement Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_type` SET TAGS ('pii_business_glossary_term' = 'Current Settlement Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_type` SET TAGS ('pii_value_regex' = 'camp|collective_center|host_community|informal_settlement|urban_area|rural_area');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_date` SET TAGS ('pii_business_glossary_term' = 'Data Collection Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_tool` SET TAGS ('pii_business_glossary_term' = 'Data Collection Tool');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_tool` SET TAGS ('pii_value_regex' = 'kobotoolbox|commcare|odk|unhcr_progres|iom_dtm|manual_entry');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_date` SET TAGS ('pii_business_glossary_term' = 'Displacement Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_duration_days` SET TAGS ('pii_business_glossary_term' = 'Displacement Duration in Days');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_duration_days` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_duration_days` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_episode_number` SET TAGS ('pii_business_glossary_term' = 'Displacement Episode Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_episode_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_episode_number` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('pii_value_regex' = 'newly_displaced|protracted_displaced|returned|resettled|locally_integrated|in_transit');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('pii_business_glossary_term' = 'Displacement Trigger');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('pii_value_regex' = 'armed_conflict|generalized_violence|human_rights_violations|natural_disaster|climate_event|development_project');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Verification Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('pii_value_regex' = 'verified|pending_verification|unverified|disputed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `hdx_dataset_reference` SET TAGS ('pii_business_glossary_term' = 'Humanitarian Data Exchange (HDX) Dataset ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Is Active Record');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_cross_border` SET TAGS ('pii_business_glossary_term' = 'Is Cross-Border Displacement');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_protracted` SET TAGS ('pii_business_glossary_term' = 'Is Protracted Displacement');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `local_integration_status` SET TAGS ('pii_business_glossary_term' = 'Local Integration Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `local_integration_status` SET TAGS ('pii_value_regex' = 'not_applicable|in_progress|achieved|citizenship_granted');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin1_code` SET TAGS ('pii_business_glossary_term' = 'Origin Administrative Level 1 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin1_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin1_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin2_code` SET TAGS ('pii_business_glossary_term' = 'Origin Administrative Level 2 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin2_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin2_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('pii_business_glossary_term' = 'Origin Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('pii_business_glossary_term' = 'Origin Location Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('pii_business_glossary_term' = 'Origin Location Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_settlement_name` SET TAGS ('pii_business_glossary_term' = 'Origin Settlement Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_settlement_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_settlement_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('pii_business_glossary_term' = 'Person of Concern (PoC) Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('pii_value_regex' = 'idp|refugee|asylum_seeker|returnee|stateless|host_community');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `record_created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `record_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('pii_business_glossary_term' = 'Resettlement Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_date` SET TAGS ('pii_business_glossary_term' = 'Resettlement Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_date` SET TAGS ('pii_business_glossary_term' = 'Return Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_intention` SET TAGS ('pii_business_glossary_term' = 'Return Intention');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_intention` SET TAGS ('pii_value_regex' = 'intends_to_return|no_return_intention|undecided|return_not_safe');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_type` SET TAGS ('pii_business_glossary_term' = 'Return Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_type` SET TAGS ('pii_value_regex' = 'voluntary|facilitated|spontaneous|forced|not_applicable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `transit_locations` SET TAGS ('pii_business_glossary_term' = 'Transit Locations');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `transit_locations` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `transit_locations` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_date` SET TAGS ('pii_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_method` SET TAGS ('pii_business_glossary_term' = 'Verification Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_method` SET TAGS ('pii_value_regex' = 'field_visit|document_review|key_informant|community_leader|self_reported');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_record_id` SET TAGS ('pii_business_glossary_term' = 'Exit Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Responsible Staff Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_deletion_scheduled_date` SET TAGS ('pii_business_glossary_term' = 'Data Deletion Scheduled Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_classification` SET TAGS ('pii_business_glossary_term' = 'Data Retention Classification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_classification` SET TAGS ('pii_value_regex' = 'retain_full|retain_anonymized|archive|delete');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_period_months` SET TAGS ('pii_business_glossary_term' = 'Data Retention Period in Months');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `death_certificate_verified` SET TAGS ('pii_business_glossary_term' = 'Death Certificate Verified Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `death_date` SET TAGS ('pii_business_glossary_term' = 'Death Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_conducted` SET TAGS ('pii_business_glossary_term' = 'Exit Assessment Conducted Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_date` SET TAGS ('pii_business_glossary_term' = 'Exit Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_notes` SET TAGS ('pii_business_glossary_term' = 'Exit Assessment Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_outcome` SET TAGS ('pii_business_glossary_term' = 'Exit Assessment Outcome');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_outcome` SET TAGS ('pii_value_regex' = 'positive|neutral|negative|not_applicable');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_date` SET TAGS ('pii_business_glossary_term' = 'Exit Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('pii_business_glossary_term' = 'Exit Consent Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('pii_value_regex' = 'verbal|written|digital|proxy');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Exit Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_date` SET TAGS ('pii_business_glossary_term' = 'Exit Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_facility_name` SET TAGS ('pii_business_glossary_term' = 'Exit Facility Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_facility_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_facility_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_location_code` SET TAGS ('pii_business_glossary_term' = 'Exit Location Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_location_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_location_code` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_number` SET TAGS ('pii_business_glossary_term' = 'Exit Record Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_number` SET TAGS ('pii_value_regex' = '^EXT-[0-9]{8}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_category` SET TAGS ('pii_business_glossary_term' = 'Exit Reason Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_category` SET TAGS ('pii_value_regex' = 'program_graduation|voluntary_withdrawal|relocation|death|loss_of_contact|loss_of_eligibility');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_detail` SET TAGS ('pii_business_glossary_term' = 'Exit Reason Detail');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_status` SET TAGS ('pii_business_glossary_term' = 'Exit Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_status` SET TAGS ('pii_value_regex' = 'pending|approved|completed|reversed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_timestamp` SET TAGS ('pii_business_glossary_term' = 'Exit Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `is_duplicate_merge` SET TAGS ('pii_business_glossary_term' = 'Is Duplicate Merge Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_date` SET TAGS ('pii_business_glossary_term' = 'Post-Exit Follow-up Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_plan` SET TAGS ('pii_business_glossary_term' = 'Post-Exit Follow-up Plan');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_required` SET TAGS ('pii_business_glossary_term' = 'Post-Exit Follow-up Required Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `reactivation_conditions` SET TAGS ('pii_business_glossary_term' = 'Reactivation Conditions');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `reactivation_eligible` SET TAGS ('pii_business_glossary_term' = 'Reactivation Eligible Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_organization_name` SET TAGS ('pii_business_glossary_term' = 'Referral Organization Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_organization_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_organization_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_provided` SET TAGS ('pii_business_glossary_term' = 'Referral Provided Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_service_type` SET TAGS ('pii_business_glossary_term' = 'Referral Service Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_country_code` SET TAGS ('pii_business_glossary_term' = 'Relocation Destination Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_location` SET TAGS ('pii_business_glossary_term' = 'Relocation Destination Location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_location` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_record_id` SET TAGS ('pii_business_glossary_term' = 'Document Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `donor_requirement_id` SET TAGS ('pii_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `user_account_id` SET TAGS ('pii_business_glossary_term' = 'Created By User Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Verified By Staff Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('pii_business_glossary_term' = 'Capture Device Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('pii_internal' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_method` SET TAGS ('pii_business_glossary_term' = 'Capture Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_method` SET TAGS ('pii_value_regex' = 'mobile_scan|flatbed_scan|photograph|manual_entry|digital_upload');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_value_regex' = 'public|internal|confidential|restricted');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `confidentiality_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('pii_business_glossary_term' = 'Consent Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('pii_value_regex' = 'written|verbal|digital_signature|biometric|proxy');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_obtained` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `data_sharing_consent` SET TAGS ('pii_business_glossary_term' = 'Data Sharing Consent Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `data_sharing_consent` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `data_sharing_consent` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_condition` SET TAGS ('pii_business_glossary_term' = 'Document Condition');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_condition` SET TAGS ('pii_value_regex' = 'excellent|good|fair|poor|damaged|illegible');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('pii_business_glossary_term' = 'Document Image Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('pii_type' = 'age');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('pii_business_glossary_term' = 'Document Language Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('pii_value_regex' = '^[a-z]{2,3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('pii_business_glossary_term' = 'Document Number');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_type` SET TAGS ('pii_business_glossary_term' = 'Document Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_type` SET TAGS ('pii_value_regex' = 'unhcr_registration|national_id|birth_certificate|marriage_certificate|asylum_seeker_card|travel_document');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `expiry_date` SET TAGS ('pii_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `external_reference_code` SET TAGS ('pii_business_glossary_term' = 'External Reference Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Is Active Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `is_primary_identity_document` SET TAGS ('pii_business_glossary_term' = 'Is Primary Identity Document Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issue_date` SET TAGS ('pii_business_glossary_term' = 'Issue Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_authority` SET TAGS ('pii_business_glossary_term' = 'Issuing Authority');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_country_code` SET TAGS ('pii_business_glossary_term' = 'Issuing Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `legal_status_indicator` SET TAGS ('pii_business_glossary_term' = 'Legal Status Indicator');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registration_location_code` SET TAGS ('pii_business_glossary_term' = 'Registration Location Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registration_location_code` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `retention_period_days` SET TAGS ('pii_business_glossary_term' = 'Retention Period in Days');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `source_record_reference` SET TAGS ('pii_business_glossary_term' = 'Source Record Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_date` SET TAGS ('pii_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_method` SET TAGS ('pii_business_glossary_term' = 'Verification Method');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_method` SET TAGS ('pii_value_regex' = 'visual_inspection|biometric_match|authority_confirmation|third_party_validation|digital_verification');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_status` SET TAGS ('pii_business_glossary_term' = 'Verification Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_status` SET TAGS ('pii_value_regex' = 'verified|pending|unverified|expired|invalid|under_review');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` SET TAGS ('pii_subdomain' = 'identity_registration');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_id` SET TAGS ('pii_business_glossary_term' = 'Community Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `parent_community_id` SET TAGS ('pii_business_glossary_term' = 'Parent Community Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `parent_community_id` SET TAGS ('pii_self_ref_fk' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner Org Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Registration Staff Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `access_constraint_level` SET TAGS ('pii_business_glossary_term' = 'Access Constraint Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `access_constraint_level` SET TAGS ('pii_value_regex' = 'no_constraint|low|medium|high|no_access');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `active_program_count` SET TAGS ('pii_business_glossary_term' = 'Active Program Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 1 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 1 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 2 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 2 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 3 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 3 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_code` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 4 Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_name` SET TAGS ('pii_business_glossary_term' = 'Administrative Level 4 Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_code` SET TAGS ('pii_business_glossary_term' = 'Community Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_status` SET TAGS ('pii_business_glossary_term' = 'Community Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_status` SET TAGS ('pii_value_regex' = 'active|inactive|closed|planned|suspended');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_date` SET TAGS ('pii_business_glossary_term' = 'Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_date` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_date` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_business_glossary_term' = 'Consent Obtained Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_business_glossary_term' = 'Data Sharing Consent Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('pii_value_regex' = 'host_community|idp_settlement|refugee_camp|returnee_community|mixed');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `estimated_population` SET TAGS ('pii_business_glossary_term' = 'Estimated Population');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('pii_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('pii_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_business_glossary_term' = 'GPS (Global Positioning System) Accuracy in Meters');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('pii_business_glossary_term' = 'Health Facility Distance in Kilometers (km)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `household_count` SET TAGS ('pii_business_glossary_term' = 'Household Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `ipc_phase` SET TAGS ('pii_business_glossary_term' = 'Integrated Food Security Phase Classification (IPC) Phase');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `ipc_phase` SET TAGS ('pii_value_regex' = 'phase_1|phase_2|phase_3|phase_4|phase_5');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `last_assessment_date` SET TAGS ('pii_business_glossary_term' = 'Last Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'Geographic Latitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('pii_business_glossary_term' = 'Community Leader Contact');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('pii_business_glossary_term' = 'Community Leader Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'Geographic Longitude');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `modified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_name` SET TAGS ('pii_business_glossary_term' = 'Community Name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Community Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('pii_business_glossary_term' = 'Primary Language Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('pii_value_regex' = '^[a-z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_business_glossary_term' = 'Protection Concern Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `protection_concern_flag` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `registration_date` SET TAGS ('pii_business_glossary_term' = 'Community Registration Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `registration_source` SET TAGS ('pii_business_glossary_term' = 'Registration Source');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `sanitation_coverage_percent` SET TAGS ('pii_business_glossary_term' = 'Sanitation Coverage Percentage');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `settlement_type` SET TAGS ('pii_business_glossary_term' = 'Settlement Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `settlement_type` SET TAGS ('pii_value_regex' = 'formal_camp|informal_settlement|host_community|collective_center|transit_site|urban_area');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_business_glossary_term' = 'Community Vulnerability Category');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Community Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `water_access_flag` SET TAGS ('pii_business_glossary_term' = 'Water Access Flag');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('pii_subdomain' = 'case_management');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('pii_association_edges' = 'beneficiary.registrant,volunteer.volunteer');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Service Assignment Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Service Assignment - Registrant Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Assigning Staff Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Service Assignment - Volunteer Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `assignment_date` SET TAGS ('pii_business_glossary_term' = 'Assignment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `case_load_priority` SET TAGS ('pii_business_glossary_term' = 'Case Load Priority');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `end_date` SET TAGS ('pii_business_glossary_term' = 'Service End Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `frequency` SET TAGS ('pii_business_glossary_term' = 'Service Frequency');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `location` SET TAGS ('pii_business_glossary_term' = 'Service Delivery Location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `location` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Assignment Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_delivery_status` SET TAGS ('pii_business_glossary_term' = 'Service Delivery Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_type` SET TAGS ('pii_business_glossary_term' = 'Service Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `start_date` SET TAGS ('pii_business_glossary_term' = 'Service Start Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `supervision_level` SET TAGS ('pii_business_glossary_term' = 'Supervision Level');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('pii_subdomain' = 'case_management');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('pii_association_edges' = 'beneficiary.household,volunteer.volunteer');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_volunteer_assignment_id` SET TAGS ('pii_business_glossary_term' = 'household_volunteer_assignment Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household Volunteer Assignment - Household Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `service_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Assignment Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Household Volunteer Assignment - Volunteer Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `assignment_date` SET TAGS ('pii_business_glossary_term' = 'Assignment Start Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `assignment_end_date` SET TAGS ('pii_business_glossary_term' = 'Assignment End Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `assignment_type` SET TAGS ('pii_business_glossary_term' = 'Assignment Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `geographic_area` SET TAGS ('pii_business_glossary_term' = 'Geographic Catchment Area');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `last_visit_date` SET TAGS ('pii_business_glossary_term' = 'Last Visit Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `next_visit_date` SET TAGS ('pii_business_glossary_term' = 'Next Scheduled Visit Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Assignment Notes');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `visit_frequency` SET TAGS ('pii_business_glossary_term' = 'Visit Frequency');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('pii_association_edges' = 'beneficiary.community,program.intervention');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `community_intervention_id` SET TAGS ('pii_business_glossary_term' = 'Community Intervention Implementation ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `community_id` SET TAGS ('pii_business_glossary_term' = 'Community Intervention - Community Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `community_partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner organization');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Community Intervention - Intervention Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `budget_spent` SET TAGS ('pii_business_glossary_term' = 'Budget spent on community intervention');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `delivery_modality` SET TAGS ('pii_business_glossary_term' = 'Delivery modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `disability_inclusive_flag` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `end_date` SET TAGS ('pii_business_glossary_term' = 'Implementation End Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `geographic_coverage_type` SET TAGS ('pii_business_glossary_term' = 'Geographic Coverage Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `implementation_status` SET TAGS ('pii_business_glossary_term' = 'Implementation Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `implementing_partner_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `intervention_type` SET TAGS ('pii_business_glossary_term' = 'Community intervention type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `is_protection_mainstreamed` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `is_protection_mainstreamed` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `lead_partner_name` SET TAGS ('pii_business_glossary_term' = 'Lead implementing partner');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `lead_partner_name` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `monitoring_frequency` SET TAGS ('pii_business_glossary_term' = 'Monitoring frequency');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `notes` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `reached_household_count` SET TAGS ('pii_business_glossary_term' = 'Reached Household Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `start_date` SET TAGS ('pii_business_glossary_term' = 'Implementation Start Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `target_household_count` SET TAGS ('pii_business_glossary_term' = 'Target Household Count');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record update timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('pii_association_edges' = 'beneficiary.registrant,program.component');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `financial_service_provider_id` SET TAGS ('pii_business_glossary_term' = 'Financial Service Provider');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `consent_for_component` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `consent_for_component` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `cva_transfer_modality` SET TAGS ('pii_business_glossary_term' = 'CVA Transfer Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `location` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('pii_association_edges' = 'beneficiary.registrant,supply.commodity');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_id` SET TAGS ('pii_business_glossary_term' = 'Entitlement Record Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `commodity_id` SET TAGS ('pii_business_glossary_term' = 'Entitlement - Commodity Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `constituent_id` SET TAGS ('pii_business_glossary_term' = 'Donor Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `constituent_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('pii_business_glossary_term' = 'Last Modifying User Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_user_account_id` SET TAGS ('pii_business_glossary_term' = 'Creating User Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_user_account_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_user_account_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `financial_service_provider_id` SET TAGS ('pii_business_glossary_term' = 'FSP');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `minimum_expenditure_basket_id` SET TAGS ('pii_business_glossary_term' = 'MEB Reference');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Entitlement - Registrant Id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `created_date` SET TAGS ('pii_business_glossary_term' = 'Entitlement Creation Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `cva_transfer_modality` SET TAGS ('pii_business_glossary_term' = 'CVA Transfer Modality');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `end_date` SET TAGS ('pii_business_glossary_term' = 'Entitlement End Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_status` SET TAGS ('pii_business_glossary_term' = 'Entitlement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `frequency` SET TAGS ('pii_business_glossary_term' = 'Distribution Frequency');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `last_modified_date` SET TAGS ('pii_business_glossary_term' = 'Entitlement Last Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `quantity` SET TAGS ('pii_business_glossary_term' = 'Entitlement Quantity');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `special_dietary_requirement` SET TAGS ('pii_business_glossary_term' = 'Special Dietary Requirement');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `start_date` SET TAGS ('pii_business_glossary_term' = 'Entitlement Start Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `transfer_modality` SET TAGS ('pii_cva' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `transfer_modality` SET TAGS ('pii_enum' = 'cash');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `transfer_modality` SET TAGS ('pii_voucher' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `transfer_modality` SET TAGS ('pii_in_kind' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `transfer_modality` SET TAGS ('pii_hybrid' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `vulnerability_based_adjustment` SET TAGS ('pii_business_glossary_term' = 'Vulnerability Adjustment Factor');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `vulnerability_based_adjustment` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `vulnerability_based_adjustment` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` SET TAGS ('pii_cva' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`cva_transfer` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` SET TAGS ('pii_cva' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`financial_service_provider` ALTER COLUMN `fsp_name` SET TAGS ('pii_type' = 'name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` SET TAGS ('pii_data_type' = 'reference_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` SET TAGS ('pii_cva' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` ALTER COLUMN `location_code` SET TAGS ('pii_type' = 'location');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`minimum_expenditure_basket` ALTER COLUMN `meb_name` SET TAGS ('pii_type' = 'name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` SET TAGS ('pii_subdomain' = 'program_participation');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` SET TAGS ('pii_cva' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` SET TAGS ('pii_tier' = 'mvm');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `beneficiary_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `beneficiary_name` SET TAGS ('pii_type' = 'name');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `beneficiary_phone` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `beneficiary_phone` SET TAGS ('pii_type' = 'phone');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `national_id_number` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `national_id_number` SET TAGS ('pii_type' = 'national_id');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `transfer_modality` SET TAGS ('pii_enum' = 'cash');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `transfer_modality` SET TAGS ('pii_voucher' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `transfer_modality` SET TAGS ('pii_in_kind' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`end_user_verification` ALTER COLUMN `transfer_modality` SET TAGS ('pii_hybrid' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` SET TAGS ('pii_subdomain' = 'protection_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` SET TAGS ('pii_tier' = 'MVM');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` SET TAGS ('pii_ecm_superset' = 'beneficiary_needs_assessment');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `commodity_id` SET TAGS ('pii_business_glossary_term' = 'Commodity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `community_engagement_event_id` SET TAGS ('pii_business_glossary_term' = 'Community Engagement Event Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `community_id` SET TAGS ('pii_business_glossary_term' = 'Community ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `data_collection_tool_id` SET TAGS ('pii_business_glossary_term' = 'Assessment Tool Identifier');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_business_glossary_term' = 'Enumerator Volunteer Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `volunteer_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `household_id` SET TAGS ('pii_business_glossary_term' = 'Household ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `intervention_id` SET TAGS ('pii_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `partner_org_id` SET TAGS ('pii_business_glossary_term' = 'Partner Org Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_business_glossary_term' = 'Field Enumerator ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `registrant_id` SET TAGS ('pii_business_glossary_term' = 'Beneficiary ID');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `registrant_id` SET TAGS ('pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_date` SET TAGS ('pii_business_glossary_term' = 'Assessment Date');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_reference_code` SET TAGS ('pii_business_glossary_term' = 'Assessment Reference Code');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_reference_code` SET TAGS ('pii_value_regex' = '^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_status` SET TAGS ('pii_business_glossary_term' = 'Assessment Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_status` SET TAGS ('pii_value_regex' = 'draft|submitted|under_review|validated|rejected|archived');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_type` SET TAGS ('pii_business_glossary_term' = 'Assessment Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `assessment_type` SET TAGS ('pii_value_regex' = 'initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_business_glossary_term' = 'Consent Type');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_value_regex' = 'verbal|written|proxy');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_business_glossary_term' = 'Displacement Status');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_value_regex' = 'idp|refugee|returnee|host_community|stateless|non_displaced');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `education_score` SET TAGS ('pii_business_glossary_term' = 'Education Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `livelihoods_score` SET TAGS ('pii_business_glossary_term' = 'Livelihoods Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_business_glossary_term' = 'Nutrition Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_business_glossary_term' = 'Overall Vulnerability Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_business_glossary_term' = 'Protection Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_beneficiary_protected' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `shelter_score` SET TAGS ('pii_business_glossary_term' = 'Shelter Sector Score');
-ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`needs_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER SCHEMA `vibe_ngo_v1`.`beneficiary` SET TAGS ('dbx_division' = 'business');
+ALTER SCHEMA `vibe_ngo_v1`.`beneficiary` SET TAGS ('dbx_domain' = 'beneficiary');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Registrant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `dedup_master_registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Master Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `intervention_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Registration Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sanctions_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Screening Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Registering Staff Member ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `age_years` SET TAGS ('dbx_business_glossary_term' = 'Age in Years');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `age_years` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `completeness_score` SET TAGS ('dbx_business_glossary_term' = 'Registration Completeness Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `consent_given` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Given Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin Code (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Date of Birth');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_pii_dob' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_status` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `deduplication_status` SET TAGS ('dbx_value_regex' = 'pending|unique|duplicate|merged|flagged');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('dbx_business_glossary_term' = 'Disability Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `disability_type` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('dbx_business_glossary_term' = 'Family Name (Surname)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `family_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('dbx_business_glossary_term' = 'Given Name (First Name)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `given_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('dbx_business_glossary_term' = 'Disability Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `has_disability` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Survivor Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_gbv_survivor` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('dbx_business_glossary_term' = 'Pregnant or Lactating Woman (PLW) Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_pregnant_or_lactating` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('dbx_business_glossary_term' = 'Unaccompanied Minor Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `is_unaccompanied_minor` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `last_verification_date` SET TAGS ('dbx_business_glossary_term' = 'Last Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `muac_cm` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('dbx_business_glossary_term' = 'Nationality Code (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `nationality_code` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `poc_category` SET TAGS ('dbx_business_glossary_term' = 'Person of Concern (PoC) Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('dbx_business_glossary_term' = 'Preferred Language Code (ISO 639)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{2,3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `preferred_language_code` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `protection_flag` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `re_registration_count` SET TAGS ('dbx_business_glossary_term' = 'Re-Registration Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_modality` SET TAGS ('dbx_business_glossary_term' = 'Registration Modality');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_modality` SET TAGS ('dbx_value_regex' = 'in_person|mobile|remote|self_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_source_system` SET TAGS ('dbx_business_glossary_term' = 'Registration Source System');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_source_system` SET TAGS ('dbx_value_regex' = 'commcare|kobotoolbox|progres_v4|wfp_scope|rais|manual');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_status` SET TAGS ('dbx_business_glossary_term' = 'Registration Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deceased|departed|duplicate|suspended');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_tool` SET TAGS ('dbx_business_glossary_term' = 'Registration Tool');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_tool` SET TAGS ('dbx_value_regex' = 'kobotoolbox|commcare|paper_form|progres_v4|scope|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_type` SET TAGS ('dbx_business_glossary_term' = 'Registration Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `registration_type` SET TAGS ('dbx_value_regex' = 'individual|household_head|household_member|community');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('dbx_business_glossary_term' = 'Sex');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('dbx_value_regex' = 'male|female|other|unknown');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `sex` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_business_glossary_term' = 'Verification Document Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_type` SET TAGS ('dbx_business_glossary_term' = 'Verification Document Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `verification_document_type` SET TAGS ('dbx_value_regex' = 'national_id|passport|unhcr_card|birth_certificate|community_attestation|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registrant` ALTER COLUMN `vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `community_id` SET TAGS ('dbx_business_glossary_term' = 'Community / Settlement ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Programme ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Registration Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanctions_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Screening Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Enumerator / Field Staff ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Head of Household Registrant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin1_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 1 Name (Region/Province)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin1_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin2_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 2 Name (District/County)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `admin2_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `children_under5_count` SET TAGS ('dbx_business_glossary_term' = 'Children Under 5 Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `commcare_case_reference` SET TAGS ('dbx_business_glossary_term' = 'CommCare Case ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `current_country` SET TAGS ('dbx_business_glossary_term' = 'Current Country of Residence (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `current_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `deregistration_date` SET TAGS ('dbx_business_glossary_term' = 'Household Deregistration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_date` SET TAGS ('dbx_business_glossary_term' = 'Displacement Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `displacement_status` SET TAGS ('dbx_value_regex' = 'idp|refugee|returnee|host_community|stateless|asylum_seeker');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `elderly_count` SET TAGS ('dbx_business_glossary_term' = 'Elderly Member Count (60+)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `exit_reason` SET TAGS ('dbx_business_glossary_term' = 'Programme Exit Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `female_count` SET TAGS ('dbx_business_glossary_term' = 'Female Member Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `food_security_status` SET TAGS ('dbx_business_glossary_term' = 'Food Security Status (IPC Phase)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `food_security_status` SET TAGS ('dbx_value_regex' = 'food_secure|mildly_insecure|moderately_insecure|severely_insecure');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gbv_risk_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Latitude Coordinate');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_latitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Longitude Coordinate');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `gps_longitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_pregnant_lactating` SET TAGS ('dbx_business_glossary_term' = 'Pregnant or Lactating Woman Present Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `has_unaccompanied_minor` SET TAGS ('dbx_business_glossary_term' = 'Unaccompanied or Separated Child (UASC) Present Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `is_female_headed` SET TAGS ('dbx_business_glossary_term' = 'Female-Headed Household Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `kobo_submission_reference` SET TAGS ('dbx_business_glossary_term' = 'KoboToolbox Submission ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `last_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Needs Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `male_count` SET TAGS ('dbx_business_glossary_term' = 'Male Member Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Household Case Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `pwd_count` SET TAGS ('dbx_business_glossary_term' = 'Persons with Disabilities (PWD) Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'Household Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_number` SET TAGS ('dbx_business_glossary_term' = 'Household Registration Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_status` SET TAGS ('dbx_business_glossary_term' = 'Household Registration Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_status` SET TAGS ('dbx_value_regex' = 'active|suspended|closed|pending_verification|archived');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_type` SET TAGS ('dbx_business_glossary_term' = 'Household Registration Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `registration_type` SET TAGS ('dbx_value_regex' = 'initial|re-registration|update|verification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanitation_facility_type` SET TAGS ('dbx_business_glossary_term' = 'Sanitation Facility Type (WASH)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `sanitation_facility_type` SET TAGS ('dbx_value_regex' = 'flush_toilet|pit_latrine|ventilated_pit|open_defecation|communal_latrine|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_ownership` SET TAGS ('dbx_business_glossary_term' = 'Shelter Ownership Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_ownership` SET TAGS ('dbx_value_regex' = 'owned|rented|informal|provided_by_org|communal');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `shelter_type` SET TAGS ('dbx_business_glossary_term' = 'Shelter Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `size` SET TAGS ('dbx_business_glossary_term' = 'Household Size (Total Members)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_business_glossary_term' = 'Household Vulnerability Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Household Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household` ALTER COLUMN `water_source_type` SET TAGS ('dbx_business_glossary_term' = 'Primary Water Source Type (WASH)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('dbx_business_glossary_term' = 'Household Member ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `case_record_id` SET TAGS ('dbx_business_glossary_term' = 'Case ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Registrant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Enumerator ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_estimated` SET TAGS ('dbx_business_glossary_term' = 'Age Estimated Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_estimated` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_years` SET TAGS ('dbx_business_glossary_term' = 'Age in Years');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `age_years` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_code` SET TAGS ('dbx_business_glossary_term' = 'Household Member Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `household_member_code` SET TAGS ('dbx_value_regex' = '^HHM-[A-Z0-9]{6,12}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_given` SET TAGS ('dbx_business_glossary_term' = 'Consent Given Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `consent_withdrawal_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Withdrawal Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `country_of_origin_code` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_value_regex' = 'kobo_survey|commcare_mobile|paper_form|fgd|kii|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Date of Birth');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_pii_dob' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('dbx_business_glossary_term' = 'Disability Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `disability_status` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `displacement_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `education_level` SET TAGS ('dbx_business_glossary_term' = 'Education Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('dbx_business_glossary_term' = 'Family Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `family_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('dbx_business_glossary_term' = 'Gender Identity');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `gender_identity` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('dbx_business_glossary_term' = 'Given Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `given_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_female_headed` SET TAGS ('dbx_business_glossary_term' = 'Is Female-Headed Household Member Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_head_of_household` SET TAGS ('dbx_business_glossary_term' = 'Is Head of Household Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `is_head_of_household` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `livelihood_status` SET TAGS ('dbx_business_glossary_term' = 'Livelihood Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `livelihood_status` SET TAGS ('dbx_value_regex' = 'employed|self_employed|unemployed|student|unable_to_work|not_applicable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_date` SET TAGS ('dbx_business_glossary_term' = 'Household Membership End Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_reason` SET TAGS ('dbx_business_glossary_term' = 'Household Membership End Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_end_reason` SET TAGS ('dbx_value_regex' = 'deceased|transferred_household|relocated|voluntary_exit|administrative_closure|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_start_date` SET TAGS ('dbx_business_glossary_term' = 'Household Membership Start Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_status` SET TAGS ('dbx_business_glossary_term' = 'Household Membership Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `membership_status` SET TAGS ('dbx_value_regex' = 'active|inactive|transferred|deceased|departed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'MUAC Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `muac_cm` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('dbx_business_glossary_term' = 'Nationality Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `nationality_code` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Member Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('dbx_business_glossary_term' = 'Pregnant or Lactating Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `pregnant_or_lactating` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_business_glossary_term' = 'Primary Language Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{2,3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('dbx_business_glossary_term' = 'Protection Concern Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `protection_concern_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_location_code` SET TAGS ('dbx_business_glossary_term' = 'Registration Location Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `registration_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}-[A-Z0-9]{3,10}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `relationship_to_head` SET TAGS ('dbx_business_glossary_term' = 'Relationship to Head of Household');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `role` SET TAGS ('dbx_business_glossary_term' = 'Household Member Role');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `role` SET TAGS ('dbx_value_regex' = 'head|spouse|child|dependent|elderly|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `school_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'School Enrollment Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `school_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|not_enrolled|dropout|graduated|not_applicable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('dbx_business_glossary_term' = 'Sex');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('dbx_value_regex' = 'male|female|intersex|prefer_not_to_say');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `sex` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('dbx_business_glossary_term' = 'Unaccompanied Minor Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `unaccompanied_minor` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Verification Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'unverified|pending|verified|rejected');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_member` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` SET TAGS ('dbx_subdomain' = 'protection_assessment');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Profile ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `previous_profile_vulnerability_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Vulnerability Profile ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Registrant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `registrant_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Assessed By Staff ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_tool` SET TAGS ('dbx_business_glossary_term' = 'Assessment Tool');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `assessment_tool` SET TAGS ('dbx_value_regex' = 'KoboToolbox|CommCare|DHIS2|ODK|paper_based|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `children_under5_count` SET TAGS ('dbx_business_glossary_term' = 'Children Under 5 Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('dbx_business_glossary_term' = 'Chronic Illness Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('dbx_business_glossary_term' = 'Chronic Illness Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `chronic_illness_type` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_code` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Profile Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_code` SET TAGS ('dbx_value_regex' = '^VP-[A-Z]{2,4}-[0-9]{6,10}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `composite_vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Composite Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `consent_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Profile Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('dbx_business_glossary_term' = 'Inter-Agency Data Sharing Consent Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('dbx_business_glossary_term' = 'Disability Classification (Washington Group Questions)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_classification` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('dbx_business_glossary_term' = 'Disability Severity Level (Washington Group Questions)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('dbx_value_regex' = 'no_difficulty|some_difficulty|a_lot_of_difficulty|cannot_do');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `disability_severity` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('dbx_business_glossary_term' = 'Displacement Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `displacement_category` SET TAGS ('dbx_value_regex' = 'IDP|refugee|returnee|stateless|asylum_seeker|host_community');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `elderly_member_flag` SET TAGS ('dbx_business_glossary_term' = 'Elderly Household Member Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `female_headed_household_flag` SET TAGS ('dbx_business_glossary_term' = 'Female-Headed Household Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Exposure Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `gbv_exposure_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `geographic_area_code` SET TAGS ('dbx_business_glossary_term' = 'Geographic Area Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `geographic_area_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}-[A-Z0-9]{2,10}(-[A-Z0-9]{2,10})?$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `ipc_phase` SET TAGS ('dbx_business_glossary_term' = 'Integrated Food Security Phase Classification (IPC) Phase');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `livelihood_status` SET TAGS ('dbx_business_glossary_term' = 'Livelihood Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `livelihood_status` SET TAGS ('dbx_value_regex' = 'none|disrupted|partial|stable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `muac_mm` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `next_reassessment_date` SET TAGS ('dbx_business_glossary_term' = 'Next Reassessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Profile Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('dbx_business_glossary_term' = 'Nutritional Status (GAM/SAM Classification)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('dbx_value_regex' = 'SAM|MAM|normal|overweight');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `nutritional_status` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('dbx_business_glossary_term' = 'Pregnant or Lactating Woman (PLW) Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pregnant_lactating_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Protection Risk Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('dbx_business_glossary_term' = 'Psychosocial Support (PSS) Need Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `pss_need_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `shelter_adequacy` SET TAGS ('dbx_business_glossary_term' = 'Shelter Adequacy Classification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `shelter_adequacy` SET TAGS ('dbx_value_regex' = 'adequate|inadequate|none|transitional');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `source` SET TAGS ('dbx_business_glossary_term' = 'Profile Source');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `source` SET TAGS ('dbx_value_regex' = 'initial_registration|periodic_reassessment|post_distribution_monitoring|emergency_screening|referral|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_status` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Profile Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_profile_status` SET TAGS ('dbx_value_regex' = 'active|archived|pending_review|superseded|draft');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('dbx_business_glossary_term' = 'Unaccompanied Minor Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `unaccompanied_minor_flag` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Profile Last Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Tier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `vulnerability_tier` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`vulnerability_profile` ALTER COLUMN `wash_access_flag` SET TAGS ('dbx_business_glossary_term' = 'Water Sanitation and Hygiene (WASH) Access Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` SET TAGS ('dbx_subdomain' = 'protection_assessment');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Needs Assessment ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_description_cleaned' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `commodity_id` SET TAGS ('dbx_business_glossary_term' = 'Commodity Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `community_engagement_event_id` SET TAGS ('dbx_business_glossary_term' = 'Community Engagement Event Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `community_id` SET TAGS ('dbx_business_glossary_term' = 'Community ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Assessment Tool Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Enumerator Volunteer Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Org Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Field Enumerator ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin1_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 1 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin1_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin2_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 2 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `admin2_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `children_under5_count` SET TAGS ('dbx_business_glossary_term' = 'Children Under 5 Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('dbx_business_glossary_term' = 'Consent Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `consent_type` SET TAGS ('dbx_value_regex' = 'verbal|written|proxy');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_value_regex' = 'face_to_face|remote_phone|fgd|kii|observation|secondary_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `displacement_status` SET TAGS ('dbx_value_regex' = 'idp|refugee|returnee|host_community|stateless|non_displaced');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `education_score` SET TAGS ('dbx_business_glossary_term' = 'Education Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `enumerator_notes` SET TAGS ('dbx_business_glossary_term' = 'Field Enumerator Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `female_headed_household` SET TAGS ('dbx_business_glossary_term' = 'Female-Headed Household Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gbv_risk_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('dbx_business_glossary_term' = 'GPS Accuracy (Meters)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_level` SET TAGS ('dbx_business_glossary_term' = 'Assessment Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_level` SET TAGS ('dbx_value_regex' = 'individual|household|community');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `livelihoods_score` SET TAGS ('dbx_business_glossary_term' = 'Livelihoods Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `muac_mm` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `nutrition_score` SET TAGS ('dbx_business_glossary_term' = 'Nutrition Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `overall_vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Overall Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('dbx_business_glossary_term' = 'Persons with Disability Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `persons_with_disability_count` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `protection_score` SET TAGS ('dbx_business_glossary_term' = 'Protection Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `reference_code` SET TAGS ('dbx_business_glossary_term' = 'Assessment Reference Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `reference_code` SET TAGS ('dbx_value_regex' = '^NA-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `referral_recommended` SET TAGS ('dbx_business_glossary_term' = 'Service Referral Recommended');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `referral_sectors` SET TAGS ('dbx_business_glossary_term' = 'Referral Sectors');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `sectors_assessed` SET TAGS ('dbx_business_glossary_term' = 'Sectors Assessed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `shelter_score` SET TAGS ('dbx_business_glossary_term' = 'Shelter Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `source_submission_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Submission ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_status` SET TAGS ('dbx_business_glossary_term' = 'Assessment Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|under_review|validated|rejected|archived');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `supervisor_validation_notes` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Validation Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `tool_version` SET TAGS ('dbx_business_glossary_term' = 'Assessment Tool Version');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_type` SET TAGS ('dbx_business_glossary_term' = 'Assessment Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `beneficiary_needs_assessment_type` SET TAGS ('dbx_value_regex' = 'initial_registration|periodic_reassessment|post_crisis_rapid|sector_specific_deep');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `validation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Validation Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low|not_vulnerable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`beneficiary_needs_assessment` ALTER COLUMN `wash_score` SET TAGS ('dbx_business_glossary_term' = 'Water Sanitation and Hygiene (WASH) Sector Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` SET TAGS ('dbx_subdomain' = 'protection_assessment');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Consent Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Witness Staff Member ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('dbx_business_glossary_term' = 'Biometric Enrollment Permitted Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `biometric_enrollment_permitted` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `chs_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Core Humanitarian Standard (CHS) Compliance Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_country_code` SET TAGS ('dbx_business_glossary_term' = 'Consent Collection Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `collection_location` SET TAGS ('dbx_business_glossary_term' = 'Consent Collection Location');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('dbx_business_glossary_term' = 'Consent Form Version');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_form_version` SET TAGS ('dbx_value_regex' = '^v[0-9]+.[0-9]+(.[0-9]+)?$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('dbx_business_glossary_term' = 'Consent Language');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('dbx_value_regex' = '^[a-z]{2,3}(-[A-Z]{2,3})?$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_language` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_business_glossary_term' = 'Consent Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_value_regex' = 'verbal|written|digital|thumbprint|proxy');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Consent Reference Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_reference_number` SET TAGS ('dbx_value_regex' = '^CNS-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('dbx_business_glossary_term' = 'Consent Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_status` SET TAGS ('dbx_value_regex' = 'given|withdrawn|pending|expired|refused');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('dbx_business_glossary_term' = 'Consent Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `consent_type` SET TAGS ('dbx_value_regex' = 'data_processing|photography_media|case_referral|biometric_enrollment|program_participation|research_survey');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `data_retention_period_days` SET TAGS ('dbx_business_glossary_term' = 'Data Retention Period (Days)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `data_scope` SET TAGS ('dbx_business_glossary_term' = 'Consent Data Scope');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('dbx_business_glossary_term' = 'Digital Signature Reference');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `digital_signature_reference` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Effective From Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Expiry Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `form_attachment_reference` SET TAGS ('dbx_business_glossary_term' = 'Consent Form Attachment Reference');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `form_attachment_reference` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `gdpr_applicable` SET TAGS ('dbx_business_glossary_term' = 'GDPR Applicable Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `informed_consent_verified` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Verified Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `is_proxy_consent` SET TAGS ('dbx_business_glossary_term' = 'Is Proxy Consent Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Consent Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `photography_permitted` SET TAGS ('dbx_business_glossary_term' = 'Photography and Media Use Permitted Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `photography_permitted` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('dbx_business_glossary_term' = 'Proxy Consent Giver Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `proxy_relationship` SET TAGS ('dbx_business_glossary_term' = 'Proxy Relationship to Beneficiary');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `sharing_permitted` SET TAGS ('dbx_business_glossary_term' = 'Data Sharing Permitted Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `sharing_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Data Sharing Restrictions');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `withdrawal_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Withdrawal Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `withdrawal_reason` SET TAGS ('dbx_business_glossary_term' = 'Consent Withdrawal Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('dbx_business_glossary_term' = 'Consent Witness Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`consent_record` ALTER COLUMN `witness_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` SET TAGS ('dbx_subdomain' = 'case_management');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_record_id` SET TAGS ('dbx_business_glossary_term' = 'Case Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Grant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `compliance_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Incident Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Org Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Service Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Caseworker ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('dbx_business_glossary_term' = 'Case Narrative');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_narrative` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_number` SET TAGS ('dbx_business_glossary_term' = 'Case Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_number` SET TAGS ('dbx_value_regex' = '^CASE-[A-Z]{2,4}-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_plan_developed` SET TAGS ('dbx_business_glossary_term' = 'Case Plan Developed Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_stage` SET TAGS ('dbx_business_glossary_term' = 'Case Stage');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_stage` SET TAGS ('dbx_value_regex' = 'intake|assessment|planning|intervention|monitoring|closure');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_stage` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_status` SET TAGS ('dbx_business_glossary_term' = 'Case Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|on_hold|closed|cancelled');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `case_type` SET TAGS ('dbx_business_glossary_term' = 'Case Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `close_date` SET TAGS ('dbx_business_glossary_term' = 'Case Close Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `closure_reason` SET TAGS ('dbx_business_glossary_term' = 'Case Closure Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `commcare_case_reference` SET TAGS ('dbx_business_glossary_term' = 'CommCare Case ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_value_regex' = 'commcare_mobile|kobo_form|paper_form|phone_interview|fgd|kii');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_child_case` SET TAGS ('dbx_business_glossary_term' = 'Child Case Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_child_case` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Case Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_gbv_case` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `is_idp_case` SET TAGS ('dbx_business_glossary_term' = 'Internally Displaced Person (IDP) Case Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `last_followup_date` SET TAGS ('dbx_business_glossary_term' = 'Last Follow-Up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `legal_aid_required` SET TAGS ('dbx_business_glossary_term' = 'Legal Aid Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) in Centimetres');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `muac_cm` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `next_followup_date` SET TAGS ('dbx_business_glossary_term' = 'Next Follow-Up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_business_glossary_term' = 'Nutrition Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_value_regex' = 'sam|mam|normal|at_risk');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `on_hold_reason` SET TAGS ('dbx_business_glossary_term' = 'On-Hold Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `open_date` SET TAGS ('dbx_business_glossary_term' = 'Case Open Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `outcome_classification` SET TAGS ('dbx_business_glossary_term' = 'Case Outcome Classification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `outcome_classification` SET TAGS ('dbx_value_regex' = 'goal_achieved|partially_achieved|not_achieved|lost_to_followup|referred_out|deceased');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('dbx_business_glossary_term' = 'Presenting Issue');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `presenting_issue` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Case Priority Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Protection Risk Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_value_regex' = 'extreme|high|medium|low|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `protection_risk_level` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `pss_session_count` SET TAGS ('dbx_business_glossary_term' = 'Psychosocial Support (PSS) Session Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_date` SET TAGS ('dbx_business_glossary_term' = 'Referral Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_destination` SET TAGS ('dbx_business_glossary_term' = 'Referral Destination');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `referral_source` SET TAGS ('dbx_business_glossary_term' = 'Referral Source');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('dbx_business_glossary_term' = 'Safety Plan In Place Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `safety_plan_in_place` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `service_modality` SET TAGS ('dbx_business_glossary_term' = 'Service Modality');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `service_modality` SET TAGS ('dbx_value_regex' = 'in_person|remote|mobile_outreach|group_session|home_visit');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `supervisor_review_required` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Review Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_record` ALTER COLUMN `vulnerability_score` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` SET TAGS ('dbx_subdomain' = 'case_management');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_id` SET TAGS ('dbx_business_glossary_term' = 'Case Action ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_record_id` SET TAGS ('dbx_business_glossary_term' = 'Case ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `constituent_message_id` SET TAGS ('dbx_business_glossary_term' = 'Constituent Message Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `feedback_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Feedback Submission Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Org Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Staff ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Volunteer Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `admin_level1_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 1 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `admin_level2_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 2 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_category` SET TAGS ('dbx_business_glossary_term' = 'Case Action Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('dbx_business_glossary_term' = 'Consent Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `consent_type` SET TAGS ('dbx_value_regex' = 'verbal|written|digital|proxy|not_required');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `data_collection_method` SET TAGS ('dbx_value_regex' = 'mobile_app|paper_form|phone_interview|direct_observation|fgd|kii');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_date` SET TAGS ('dbx_business_glossary_term' = 'Case Action Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Action Duration (Minutes)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_business_glossary_term' = 'Escalation Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `escalation_required` SET TAGS ('dbx_business_glossary_term' = 'Escalation Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_type` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Action Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `follow_up_type` SET TAGS ('dbx_value_regex' = 'home_visit|phone_call|facility_visit|group_session|referral_follow_up');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `is_sensitive_case` SET TAGS ('dbx_business_glossary_term' = 'Sensitive Case Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Action GPS Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Action GPS Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('dbx_business_glossary_term' = 'Mid-Upper Arm Circumference (MUAC) Measurement (mm)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `muac_measurement_mm` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `next_action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Action Due Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_business_glossary_term' = 'Nutrition Status Classification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_value_regex' = 'sam|mam|normal|not_assessed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `nutrition_status` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome` SET TAGS ('dbx_business_glossary_term' = 'Case Action Outcome');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome` SET TAGS ('dbx_value_regex' = 'successful|partially_successful|unsuccessful|pending|referred_out');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome_notes` SET TAGS ('dbx_business_glossary_term' = 'Action Outcome Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `outcome_notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('dbx_business_glossary_term' = 'Protection Concern Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('dbx_value_regex' = 'gbv|child_protection|trafficking|idp_displacement|statelessness|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `protection_concern_type` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `pss_session_number` SET TAGS ('dbx_business_glossary_term' = 'Psychosocial Support (PSS) Session Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `reference_number` SET TAGS ('dbx_business_glossary_term' = 'Case Action Reference Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `reference_number` SET TAGS ('dbx_value_regex' = '^CA-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_destination` SET TAGS ('dbx_business_glossary_term' = 'Referral Destination');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_reason` SET TAGS ('dbx_business_glossary_term' = 'Referral Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `referral_reason` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Action Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `service_items_provided` SET TAGS ('dbx_business_glossary_term' = 'Service Items Provided');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_status` SET TAGS ('dbx_business_glossary_term' = 'Case Action Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|cancelled|missed|rescheduled');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `supervisor_review_date` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Review Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `supervisor_reviewed` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Reviewed Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `timestamp` SET TAGS ('dbx_business_glossary_term' = 'Case Action Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_type` SET TAGS ('dbx_business_glossary_term' = 'Case Action Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `case_action_type` SET TAGS ('dbx_value_regex' = 'home_visit|counseling_session|referral|service_provision|follow_up_call|group_session');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`case_action` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` SET TAGS ('dbx_subdomain' = 'case_management');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_id` SET TAGS ('dbx_business_glossary_term' = 'Referral Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `case_record_id` SET TAGS ('dbx_business_glossary_term' = 'Case Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `constituent_message_id` SET TAGS ('dbx_business_glossary_term' = 'Constituent Message Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Referring Program Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Referring Organization Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Referring Staff Member Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Receiving Organization Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Receiving Staff Member Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Referring Volunteer Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `acceptance_date` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `beneficiary_satisfaction_rating` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Satisfaction Rating');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_category` SET TAGS ('dbx_business_glossary_term' = 'Referral Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'standard|sensitive|highly_sensitive');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `consent_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `data_source_system` SET TAGS ('dbx_business_glossary_term' = 'Data Source System');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_date` SET TAGS ('dbx_business_glossary_term' = 'Referral Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `decline_reason` SET TAGS ('dbx_business_glossary_term' = 'Decline Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `expected_response_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Response Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `feedback_received_flag` SET TAGS ('dbx_business_glossary_term' = 'Feedback Received Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `follow_up_completed_flag` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Completed Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `follow_up_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `gbv_case_flag` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Case Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Referral Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Referral Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `number` SET TAGS ('dbx_value_regex' = '^REF-[0-9]{8}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome` SET TAGS ('dbx_business_glossary_term' = 'Referral Outcome');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome_category` SET TAGS ('dbx_business_glossary_term' = 'Outcome Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `outcome_category` SET TAGS ('dbx_value_regex' = 'successful|partially_successful|unsuccessful|beneficiary_declined|service_unavailable|lost_to_follow_up');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Priority Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `protection_concern_flag` SET TAGS ('dbx_business_glossary_term' = 'Protection Concern Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `reason` SET TAGS ('dbx_business_glossary_term' = 'Referral Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_name` SET TAGS ('dbx_business_glossary_term' = 'Receiving Organization Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_organization_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_service_type` SET TAGS ('dbx_business_glossary_term' = 'Receiving Service Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('dbx_business_glossary_term' = 'Receiving Staff Member Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `receiving_staff_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('dbx_business_glossary_term' = 'Referring Staff Contact Information');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_contact` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('dbx_business_glossary_term' = 'Referring Staff Member Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referring_staff_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `service_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Service Delivery Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_status` SET TAGS ('dbx_business_glossary_term' = 'Referral Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_status` SET TAGS ('dbx_value_regex' = 'pending|accepted|in_progress|completed|declined|cancelled');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_type` SET TAGS ('dbx_business_glossary_term' = 'Referral Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`referral` ALTER COLUMN `referral_type` SET TAGS ('dbx_value_regex' = 'internal|external|emergency|routine|urgent');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('dbx_business_glossary_term' = 'Biometric Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_record_id` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Program Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('dbx_business_glossary_term' = 'Duplicate Biometric Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `duplicate_record_biometric_record_id` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Operator Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('dbx_business_glossary_term' = 'Biometric Modality Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('dbx_value_regex' = 'fingerprint|iris_scan|facial_recognition|palm_vein|voice_recognition|multimodal');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `biometric_modality` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `capture_method` SET TAGS ('dbx_business_glossary_term' = 'Biometric Capture Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `capture_method` SET TAGS ('dbx_value_regex' = 'optical|capacitive|ultrasonic|thermal|camera|scanner');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Biometric Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_business_glossary_term' = 'Consent Collection Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_value_regex' = 'written|verbal|digital|witnessed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Biometric Consent Obtained Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `data_retention_period_days` SET TAGS ('dbx_business_glossary_term' = 'Data Retention Period in Days');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_match_found` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Match Found Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_match_score` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Match Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `deduplication_performed` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Check Performed Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('dbx_business_glossary_term' = 'Biometric Device Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_identifier` SET TAGS ('dbx_pii_digital' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Device Manufacturer Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `device_model` SET TAGS ('dbx_business_glossary_term' = 'Device Model Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `encryption_algorithm` SET TAGS ('dbx_business_glossary_term' = 'Encryption Algorithm Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `encryption_applied` SET TAGS ('dbx_business_glossary_term' = 'Encryption Applied Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Biometric Enrollment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Geographic Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_latitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_location` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Location Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_location` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Geographic Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_longitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Biometric Enrollment Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_purpose` SET TAGS ('dbx_business_glossary_term' = 'Biometric Enrollment Purpose');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `enrollment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Biometric Enrollment Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Biometric Record Expiry Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Active Record Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `quality_score` SET TAGS ('dbx_business_glossary_term' = 'Biometric Quality Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `quality_threshold_met` SET TAGS ('dbx_business_glossary_term' = 'Quality Threshold Met Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_format` SET TAGS ('dbx_business_glossary_term' = 'Biometric Template Format Standard');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('dbx_business_glossary_term' = 'Biometric Template Reference');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_reference` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `template_size_bytes` SET TAGS ('dbx_business_glossary_term' = 'Template Size in Bytes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_count` SET TAGS ('dbx_business_glossary_term' = 'Verification Event Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Last Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Biometric Verification Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`biometric_record` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'enrolled|verified|failed|pending|expired|revoked');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` SET TAGS ('dbx_subdomain' = 'protection_assessment');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_id` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `case_record_id` SET TAGS ('dbx_business_glossary_term' = 'Case ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `compliance_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Incident Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `feedback_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Feedback Submission Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Protection Officer ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `user_account_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_code` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3,6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'Restricted|Confidential|Internal|Public');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `data_source_system` SET TAGS ('dbx_business_glossary_term' = 'Data Source System');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_date` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_date` SET TAGS ('dbx_business_glossary_term' = 'Escalation Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_business_glossary_term' = 'Escalation Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `escalation_required` SET TAGS ('dbx_business_glossary_term' = 'Escalation Required');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `external_reference_code` SET TAGS ('dbx_business_glossary_term' = 'External Reference ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `flagging_source` SET TAGS ('dbx_business_glossary_term' = 'Flagging Source');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-up Required');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `identification_method` SET TAGS ('dbx_business_glossary_term' = 'Identification Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('dbx_business_glossary_term' = 'Immediate Needs');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `immediate_needs` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `last_follow_up_date` SET TAGS ('dbx_business_glossary_term' = 'Last Follow-up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `legal_action_required` SET TAGS ('dbx_business_glossary_term' = 'Legal Action Required');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `next_follow_up_date` SET TAGS ('dbx_business_glossary_term' = 'Next Follow-up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `pss_provided` SET TAGS ('dbx_business_glossary_term' = 'Psychosocial Support (PSS) Provided');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_date` SET TAGS ('dbx_business_glossary_term' = 'Referral Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_made` SET TAGS ('dbx_business_glossary_term' = 'Referral Made');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `referral_organization` SET TAGS ('dbx_business_glossary_term' = 'Referral Organization');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `reporting_period` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `reporting_period` SET TAGS ('dbx_value_regex' = '^d{4}-Q[1-4]$|^d{4}-d{2}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Resolution Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_business_glossary_term' = 'Resolution Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `risk_description` SET TAGS ('dbx_business_glossary_term' = 'Risk Description');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `risk_description` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Severity');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `severity` SET TAGS ('dbx_value_regex' = 'Critical|High|Medium|Low');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_status` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_status` SET TAGS ('dbx_value_regex' = 'Active|Monitoring|Resolved|Closed|Escalated|Referred');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`protection_flag` ALTER COLUMN `protection_flag_type` SET TAGS ('dbx_business_glossary_term' = 'Protection Flag Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_event_id` SET TAGS ('dbx_business_glossary_term' = 'Registration Event ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Registering Staff ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('dbx_business_glossary_term' = 'Biometric Captured Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_captured` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('dbx_business_glossary_term' = 'Biometric Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('dbx_value_regex' = 'fingerprint|iris_scan|facial_recognition|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `biometric_type` SET TAGS ('dbx_pii_biometric' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('dbx_business_glossary_term' = 'Consent Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `consent_type` SET TAGS ('dbx_value_regex' = 'verbal|written|digital_signature|guardian_consent');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `data_source_system` SET TAGS ('dbx_business_glossary_term' = 'Data Source System');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_check_performed` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Check Performed Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_method` SET TAGS ('dbx_business_glossary_term' = 'Deduplication Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `deduplication_method` SET TAGS ('dbx_value_regex' = 'biometric|demographic|document_number|manual_review|none');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_found` SET TAGS ('dbx_business_glossary_term' = 'Duplicate Found Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_resolution_status` SET TAGS ('dbx_business_glossary_term' = 'Duplicate Resolution Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `duplicate_resolution_status` SET TAGS ('dbx_value_regex' = 'no_duplicate|duplicate_confirmed|duplicate_resolved|pending_review');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `household_head` SET TAGS ('dbx_business_glossary_term' = 'Household Head Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `household_head` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `household_registration` SET TAGS ('dbx_business_glossary_term' = 'Household Registration Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `interpreter_used` SET TAGS ('dbx_business_glossary_term' = 'Interpreter Used Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `referral_required` SET TAGS ('dbx_business_glossary_term' = 'Referral Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `referral_type` SET TAGS ('dbx_business_glossary_term' = 'Referral Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_organization` SET TAGS ('dbx_business_glossary_term' = 'Registering Organization');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('dbx_business_glossary_term' = 'Registering Staff Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registering_staff_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_completeness_score` SET TAGS ('dbx_business_glossary_term' = 'Registration Completeness Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('dbx_business_glossary_term' = 'Registration Language');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('dbx_value_regex' = '^[a-z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_language` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('dbx_business_glossary_term' = 'Registration Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('dbx_business_glossary_term' = 'Registration Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_modality` SET TAGS ('dbx_business_glossary_term' = 'Registration Modality');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_modality` SET TAGS ('dbx_value_regex' = 'in_person|mobile_outreach|remote_digital|phone_interview|community_based');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_notes` SET TAGS ('dbx_business_glossary_term' = 'Registration Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_number` SET TAGS ('dbx_business_glossary_term' = 'Registration Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}-[0-9]{4}-[0-9]{6}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_status` SET TAGS ('dbx_business_glossary_term' = 'Registration Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_status` SET TAGS ('dbx_value_regex' = 'draft|pending_verification|verified|approved|rejected|incomplete');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Registration Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_tool` SET TAGS ('dbx_business_glossary_term' = 'Registration Tool');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_tool` SET TAGS ('dbx_value_regex' = 'kobotoolbox|commcare|paper_form|unhcr_primes|custom_app|other');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_type` SET TAGS ('dbx_business_glossary_term' = 'Registration Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `registration_type` SET TAGS ('dbx_value_regex' = 'initial|re-registration|update|verification|biometric_enrollment');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_business_glossary_term' = 'Verification Document Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `verification_document_type` SET TAGS ('dbx_business_glossary_term' = 'Verification Document Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`registration_event` ALTER COLUMN `vulnerability_assessment_conducted` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Assessment Conducted Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_history_id` SET TAGS ('dbx_business_glossary_term' = 'Displacement History ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Registrant ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Enumerator ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_admin1_code` SET TAGS ('dbx_business_glossary_term' = 'Current Administrative Level 1 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_admin2_code` SET TAGS ('dbx_business_glossary_term' = 'Current Administrative Level 2 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_country_code` SET TAGS ('dbx_business_glossary_term' = 'Current Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('dbx_business_glossary_term' = 'Current Location Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('dbx_business_glossary_term' = 'Current Location Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_name` SET TAGS ('dbx_business_glossary_term' = 'Current Settlement Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_type` SET TAGS ('dbx_business_glossary_term' = 'Current Settlement Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `current_settlement_type` SET TAGS ('dbx_value_regex' = 'camp|collective_center|host_community|informal_settlement|urban_area|rural_area');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_date` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_tool` SET TAGS ('dbx_business_glossary_term' = 'Data Collection Tool');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `data_collection_tool` SET TAGS ('dbx_value_regex' = 'kobotoolbox|commcare|odk|unhcr_progres|iom_dtm|manual_entry');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_date` SET TAGS ('dbx_business_glossary_term' = 'Displacement Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Displacement Duration in Days');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_episode_number` SET TAGS ('dbx_business_glossary_term' = 'Displacement Episode Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_status` SET TAGS ('dbx_value_regex' = 'newly_displaced|protracted_displaced|returned|resettled|locally_integrated|in_transit');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('dbx_business_glossary_term' = 'Displacement Trigger');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_trigger` SET TAGS ('dbx_value_regex' = 'armed_conflict|generalized_violence|human_rights_violations|natural_disaster|climate_event|development_project');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Verification Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `displacement_verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending_verification|unverified|disputed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `hdx_dataset_reference` SET TAGS ('dbx_business_glossary_term' = 'Humanitarian Data Exchange (HDX) Dataset ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active Record');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_cross_border` SET TAGS ('dbx_business_glossary_term' = 'Is Cross-Border Displacement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `is_protracted` SET TAGS ('dbx_business_glossary_term' = 'Is Protracted Displacement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `local_integration_status` SET TAGS ('dbx_business_glossary_term' = 'Local Integration Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `local_integration_status` SET TAGS ('dbx_value_regex' = 'not_applicable|in_progress|achieved|citizenship_granted');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin1_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Administrative Level 1 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_admin2_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Administrative Level 2 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('dbx_business_glossary_term' = 'Origin Location Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('dbx_business_glossary_term' = 'Origin Location Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_settlement_name` SET TAGS ('dbx_business_glossary_term' = 'Origin Settlement Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `origin_settlement_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('dbx_business_glossary_term' = 'Person of Concern (PoC) Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `poc_category` SET TAGS ('dbx_value_regex' = 'idp|refugee|asylum_seeker|returnee|stateless|host_community');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('dbx_business_glossary_term' = 'Resettlement Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `resettlement_date` SET TAGS ('dbx_business_glossary_term' = 'Resettlement Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_date` SET TAGS ('dbx_business_glossary_term' = 'Return Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_intention` SET TAGS ('dbx_business_glossary_term' = 'Return Intention');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_intention` SET TAGS ('dbx_value_regex' = 'intends_to_return|no_return_intention|undecided|return_not_safe');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_type` SET TAGS ('dbx_business_glossary_term' = 'Return Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `return_type` SET TAGS ('dbx_value_regex' = 'voluntary|facilitated|spontaneous|forced|not_applicable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `transit_locations` SET TAGS ('dbx_business_glossary_term' = 'Transit Locations');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`displacement_history` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'field_visit|document_review|key_informant|community_leader|self_reported');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_record_id` SET TAGS ('dbx_business_glossary_term' = 'Exit Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Staff Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_deletion_scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Data Deletion Scheduled Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_classification` SET TAGS ('dbx_business_glossary_term' = 'Data Retention Classification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_classification` SET TAGS ('dbx_value_regex' = 'retain_full|retain_anonymized|archive|delete');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `data_retention_period_months` SET TAGS ('dbx_business_glossary_term' = 'Data Retention Period in Months');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `death_certificate_verified` SET TAGS ('dbx_business_glossary_term' = 'Death Certificate Verified Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `death_date` SET TAGS ('dbx_business_glossary_term' = 'Death Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_conducted` SET TAGS ('dbx_business_glossary_term' = 'Exit Assessment Conducted Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Exit Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_notes` SET TAGS ('dbx_business_glossary_term' = 'Exit Assessment Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_outcome` SET TAGS ('dbx_business_glossary_term' = 'Exit Assessment Outcome');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_assessment_outcome` SET TAGS ('dbx_value_regex' = 'positive|neutral|negative|not_applicable');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_date` SET TAGS ('dbx_business_glossary_term' = 'Exit Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('dbx_business_glossary_term' = 'Exit Consent Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_method` SET TAGS ('dbx_value_regex' = 'verbal|written|digital|proxy');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Exit Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_date` SET TAGS ('dbx_business_glossary_term' = 'Exit Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_facility_name` SET TAGS ('dbx_business_glossary_term' = 'Exit Facility Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_facility_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_location_code` SET TAGS ('dbx_business_glossary_term' = 'Exit Location Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_number` SET TAGS ('dbx_business_glossary_term' = 'Exit Record Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_number` SET TAGS ('dbx_value_regex' = '^EXT-[0-9]{8}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_category` SET TAGS ('dbx_business_glossary_term' = 'Exit Reason Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_category` SET TAGS ('dbx_value_regex' = 'program_graduation|voluntary_withdrawal|relocation|death|loss_of_contact|loss_of_eligibility');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_reason_detail` SET TAGS ('dbx_business_glossary_term' = 'Exit Reason Detail');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_status` SET TAGS ('dbx_business_glossary_term' = 'Exit Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_status` SET TAGS ('dbx_value_regex' = 'pending|approved|completed|reversed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `exit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Exit Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `is_duplicate_merge` SET TAGS ('dbx_business_glossary_term' = 'Is Duplicate Merge Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_date` SET TAGS ('dbx_business_glossary_term' = 'Post-Exit Follow-up Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_plan` SET TAGS ('dbx_business_glossary_term' = 'Post-Exit Follow-up Plan');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `post_exit_followup_required` SET TAGS ('dbx_business_glossary_term' = 'Post-Exit Follow-up Required Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `reactivation_conditions` SET TAGS ('dbx_business_glossary_term' = 'Reactivation Conditions');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `reactivation_eligible` SET TAGS ('dbx_business_glossary_term' = 'Reactivation Eligible Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_organization_name` SET TAGS ('dbx_business_glossary_term' = 'Referral Organization Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_organization_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_provided` SET TAGS ('dbx_business_glossary_term' = 'Referral Provided Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `referral_service_type` SET TAGS ('dbx_business_glossary_term' = 'Referral Service Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_country_code` SET TAGS ('dbx_business_glossary_term' = 'Relocation Destination Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `relocation_destination_location` SET TAGS ('dbx_business_glossary_term' = 'Relocation Destination Location');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`exit_record` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` SET TAGS ('dbx_subdomain' = 'identity_registration');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_record_id` SET TAGS ('dbx_business_glossary_term' = 'Document Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `user_account_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Verified By Staff Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('dbx_business_glossary_term' = 'Capture Device Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_device_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_method` SET TAGS ('dbx_business_glossary_term' = 'Capture Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `capture_method` SET TAGS ('dbx_value_regex' = 'mobile_scan|flatbed_scan|photograph|manual_entry|digital_upload');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'public|internal|confidential|restricted');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_business_glossary_term' = 'Consent Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_method` SET TAGS ('dbx_value_regex' = 'written|verbal|digital_signature|biometric|proxy');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `data_sharing_consent` SET TAGS ('dbx_business_glossary_term' = 'Data Sharing Consent Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_condition` SET TAGS ('dbx_business_glossary_term' = 'Document Condition');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_condition` SET TAGS ('dbx_value_regex' = 'excellent|good|fair|poor|damaged|illegible');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('dbx_business_glossary_term' = 'Document Image Reference');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_image_reference` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('dbx_business_glossary_term' = 'Document Language Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{2,3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_language_code` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('dbx_business_glossary_term' = 'Document Number');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_type` SET TAGS ('dbx_business_glossary_term' = 'Document Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `document_type` SET TAGS ('dbx_value_regex' = 'unhcr_registration|national_id|birth_certificate|marriage_certificate|asylum_seeker_card|travel_document');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `external_reference_code` SET TAGS ('dbx_business_glossary_term' = 'External Reference Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `is_primary_identity_document` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Identity Document Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Issuing Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `legal_status_indicator` SET TAGS ('dbx_business_glossary_term' = 'Legal Status Indicator');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `registration_location_code` SET TAGS ('dbx_business_glossary_term' = 'Registration Location Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `retention_period_days` SET TAGS ('dbx_business_glossary_term' = 'Retention Period in Days');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'visual_inspection|biometric_match|authority_confirmation|third_party_validation|digital_verification');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Verification Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`document_record` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending|unverified|expired|invalid|under_review');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` SET TAGS ('dbx_subdomain' = 'community_engagement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_id` SET TAGS ('dbx_business_glossary_term' = 'Community Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `parent_community_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Community Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `parent_community_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Org Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Registration Staff Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `access_constraint_level` SET TAGS ('dbx_business_glossary_term' = 'Access Constraint Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `access_constraint_level` SET TAGS ('dbx_value_regex' = 'no_constraint|low|medium|high|no_access');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `active_program_count` SET TAGS ('dbx_business_glossary_term' = 'Active Program Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 1 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 1 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin1_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 2 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 2 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin2_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 3 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 3 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin3_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_code` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 4 Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_name` SET TAGS ('dbx_business_glossary_term' = 'Administrative Level 4 Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `admin4_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_code` SET TAGS ('dbx_business_glossary_term' = 'Community Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_date` SET TAGS ('dbx_business_glossary_term' = 'Consent Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `consent_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Consent Obtained Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `data_sharing_consent_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Sharing Consent Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('dbx_business_glossary_term' = 'Displacement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `displacement_status` SET TAGS ('dbx_value_regex' = 'host_community|idp_settlement|refugee_camp|returnee_community|mixed');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `estimated_population` SET TAGS ('dbx_business_glossary_term' = 'Estimated Population');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Gender-Based Violence (GBV) Risk Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gbv_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('dbx_business_glossary_term' = 'GPS (Global Positioning System) Accuracy in Meters');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `gps_accuracy_meters` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('dbx_business_glossary_term' = 'Health Facility Distance in Kilometers (km)');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `health_facility_distance_km` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `household_count` SET TAGS ('dbx_business_glossary_term' = 'Household Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `ipc_phase` SET TAGS ('dbx_business_glossary_term' = 'Integrated Food Security Phase Classification (IPC) Phase');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `ipc_phase` SET TAGS ('dbx_value_regex' = 'phase_1|phase_2|phase_3|phase_4|phase_5');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `last_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Assessment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Geographic Latitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('dbx_business_glossary_term' = 'Community Leader Contact');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_contact` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('dbx_business_glossary_term' = 'Community Leader Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `leader_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Geographic Longitude');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_name` SET TAGS ('dbx_business_glossary_term' = 'Community Name');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Community Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_business_glossary_term' = 'Primary Language Code');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `primary_language_code` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `protection_concern_flag` SET TAGS ('dbx_business_glossary_term' = 'Protection Concern Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'Community Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `registration_source` SET TAGS ('dbx_business_glossary_term' = 'Registration Source');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `sanitation_coverage_percent` SET TAGS ('dbx_business_glossary_term' = 'Sanitation Coverage Percentage');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `sanitation_coverage_percent` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `settlement_type` SET TAGS ('dbx_business_glossary_term' = 'Settlement Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `settlement_type` SET TAGS ('dbx_value_regex' = 'formal_camp|informal_settlement|host_community|collective_center|transit_site|urban_area');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_status` SET TAGS ('dbx_business_glossary_term' = 'Community Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `community_status` SET TAGS ('dbx_value_regex' = 'active|inactive|closed|planned|suspended');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_business_glossary_term' = 'Community Vulnerability Category');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_category` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `vulnerability_score` SET TAGS ('dbx_business_glossary_term' = 'Community Vulnerability Score');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community` ALTER COLUMN `water_access_flag` SET TAGS ('dbx_business_glossary_term' = 'Water Access Flag');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('dbx_subdomain' = 'community_engagement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` SET TAGS ('dbx_association_edges' = 'beneficiary.registrant,volunteer.volunteer');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Service Assignment Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Service Assignment - Registrant Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Assigning Staff Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Service Assignment - Volunteer Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `case_load_priority` SET TAGS ('dbx_business_glossary_term' = 'Case Load Priority');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_assignment_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Service End Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `frequency` SET TAGS ('dbx_business_glossary_term' = 'Service Frequency');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Service Delivery Location');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Assignment Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_delivery_status` SET TAGS ('dbx_business_glossary_term' = 'Service Delivery Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `service_type` SET TAGS ('dbx_business_glossary_term' = 'Service Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Service Start Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`service_assignment` ALTER COLUMN `supervision_level` SET TAGS ('dbx_business_glossary_term' = 'Supervision Level');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('dbx_subdomain' = 'community_engagement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` SET TAGS ('dbx_association_edges' = 'beneficiary.household,volunteer.volunteer');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_volunteer_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'household_volunteer_assignment Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_id` SET TAGS ('dbx_business_glossary_term' = 'Household Volunteer Assignment - Household Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `service_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Household Volunteer Assignment - Volunteer Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_volunteer_assignment_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Start Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment End Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `geographic_area` SET TAGS ('dbx_business_glossary_term' = 'Geographic Catchment Area');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `last_visit_date` SET TAGS ('dbx_business_glossary_term' = 'Last Visit Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `next_visit_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Visit Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Assignment Notes');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_volunteer_assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `household_volunteer_assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Assignment Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`household_volunteer_assignment` ALTER COLUMN `visit_frequency` SET TAGS ('dbx_business_glossary_term' = 'Visit Frequency');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('dbx_subdomain' = 'community_engagement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` SET TAGS ('dbx_association_edges' = 'beneficiary.community,program.intervention');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `community_intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Community Intervention Implementation ID');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `community_id` SET TAGS ('dbx_business_glossary_term' = 'Community Intervention - Community Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Community Intervention - Intervention Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Implementation End Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `geographic_coverage_type` SET TAGS ('dbx_business_glossary_term' = 'Geographic Coverage Type');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `geographic_coverage_type` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `implementation_status` SET TAGS ('dbx_business_glossary_term' = 'Implementation Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `reached_household_count` SET TAGS ('dbx_business_glossary_term' = 'Reached Household Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Implementation Start Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`community_intervention` ALTER COLUMN `target_household_count` SET TAGS ('dbx_business_glossary_term' = 'Target Household Count');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('dbx_subdomain' = 'case_management');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` SET TAGS ('dbx_association_edges' = 'beneficiary.registrant,program.component');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment - Registrant Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_business_glossary_term' = 'Enrolling Staff Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `staff_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `attendance_rate` SET TAGS ('dbx_business_glossary_term' = 'Attendance Rate Percentage');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Completion Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `consent_for_component` SET TAGS ('dbx_business_glossary_term' = 'Component-Specific Consent');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `exit_reason` SET TAGS ('dbx_business_glossary_term' = 'Exit Reason');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Location');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `referral_source` SET TAGS ('dbx_business_glossary_term' = 'Referral Source');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `service_delivery_modality` SET TAGS ('dbx_business_glossary_term' = 'Service Delivery Modality');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`enrollment` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('dbx_subdomain' = 'case_management');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` SET TAGS ('dbx_association_edges' = 'beneficiary.registrant,supply.commodity');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_id` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Record Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `commodity_id` SET TAGS ('dbx_business_glossary_term' = 'Entitlement - Commodity Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('dbx_business_glossary_term' = 'Creating User Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `user_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_last_modified_by_user_user_account_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modifying User Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_last_modified_by_user_user_account_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_last_modified_by_user_user_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program Identifier');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `registrant_id` SET TAGS ('dbx_business_glossary_term' = 'Entitlement - Registrant Id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `approving_user_account_id` SET TAGS ('dbx_renamed_from' = 'user_account_id');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Creation Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Entitlement End Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `frequency` SET TAGS ('dbx_business_glossary_term' = 'Distribution Frequency');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `last_modified_date` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `quantity` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Quantity');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `special_dietary_requirement` SET TAGS ('dbx_business_glossary_term' = 'Special Dietary Requirement');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Start Date');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `entitlement_status` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Status');
+ALTER TABLE `vibe_ngo_v1`.`beneficiary`.`entitlement` ALTER COLUMN `vulnerability_based_adjustment` SET TAGS ('dbx_business_glossary_term' = 'Vulnerability Adjustment Factor');

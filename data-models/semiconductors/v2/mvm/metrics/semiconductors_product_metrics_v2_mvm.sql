@@ -1,4 +1,4 @@
--- Metric views for domain: product | Business: Semiconductors | Version: 2 | Generated on: 2026-06-27 11:25:39
+-- Metric views for domain: product | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 14:15:10
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`product_bom`
 WITH METRICS
@@ -14,6 +14,8 @@ AS $$
       expr: approval_date
     - name: "Base Unit Of Measure"
       expr: base_unit_of_measure
+    - name: "Bom Number"
+      expr: bom_number
     - name: "Bom Status"
       expr: bom_status
     - name: "Bom Type"
@@ -38,8 +40,6 @@ AS $$
       expr: eol_date
     - name: "Explosion Type"
       expr: explosion_type
-    - name: "External Bom Reference"
-      expr: external_bom_reference
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -79,8 +79,6 @@ AS $$
       expr: assembly_process_code
     - name: "Bom Level"
       expr: bom_level
-    - name: "Bom Line Status"
-      expr: bom_line_status
     - name: "Component Description"
       expr: component_description
     - name: "Component Part Number"
@@ -103,6 +101,8 @@ AS $$
       expr: effectivity_start_date
     - name: "Engineering Change Order Number"
       expr: engineering_change_order_number
+    - name: "Itar Controlled Flag"
+      expr: itar_controlled_flag
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -148,8 +148,6 @@ AS $$
       expr: certification_status
     - name: "Certification Type"
       expr: certification_type
-    - name: "Compliance Cert Status"
-      expr: compliance_cert_status
     - name: "Compliance Notes"
       expr: compliance_notes
     - name: "Conflict Minerals Declaration"
@@ -162,6 +160,8 @@ AS $$
       expr: ear_controlled
     - name: "Effective Date"
       expr: effective_date
+    - name: "Environmental Standard"
+      expr: environmental_standard
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -195,16 +195,16 @@ AS $$
       expr: eda_tool_suite
     - name: "Eol Announcement Date"
       expr: eol_announcement_date
-    - name: "Fab Site Code"
-      expr: fab_site_code
-    - name: "Family Status"
-      expr: family_status
     - name: "Family Type"
       expr: family_type
     - name: "Hierarchy Level"
       expr: hierarchy_level
     - name: "Ip Core Count"
       expr: ip_core_count
+    - name: "Itar Controlled Flag"
+      expr: itar_controlled_flag
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -254,33 +254,29 @@ AS $$
       expr: ear_eccn_code
     - name: "Eol Announcement Date"
       expr: eol_announcement_date
-    - name: "External Part Number"
-      expr: external_part_number
     - name: "First Silicon Date"
       expr: first_silicon_date
     - name: "Hts Code"
       expr: hts_code
-    - name: "Ic Catalog Status"
-      expr: ic_catalog_status
-    - name: "Internal Part Number"
-      expr: internal_part_number
     - name: "Is Active"
       expr: is_active
     - name: "Itar Controlled"
       expr: itar_controlled
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
     - name: "Last Ship Date"
       expr: last_ship_date
+    - name: "Last Time Buy Date"
+      expr: last_time_buy_date
+    - name: "Lead Free Compliant"
+      expr: lead_free_compliant
+    - name: "Lifecycle Status"
+      expr: lifecycle_status
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
   measures:
     - name: "Row Count"
       expr: COUNT(1)
     - name: "Distinct Ic Catalog"
       expr: COUNT(DISTINCT ic_catalog_id)
-    - name: "Total Catalog To Family"
-      expr: SUM(catalog_to_family)
-    - name: "Average Catalog To Family"
-      expr: AVG(catalog_to_family)
     - name: "Total Die Size Mm2"
       expr: SUM(die_size_mm2)
     - name: "Average Die Size Mm2"
@@ -311,67 +307,83 @@ AS $$
       expr: AVG(transistor_count)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`product_process_node`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`product_product_ip_core`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Process Node business metrics"
-  source: "`vibe_semiconductors_v1`.`product`.`process_node`"
+  comment: "Product Ip Core business metrics"
+  source: "`vibe_semiconductors_v1`.`product`.`product_ip_core`"
   dimensions:
-    - name: "Active Product Count"
-      expr: active_product_count
+    - name: "Compliance Certifications"
+      expr: compliance_certifications
     - name: "Created Timestamp"
       expr: created_timestamp
-    - name: "Design Rule Complexity"
-      expr: design_rule_complexity
-    - name: "Environmental Compliance Status"
-      expr: environmental_compliance_status
-    - name: "Eol Announcement Date"
-      expr: eol_announcement_date
-    - name: "Export Control Classification"
-      expr: export_control_classification
-    - name: "Foundry Source"
-      expr: foundry_source
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lifecycle Stage"
-      expr: lifecycle_stage
-    - name: "Lithography Type"
-      expr: lithography_type
-    - name: "Ltb Deadline Date"
-      expr: ltb_deadline_date
-    - name: "Metal Layer Count"
-      expr: metal_layer_count
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
-    - name: "Modified By User"
-      expr: modified_by_user
-    - name: "Multi Patterning Layers"
-      expr: multi_patterning_layers
-    - name: "Node Code"
-      expr: node_code
+    - name: "Design For Testability"
+      expr: design_for_testability
+    - name: "Documentation Package"
+      expr: documentation_package
+    - name: "Eda Tool Compatibility"
+      expr: eda_tool_compatibility
+    - name: "Eol Date"
+      expr: eol_date
+    - name: "Errata Notes"
+      expr: errata_notes
+    - name: "Foundry Compatibility"
+      expr: foundry_compatibility
+    - name: "Integration Complexity"
+      expr: integration_complexity
+    - name: "Interface Protocol"
+      expr: interface_protocol
+    - name: "Ip Category"
+      expr: ip_category
+    - name: "Ip Core Code"
+      expr: ip_core_code
+    - name: "Ip Core Name"
+      expr: ip_core_name
+    - name: "Ip Type"
+      expr: ip_type
+    - name: "Licensing Model"
+      expr: licensing_model
+    - name: "Lifecycle Status"
+      expr: lifecycle_status
   measures:
     - name: "Row Count"
       expr: COUNT(1)
-    - name: "Distinct Process Node"
-      expr: COUNT(DISTINCT process_node_id)
-    - name: "Total Baseline Yield Percent"
-      expr: SUM(baseline_yield_percent)
-    - name: "Average Baseline Yield Percent"
-      expr: AVG(baseline_yield_percent)
-    - name: "Total Cost Per Wafer Usd"
-      expr: SUM(cost_per_wafer_usd)
-    - name: "Average Cost Per Wafer Usd"
-      expr: AVG(cost_per_wafer_usd)
-    - name: "Total Cycle Time Days"
-      expr: SUM(cycle_time_days)
-    - name: "Average Cycle Time Days"
-      expr: AVG(cycle_time_days)
-    - name: "Total Minimum Feature Size Nm"
-      expr: SUM(minimum_feature_size_nm)
-    - name: "Average Minimum Feature Size Nm"
-      expr: AVG(minimum_feature_size_nm)
+    - name: "Distinct Product Ip Core"
+      expr: COUNT(DISTINCT product_ip_core_id)
+    - name: "Total Area Mm2"
+      expr: SUM(area_mm2)
+    - name: "Average Area Mm2"
+      expr: AVG(area_mm2)
+    - name: "Total Gate Count"
+      expr: SUM(gate_count)
+    - name: "Average Gate Count"
+      expr: AVG(gate_count)
+    - name: "Total Nre Cost Usd"
+      expr: SUM(nre_cost_usd)
+    - name: "Average Nre Cost Usd"
+      expr: AVG(nre_cost_usd)
+    - name: "Total Operating Frequency Mhz"
+      expr: SUM(operating_frequency_mhz)
+    - name: "Average Operating Frequency Mhz"
+      expr: AVG(operating_frequency_mhz)
+    - name: "Total Operating Voltage V"
+      expr: SUM(operating_voltage_v)
+    - name: "Average Operating Voltage V"
+      expr: AVG(operating_voltage_v)
+    - name: "Total Per Unit Royalty Usd"
+      expr: SUM(per_unit_royalty_usd)
+    - name: "Average Per Unit Royalty Usd"
+      expr: AVG(per_unit_royalty_usd)
+    - name: "Total Power Consumption Mw"
+      expr: SUM(power_consumption_mw)
+    - name: "Average Power Consumption Mw"
+      expr: AVG(power_consumption_mw)
+    - name: "Total To Node"
+      expr: SUM(to_node)
+    - name: "Average To Node"
+      expr: AVG(to_node)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`product_product_spec`
@@ -400,20 +412,20 @@ AS $$
       expr: interface_protocols
     - name: "Io Count"
       expr: io_count
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
     - name: "Memory Configuration"
       expr: memory_configuration
-    - name: "Model Lineage Source"
-      expr: model_lineage_source
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Notes"
       expr: notes
     - name: "Operating Condition Corner"
       expr: operating_condition_corner
-    - name: "Product Spec Status"
-      expr: product_spec_status
+    - name: "Package Type"
+      expr: package_type
+    - name: "Process Node Nm"
+      expr: process_node_nm
+    - name: "Reach Compliant"
+      expr: reach_compliant
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -505,8 +517,8 @@ AS $$
       expr: lead_time_weeks
     - name: "Lifecycle Status"
       expr: lifecycle_status
-    - name: "Manufacturer Part Number"
-      expr: manufacturer_part_number
+    - name: "Minimum Order Quantity"
+      expr: minimum_order_quantity
   measures:
     - name: "Row Count"
       expr: COUNT(1)

@@ -1,53 +1,121 @@
--- Metric views for domain: housekeeping | Business: Travel Hospitality | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: housekeeping | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 20:27:16
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_attendant`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Attendant workforce metrics measuring productivity, performance ratings, and labor efficiency to support staffing decisions, training investments, and workforce planning."
+  comment: "Attendant business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`attendant`"
   dimensions:
-    - name: "role_type"
-      expr: role_type
-      comment: "Role type of the attendant (room attendant, supervisor, inspector) for workforce segmentation."
-    - name: "employment_status"
-      expr: employment_status
-      comment: "Employment status (active, terminated, on-leave) for active workforce analysis."
-    - name: "shift_assignment"
-      expr: shift_assignment
-      comment: "Shift assignment (AM, PM, overnight) for shift-level productivity analysis."
-    - name: "union_member_flag"
-      expr: union_member_flag
-      comment: "Flag indicating union membership for labor relations and compliance reporting."
-    - name: "ada_accommodation_flag"
+    - name: "Active Flag"
+      expr: active_flag
+    - name: "Ada Accommodation Flag"
       expr: ada_accommodation_flag
-      comment: "Flag indicating ADA accommodation requirements for workforce planning."
-    - name: "performance_rating"
+    - name: "Attendance Points"
+      expr: attendance_points
+    - name: "Attendant Code"
+      expr: attendant_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Emergency Contact Name"
+      expr: emergency_contact_name
+    - name: "Emergency Contact Phone"
+      expr: emergency_contact_phone
+    - name: "Employment Status"
+      expr: employment_status
+    - name: "Hire Date"
+      expr: hire_date
+    - name: "Language Skills"
+      expr: language_skills
+    - name: "Last Performance Review Date"
+      expr: last_performance_review_date
+    - name: "Last Updated Timestamp"
+      expr: last_updated_timestamp
+    - name: "Locker Number"
+      expr: locker_number
+    - name: "Mobile Device Code"
+      expr: mobile_device_code
+    - name: "Notes"
+      expr: notes
+    - name: "Performance Rating"
       expr: performance_rating
-      comment: "Performance rating category for talent management and training prioritization."
-    - name: "section_assignment"
-      expr: section_assignment
-      comment: "Section assignment for geographic workload distribution analysis."
   measures:
-    - name: "total_active_attendants"
-      expr: COUNT(CASE WHEN active_flag = TRUE THEN 1 END)
-      comment: "Total number of active attendants. Core workforce capacity metric for scheduling and staffing decisions."
-    - name: "avg_credits_per_shift"
-      expr: AVG(CAST(average_credits_per_shift AS DOUBLE))
-      comment: "Average credits earned per shift across attendants. Primary productivity benchmark for housekeeping workforce management."
-    - name: "productivity_vs_target_pct"
-      expr: ROUND(100.0 * AVG(CAST(average_credits_per_shift AS DOUBLE)) / NULLIF(AVG(CAST(target_credits_per_shift AS DOUBLE)), 0), 2)
-      comment: "Average actual credits as a percentage of target credits. Measures workforce productivity against labor standards for operational steering."
-    - name: "total_target_credits_per_shift"
-      expr: SUM(CAST(target_credits_per_shift AS DOUBLE))
-      comment: "Total target credits per shift across all attendants. Used for capacity planning and labor budget forecasting."
-    - name: "union_member_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN union_member_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of attendants who are union members. Informs labor relations strategy and contract compliance monitoring."
-    - name: "ada_accommodation_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ada_accommodation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of attendants with ADA accommodations. Supports compliance reporting and inclusive workforce planning."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Attendant"
+      expr: COUNT(DISTINCT attendant_id)
+    - name: "Total Average Credits Per Shift"
+      expr: SUM(average_credits_per_shift)
+    - name: "Average Average Credits Per Shift"
+      expr: AVG(average_credits_per_shift)
+    - name: "Total Target Credits Per Shift"
+      expr: SUM(target_credits_per_shift)
+    - name: "Average Target Credits Per Shift"
+      expr: AVG(target_credits_per_shift)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_cleaning_standard`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Cleaning Standard business metrics"
+  source: "`vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_standard`"
+  dimensions:
+    - name: "Amenity Items List"
+      expr: amenity_items_list
+    - name: "Amenity Placement Instructions"
+      expr: amenity_placement_instructions
+    - name: "Approval Date"
+      expr: approval_date
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Brand Compliance Required Flag"
+      expr: brand_compliance_required_flag
+    - name: "Brand Tier"
+      expr: brand_tier
+    - name: "Certification Required Flag"
+      expr: certification_required_flag
+    - name: "Chemical Product Specifications"
+      expr: chemical_product_specifications
+    - name: "Cleaning Standard Status"
+      expr: cleaning_standard_status
+    - name: "Cleaning Type"
+      expr: cleaning_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Equipment Required"
+      expr: equipment_required
+    - name: "Expiration Date"
+      expr: expiration_date
+    - name: "Guest Segment"
+      expr: guest_segment
+    - name: "Last Review Date"
+      expr: last_review_date
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Cleaning Standard"
+      expr: COUNT(DISTINCT cleaning_standard_id)
+    - name: "Total Cost Per Execution Estimate"
+      expr: SUM(cost_per_execution_estimate)
+    - name: "Average Cost Per Execution Estimate"
+      expr: AVG(cost_per_execution_estimate)
+    - name: "Total Inspection Pass Threshold Score"
+      expr: SUM(inspection_pass_threshold_score)
+    - name: "Average Inspection Pass Threshold Score"
+      expr: AVG(inspection_pass_threshold_score)
+    - name: "Total Labor Cost Estimate"
+      expr: SUM(labor_cost_estimate)
+    - name: "Average Labor Cost Estimate"
+      expr: AVG(labor_cost_estimate)
+    - name: "Total Supply Cost Estimate"
+      expr: SUM(supply_cost_estimate)
+    - name: "Average Supply Cost Estimate"
+      expr: AVG(supply_cost_estimate)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_cleaning_task`
@@ -55,58 +123,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Task-level housekeeping execution KPIs: SLA compliance, quality checkpoint rates, supply consumption, and exception rates. Enables granular operational performance management and labor efficiency analysis."
+  comment: "Cleaning Task business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`cleaning_task`"
   dimensions:
-    - name: "task_type"
-      expr: task_type
-      comment: "Type of cleaning task (departure, stayover, turndown, deep clean) for workload mix analysis."
-    - name: "task_status"
-      expr: task_status
-      comment: "Current status of the task; used to monitor completion pipeline and identify bottlenecks."
-    - name: "task_priority"
-      expr: task_priority
-      comment: "Priority level of the task; used to assess urgency distribution and scheduling effectiveness."
-    - name: "service_type"
-      expr: service_type
-      comment: "Service type associated with the task; used for service mix and cost analysis."
-    - name: "sla_compliance_flag"
-      expr: sla_compliance_flag
-      comment: "Indicates whether the task met its SLA target; primary operational compliance dimension."
-    - name: "exception_flag"
+    - name: "Actual End Time"
+      expr: actual_end_time
+    - name: "Actual Start Time"
+      expr: actual_start_time
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Duration Minutes"
+      expr: duration_minutes
+    - name: "Exception Flag"
       expr: exception_flag
-      comment: "Indicates an exception occurred during the task; used to identify operational disruptions."
-    - name: "is_quality_checkpoint"
+    - name: "Exception Notes"
+      expr: exception_notes
+    - name: "Guest Present"
+      expr: guest_present
+    - name: "Guest Request Flag"
+      expr: guest_request_flag
+    - name: "Inspection Required"
+      expr: inspection_required
+    - name: "Inspection Timestamp"
+      expr: inspection_timestamp
+    - name: "Is Mandatory"
+      expr: is_mandatory
+    - name: "Is Quality Checkpoint"
       expr: is_quality_checkpoint
-      comment: "Indicates the task is a quality checkpoint; used to measure quality gate coverage."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property task performance benchmarking."
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Maintenance Request Generated"
+      expr: maintenance_request_generated
+    - name: "Quality Score"
+      expr: quality_score
+    - name: "Room Type Code"
+      expr: room_type_code
   measures:
-    - name: "total_tasks"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total cleaning tasks executed; baseline volume for labor planning and scheduling."
-    - name: "sla_compliant_task_count"
-      expr: COUNT(CASE WHEN sla_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of tasks completed within SLA; numerator for SLA compliance rate, a key operational KPI."
-    - name: "exception_task_count"
-      expr: COUNT(CASE WHEN exception_flag = TRUE THEN 1 END)
-      comment: "Number of tasks with exceptions; high exception rates signal scheduling, staffing, or process issues."
-    - name: "total_credit_weight"
-      expr: SUM(CAST(credit_weight AS DOUBLE))
-      comment: "Total credit weight of all tasks; measures aggregate labor value delivered, used in credit-based payroll models."
-    - name: "avg_credit_weight_per_task"
-      expr: AVG(CAST(credit_weight AS DOUBLE))
-      comment: "Average credit weight per task; used to assess task complexity mix and labor cost per task."
-    - name: "total_supply_quantity_used"
-      expr: SUM(CAST(supply_quantity_used AS DOUBLE))
-      comment: "Total supply quantity consumed across tasks; drives procurement demand forecasting and cost control."
-    - name: "maintenance_request_generated_count"
-      expr: COUNT(CASE WHEN maintenance_request_generated = TRUE THEN 1 END)
-      comment: "Number of tasks that generated a maintenance request; links cleaning operations to asset maintenance demand pipeline."
-    - name: "quality_checkpoint_task_count"
-      expr: COUNT(CASE WHEN is_quality_checkpoint = TRUE THEN 1 END)
-      comment: "Number of quality checkpoint tasks; used to measure quality gate coverage across the floor."
+    - name: "Distinct Cleaning Task"
+      expr: COUNT(DISTINCT cleaning_task_id)
+    - name: "Total Credit Weight"
+      expr: SUM(credit_weight)
+    - name: "Average Credit Weight"
+      expr: AVG(credit_weight)
+    - name: "Total Supply Quantity Used"
+      expr: SUM(supply_quantity_used)
+    - name: "Average Supply Quantity Used"
+      expr: AVG(supply_quantity_used)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_deep_clean_plan`
@@ -114,61 +178,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Deep clean program KPIs: completion rates, labor cost vs. estimate, PIP compliance, and maintenance issue discovery rates. Enables capital planning and brand standard compliance management."
+  comment: "Deep Clean Plan business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`deep_clean_plan`"
   dimensions:
-    - name: "deep_clean_plan_status"
-      expr: deep_clean_plan_status
-      comment: "Status of the deep clean plan (scheduled, in-progress, completed, cancelled) for pipeline monitoring."
-    - name: "area_type"
+    - name: "Actual End Time"
+      expr: actual_end_time
+    - name: "Actual Start Time"
+      expr: actual_start_time
+    - name: "Area Name"
+      expr: area_name
+    - name: "Area Type"
       expr: area_type
-      comment: "Type of area being deep cleaned (guestroom, public area, spa, F&B) for program scope analysis."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the deep clean plan; used to assess urgency distribution and resource allocation."
-    - name: "pip_compliance_flag"
-      expr: pip_compliance_flag
-      comment: "Indicates PIP compliance requirement; used for brand standard and franchise audit tracking."
-    - name: "ffe_inspection_performed"
+    - name: "Cancellation Reason"
+      expr: cancellation_reason
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deep Clean Plan Status"
+      expr: deep_clean_plan_status
+    - name: "Ffe Inspection Performed"
       expr: ffe_inspection_performed
-      comment: "Indicates FF&E inspection was performed during deep clean; links to capital asset condition assessment."
-    - name: "maintenance_issues_identified"
+    - name: "Inspection Date"
+      expr: inspection_date
+    - name: "Inspection Notes"
+      expr: inspection_notes
+    - name: "Inspection Status"
+      expr: inspection_status
+    - name: "Last Modified By"
+      expr: last_modified_by
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Maintenance Issues Identified"
       expr: maintenance_issues_identified
-      comment: "Indicates maintenance issues were found; used to measure deep clean program value in asset management."
-    - name: "planned_date"
-      expr: planned_date
-      comment: "Planned date of the deep clean; used to trend program execution against schedule."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property deep clean program benchmarking."
+    - name: "Notes"
+      expr: notes
+    - name: "Pip Compliance Flag"
+      expr: pip_compliance_flag
   measures:
-    - name: "total_deep_clean_plans"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total deep clean plans; baseline volume for program coverage and scheduling analysis."
-    - name: "total_actual_labor_hours"
-      expr: SUM(CAST(actual_labor_hours AS DOUBLE))
-      comment: "Total actual labor hours consumed by deep clean plans; primary labor cost driver for deep clean program budgeting."
-    - name: "total_estimated_labor_hours"
-      expr: SUM(CAST(estimated_labor_hours AS DOUBLE))
-      comment: "Total estimated labor hours; used with actual hours to compute labor estimation accuracy."
-    - name: "total_labor_cost"
-      expr: SUM(CAST(labor_cost AS DOUBLE))
-      comment: "Total labor cost of deep clean plans; key input to property maintenance budget and CapEx planning."
-    - name: "total_supply_cost"
-      expr: SUM(CAST(supply_cost AS DOUBLE))
-      comment: "Total supply cost of deep clean plans; used for procurement demand planning and cost control."
-    - name: "total_deep_clean_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total all-in cost of deep clean plans; primary financial KPI for deep clean program ROI analysis."
-    - name: "avg_completion_percentage"
-      expr: AVG(CAST(completion_percentage AS DOUBLE))
-      comment: "Average completion percentage across deep clean plans; used to monitor program execution progress."
-    - name: "maintenance_issues_discovered_count"
-      expr: COUNT(CASE WHEN maintenance_issues_identified = TRUE THEN 1 END)
-      comment: "Number of deep clean plans that discovered maintenance issues; measures the asset inspection value of the deep clean program."
-    - name: "pip_compliant_plan_count"
-      expr: COUNT(CASE WHEN pip_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of PIP-compliant deep clean plans; used in franchise and brand standard compliance reporting."
+    - name: "Distinct Deep Clean Plan"
+      expr: COUNT(DISTINCT deep_clean_plan_id)
+    - name: "Total Actual Labor Hours"
+      expr: SUM(actual_labor_hours)
+    - name: "Average Actual Labor Hours"
+      expr: AVG(actual_labor_hours)
+    - name: "Total Completion Percentage"
+      expr: SUM(completion_percentage)
+    - name: "Average Completion Percentage"
+      expr: AVG(completion_percentage)
+    - name: "Total Estimated Labor Hours"
+      expr: SUM(estimated_labor_hours)
+    - name: "Average Estimated Labor Hours"
+      expr: AVG(estimated_labor_hours)
+    - name: "Total Labor Cost"
+      expr: SUM(labor_cost)
+    - name: "Average Labor Cost"
+      expr: AVG(labor_cost)
+    - name: "Total Supply Cost"
+      expr: SUM(supply_cost)
+    - name: "Average Supply Cost"
+      expr: AVG(supply_cost)
+    - name: "Total Total Cost"
+      expr: SUM(total_cost)
+    - name: "Average Total Cost"
+      expr: AVG(total_cost)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_hk_assignment`
@@ -176,61 +249,50 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Operational KPIs for housekeeping room assignments: throughput, room credit yield, VIP and DND service rates, and inspection outcomes. Drives daily floor management and labor allocation decisions."
+  comment: "Hk Assignment business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`hk_assignment`"
   dimensions:
-    - name: "assignment_date"
+    - name: "Actual End Time"
+      expr: actual_end_time
+    - name: "Actual Start Time"
+      expr: actual_start_time
+    - name: "Allergy Flags"
+      expr: allergy_flags
+    - name: "Amenity Replenishment Flag"
+      expr: amenity_replenishment_flag
+    - name: "Assignment Date"
       expr: assignment_date
-      comment: "Calendar date of the housekeeping assignment; used to trend daily workload and staffing."
-    - name: "assignment_type"
+    - name: "Assignment Number"
+      expr: assignment_number
+    - name: "Assignment Type"
       expr: assignment_type
-      comment: "Type of assignment (e.g., stayover, departure, turndown) for workload mix analysis."
-    - name: "completion_status"
+    - name: "Cancellation Reason"
+      expr: cancellation_reason
+    - name: "Completion Status"
       expr: completion_status
-      comment: "Completion status of the assignment (completed, skipped, reassigned) for SLA tracking."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the assignment; used to assess urgency distribution across the floor."
-    - name: "vip_indicator"
-      expr: vip_indicator
-      comment: "Flag indicating VIP guest assignment; used to segment service quality metrics."
-    - name: "dnd_flag"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Dnd Flag"
       expr: dnd_flag
-      comment: "Do-not-disturb flag; used to measure service deferral rates."
-    - name: "linen_change_flag"
-      expr: linen_change_flag
-      comment: "Indicates whether a linen change was performed; used for linen consumption analysis."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property benchmarking."
+    - name: "Estimated End Time"
+      expr: estimated_end_time
+    - name: "Estimated Start Time"
+      expr: estimated_start_time
+    - name: "Guest Preference Instructions"
+      expr: guest_preference_instructions
+    - name: "Inspection Notes"
+      expr: inspection_notes
+    - name: "Inspection Required Flag"
+      expr: inspection_required_flag
   measures:
-    - name: "total_assignments"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of housekeeping assignments; baseline volume measure for staffing and scheduling decisions."
-    - name: "completed_assignments"
-      expr: COUNT(CASE WHEN completion_status = 'completed' THEN 1 END)
-      comment: "Count of assignments completed successfully; numerator for completion rate KPI."
-    - name: "total_room_credits"
-      expr: SUM(CAST(room_credits AS DOUBLE))
-      comment: "Total room credits earned across all assignments; primary labor productivity measure used in credit-based compensation models."
-    - name: "avg_room_credits_per_assignment"
-      expr: AVG(CAST(room_credits AS DOUBLE))
-      comment: "Average room credits per assignment; measures attendant productivity and workload balance."
-    - name: "vip_assignment_count"
-      expr: COUNT(CASE WHEN vip_indicator = TRUE THEN 1 END)
-      comment: "Number of VIP assignments; used to ensure premium service capacity is adequately staffed."
-    - name: "dnd_deferral_count"
-      expr: COUNT(CASE WHEN dnd_flag = TRUE THEN 1 END)
-      comment: "Number of assignments deferred due to DND; informs re-scheduling and guest satisfaction risk."
-    - name: "inspection_required_count"
-      expr: COUNT(CASE WHEN inspection_required_flag = TRUE THEN 1 END)
-      comment: "Number of assignments requiring quality inspection; drives inspector workload planning."
-    - name: "reassignment_rate_numerator"
-      expr: SUM(CAST(reassignment_count AS DOUBLE))
-      comment: "Sum of reassignment counts across assignments; used with total_assignments to compute reassignment rate, a proxy for scheduling efficiency."
-    - name: "maintenance_request_flag_count"
-      expr: COUNT(CASE WHEN maintenance_request_flag = TRUE THEN 1 END)
-      comment: "Number of assignments that generated a maintenance request; links housekeeping operations to asset maintenance demand."
+    - name: "Distinct Hk Assignment"
+      expr: COUNT(DISTINCT hk_assignment_id)
+    - name: "Total Room Credits"
+      expr: SUM(room_credits)
+    - name: "Average Room Credits"
+      expr: AVG(room_credits)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_hk_schedule`
@@ -238,111 +300,117 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Scheduling efficiency and labor budget KPIs: headcount planning, overtime risk, labor budget utilization, and CPOR targets. Enables proactive labor cost management and occupancy-driven staffing decisions."
+  comment: "Hk Schedule business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`hk_schedule`"
   dimensions:
-    - name: "schedule_date"
-      expr: schedule_date
-      comment: "Date of the housekeeping schedule; used to trend labor planning and occupancy alignment."
-    - name: "schedule_status"
-      expr: schedule_status
-      comment: "Status of the schedule (draft, published, closed); used to monitor scheduling pipeline."
-    - name: "shift_type"
-      expr: shift_type
-      comment: "Type of shift (AM, PM, overnight); used for shift mix and labor cost analysis."
-    - name: "occupancy_forecast_tier"
+    - name: "Assignment Method"
+      expr: assignment_method
+    - name: "Break Duration Minutes"
+      expr: break_duration_minutes
+    - name: "Break Start Time"
+      expr: break_start_time
+    - name: "Consecutive Days Worked"
+      expr: consecutive_days_worked
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Occupancy Forecast Tier"
       expr: occupancy_forecast_tier
-      comment: "Occupancy forecast tier driving the schedule; used to assess staffing responsiveness to demand."
-    - name: "turndown_service_flag"
-      expr: turndown_service_flag
-      comment: "Indicates turndown service is scheduled; used to measure turndown program coverage."
-    - name: "pip_compliance_flag"
+    - name: "Pip Compliance Flag"
       expr: pip_compliance_flag
-      comment: "Indicates PIP compliance requirement on the schedule; used for brand standard audit tracking."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property scheduling benchmarking."
+    - name: "Planned Headcount"
+      expr: planned_headcount
+    - name: "Published Timestamp"
+      expr: published_timestamp
+    - name: "Schedule Date"
+      expr: schedule_date
+    - name: "Schedule Status"
+      expr: schedule_status
+    - name: "Section Code"
+      expr: section_code
+    - name: "Section Room Count"
+      expr: section_room_count
+    - name: "Shift End Time"
+      expr: shift_end_time
   measures:
-    - name: "total_schedules"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total schedules created; baseline volume for scheduling program coverage."
-    - name: "total_labor_budget_amount"
-      expr: SUM(CAST(labor_budget_amount AS DOUBLE))
-      comment: "Total labor budget allocated across schedules; primary labor cost planning KPI for finance and operations."
-    - name: "avg_labor_budget_per_schedule"
-      expr: AVG(CAST(labor_budget_amount AS DOUBLE))
-      comment: "Average labor budget per schedule day; used to benchmark daily labor spend against occupancy."
-    - name: "total_cpor_target"
-      expr: SUM(CAST(cpor_target AS DOUBLE))
-      comment: "Sum of CPOR (cost per occupied room) targets; used to assess aggregate labor efficiency targets."
-    - name: "avg_cpor_target"
-      expr: AVG(CAST(cpor_target AS DOUBLE))
-      comment: "Average CPOR target per schedule; key hospitality labor efficiency benchmark used in executive reviews."
-    - name: "total_section_credit_value"
-      expr: SUM(CAST(section_credit_value AS DOUBLE))
-      comment: "Total credit value of all scheduled sections; measures planned labor output in credit-based models."
-    - name: "avg_overtime_threshold_hours"
-      expr: AVG(CAST(overtime_threshold_hours AS DOUBLE))
-      comment: "Average overtime threshold hours per schedule; used to monitor overtime risk and labor compliance."
-    - name: "turndown_schedule_count"
-      expr: COUNT(CASE WHEN turndown_service_flag = TRUE THEN 1 END)
-      comment: "Number of schedules with turndown service; used to measure turndown program deployment rate."
+    - name: "Distinct Hk Schedule"
+      expr: COUNT(DISTINCT hk_schedule_id)
+    - name: "Total Cpor Target"
+      expr: SUM(cpor_target)
+    - name: "Average Cpor Target"
+      expr: AVG(cpor_target)
+    - name: "Total Labor Budget Amount"
+      expr: SUM(labor_budget_amount)
+    - name: "Average Labor Budget Amount"
+      expr: AVG(labor_budget_amount)
+    - name: "Total Overtime Threshold Hours"
+      expr: SUM(overtime_threshold_hours)
+    - name: "Average Overtime Threshold Hours"
+      expr: AVG(overtime_threshold_hours)
+    - name: "Total Section Credit Value"
+      expr: SUM(section_credit_value)
+    - name: "Average Section Credit Value"
+      expr: AVG(section_credit_value)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_training_completion`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_housekeeping_training_completion`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Training and certification KPIs for housekeeping staff: completion rates, certification coverage, scores, and compliance training hours. Enables workforce readiness and regulatory compliance management."
+  comment: "Housekeeping Training Completion business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`housekeeping_training_completion`"
   dimensions:
-    - name: "completion_status"
-      expr: completion_status
-      comment: "Training completion status (completed, in-progress, failed, expired) for workforce readiness monitoring."
-    - name: "bloodborne_pathogen_certified_flag"
+    - name: "Attempt Number"
+      expr: attempt_number
+    - name: "Bloodborne Pathogen Certification Date"
+      expr: bloodborne_pathogen_certification_date
+    - name: "Bloodborne Pathogen Certified Flag"
       expr: bloodborne_pathogen_certified_flag
-      comment: "Indicates bloodborne pathogen certification; mandatory compliance certification tracked by HR and compliance."
-    - name: "chemical_handling_certified_flag"
-      expr: chemical_handling_certified_flag
-      comment: "Indicates chemical handling certification; safety compliance requirement for housekeeping staff."
-    - name: "vip_certified_flag"
-      expr: vip_certified_flag
-      comment: "Indicates VIP service certification; used to ensure adequate VIP-qualified staff coverage."
-    - name: "suite_qualified_flag"
-      expr: suite_qualified_flag
-      comment: "Indicates suite cleaning qualification; used to ensure premium room coverage by qualified staff."
-    - name: "certificate_issued_flag"
+    - name: "Certificate Issued Flag"
       expr: certificate_issued_flag
-      comment: "Indicates a certificate was issued; used to track formal certification completion."
-    - name: "completion_date"
+    - name: "Certificate Number"
+      expr: certificate_number
+    - name: "Certification Expiry Date"
+      expr: certification_expiry_date
+    - name: "Chemical Handling Certification Date"
+      expr: chemical_handling_certification_date
+    - name: "Chemical Handling Certified Flag"
+      expr: chemical_handling_certified_flag
+    - name: "Completion Date"
       expr: completion_date
-      comment: "Date training was completed; used to trend certification pipeline and identify expiry risks."
+    - name: "Completion Status"
+      expr: completion_status
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Enrollment Date"
+      expr: enrollment_date
+    - name: "Last Updated Timestamp"
+      expr: last_updated_timestamp
+    - name: "Suite Qualified Flag"
+      expr: suite_qualified_flag
+    - name: "Vip Certified Flag"
+      expr: vip_certified_flag
+    - name: "Bloodborne Pathogen Certification Date Month"
+      expr: DATE_TRUNC('MONTH', bloodborne_pathogen_certification_date)
   measures:
-    - name: "total_training_completions"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total training completion records; baseline volume for workforce training program coverage."
-    - name: "completed_training_count"
-      expr: COUNT(CASE WHEN completion_status = 'completed' THEN 1 END)
-      comment: "Number of successfully completed training records; numerator for completion rate KPI used in HR and compliance reporting."
-    - name: "avg_training_score"
-      expr: AVG(CAST(score AS DOUBLE))
-      comment: "Average training assessment score; measures workforce knowledge quality and training program effectiveness."
-    - name: "total_training_hours"
-      expr: SUM(CAST(training_hours_completed AS DOUBLE))
-      comment: "Total training hours completed; used to measure workforce development investment and regulatory compliance hours."
-    - name: "avg_training_hours_per_completion"
-      expr: AVG(CAST(training_hours_completed AS DOUBLE))
-      comment: "Average training hours per completion record; used to benchmark training program intensity."
-    - name: "bloodborne_pathogen_certified_count"
-      expr: COUNT(CASE WHEN bloodborne_pathogen_certified_flag = TRUE THEN 1 END)
-      comment: "Number of staff with bloodborne pathogen certification; mandatory compliance coverage metric."
-    - name: "chemical_handling_certified_count"
-      expr: COUNT(CASE WHEN chemical_handling_certified_flag = TRUE THEN 1 END)
-      comment: "Number of staff with chemical handling certification; safety compliance coverage metric."
-    - name: "vip_certified_count"
-      expr: COUNT(CASE WHEN vip_certified_flag = TRUE THEN 1 END)
-      comment: "Number of VIP-certified staff; used to ensure premium service capacity meets demand."
+    - name: "Distinct Housekeeping Training Completion"
+      expr: COUNT(DISTINCT housekeeping_training_completion_id)
+    - name: "Total Score"
+      expr: SUM(score)
+    - name: "Average Score"
+      expr: AVG(score)
+    - name: "Total Training Hours Completed"
+      expr: SUM(training_hours_completed)
+    - name: "Average Training Hours Completed"
+      expr: AVG(training_hours_completed)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_inspection`
@@ -350,58 +418,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Quality assurance KPIs derived from room and area inspections: cleanliness scores, deficiency rates, reclean rates, and VIP pass rates. Core metrics for brand standard compliance and guest satisfaction management."
+  comment: "Inspection business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`inspection`"
   dimensions:
-    - name: "inspection_type"
-      expr: inspection_type
-      comment: "Type of inspection (arrival, departure, spot-check, deep-clean) for quality program segmentation."
-    - name: "inspection_status"
+    - name: "Amenity Check Flag"
+      expr: amenity_check_flag
+    - name: "Bathroom Quality Flag"
+      expr: bathroom_quality_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Critical Deficiency Count"
+      expr: critical_deficiency_count
+    - name: "Deficiency Count"
+      expr: deficiency_count
+    - name: "Deficiency Description"
+      expr: deficiency_description
+    - name: "Duration Minutes"
+      expr: duration_minutes
+    - name: "End Timestamp"
+      expr: end_timestamp
+    - name: "Guest Arrival Date"
+      expr: guest_arrival_date
+    - name: "Inspection Number"
+      expr: inspection_number
+    - name: "Inspection Status"
       expr: inspection_status
-      comment: "Current status of the inspection (passed, failed, pending) for pipeline monitoring."
-    - name: "scheduled_date"
-      expr: scheduled_date
-      comment: "Date the inspection was scheduled; used for trend analysis of quality over time."
-    - name: "vip_flag"
-      expr: vip_flag
-      comment: "Indicates VIP room inspection; used to segment quality scores for premium guests."
-    - name: "reclean_required_flag"
-      expr: reclean_required_flag
-      comment: "Flag indicating a reclean was required; key quality failure indicator."
-    - name: "maintenance_issue_flag"
+    - name: "Inspection Type"
+      expr: inspection_type
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Linen Quality Flag"
+      expr: linen_quality_flag
+    - name: "Maintenance Issue Flag"
       expr: maintenance_issue_flag
-      comment: "Flag indicating a maintenance issue was found during inspection; links quality to asset condition."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the inspection; used to assess urgency distribution."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property quality benchmarking."
+    - name: "Notes"
+      expr: notes
   measures:
-    - name: "total_inspections"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total inspections conducted; baseline volume for quality program coverage analysis."
-    - name: "avg_cleanliness_score"
-      expr: AVG(CAST(cleanliness_score AS DOUBLE))
-      comment: "Average cleanliness score across all inspections; primary brand standard KPI tracked by GMs and QA teams."
-    - name: "avg_quality_score"
-      expr: AVG(CAST(quality_score AS DOUBLE))
-      comment: "Average overall quality score per inspection; composite quality KPI used in executive dashboards."
-    - name: "reclean_count"
-      expr: COUNT(CASE WHEN reclean_required_flag = TRUE THEN 1 END)
-      comment: "Number of inspections resulting in a reclean; numerator for reclean rate, a direct cost and quality metric."
-    - name: "maintenance_issue_count"
-      expr: COUNT(CASE WHEN maintenance_issue_flag = TRUE THEN 1 END)
-      comment: "Number of inspections identifying maintenance issues; drives preventive maintenance prioritization."
-    - name: "failed_inspection_count"
-      expr: COUNT(CASE WHEN inspection_status = 'failed' THEN 1 END)
-      comment: "Count of failed inspections; numerator for failure rate KPI used in quality steering meetings."
-    - name: "vip_inspection_count"
-      expr: COUNT(CASE WHEN vip_flag = TRUE THEN 1 END)
-      comment: "Number of VIP room inspections; used to ensure premium quality standards are consistently applied."
-    - name: "room_release_count"
-      expr: COUNT(CASE WHEN room_release_flag = TRUE THEN 1 END)
-      comment: "Number of rooms released for sale after inspection; directly impacts revenue availability."
+    - name: "Distinct Inspection"
+      expr: COUNT(DISTINCT inspection_id)
+    - name: "Total Cleanliness Score"
+      expr: SUM(cleanliness_score)
+    - name: "Average Cleanliness Score"
+      expr: AVG(cleanliness_score)
+    - name: "Total Quality Score"
+      expr: SUM(quality_score)
+    - name: "Average Quality Score"
+      expr: AVG(quality_score)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_inspection_deficiency`
@@ -409,55 +473,50 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Deficiency management KPIs: resolution times, escalation rates, cost of remediation, and recurring deficiency patterns. Enables root-cause analysis and preventive quality investment decisions."
+  comment: "Inspection Deficiency business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`inspection_deficiency`"
   dimensions:
-    - name: "deficiency_category"
-      expr: deficiency_category
-      comment: "Category of deficiency (linen, bathroom, amenity, maintenance) for root-cause segmentation."
-    - name: "deficiency_subcategory"
-      expr: deficiency_subcategory
-      comment: "Subcategory for granular deficiency analysis and targeted corrective action."
-    - name: "severity_level"
-      expr: severity_level
-      comment: "Severity of the deficiency; used to prioritize remediation resources."
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "Current resolution status; used to track open vs. closed deficiency pipeline."
-    - name: "escalation_flag"
-      expr: escalation_flag
-      comment: "Indicates whether the deficiency was escalated; used to measure escalation rate."
-    - name: "guest_impacting_flag"
-      expr: guest_impacting_flag
-      comment: "Indicates guest-impacting deficiencies; directly linked to satisfaction and compensation risk."
-    - name: "blocks_room_sale_flag"
+    - name: "Actual Resolution Time Minutes"
+      expr: actual_resolution_time_minutes
+    - name: "Assigned Timestamp"
+      expr: assigned_timestamp
+    - name: "Blocks Room Sale Flag"
       expr: blocks_room_sale_flag
-      comment: "Indicates deficiency blocks room from sale; directly impacts revenue availability."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property deficiency benchmarking."
+    - name: "Closed Timestamp"
+      expr: closed_timestamp
+    - name: "Corrective Action Required"
+      expr: corrective_action_required
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deficiency Category"
+      expr: deficiency_category
+    - name: "Deficiency Description"
+      expr: deficiency_description
+    - name: "Deficiency Sequence"
+      expr: deficiency_sequence
+    - name: "Deficiency Subcategory"
+      expr: deficiency_subcategory
+    - name: "Escalation Flag"
+      expr: escalation_flag
+    - name: "Escalation Reason"
+      expr: escalation_reason
+    - name: "Estimated Resolution Time Minutes"
+      expr: estimated_resolution_time_minutes
+    - name: "Guest Impacting Flag"
+      expr: guest_impacting_flag
+    - name: "Identified Timestamp"
+      expr: identified_timestamp
+    - name: "Inspector Notes"
+      expr: inspector_notes
   measures:
-    - name: "total_deficiencies"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total deficiencies identified; baseline volume for quality program health assessment."
-    - name: "escalated_deficiency_count"
-      expr: COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END)
-      comment: "Number of escalated deficiencies; high escalation rates signal systemic quality failures requiring leadership intervention."
-    - name: "guest_impacting_deficiency_count"
-      expr: COUNT(CASE WHEN guest_impacting_flag = TRUE THEN 1 END)
-      comment: "Number of deficiencies directly impacting guests; linked to satisfaction scores and compensation costs."
-    - name: "room_blocking_deficiency_count"
-      expr: COUNT(CASE WHEN blocks_room_sale_flag = TRUE THEN 1 END)
-      comment: "Number of deficiencies blocking room sales; quantifies revenue at risk from quality failures."
-    - name: "recurring_deficiency_count"
-      expr: COUNT(CASE WHEN recurring_deficiency_flag = TRUE THEN 1 END)
-      comment: "Count of recurring deficiencies; high recurrence indicates systemic issues requiring process or training investment."
-    - name: "total_resolution_cost"
-      expr: SUM(CAST(resolution_cost_amount AS DOUBLE))
-      comment: "Total cost of resolving deficiencies; key input to quality-cost trade-off analysis and budget planning."
-    - name: "avg_resolution_cost"
-      expr: AVG(CAST(resolution_cost_amount AS DOUBLE))
-      comment: "Average cost per deficiency resolution; used to benchmark remediation efficiency across properties."
+    - name: "Distinct Inspection Deficiency"
+      expr: COUNT(DISTINCT inspection_deficiency_id)
+    - name: "Total Resolution Cost Amount"
+      expr: SUM(resolution_cost_amount)
+    - name: "Average Resolution Cost Amount"
+      expr: AVG(resolution_cost_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_laundry_order`
@@ -465,49 +524,129 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Laundry operations KPIs: cost per item, turnaround time, SLA compliance, and total spend. Enables vendor performance management and linen cost optimization decisions."
+  comment: "Laundry Order business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`laundry_order`"
   dimensions:
-    - name: "order_type"
-      expr: order_type
-      comment: "Type of laundry order (guest, house, uniform) for cost allocation and volume analysis."
-    - name: "order_status"
+    - name: "Actual Return Timestamp"
+      expr: actual_return_timestamp
+    - name: "Cancellation Reason"
+      expr: cancellation_reason
+    - name: "Cancelled Timestamp"
+      expr: cancelled_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Expected Return Timestamp"
+      expr: expected_return_timestamp
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Order Number"
+      expr: order_number
+    - name: "Order Status"
       expr: order_status
-      comment: "Current status of the laundry order; used to monitor pipeline and SLA compliance."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level of the order; used to assess rush order rates and associated cost premiums."
-    - name: "sla_compliance_flag"
-      expr: sla_compliance_flag
-      comment: "Indicates whether the order met its SLA; primary vendor performance KPI."
-    - name: "pricing_method"
+    - name: "Order Type"
+      expr: order_type
+    - name: "Payment Status"
+      expr: payment_status
+    - name: "Pricing Method"
       expr: pricing_method
-      comment: "Pricing method (per item, per pound) for cost structure analysis."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property laundry cost benchmarking."
+    - name: "Priority Level"
+      expr: priority_level
+    - name: "Processing Location"
+      expr: processing_location
+    - name: "Quality Inspection Notes"
+      expr: quality_inspection_notes
+    - name: "Quality Inspection Status"
+      expr: quality_inspection_status
   measures:
-    - name: "total_laundry_orders"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total laundry orders placed; baseline volume for vendor capacity and cost planning."
-    - name: "total_laundry_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total laundry spend; primary cost KPI for linen operations budget management."
-    - name: "avg_cost_per_item"
-      expr: AVG(CAST(cost_per_item AS DOUBLE))
-      comment: "Average cost per laundry item; used to benchmark vendor pricing and identify cost reduction opportunities."
-    - name: "avg_cost_per_pound"
-      expr: AVG(CAST(cost_per_pound AS DOUBLE))
-      comment: "Average cost per pound of laundry; alternative pricing benchmark for vendor negotiations."
-    - name: "avg_turnaround_time_hours"
-      expr: AVG(CAST(turnaround_time_hours AS DOUBLE))
-      comment: "Average turnaround time in hours; key vendor SLA metric directly impacting linen availability and guest service."
-    - name: "total_weight_lbs"
-      expr: SUM(CAST(total_weight_lbs AS DOUBLE))
-      comment: "Total weight of laundry processed; used for vendor capacity planning and per-pound cost analysis."
-    - name: "sla_compliant_order_count"
-      expr: COUNT(CASE WHEN sla_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of orders meeting SLA; numerator for vendor SLA compliance rate used in contract reviews."
+    - name: "Distinct Laundry Order"
+      expr: COUNT(DISTINCT laundry_order_id)
+    - name: "Total Cost Per Item"
+      expr: SUM(cost_per_item)
+    - name: "Average Cost Per Item"
+      expr: AVG(cost_per_item)
+    - name: "Total Cost Per Pound"
+      expr: SUM(cost_per_pound)
+    - name: "Average Cost Per Pound"
+      expr: AVG(cost_per_pound)
+    - name: "Total Total Cost"
+      expr: SUM(total_cost)
+    - name: "Average Total Cost"
+      expr: AVG(total_cost)
+    - name: "Total Total Weight Lbs"
+      expr: SUM(total_weight_lbs)
+    - name: "Average Total Weight Lbs"
+      expr: AVG(total_weight_lbs)
+    - name: "Total Turnaround Time Hours"
+      expr: SUM(turnaround_time_hours)
+    - name: "Average Turnaround Time Hours"
+      expr: AVG(turnaround_time_hours)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_linen_management`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Linen Management business metrics"
+  source: "`vibe_travel_hospitality_v1`.`housekeeping`.`linen_management`"
+  dimensions:
+    - name: "Approval Status"
+      expr: approval_status
+    - name: "Approved Timestamp"
+      expr: approved_timestamp
+    - name: "Batch Number"
+      expr: batch_number
+    - name: "Condition Grade"
+      expr: condition_grade
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Destination Location"
+      expr: destination_location
+    - name: "Discard Reason"
+      expr: discard_reason
+    - name: "Floor Number"
+      expr: floor_number
+    - name: "Is Voided"
+      expr: is_voided
+    - name: "Item Code"
+      expr: item_code
+    - name: "Item Description"
+      expr: item_description
+    - name: "Item Type"
+      expr: item_type
+    - name: "Last Updated Timestamp"
+      expr: last_updated_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Par Level After"
+      expr: par_level_after
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Linen Management"
+      expr: COUNT(DISTINCT linen_management_id)
+    - name: "Total Approved By"
+      expr: SUM(approved_by)
+    - name: "Average Approved By"
+      expr: AVG(approved_by)
+    - name: "Total Total Cost"
+      expr: SUM(total_cost)
+    - name: "Average Total Cost"
+      expr: AVG(total_cost)
+    - name: "Total Unit Cost"
+      expr: SUM(unit_cost)
+    - name: "Average Unit Cost"
+      expr: AVG(unit_cost)
+    - name: "Total Voided By"
+      expr: SUM(voided_by)
+    - name: "Average Voided By"
+      expr: AVG(voided_by)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_lost_and_found`
@@ -515,49 +654,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Lost and found management KPIs: item volumes, high-value item rates, claim rates, estimated value at risk, and shipping costs. Enables guest service recovery and compliance risk management."
+  comment: "Lost And Found business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`lost_and_found`"
   dimensions:
-    - name: "lost_and_found_status"
-      expr: lost_and_found_status
-      comment: "Current status of the lost and found item (found, claimed, disposed, shipped) for pipeline monitoring."
-    - name: "item_category"
-      expr: item_category
-      comment: "Category of lost item (electronics, jewelry, clothing, documents) for risk and value analysis."
-    - name: "disposition_type"
-      expr: disposition_type
-      comment: "How the item was disposed (returned, donated, discarded, shipped) for compliance and guest service analysis."
-    - name: "is_high_value_item"
-      expr: is_high_value_item
-      comment: "Indicates a high-value item; used to segment risk exposure and special handling requirements."
-    - name: "requires_special_handling"
-      expr: requires_special_handling
-      comment: "Indicates special handling required; used to assess operational complexity and compliance risk."
-    - name: "discovery_date"
+    - name: "Claim Date"
+      expr: claim_date
+    - name: "Claim Status"
+      expr: claim_status
+    - name: "Claimant Identification Number"
+      expr: claimant_identification_number
+    - name: "Claimant Identification Type"
+      expr: claimant_identification_type
+    - name: "Claimant Name"
+      expr: claimant_name
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Discovery Date"
       expr: discovery_date
-      comment: "Date item was discovered; used to trend lost and found volumes and identify seasonal patterns."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property lost and found benchmarking."
+    - name: "Discovery Location Detail"
+      expr: discovery_location_detail
+    - name: "Discovery Location Type"
+      expr: discovery_location_type
+    - name: "Discovery Timestamp"
+      expr: discovery_timestamp
+    - name: "Disposition Date"
+      expr: disposition_date
+    - name: "Disposition Notes"
+      expr: disposition_notes
+    - name: "Disposition Type"
+      expr: disposition_type
+    - name: "Guest Notification Date"
+      expr: guest_notification_date
+    - name: "Guest Notification Method"
+      expr: guest_notification_method
   measures:
-    - name: "total_lost_and_found_items"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total lost and found items logged; baseline volume for guest service and compliance program management."
-    - name: "high_value_item_count"
-      expr: COUNT(CASE WHEN is_high_value_item = TRUE THEN 1 END)
-      comment: "Number of high-value items in lost and found; measures financial risk exposure and special handling workload."
-    - name: "total_estimated_value"
-      expr: SUM(CAST(estimated_value_amount AS DOUBLE))
-      comment: "Total estimated value of lost and found items; quantifies financial liability and insurance exposure."
-    - name: "total_shipping_cost"
-      expr: SUM(CAST(shipping_cost_amount AS DOUBLE))
-      comment: "Total shipping cost for returned items; used to manage guest service recovery costs."
-    - name: "claimed_item_count"
-      expr: COUNT(CASE WHEN claim_status = 'claimed' THEN 1 END)
-      comment: "Number of items successfully claimed by guests; numerator for claim rate KPI measuring guest service effectiveness."
-    - name: "unclaimed_high_value_count"
-      expr: COUNT(CASE WHEN is_high_value_item = TRUE AND lost_and_found_status != 'claimed' THEN 1 END)
-      comment: "Number of unclaimed high-value items; measures ongoing financial liability and compliance risk from unclaimed valuables."
+    - name: "Distinct Lost And Found"
+      expr: COUNT(DISTINCT lost_and_found_id)
+    - name: "Total Estimated Value Amount"
+      expr: SUM(estimated_value_amount)
+    - name: "Average Estimated Value Amount"
+      expr: AVG(estimated_value_amount)
+    - name: "Total Shipping Cost Amount"
+      expr: SUM(shipping_cost_amount)
+    - name: "Average Shipping Cost Amount"
+      expr: AVG(shipping_cost_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_maintenance_handoff`
@@ -565,55 +709,54 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Maintenance handoff metrics measuring cross-department coordination efficiency, cost accuracy, safety hazard resolution, and guest impact to optimize the housekeeping-to-engineering workflow."
+  comment: "Maintenance Handoff business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_handoff`"
   dimensions:
-    - name: "handoff_status"
-      expr: handoff_status
-      comment: "Status of the maintenance handoff (pending, acknowledged, in-progress, completed) for workflow tracking."
-    - name: "defect_type"
-      expr: defect_type
-      comment: "Type of defect reported (plumbing, electrical, FF&E, HVAC) for root-cause and investment analysis."
-    - name: "urgency_level"
-      expr: urgency_level
-      comment: "Urgency level of the handoff for SLA and escalation analysis."
-    - name: "safety_hazard"
-      expr: safety_hazard
-      comment: "Flag indicating a safety hazard requiring immediate action and compliance reporting."
-    - name: "guest_impacted"
-      expr: guest_impacted
-      comment: "Flag indicating the defect impacted a guest, linking maintenance to satisfaction outcomes."
-    - name: "ada_compliance_issue"
+    - name: "Acknowledged Timestamp"
+      expr: acknowledged_timestamp
+    - name: "Ada Compliance Issue"
       expr: ada_compliance_issue
-      comment: "Flag indicating an ADA compliance issue, requiring regulatory attention."
-    - name: "requires_vendor"
-      expr: requires_vendor
-      comment: "Flag indicating external vendor is required, for outsourced maintenance cost tracking."
-    - name: "ffe_category"
+    - name: "Assigned Timestamp"
+      expr: assigned_timestamp
+    - name: "Compensation Offered"
+      expr: compensation_offered
+    - name: "Completed Timestamp"
+      expr: completed_timestamp
+    - name: "Cost Currency Code"
+      expr: cost_currency_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Defect Description"
+      expr: defect_description
+    - name: "Defect Type"
+      expr: defect_type
+    - name: "Estimated Completion Date"
+      expr: estimated_completion_date
+    - name: "Ffe Category"
       expr: ffe_category
-      comment: "FF&E category of the defect for capital asset management and PIP planning."
+    - name: "Follow Up Date"
+      expr: follow_up_date
+    - name: "Follow Up Required"
+      expr: follow_up_required
+    - name: "Guest Impacted"
+      expr: guest_impacted
+    - name: "Guest Notified"
+      expr: guest_notified
+    - name: "Handoff Status"
+      expr: handoff_status
   measures:
-    - name: "total_handoffs"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of maintenance handoffs from housekeeping. Baseline cross-department coordination metric."
-    - name: "safety_hazard_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN safety_hazard = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of handoffs flagged as safety hazards. Critical compliance KPI requiring immediate management escalation."
-    - name: "guest_impact_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN guest_impacted = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of handoffs where a guest was impacted. Links property condition to guest satisfaction and service recovery costs."
-    - name: "total_actual_cost"
-      expr: SUM(CAST(actual_cost AS DOUBLE))
-      comment: "Total actual cost of maintenance handoffs. Core financial metric for maintenance budget and vendor management."
-    - name: "cost_accuracy_pct"
-      expr: ROUND(100.0 * SUM(CAST(estimated_cost AS DOUBLE)) / NULLIF(SUM(CAST(actual_cost AS DOUBLE)), 0), 2)
-      comment: "Ratio of estimated to actual maintenance cost. Measures cost estimation accuracy for budget planning and vendor contract management."
-    - name: "vendor_required_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN requires_vendor = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of handoffs requiring an external vendor. Informs outsourced maintenance spend and vendor contract scope."
-    - name: "ada_compliance_issue_count"
-      expr: COUNT(CASE WHEN ada_compliance_issue = TRUE THEN 1 END)
-      comment: "Number of handoffs with ADA compliance issues. Regulatory compliance KPI requiring tracking and remediation reporting."
+    - name: "Distinct Maintenance Handoff"
+      expr: COUNT(DISTINCT maintenance_handoff_id)
+    - name: "Total Actual Cost"
+      expr: SUM(actual_cost)
+    - name: "Average Actual Cost"
+      expr: AVG(actual_cost)
+    - name: "Total Estimated Cost"
+      expr: SUM(estimated_cost)
+    - name: "Average Estimated Cost"
+      expr: AVG(estimated_cost)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_maintenance_request`
@@ -621,64 +764,133 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Maintenance demand and resolution KPIs: request volumes, cost of repairs, SLA compliance, safety hazard rates, and room out-of-order impact. Critical for asset management and revenue protection decisions."
+  comment: "Maintenance Request business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`maintenance_request`"
   dimensions:
-    - name: "maintenance_request_category"
+    - name: "Acknowledged Timestamp"
+      expr: acknowledged_timestamp
+    - name: "Actual Duration Minutes"
+      expr: actual_duration_minutes
+    - name: "Actual Start Timestamp"
+      expr: actual_start_timestamp
+    - name: "Assigned Timestamp"
+      expr: assigned_timestamp
+    - name: "Maintenance Request Category"
       expr: maintenance_request_category
-      comment: "Category of maintenance request (plumbing, electrical, HVAC, FF&E) for asset investment prioritization."
-    - name: "request_type"
-      expr: request_type
-      comment: "Type of request (preventive, corrective, emergency) for maintenance program mix analysis."
-    - name: "maintenance_request_status"
-      expr: maintenance_request_status
-      comment: "Current status of the request; used to monitor open pipeline and SLA compliance."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the maintenance request; used to assess urgency distribution and resource allocation."
-    - name: "safety_hazard_flag"
-      expr: safety_hazard_flag
-      comment: "Indicates a safety hazard; safety-related requests require immediate escalation and tracking."
-    - name: "room_out_of_order_flag"
-      expr: room_out_of_order_flag
-      comment: "Indicates room is out of order; directly impacts sellable inventory and revenue."
-    - name: "guest_impact_flag"
+    - name: "Closed Timestamp"
+      expr: closed_timestamp
+    - name: "Completed Timestamp"
+      expr: completed_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Estimated Duration Minutes"
+      expr: estimated_duration_minutes
+    - name: "Guest Impact Flag"
       expr: guest_impact_flag
-      comment: "Indicates guest-impacting maintenance issue; linked to satisfaction and compensation risk."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property maintenance benchmarking."
+    - name: "Inspection Completed Timestamp"
+      expr: inspection_completed_timestamp
+    - name: "Inspection Notes"
+      expr: inspection_notes
+    - name: "Inspection Passed Flag"
+      expr: inspection_passed_flag
+    - name: "Inspection Required Flag"
+      expr: inspection_required_flag
+    - name: "Issue Description"
+      expr: issue_description
   measures:
-    - name: "total_maintenance_requests"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total maintenance requests; baseline volume for asset condition and maintenance demand planning."
-    - name: "safety_hazard_request_count"
-      expr: COUNT(CASE WHEN safety_hazard_flag = TRUE THEN 1 END)
-      comment: "Number of safety hazard requests; zero-tolerance KPI tracked by GMs and compliance teams."
-    - name: "room_out_of_order_count"
-      expr: COUNT(CASE WHEN room_out_of_order_flag = TRUE THEN 1 END)
-      comment: "Number of requests causing rooms to go out of order; directly quantifies revenue at risk from maintenance failures."
-    - name: "guest_impacting_request_count"
-      expr: COUNT(CASE WHEN guest_impact_flag = TRUE THEN 1 END)
-      comment: "Number of guest-impacting maintenance requests; linked to satisfaction scores and service recovery costs."
-    - name: "total_actual_cost"
-      expr: SUM(CAST(actual_cost_amount AS DOUBLE))
-      comment: "Total actual cost of maintenance; primary maintenance spend KPI for budget management and CapEx planning."
-    - name: "total_estimated_cost"
-      expr: SUM(CAST(estimated_cost_amount AS DOUBLE))
-      comment: "Total estimated cost of maintenance; used with actual cost to compute cost variance and forecast accuracy."
-    - name: "total_labor_cost"
-      expr: SUM(CAST(labor_cost_amount AS DOUBLE))
-      comment: "Total labor cost component of maintenance; used to analyze labor vs. materials cost mix."
-    - name: "total_materials_cost"
-      expr: SUM(CAST(materials_cost_amount AS DOUBLE))
-      comment: "Total materials cost component of maintenance; used to analyze procurement spend driven by maintenance demand."
-    - name: "recurring_issue_count"
-      expr: COUNT(CASE WHEN recurring_issue_flag = TRUE THEN 1 END)
-      comment: "Count of recurring maintenance issues; high recurrence signals asset replacement or systemic repair investment need."
-    - name: "warranty_claim_count"
-      expr: COUNT(CASE WHEN warranty_claim_flag = TRUE THEN 1 END)
-      comment: "Number of warranty claims filed; used to recover costs from vendors and track asset warranty utilization."
+    - name: "Distinct Maintenance Request"
+      expr: COUNT(DISTINCT maintenance_request_id)
+    - name: "Total Actual Cost Amount"
+      expr: SUM(actual_cost_amount)
+    - name: "Average Actual Cost Amount"
+      expr: AVG(actual_cost_amount)
+    - name: "Total Estimated Cost Amount"
+      expr: SUM(estimated_cost_amount)
+    - name: "Average Estimated Cost Amount"
+      expr: AVG(estimated_cost_amount)
+    - name: "Total Labor Cost Amount"
+      expr: SUM(labor_cost_amount)
+    - name: "Average Labor Cost Amount"
+      expr: AVG(labor_cost_amount)
+    - name: "Total Materials Cost Amount"
+      expr: SUM(materials_cost_amount)
+    - name: "Average Materials Cost Amount"
+      expr: AVG(materials_cost_amount)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_public_area`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Public Area business metrics"
+  source: "`vibe_travel_hospitality_v1`.`housekeeping`.`public_area`"
+  dimensions:
+    - name: "Active Flag"
+      expr: active_flag
+    - name: "Ada Compliant Flag"
+      expr: ada_compliant_flag
+    - name: "Area Code"
+      expr: area_code
+    - name: "Area Name"
+      expr: area_name
+    - name: "Area Type"
+      expr: area_type
+    - name: "Building Section"
+      expr: building_section
+    - name: "Chemical Products Approved"
+      expr: chemical_products_approved
+    - name: "Cleaning Frequency Times Per Day"
+      expr: cleaning_frequency_times_per_day
+    - name: "Cleaning Frequency Type"
+      expr: cleaning_frequency_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deep Clean Rotation Cycle Days"
+      expr: deep_clean_rotation_cycle_days
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Expiration Date"
+      expr: expiration_date
+    - name: "Floor Level"
+      expr: floor_level
+    - name: "Guest Facing Flag"
+      expr: guest_facing_flag
+    - name: "High Traffic Flag"
+      expr: high_traffic_flag
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Public Area"
+      expr: COUNT(DISTINCT public_area_id)
+    - name: "Total Credit Value"
+      expr: SUM(credit_value)
+    - name: "Average Credit Value"
+      expr: AVG(credit_value)
+    - name: "Total Estimated Monthly Labor Hours"
+      expr: SUM(estimated_monthly_labor_hours)
+    - name: "Average Estimated Monthly Labor Hours"
+      expr: AVG(estimated_monthly_labor_hours)
+    - name: "Total Estimated Monthly Supply Cost"
+      expr: SUM(estimated_monthly_supply_cost)
+    - name: "Average Estimated Monthly Supply Cost"
+      expr: AVG(estimated_monthly_supply_cost)
+    - name: "Total Last Inspection Score"
+      expr: SUM(last_inspection_score)
+    - name: "Average Last Inspection Score"
+      expr: AVG(last_inspection_score)
+    - name: "Total Quality Score Target"
+      expr: SUM(quality_score_target)
+    - name: "Average Quality Score Target"
+      expr: AVG(quality_score_target)
+    - name: "Total Square Footage"
+      expr: SUM(square_footage)
+    - name: "Average Square Footage"
+      expr: AVG(square_footage)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_supply_consumption`
@@ -686,58 +898,137 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Supply consumption KPIs: total spend, unit cost trends, variance from PAR, waste rates, and replenishment triggers. Enables procurement cost control and sustainability program management."
+  comment: "Supply Consumption business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`supply_consumption`"
   dimensions:
-    - name: "consumption_date"
-      expr: consumption_date
-      comment: "Date of supply consumption; used to trend supply spend and identify seasonal patterns."
-    - name: "amenity_type"
+    - name: "Amenity Type"
       expr: amenity_type
-      comment: "Type of amenity consumed (toiletries, linen, cleaning chemicals) for category-level cost analysis."
-    - name: "consumption_reason"
+    - name: "Batch Number"
+      expr: batch_number
+    - name: "Consumption Date"
+      expr: consumption_date
+    - name: "Consumption Reason"
       expr: consumption_reason
-      comment: "Reason for consumption (standard, guest request, waste) for demand driver analysis."
-    - name: "occupancy_status"
-      expr: occupancy_status
-      comment: "Room occupancy status at time of consumption; used to normalize supply costs per occupied room."
-    - name: "guest_charged_indicator"
+    - name: "Consumption Timestamp"
+      expr: consumption_timestamp
+    - name: "Cost Center Code"
+      expr: cost_center_code
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Gl Account Code"
+      expr: gl_account_code
+    - name: "Guest Charged Indicator"
       expr: guest_charged_indicator
-      comment: "Indicates whether the supply cost was charged to the guest; used for revenue recovery analysis."
-    - name: "waste_indicator"
-      expr: waste_indicator
-      comment: "Indicates wasteful consumption; used to track sustainability and cost reduction program effectiveness."
-    - name: "reorder_triggered"
-      expr: reorder_triggered
-      comment: "Indicates a reorder was triggered; used to monitor PAR level management effectiveness."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property supply cost benchmarking."
+    - name: "Guest Segment"
+      expr: guest_segment
+    - name: "Notes"
+      expr: notes
+    - name: "Occupancy Status"
+      expr: occupancy_status
+    - name: "Quality Grade"
+      expr: quality_grade
+    - name: "Record Created Timestamp"
+      expr: record_created_timestamp
+    - name: "Record Updated Timestamp"
+      expr: record_updated_timestamp
   measures:
-    - name: "total_supply_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total supply cost consumed; primary housekeeping supply spend KPI for budget management."
-    - name: "total_quantity_consumed"
-      expr: SUM(CAST(quantity_consumed AS DOUBLE))
-      comment: "Total quantity of supplies consumed; used for procurement demand forecasting and PAR level calibration."
-    - name: "avg_unit_cost"
-      expr: AVG(CAST(unit_cost AS DOUBLE))
-      comment: "Average unit cost of supplies consumed; used to benchmark procurement pricing and identify cost trends."
-    - name: "total_variance_from_par"
-      expr: SUM(CAST(variance_from_par AS DOUBLE))
-      comment: "Total variance from PAR levels; negative values indicate stockouts, positive values indicate overstock — both drive procurement action."
-    - name: "waste_consumption_count"
-      expr: COUNT(CASE WHEN waste_indicator = TRUE THEN 1 END)
-      comment: "Number of waste consumption events; used to measure sustainability program effectiveness and reduce unnecessary spend."
-    - name: "reorder_trigger_count"
-      expr: COUNT(CASE WHEN reorder_triggered = TRUE THEN 1 END)
-      comment: "Number of reorder triggers; used to assess PAR level accuracy and procurement responsiveness."
-    - name: "total_replenishment_quantity"
-      expr: SUM(CAST(replenishment_quantity AS DOUBLE))
-      comment: "Total replenishment quantity ordered; used to measure supply chain responsiveness and inventory management efficiency."
-    - name: "guest_charged_supply_count"
-      expr: COUNT(CASE WHEN guest_charged_indicator = TRUE THEN 1 END)
-      comment: "Number of supply consumption events charged to guests; used to track ancillary revenue recovery from supply costs."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Supply Consumption"
+      expr: COUNT(DISTINCT supply_consumption_id)
+    - name: "Total Charge Amount"
+      expr: SUM(charge_amount)
+    - name: "Average Charge Amount"
+      expr: AVG(charge_amount)
+    - name: "Total Par Level"
+      expr: SUM(par_level)
+    - name: "Average Par Level"
+      expr: AVG(par_level)
+    - name: "Total Quantity Consumed"
+      expr: SUM(quantity_consumed)
+    - name: "Average Quantity Consumed"
+      expr: AVG(quantity_consumed)
+    - name: "Total Replenishment Quantity"
+      expr: SUM(replenishment_quantity)
+    - name: "Average Replenishment Quantity"
+      expr: AVG(replenishment_quantity)
+    - name: "Total Total Cost"
+      expr: SUM(total_cost)
+    - name: "Average Total Cost"
+      expr: AVG(total_cost)
+    - name: "Total Unit Cost"
+      expr: SUM(unit_cost)
+    - name: "Average Unit Cost"
+      expr: AVG(unit_cost)
+    - name: "Total Variance From Par"
+      expr: SUM(variance_from_par)
+    - name: "Average Variance From Par"
+      expr: AVG(variance_from_par)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_team`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Team business metrics"
+  source: "`vibe_travel_hospitality_v1`.`housekeeping`.`team`"
+  dimensions:
+    - name: "Break Duration Minutes"
+      expr: break_duration_minutes
+    - name: "Building Section"
+      expr: building_section
+    - name: "Certification Level"
+      expr: certification_level
+    - name: "Team Code"
+      expr: team_code
+    - name: "Contact Email"
+      expr: contact_email
+    - name: "Contact Phone"
+      expr: contact_phone
+    - name: "Cost Center Code"
+      expr: cost_center_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Effective From Date"
+      expr: effective_from_date
+    - name: "Effective To Date"
+      expr: effective_to_date
+    - name: "End Time"
+      expr: end_time
+    - name: "Equipment Cart Ids"
+      expr: equipment_cart_ids
+    - name: "Floor Assignment"
+      expr: floor_assignment
+    - name: "Is Seasonal"
+      expr: is_seasonal
+    - name: "Language Capabilities"
+      expr: language_capabilities
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Team"
+      expr: COUNT(DISTINCT team_id)
+    - name: "Total Average Rooms Per Attendant"
+      expr: SUM(average_rooms_per_attendant)
+    - name: "Average Average Rooms Per Attendant"
+      expr: AVG(average_rooms_per_attendant)
+    - name: "Total Budget Labor Hours Per Month"
+      expr: SUM(budget_labor_hours_per_month)
+    - name: "Average Budget Labor Hours Per Month"
+      expr: AVG(budget_labor_hours_per_month)
+    - name: "Total Guest Satisfaction Score"
+      expr: SUM(guest_satisfaction_score)
+    - name: "Average Guest Satisfaction Score"
+      expr: AVG(guest_satisfaction_score)
+    - name: "Total Quality Score Average"
+      expr: SUM(quality_score_average)
+    - name: "Average Quality Score Average"
+      expr: AVG(quality_score_average)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`housekeeping_work_order`
@@ -745,53 +1036,56 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Work order execution KPIs: labor and supply costs, inspection scores, VIP service rates, and completion pipeline. Enables operational efficiency and service quality management at the work order level."
+  comment: "Work Order business metrics"
   source: "`vibe_travel_hospitality_v1`.`housekeeping`.`work_order`"
   dimensions:
-    - name: "work_order_type"
-      expr: work_order_type
-      comment: "Type of work order (cleaning, maintenance, amenity, linen) for workload mix analysis."
-    - name: "work_order_status"
-      expr: work_order_status
-      comment: "Current status of the work order; used to monitor completion pipeline and identify bottlenecks."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the work order; used to assess urgency distribution and resource allocation."
-    - name: "vip_service"
-      expr: vip_service
-      comment: "Indicates VIP service work order; used to segment quality and cost metrics for premium guests."
-    - name: "linen_change_required"
-      expr: linen_change_required
-      comment: "Indicates linen change is required; used for linen demand forecasting."
-    - name: "amenity_replenishment_required"
+    - name: "Actual Completion Time"
+      expr: actual_completion_time
+    - name: "Actual Start Time"
+      expr: actual_start_time
+    - name: "Amenity Replenishment Required"
       expr: amenity_replenishment_required
-      comment: "Indicates amenity replenishment is required; used for supply demand forecasting."
-    - name: "scheduled_start_date"
+    - name: "Cancellation Reason"
+      expr: cancellation_reason
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Guest Request Notes"
+      expr: guest_request_notes
+    - name: "Inspection Result"
+      expr: inspection_result
+    - name: "Inspection Time"
+      expr: inspection_time
+    - name: "Linen Change Required"
+      expr: linen_change_required
+    - name: "Maintenance Handoff Required"
+      expr: maintenance_handoff_required
+    - name: "Modified Timestamp"
+      expr: modified_timestamp
+    - name: "Priority"
+      expr: priority
+    - name: "Room Status After"
+      expr: room_status_after
+    - name: "Room Status Before"
+      expr: room_status_before
+    - name: "Scheduled Completion Time"
+      expr: scheduled_completion_time
+    - name: "Scheduled Start Date"
       expr: scheduled_start_date
-      comment: "Scheduled start date of the work order; used to trend workload and scheduling effectiveness."
-    - name: "property_id"
-      expr: property_id
-      comment: "Property identifier for cross-property work order benchmarking."
   measures:
-    - name: "total_work_orders"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total work orders created; baseline volume for operational workload and staffing analysis."
-    - name: "total_labor_cost"
-      expr: SUM(CAST(labor_cost_amount AS DOUBLE))
-      comment: "Total labor cost across work orders; primary cost KPI for housekeeping operations budget management."
-    - name: "total_supply_cost"
-      expr: SUM(CAST(supply_cost_amount AS DOUBLE))
-      comment: "Total supply cost across work orders; used for procurement demand planning and cost control."
-    - name: "avg_inspection_score"
-      expr: AVG(CAST(inspection_score AS DOUBLE))
-      comment: "Average inspection score across completed work orders; measures service quality delivered at the work order level."
-    - name: "vip_work_order_count"
-      expr: COUNT(CASE WHEN vip_service = TRUE THEN 1 END)
-      comment: "Number of VIP service work orders; used to ensure premium service capacity and quality standards."
-    - name: "linen_change_work_order_count"
-      expr: COUNT(CASE WHEN linen_change_required = TRUE THEN 1 END)
-      comment: "Number of work orders requiring linen change; used for linen inventory and laundry demand forecasting."
-    - name: "maintenance_handoff_required_count"
-      expr: COUNT(CASE WHEN maintenance_handoff_required = TRUE THEN 1 END)
-      comment: "Number of work orders requiring maintenance handoff; measures the volume of issues escalated from housekeeping to engineering."
+    - name: "Distinct Work Order"
+      expr: COUNT(DISTINCT work_order_id)
+    - name: "Total Inspection Score"
+      expr: SUM(inspection_score)
+    - name: "Average Inspection Score"
+      expr: AVG(inspection_score)
+    - name: "Total Labor Cost Amount"
+      expr: SUM(labor_cost_amount)
+    - name: "Average Labor Cost Amount"
+      expr: AVG(labor_cost_amount)
+    - name: "Total Supply Cost Amount"
+      expr: SUM(supply_cost_amount)
+    - name: "Average Supply Cost Amount"
+      expr: AVG(supply_cost_amount)
 $$;

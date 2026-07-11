@@ -1,71 +1,86 @@
--- Metric views for domain: procurement | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
+-- Metric views for domain: procurement | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_purchase_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs for purchase order volume, value, and fulfillment performance. Enables procurement leadership to monitor order pipeline, supplier delivery compliance, and spend commitments."
+  comment: "Strategic KPIs for purchase order management: spend volume, order cycle efficiency, supplier concentration, and compliance posture. Used by CPO and procurement leadership to steer sourcing decisions and monitor PO health."
   source: "`vibe_manufacturing_v1`.`procurement`.`purchase_order`"
   dimensions:
     - name: "po_status"
       expr: po_status
-      comment: "Current status of the purchase order (e.g. Open, Closed, Cancelled) for pipeline segmentation."
+      comment: "Current lifecycle status of the purchase order (e.g. Open, Closed, Cancelled) for pipeline segmentation."
     - name: "po_type"
       expr: po_type
-      comment: "Type of purchase order (e.g. Standard, Blanket, Consignment) for spend categorization."
-    - name: "purchasing_organization"
-      expr: purchasing_organization
-      comment: "Purchasing organization responsible for the order, enabling org-level spend analysis."
-    - name: "purchasing_group"
-      expr: purchasing_group
-      comment: "Purchasing group (buyer team) for granular procurement performance tracking."
-    - name: "material_category"
-      expr: material_category
-      comment: "Material category of the primary item on the PO for category spend analysis."
+      comment: "Type of purchase order (e.g. Standard, Blanket, Framework) for spend categorisation."
     - name: "currency_code"
       expr: currency_code
-      comment: "Transaction currency for multi-currency spend normalization."
-    - name: "incoterms"
-      expr: incoterms
-      comment: "Delivery terms (e.g. DDP, EXW) affecting landed cost and risk allocation."
+      comment: "Transaction currency for multi-currency spend analysis."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organisation responsible for the PO, enabling org-level spend benchmarking."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Buyer group that raised the PO, supporting buyer-level performance analysis."
+    - name: "material_category"
+      expr: material_category
+      comment: "Material category of the PO for category-level spend analysis."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the PO for compliance and workflow monitoring."
-    - name: "po_date_month"
-      expr: DATE_TRUNC('MONTH', po_date)
-      comment: "Month of PO creation for trend analysis of procurement activity."
+      comment: "Approval state of the PO to monitor bottlenecks in the approval pipeline."
     - name: "goods_receipt_status"
       expr: goods_receipt_status
-      comment: "Goods receipt status indicating whether ordered goods have been received."
+      comment: "Goods receipt status to identify open POs awaiting delivery."
+    - name: "invoice_receipt_status"
+      expr: invoice_receipt_status
+      comment: "Invoice receipt status for three-way match monitoring."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the PO for regulatory and policy adherence tracking."
+    - name: "po_date_month"
+      expr: DATE_TRUNC('MONTH', po_date)
+      comment: "Month the PO was raised, for trend analysis of procurement volumes."
+    - name: "incoterms"
+      expr: incoterms
+      comment: "Delivery terms on the PO, relevant for logistics cost allocation."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms agreed on the PO, used for cash flow and DPO analysis."
   measures:
-    - name: "total_purchase_orders"
+    - name: "total_po_count"
       expr: COUNT(1)
-      comment: "Total number of purchase orders issued. Baseline volume KPI for procurement activity."
+      comment: "Total number of purchase orders raised. Baseline volume KPI for procurement activity."
     - name: "total_po_value"
       expr: SUM(CAST(total_po_value AS DOUBLE))
-      comment: "Total committed spend value across all purchase orders. Core spend commitment KPI."
+      comment: "Total committed spend value across all purchase orders. Primary spend-under-management KPI for CPO reporting."
     - name: "total_net_po_value"
       expr: SUM(CAST(net_po_value AS DOUBLE))
-      comment: "Total net value of purchase orders excluding tax. Used for budget vs. actuals comparison."
+      comment: "Total net PO value (excluding tax) for clean spend analysis and budget reconciliation."
     - name: "avg_po_value"
       expr: AVG(CAST(total_po_value AS DOUBLE))
-      comment: "Average purchase order value. Indicates typical transaction size and procurement efficiency."
+      comment: "Average purchase order value. Tracks order size trends and identifies fragmentation or consolidation opportunities."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount across all purchase orders. Supports tax liability reporting."
-    - name: "total_gross_amount"
-      expr: SUM(CAST(total_gross_amount AS DOUBLE))
-      comment: "Total gross spend including tax. Full cost commitment view for finance reconciliation."
-    - name: "open_po_count"
-      expr: COUNT(CASE WHEN po_status = 'Open' THEN 1 END)
-      comment: "Number of open purchase orders. Indicates active procurement pipeline requiring management attention."
+      comment: "Total tax amount across all POs. Used for tax liability reporting and compliance."
+    - name: "approved_po_count"
+      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END)
+      comment: "Number of purchase orders that have been formally approved. Measures approval throughput."
     - name: "pending_approval_po_count"
-      expr: COUNT(CASE WHEN approval_status = 'Pending' THEN 1 END)
-      comment: "Number of POs awaiting approval. Flags bottlenecks in the procurement approval workflow."
-    - name: "distinct_suppliers"
+      expr: COUNT(CASE WHEN approval_status NOT IN ('Approved', 'Rejected') THEN 1 END)
+      comment: "Number of POs awaiting approval. Highlights bottlenecks in the approval workflow that delay procurement."
+    - name: "po_approval_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of POs that have been approved. Low rates signal approval process inefficiency or policy non-compliance."
+    - name: "goods_receipt_pending_po_count"
+      expr: COUNT(CASE WHEN goods_receipt_status NOT IN ('Complete', 'Closed') THEN 1 END)
+      comment: "Number of POs with outstanding goods receipts. Tracks open delivery obligations and supplier fulfilment risk."
+    - name: "compliance_non_conformant_po_count"
+      expr: COUNT(CASE WHEN compliance_status != 'Compliant' THEN 1 END)
+      comment: "Number of POs flagged as non-compliant. Drives regulatory risk management and corrective action prioritisation."
+    - name: "distinct_supplier_count"
       expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers on purchase orders. Measures supplier base breadth and concentration risk."
+      comment: "Number of unique suppliers on active POs. Measures supplier base breadth and concentration risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_spend_record`
@@ -73,76 +88,88 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Comprehensive spend analytics KPIs covering total spend, maverick spend, savings realization, and category-level spend distribution. Primary dashboard for CPO and category managers."
+  comment: "Comprehensive spend analytics KPIs covering total spend, savings realisation, maverick spend, and category-level performance. Core dashboard for CPO, category managers, and finance for spend governance."
   source: "`vibe_manufacturing_v1`.`procurement`.`spend_record`"
   dimensions:
-    - name: "spend_type"
-      expr: spend_type
-      comment: "Type of spend (direct, indirect, services) for strategic spend categorization."
     - name: "spend_category"
-      expr: CAST(spend_category AS STRING)
-      comment: "Spend category classification for category management analysis."
+      expr: spend_category
+      comment: "High-level spend category for category management and strategic sourcing analysis."
     - name: "commodity_code_l1"
       expr: commodity_code_l1
-      comment: "Top-level commodity code for high-level spend taxonomy reporting."
+      comment: "Level-1 commodity code for top-level spend taxonomy reporting."
     - name: "commodity_code_l2"
       expr: commodity_code_l2
-      comment: "Second-level commodity code for mid-level category drill-down."
+      comment: "Level-2 commodity code for mid-level category drill-down."
+    - name: "commodity_code_l3"
+      expr: commodity_code_l3
+      comment: "Level-3 commodity code for granular category analysis."
     - name: "purchasing_organization"
       expr: purchasing_organization
-      comment: "Purchasing organization for org-level spend accountability."
+      comment: "Purchasing organisation for org-level spend benchmarking."
     - name: "purchasing_group"
       expr: purchasing_group
-      comment: "Purchasing group (buyer team) for granular spend ownership."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant or facility where spend was incurred for site-level cost analysis."
+      comment: "Buyer group for buyer-level spend accountability."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Transaction currency for multi-currency spend normalisation."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method used, relevant for cash management and payment channel analysis."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms for DPO and working capital analysis."
+    - name: "maverick_spend_flag"
+      expr: maverick_spend_flag
+      comment: "Indicates whether the spend was off-contract (maverick). Key compliance dimension for spend governance."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year of the spend record for annual budget vs. actuals tracking."
+      comment: "Fiscal year for annual spend budgeting and variance analysis."
     - name: "fiscal_period"
       expr: fiscal_period
-      comment: "Fiscal period for monthly spend trend analysis."
-    - name: "procurement_channel"
-      expr: procurement_channel
-      comment: "Channel through which procurement was executed (e.g. PO, P-card, contract) for compliance analysis."
-    - name: "is_maverick_spend"
-      expr: is_maverick_spend
-      comment: "Flag indicating off-contract or unauthorized spend for compliance monitoring."
+      comment: "Fiscal period for periodic spend reporting and accrual management."
     - name: "supplier_segment"
       expr: supplier_segment
-      comment: "Supplier segmentation tier for strategic vs. tactical spend analysis."
+      comment: "Supplier segmentation tier (e.g. Strategic, Preferred, Approved) for supplier relationship management."
+    - name: "procurement_channel"
+      expr: procurement_channel
+      comment: "Channel through which the spend was transacted (e.g. PO, P-Card, Catalogue) for channel compliance analysis."
     - name: "posting_date_month"
       expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month of spend posting for time-series trend analysis."
+      comment: "Month of spend posting for trend analysis."
   measures:
     - name: "total_spend_amount"
       expr: SUM(CAST(spend_amount AS DOUBLE))
-      comment: "Total procurement spend in transaction currency. Primary spend KPI for category and executive reporting."
+      comment: "Total spend in transaction currency. Primary spend-under-management KPI for category and executive reporting."
     - name: "total_spend_amount_usd"
       expr: SUM(CAST(spend_amount_usd AS DOUBLE))
-      comment: "Total spend normalized to USD for cross-currency global spend analysis."
-    - name: "total_addressable_spend"
-      expr: SUM(CAST(addressable_spend_amount AS DOUBLE))
-      comment: "Total addressable spend eligible for strategic sourcing. Identifies savings opportunity pool."
-    - name: "total_savings_realized"
+      comment: "Total spend normalised to USD for cross-currency consolidated spend reporting."
+    - name: "total_savings_amount"
       expr: SUM(CAST(savings_amount AS DOUBLE))
-      comment: "Total procurement savings realized. Core KPI for measuring sourcing effectiveness and cost reduction."
+      comment: "Total procurement savings realised. Core KPI for demonstrating procurement value and ROI to leadership."
     - name: "avg_unit_price"
       expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price paid across spend records. Tracks price competitiveness over time."
+      comment: "Average unit price paid across spend records. Tracks price competitiveness and negotiation effectiveness."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax incurred on procurement spend for tax liability management."
-    - name: "maverick_spend_count"
-      expr: COUNT(CASE WHEN is_maverick_spend = TRUE THEN 1 END)
-      comment: "Number of maverick (off-contract) spend transactions. Compliance risk indicator."
-    - name: "total_transaction_records"
-      expr: COUNT(1)
-      comment: "Total number of spend records. Baseline volume for spend data completeness assessment."
-    - name: "distinct_suppliers_with_spend"
+      comment: "Total tax amount on spend records for tax liability and compliance reporting."
+    - name: "maverick_spend_amount_usd"
+      expr: SUM(CASE WHEN maverick_spend_flag = TRUE THEN CAST(spend_amount_usd AS DOUBLE) ELSE 0 END)
+      comment: "Total off-contract (maverick) spend in USD. High maverick spend signals policy non-compliance and lost savings opportunities."
+    - name: "maverick_spend_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN maverick_spend_flag = TRUE THEN CAST(spend_amount_usd AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(spend_amount_usd AS DOUBLE)), 0), 2)
+      comment: "Percentage of total spend that is off-contract. A leading indicator of procurement compliance risk; target is typically below 5%."
+    - name: "savings_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(savings_amount AS DOUBLE)) / NULLIF(SUM(CAST(spend_amount_usd AS DOUBLE)), 0), 2)
+      comment: "Savings as a percentage of total spend. Measures procurement effectiveness and negotiation yield."
+    - name: "distinct_supplier_count"
       expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers receiving spend. Measures supplier base concentration."
+      comment: "Number of unique suppliers in the spend base. Tracks supplier consolidation progress and concentration risk."
+    - name: "total_spend_record_count"
+      expr: COUNT(1)
+      comment: "Total number of spend transactions. Baseline volume metric for spend data completeness and activity level."
+    - name: "avg_spend_per_transaction_usd"
+      expr: AVG(CAST(spend_amount_usd AS DOUBLE))
+      comment: "Average spend per transaction in USD. Low averages may indicate fragmented purchasing that should be consolidated."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_supplier_invoice`
@@ -150,7 +177,7 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts payable and invoice processing KPIs covering invoice volumes, payment performance, three-way match rates, and tolerance variances. Critical for AP efficiency and cash flow management."
+  comment: "Accounts payable and invoice processing KPIs: invoice volumes, payment performance, three-way match rates, and tolerance variances. Used by AP, finance, and procurement to manage supplier payment health and working capital."
   source: "`vibe_manufacturing_v1`.`procurement`.`supplier_invoice`"
   dimensions:
     - name: "invoice_status"
@@ -158,195 +185,83 @@ AS $$
       comment: "Current status of the supplier invoice (e.g. Posted, Blocked, Paid) for AP pipeline management."
     - name: "invoice_type"
       expr: invoice_type
-      comment: "Type of invoice (standard, credit memo, debit memo) for invoice mix analysis."
+      comment: "Type of invoice (e.g. Standard, Credit Memo, Debit Memo) for invoice mix analysis."
+    - name: "payment_status"
+      expr: payment_status
+      comment: "Payment status of the invoice for cash flow and DPO tracking."
     - name: "three_way_match_status"
       expr: three_way_match_status
-      comment: "Three-way match result (PO/GR/Invoice) — key compliance and payment release indicator."
-    - name: "tolerance_check_status"
-      expr: tolerance_check_status
-      comment: "Tolerance check outcome for price/quantity variance management."
-    - name: "company_code"
-      expr: company_code
-      comment: "Legal entity for which the invoice was posted. Enables entity-level AP reporting."
-    - name: "purchasing_organization"
-      expr: purchasing_organization
-      comment: "Purchasing organization associated with the invoice for org-level AP analysis."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant receiving the goods/services on the invoice for site-level cost tracking."
+      comment: "Three-way match result (PO / GR / Invoice) — critical for AP compliance and fraud prevention."
+    - name: "payment_block_indicator"
+      expr: payment_block_indicator
+      comment: "Indicates whether the invoice is blocked for payment, used to monitor AP bottlenecks."
     - name: "currency_code"
       expr: currency_code
       comment: "Invoice currency for multi-currency AP analysis."
-    - name: "invoice_date_month"
-      expr: DATE_TRUNC('MONTH', invoice_date)
-      comment: "Month of invoice date for AP volume and aging trend analysis."
-    - name: "material_category"
-      expr: material_category
-      comment: "Material category on the invoice for category-level AP spend analysis."
-  measures:
-    - name: "total_invoices"
-      expr: COUNT(1)
-      comment: "Total number of supplier invoices. Baseline AP volume KPI."
-    - name: "total_gross_invoice_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross invoice value. Primary AP liability KPI for cash flow forecasting."
-    - name: "total_net_invoice_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net invoice value excluding tax. Used for cost accrual and budget reconciliation."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on supplier invoices for tax liability reporting."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early payment discounts captured. Measures effectiveness of payment terms optimization."
-    - name: "total_tolerance_variance_amount"
-      expr: SUM(CAST(tolerance_variance_amount AS DOUBLE))
-      comment: "Total price/quantity variance within tolerance. Indicates invoice accuracy and supplier billing quality."
-    - name: "avg_invoice_value"
-      expr: AVG(CAST(gross_amount AS DOUBLE))
-      comment: "Average supplier invoice value. Benchmarks typical transaction size for AP workload planning."
-    - name: "blocked_invoice_count"
-      expr: COUNT(CASE WHEN invoice_status = 'Blocked' THEN 1 END)
-      comment: "Number of blocked invoices. Operational KPI for AP exception management and payment delay risk."
-    - name: "three_way_match_passed_count"
-      expr: COUNT(CASE WHEN three_way_match_status = 'Matched' THEN 1 END)
-      comment: "Number of invoices passing three-way match. Measures procurement-to-pay process quality."
-    - name: "distinct_suppliers_invoiced"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers submitting invoices. Tracks active supplier billing relationships."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_goods_receipt`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Goods receipt performance KPIs measuring delivery accuracy, quality inspection outcomes, and receiving efficiency. Enables supply chain and procurement teams to monitor supplier delivery compliance."
-  source: "`vibe_manufacturing_v1`.`procurement`.`procurement_goods_receipt`"
-  dimensions:
-    - name: "goods_receipt_status"
-      expr: goods_receipt_status
-      comment: "Status of the goods receipt (e.g. Posted, Reversed, Partial) for receiving pipeline management."
-    - name: "receipt_status"
-      expr: receipt_status
-      comment: "Detailed receipt status for granular receiving workflow tracking."
-    - name: "quality_inspection_status"
-      expr: quality_inspection_status
-      comment: "Quality inspection outcome for received goods. Key supplier quality KPI."
-    - name: "movement_type"
-      expr: movement_type
-      comment: "Inventory movement type (e.g. 101 GR, 122 Return) for stock movement categorization."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Receiving plant for site-level delivery performance analysis."
-    - name: "stock_type"
-      expr: stock_type
-      comment: "Stock type (unrestricted, quality inspection, blocked) for inventory availability analysis."
-    - name: "damage_flag"
-      expr: damage_flag
-      comment: "Indicates whether received goods were damaged. Supplier quality and logistics risk indicator."
-    - name: "posting_date_month"
-      expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month of goods receipt posting for receiving volume trend analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the goods receipt value for multi-currency receiving analysis."
-  measures:
-    - name: "total_goods_receipts"
-      expr: COUNT(1)
-      comment: "Total number of goods receipt documents. Baseline receiving activity KPI."
-    - name: "total_received_quantity"
-      expr: SUM(CAST(received_quantity AS DOUBLE))
-      comment: "Total quantity of goods received. Measures inbound supply volume."
-    - name: "total_ordered_quantity"
-      expr: SUM(CAST(ordered_quantity AS DOUBLE))
-      comment: "Total quantity ordered on associated POs. Used to compute delivery fill rate."
-    - name: "total_rejected_quantity"
-      expr: SUM(CAST(rejected_quantity AS DOUBLE))
-      comment: "Total quantity rejected at goods receipt. Supplier quality and incoming inspection KPI."
-    - name: "total_quantity_variance"
-      expr: SUM(CAST(quantity_variance AS DOUBLE))
-      comment: "Total quantity variance (ordered vs. received). Measures supplier delivery accuracy."
-    - name: "total_goods_receipt_value"
-      expr: SUM(CAST(goods_receipt_value AS DOUBLE))
-      comment: "Total value of goods received. Used for GR/IR clearing and accrual management."
-    - name: "damaged_receipt_count"
-      expr: COUNT(CASE WHEN damage_flag = TRUE THEN 1 END)
-      comment: "Number of receipts with damage reported. Supplier and logistics quality risk indicator."
-    - name: "reversed_receipt_count"
-      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
-      comment: "Number of reversed goods receipts. Indicates receiving errors or supplier return activity."
-    - name: "quality_inspection_required_count"
-      expr: COUNT(CASE WHEN quality_inspection_required_flag = TRUE THEN 1 END)
-      comment: "Number of receipts requiring quality inspection. Drives quality workload planning."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_sourcing_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Strategic sourcing performance KPIs measuring savings achievement, supplier participation, and sourcing cycle effectiveness. Primary dashboard for category managers and CPO."
-  source: "`vibe_manufacturing_v1`.`procurement`.`sourcing_event`"
-  dimensions:
-    - name: "event_status"
-      expr: event_status
-      comment: "Current status of the sourcing event (e.g. Draft, Published, Awarded, Closed)."
-    - name: "event_type"
-      expr: event_type
-      comment: "Type of sourcing event (RFQ, RFP, Auction, eRFx) for sourcing method analysis."
-    - name: "sourcing_method"
-      expr: sourcing_method
-      comment: "Sourcing methodology used (competitive bid, negotiation, sole source) for strategy effectiveness."
-    - name: "commodity_category"
-      expr: commodity_category
-      comment: "Commodity category being sourced for category-level savings tracking."
     - name: "purchasing_organization"
       expr: purchasing_organization
-      comment: "Purchasing organization running the event for org-level sourcing performance."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant associated with the sourcing event for site-level sourcing activity."
-    - name: "contract_type"
-      expr: contract_type
-      comment: "Type of contract resulting from the event (frame agreement, spot buy) for contract mix analysis."
-    - name: "is_multi_round"
-      expr: is_multi_round
-      comment: "Whether the event involved multiple bidding rounds. Indicates negotiation complexity."
-    - name: "award_date_month"
-      expr: DATE_TRUNC('MONTH', award_date)
-      comment: "Month of award for sourcing cycle time and savings trend analysis."
+      comment: "Purchasing organisation for org-level AP performance benchmarking."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Buyer group for buyer-level invoice management accountability."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual AP accrual and liability reporting."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period for periodic AP close and accrual management."
+    - name: "invoice_date_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Month of invoice date for trend analysis of AP volumes and payment cycles."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method (e.g. ACH, Wire, Cheque) for payment channel optimisation."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms for DPO calculation and early payment discount analysis."
+    - name: "tolerance_check_status"
+      expr: tolerance_check_status
+      comment: "Result of tolerance check on invoice vs PO price/quantity for exception management."
   measures:
-    - name: "total_sourcing_events"
+    - name: "total_invoice_count"
       expr: COUNT(1)
-      comment: "Total number of sourcing events executed. Baseline sourcing activity KPI."
-    - name: "total_estimated_spend"
-      expr: SUM(CAST(estimated_spend_amount AS DOUBLE))
-      comment: "Total estimated spend under management in sourcing events. Measures sourcing coverage."
-    - name: "total_baseline_spend"
-      expr: SUM(CAST(baseline_spend_amount AS DOUBLE))
-      comment: "Total baseline spend before sourcing. Reference point for savings calculation."
-    - name: "total_awarded_spend"
-      expr: SUM(CAST(awarded_spend_amount AS DOUBLE))
-      comment: "Total spend awarded through sourcing events. Measures sourcing throughput."
-    - name: "total_actual_savings"
-      expr: SUM(CAST(actual_savings_amount AS DOUBLE))
-      comment: "Total actual savings achieved through sourcing. Primary CPO performance KPI."
-    - name: "total_savings_target"
-      expr: SUM(CAST(savings_target_amount AS DOUBLE))
-      comment: "Total savings target set for sourcing events. Used to compute savings attainment rate."
-    - name: "total_realized_savings"
-      expr: SUM(CAST(realized_savings AS DOUBLE))
-      comment: "Total realized savings confirmed post-award. Measures savings capture effectiveness."
-    - name: "avg_actual_savings_pct"
-      expr: AVG(CAST(actual_savings_percentage AS DOUBLE))
-      comment: "Average savings percentage achieved per sourcing event. Benchmarks sourcing effectiveness."
-    - name: "avg_contract_duration_months"
-      expr: AVG(CAST(contract_duration_months AS DOUBLE))
-      comment: "Average contract duration resulting from sourcing events. Informs contract portfolio planning."
-    - name: "total_awarded_events"
-      expr: COUNT(CASE WHEN event_status = 'Awarded' THEN 1 END)
-      comment: "Number of sourcing events that resulted in an award. Measures sourcing completion rate."
+      comment: "Total number of supplier invoices. Baseline AP volume KPI."
+    - name: "total_gross_amount"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross invoice amount. Primary AP liability KPI for cash flow forecasting and balance sheet reporting."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net invoice amount (excluding tax and discounts). Used for clean spend and budget reconciliation."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount on supplier invoices for tax liability reporting."
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total early payment discounts captured. Measures working capital optimisation from discount programmes."
+    - name: "total_freight_amount"
+      expr: SUM(CAST(freight_amount AS DOUBLE))
+      comment: "Total freight charges on supplier invoices. Tracks logistics cost embedded in AP for freight cost management."
+    - name: "total_tolerance_variance_amount"
+      expr: SUM(CAST(tolerance_variance_amount AS DOUBLE))
+      comment: "Total monetary variance between invoiced and PO amounts. High variance signals pricing disputes or data quality issues."
+    - name: "avg_tolerance_variance_pct"
+      expr: AVG(CAST(tolerance_variance_percentage AS DOUBLE))
+      comment: "Average invoice tolerance variance percentage. Measures invoice accuracy and supplier billing compliance."
+    - name: "blocked_invoice_count"
+      expr: COUNT(CASE WHEN payment_block_indicator = TRUE THEN 1 END)
+      comment: "Number of invoices blocked for payment. High counts indicate AP processing bottlenecks or supplier disputes."
+    - name: "three_way_match_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN three_way_match_status = 'Matched' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of invoices passing three-way match (PO/GR/Invoice). A core AP quality KPI; low rates drive manual intervention costs and fraud risk."
+    - name: "paid_invoice_count"
+      expr: COUNT(CASE WHEN payment_status = 'Paid' THEN 1 END)
+      comment: "Number of invoices that have been paid. Tracks AP clearance throughput."
+    - name: "avg_gross_invoice_amount"
+      expr: AVG(CAST(gross_amount AS DOUBLE))
+      comment: "Average gross invoice amount. Tracks invoice size trends and identifies anomalies in billing patterns."
+    - name: "withholding_tax_total"
+      expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
+      comment: "Total withholding tax deducted on supplier invoices. Required for tax compliance and statutory reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_contract`
@@ -354,129 +269,79 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Contract portfolio KPIs covering contract value, coverage, compliance, and lifecycle management. Enables procurement leadership to manage contract risk and maximize contract utilization."
+  comment: "Contract portfolio KPIs: contract coverage, value under management, compliance posture, and renewal risk. Used by category managers and CPO to manage contract lifecycle and mitigate supply risk."
   source: "`vibe_manufacturing_v1`.`procurement`.`procurement_contract`"
   dimensions:
     - name: "contract_status"
       expr: contract_status
-      comment: "Current contract status (Active, Expired, Terminated) for portfolio health monitoring."
+      comment: "Lifecycle status of the contract (e.g. Active, Expired, Draft) for portfolio health monitoring."
     - name: "contract_type"
       expr: contract_type
-      comment: "Contract type (frame agreement, blanket order, spot) for contract mix analysis."
-    - name: "material_category"
-      expr: material_category
-      comment: "Material category covered by the contract for category contract coverage analysis."
-    - name: "purchasing_organization"
-      expr: purchasing_organization
-      comment: "Purchasing organization owning the contract for org-level contract portfolio management."
+      comment: "Type of procurement contract (e.g. Framework, Blanket, Fixed Price) for contract mix analysis."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Contract compliance status for regulatory and policy adherence monitoring."
+      comment: "Compliance status of the contract for regulatory and policy adherence tracking."
     - name: "auto_renewal_flag"
       expr: auto_renewal_flag
-      comment: "Whether the contract auto-renews. Flags contracts requiring proactive renewal management."
+      comment: "Indicates whether the contract auto-renews. Used to manage renewal risk and avoid unintended commitments."
     - name: "currency_code"
       expr: currency_code
       comment: "Contract currency for multi-currency portfolio valuation."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organisation responsible for the contract."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Buyer group managing the contract."
+    - name: "material_category"
+      expr: material_category
+      comment: "Material category covered by the contract for category-level coverage analysis."
     - name: "effective_date_month"
       expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month contract became effective for contract activation trend analysis."
+      comment: "Month the contract became effective for contract start trend analysis."
     - name: "expiration_date_month"
       expr: DATE_TRUNC('MONTH', expiration_date)
-      comment: "Month of contract expiration for renewal pipeline management."
-  measures:
-    - name: "total_contracts"
-      expr: COUNT(1)
-      comment: "Total number of procurement contracts. Baseline contract portfolio size KPI."
-    - name: "total_contract_value"
-      expr: SUM(CAST(total_contract_value AS DOUBLE))
-      comment: "Total value of all procurement contracts. Primary contract portfolio value KPI."
-    - name: "total_remaining_value"
-      expr: SUM(CAST(remaining_value AS DOUBLE))
-      comment: "Total remaining uncommitted contract value. Measures available contract capacity."
-    - name: "total_release_value"
-      expr: SUM(CAST(release_value AS DOUBLE))
-      comment: "Total value released against contracts. Measures contract utilization."
-    - name: "total_committed_volume"
-      expr: SUM(CAST(committed_volume AS DOUBLE))
-      comment: "Total volume committed under contracts. Supports supply security and demand planning."
-    - name: "avg_contract_value"
-      expr: AVG(CAST(total_contract_value AS DOUBLE))
-      comment: "Average contract value. Benchmarks contract size for portfolio segmentation."
-    - name: "active_contract_count"
-      expr: COUNT(CASE WHEN contract_status = 'Active' THEN 1 END)
-      comment: "Number of currently active contracts. Measures live contract coverage."
-    - name: "expiring_contract_count"
-      expr: COUNT(CASE WHEN contract_status = 'Expiring' THEN 1 END)
-      comment: "Number of contracts nearing expiration. Drives renewal prioritization."
-    - name: "distinct_suppliers_under_contract"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers with active contracts. Measures contract coverage of supplier base."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_supplier_quotation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Supplier bidding and quotation analytics KPIs measuring price competitiveness, award rates, compliance, and total cost of ownership. Enables sourcing teams to evaluate supplier bid quality."
-  source: "`vibe_manufacturing_v1`.`procurement`.`supplier_quotation`"
-  dimensions:
-    - name: "quotation_status"
-      expr: quotation_status
-      comment: "Status of the supplier quotation (Submitted, Evaluated, Awarded, Rejected)."
-    - name: "is_awarded"
-      expr: is_awarded
-      comment: "Whether the quotation was awarded. Primary bid outcome dimension."
-    - name: "technical_compliance_flag"
-      expr: technical_compliance_flag
-      comment: "Whether the quotation meets technical requirements. Quality gate for bid evaluation."
-    - name: "commercial_compliance_flag"
-      expr: commercial_compliance_flag
-      comment: "Whether the quotation meets commercial requirements. Compliance gate for bid evaluation."
-    - name: "environmental_compliance_flag"
-      expr: environmental_compliance_flag
-      comment: "Whether the quotation meets environmental requirements. Sustainability sourcing KPI."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Quotation currency for multi-currency price comparison."
+      comment: "Month the contract expires for renewal pipeline management."
     - name: "incoterms"
       expr: incoterms
-      comment: "Delivery terms on the quotation affecting total landed cost."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Destination plant for the quoted supply for site-level sourcing analysis."
-    - name: "quotation_date_month"
-      expr: DATE_TRUNC('MONTH', quotation_date)
-      comment: "Month of quotation submission for bid activity trend analysis."
+      comment: "Delivery terms on the contract for logistics cost allocation."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms for working capital and DPO analysis."
   measures:
-    - name: "total_quotations"
+    - name: "total_contract_count"
       expr: COUNT(1)
-      comment: "Total number of supplier quotations received. Baseline sourcing market engagement KPI."
-    - name: "total_quoted_amount"
-      expr: SUM(CAST(total_quoted_amount AS DOUBLE))
-      comment: "Total value of all supplier quotations. Measures market response to sourcing events."
-    - name: "avg_quoted_unit_price"
-      expr: AVG(CAST(quoted_unit_price AS DOUBLE))
-      comment: "Average quoted unit price across all bids. Benchmarks market price for category management."
-    - name: "avg_evaluation_score"
-      expr: AVG(CAST(evaluation_score AS DOUBLE))
-      comment: "Average supplier evaluation score. Measures overall bid quality and supplier competitiveness."
-    - name: "avg_total_cost_of_ownership"
-      expr: AVG(CAST(total_cost_of_ownership AS DOUBLE))
-      comment: "Average total cost of ownership across quotations. Enables TCO-based sourcing decisions."
-    - name: "total_freight_cost"
-      expr: SUM(CAST(freight_cost AS DOUBLE))
-      comment: "Total freight cost quoted. Identifies logistics cost impact on total procurement cost."
-    - name: "awarded_quotation_count"
-      expr: COUNT(CASE WHEN is_awarded = TRUE THEN 1 END)
-      comment: "Number of quotations that were awarded. Measures sourcing award activity."
-    - name: "technically_compliant_count"
-      expr: COUNT(CASE WHEN technical_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of technically compliant quotations. Measures supplier technical capability in the market."
-    - name: "distinct_bidding_suppliers"
+      comment: "Total number of procurement contracts in the portfolio. Baseline contract management KPI."
+    - name: "total_contract_value"
+      expr: SUM(CAST(total_contract_value AS DOUBLE))
+      comment: "Total value of all contracts under management. Primary contract portfolio KPI for CPO and finance reporting."
+    - name: "total_remaining_value"
+      expr: SUM(CAST(remaining_value AS DOUBLE))
+      comment: "Total remaining uncommitted contract value. Measures available contract capacity and release opportunity."
+    - name: "total_release_value"
+      expr: SUM(CAST(release_value AS DOUBLE))
+      comment: "Total value released against contracts. Tracks contract utilisation and spend-against-contract performance."
+    - name: "contract_utilisation_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(release_value AS DOUBLE)) / NULLIF(SUM(CAST(total_contract_value AS DOUBLE)), 0), 2)
+      comment: "Percentage of total contract value that has been released/consumed. Low utilisation may indicate over-contracting or demand shortfalls."
+    - name: "avg_contract_value"
+      expr: AVG(CAST(total_contract_value AS DOUBLE))
+      comment: "Average contract value. Tracks deal size trends and negotiation scale."
+    - name: "active_contract_count"
+      expr: COUNT(CASE WHEN contract_status = 'Active' THEN 1 END)
+      comment: "Number of currently active contracts. Core contract portfolio health metric."
+    - name: "expiring_contract_count"
+      expr: COUNT(CASE WHEN contract_status = 'Active' AND expiration_date <= DATE_ADD(CURRENT_DATE(), 90) THEN 1 END)
+      comment: "Number of active contracts expiring within 90 days. Drives renewal prioritisation and supply continuity risk management."
+    - name: "non_compliant_contract_count"
+      expr: COUNT(CASE WHEN compliance_status != 'Compliant' THEN 1 END)
+      comment: "Number of contracts with compliance issues. Tracks regulatory and policy risk in the contract portfolio."
+    - name: "total_minimum_order_quantity"
+      expr: SUM(CAST(minimum_order_quantity AS DOUBLE))
+      comment: "Total minimum order quantity commitments across contracts. Used for demand planning and commitment risk assessment."
+    - name: "distinct_supplier_count"
       expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers submitting quotations. Measures competitive market depth."
+      comment: "Number of unique suppliers under contract. Measures contract coverage breadth and supplier consolidation."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_purchase_requisition`
@@ -484,241 +349,298 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Purchase requisition pipeline KPIs measuring demand capture, approval cycle times, and requisition-to-order conversion. Enables procurement operations to manage demand intake and approval efficiency."
+  comment: "Purchase requisition pipeline KPIs: requisition volumes, approval cycle efficiency, value under request, and conversion to PO. Used by procurement operations and finance to manage demand-to-order cycle performance."
   source: "`vibe_manufacturing_v1`.`procurement`.`purchase_requisition`"
   dimensions:
     - name: "pr_status"
       expr: pr_status
-      comment: "Current status of the purchase requisition (Open, Approved, Converted, Rejected)."
+      comment: "Current status of the purchase requisition (e.g. Pending, Approved, Rejected, Converted) for pipeline management."
     - name: "pr_type"
       expr: pr_type
-      comment: "Type of requisition (standard, service, asset) for demand categorization."
+      comment: "Type of purchase requisition for demand categorisation."
+    - name: "approval_level_required"
+      expr: approval_level_required
+      comment: "Approval level required for the requisition, used to analyse approval complexity and cycle time."
     - name: "priority_code"
       expr: priority_code
-      comment: "Priority of the requisition for urgency-based procurement queue management."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant requesting the material or service for site-level demand analysis."
+      comment: "Priority of the requisition for urgency-based processing analysis."
     - name: "purchasing_organization_code"
       expr: purchasing_organization_code
-      comment: "Purchasing organization for org-level requisition volume tracking."
+      comment: "Purchasing organisation for org-level requisition volume analysis."
     - name: "purchasing_group_code"
       expr: purchasing_group_code
-      comment: "Purchasing group for buyer workload and demand management."
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Whether the requisition has a compliance requirement. Flags regulated procurement."
-    - name: "pr_date_month"
-      expr: DATE_TRUNC('MONTH', pr_date)
-      comment: "Month of requisition creation for demand trend analysis."
+      comment: "Buyer group for buyer-level workload and performance analysis."
     - name: "requestor_department"
       expr: requestor_department
-      comment: "Department originating the requisition for demand attribution and budget management."
+      comment: "Department that raised the requisition for demand-by-department analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the requisition for multi-currency spend pipeline analysis."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Indicates whether the requisition is compliant with procurement policy."
+    - name: "pr_date_month"
+      expr: DATE_TRUNC('MONTH', pr_date)
+      comment: "Month the requisition was raised for demand trend analysis."
+    - name: "source_determination_indicator"
+      expr: source_determination_indicator
+      comment: "Indicates how the source of supply was determined (e.g. automatic, manual) for sourcing efficiency analysis."
   measures:
-    - name: "total_requisitions"
+    - name: "total_requisition_count"
       expr: COUNT(1)
-      comment: "Total number of purchase requisitions. Baseline procurement demand intake KPI."
+      comment: "Total number of purchase requisitions. Baseline demand pipeline volume KPI."
     - name: "total_estimated_value"
       expr: SUM(CAST(estimated_total_value AS DOUBLE))
-      comment: "Total estimated value of all requisitions. Measures uncommitted procurement demand pipeline."
+      comment: "Total estimated value of all requisitions. Measures the demand pipeline value entering procurement."
     - name: "avg_estimated_unit_price"
       expr: AVG(CAST(estimated_unit_price AS DOUBLE))
-      comment: "Average estimated unit price on requisitions. Benchmarks internal price expectations vs. market."
+      comment: "Average estimated unit price on requisitions. Tracks price expectations vs actual PO prices for savings identification."
     - name: "total_quantity_requested"
       expr: SUM(CAST(quantity_requested AS DOUBLE))
-      comment: "Total quantity requested across all requisitions. Measures demand volume for supply planning."
-    - name: "open_requisition_count"
-      expr: COUNT(CASE WHEN pr_status = 'Open' THEN 1 END)
-      comment: "Number of open requisitions awaiting processing. Measures procurement backlog."
+      comment: "Total quantity requested across all requisitions. Supports demand planning and inventory replenishment analysis."
+    - name: "approved_requisition_count"
+      expr: COUNT(CASE WHEN pr_status = 'Approved' THEN 1 END)
+      comment: "Number of approved requisitions. Measures approval throughput in the procure-to-pay cycle."
     - name: "rejected_requisition_count"
       expr: COUNT(CASE WHEN pr_status = 'Rejected' THEN 1 END)
-      comment: "Number of rejected requisitions. Indicates demand quality and approval policy compliance."
+      comment: "Number of rejected requisitions. High rejection rates signal poor demand planning or policy non-compliance."
+    - name: "requisition_approval_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN pr_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of requisitions approved. A low rate indicates demand quality issues or overly restrictive approval policies."
     - name: "converted_to_po_count"
-      expr: COUNT(CASE WHEN po_number IS NOT NULL THEN 1 END)
-      comment: "Number of requisitions converted to purchase orders. Measures requisition-to-PO conversion rate."
-    - name: "distinct_requestor_departments"
-      expr: COUNT(DISTINCT requestor_department)
-      comment: "Number of distinct departments raising requisitions. Measures procurement demand breadth."
+      expr: COUNT(CASE WHEN po_number IS NOT NULL AND po_number != '' THEN 1 END)
+      comment: "Number of requisitions converted to a purchase order. Measures requisition-to-PO conversion efficiency."
+    - name: "pr_to_po_conversion_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN po_number IS NOT NULL AND po_number != '' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of requisitions that resulted in a PO. Low conversion rates may indicate sourcing failures or demand cancellations."
+    - name: "non_compliant_requisition_count"
+      expr: COUNT(CASE WHEN compliance_flag = FALSE THEN 1 END)
+      comment: "Number of requisitions flagged as non-compliant. Drives policy enforcement and procurement governance actions."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_rfq`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_sourcing_event`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "RFQ (Request for Quotation) process KPIs measuring market engagement, bid response rates, and sourcing event effectiveness. Enables category managers to optimize competitive bidding processes."
-  source: "`vibe_manufacturing_v1`.`procurement`.`rfq`"
+  comment: "Strategic sourcing KPIs: event activity, supplier participation, savings realisation, and award efficiency. Used by category managers and CPO to evaluate sourcing programme effectiveness and competitive bidding outcomes."
+  source: "`vibe_manufacturing_v1`.`procurement`.`sourcing_event`"
   dimensions:
-    - name: "rfq_status"
-      expr: rfq_status
-      comment: "Current RFQ status (Draft, Issued, Closed, Awarded, Cancelled) for pipeline management."
-    - name: "rfq_type"
-      expr: rfq_type
-      comment: "Type of RFQ (open, selective, single source) for sourcing strategy analysis."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the RFQ for compliance and governance tracking."
-    - name: "commodity_code"
-      expr: commodity_code
-      comment: "Commodity code for category-level RFQ activity analysis."
-    - name: "procurement_category"
-      expr: procurement_category
-      comment: "Procurement category for strategic sourcing portfolio analysis."
+    - name: "event_status"
+      expr: event_status
+      comment: "Current status of the sourcing event (e.g. Draft, Published, Awarded, Cancelled) for pipeline management."
+    - name: "event_type"
+      expr: event_type
+      comment: "Type of sourcing event (e.g. RFQ, RFP, Auction) for sourcing method mix analysis."
+    - name: "award_strategy"
+      expr: award_strategy
+      comment: "Award strategy applied (e.g. Single Source, Multi-Award) for sourcing strategy effectiveness analysis."
+    - name: "commodity_category"
+      expr: commodity_category
+      comment: "Commodity category targeted by the sourcing event for category-level sourcing activity analysis."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organisation running the event for org-level sourcing performance benchmarking."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Buyer group managing the event for buyer-level workload analysis."
     - name: "currency_code"
       expr: currency_code
-      comment: "RFQ currency for multi-currency sourcing analysis."
-    - name: "technical_specification_required"
-      expr: technical_specification_required
-      comment: "Whether technical specs are required. Indicates complexity of the sourcing requirement."
-    - name: "issue_date_month"
-      expr: DATE_TRUNC('MONTH', issue_date)
-      comment: "Month RFQ was issued for sourcing activity trend analysis."
+      comment: "Currency of the sourcing event for multi-currency savings analysis."
+    - name: "is_multi_round"
+      expr: is_multi_round
+      comment: "Indicates whether the event ran multiple bidding rounds, relevant for negotiation complexity analysis."
+    - name: "is_sealed_bid"
+      expr: is_sealed_bid
+      comment: "Indicates whether bids were sealed, relevant for competitive integrity analysis."
+    - name: "publish_date_month"
+      expr: DATE_TRUNC('MONTH', publish_date)
+      comment: "Month the sourcing event was published for sourcing activity trend analysis."
+    - name: "contract_type"
+      expr: contract_type
+      comment: "Type of contract expected from the sourcing event outcome."
   measures:
-    - name: "total_rfqs"
+    - name: "total_sourcing_event_count"
       expr: COUNT(1)
-      comment: "Total number of RFQs issued. Baseline sourcing market engagement KPI."
-    - name: "total_estimated_value"
-      expr: SUM(CAST(estimated_total_value AS DOUBLE))
-      comment: "Total estimated spend value covered by RFQs. Measures spend under competitive bidding."
-    - name: "avg_estimated_value"
-      expr: AVG(CAST(estimated_value AS DOUBLE))
-      comment: "Average estimated value per RFQ. Benchmarks typical sourcing event size."
-    - name: "total_bid_bond_amount"
-      expr: SUM(CAST(bid_bond_amount AS DOUBLE))
-      comment: "Total bid bond value required. Measures financial commitment required from bidders."
-    - name: "awarded_rfq_count"
-      expr: COUNT(CASE WHEN rfq_status = 'Awarded' THEN 1 END)
-      comment: "Number of RFQs resulting in an award. Measures sourcing completion rate."
-    - name: "cancelled_rfq_count"
-      expr: COUNT(CASE WHEN rfq_status = 'Cancelled' THEN 1 END)
-      comment: "Number of cancelled RFQs. Indicates sourcing process inefficiency or demand volatility."
-    - name: "distinct_commodity_codes"
-      expr: COUNT(DISTINCT commodity_code)
-      comment: "Number of distinct commodity codes covered by RFQs. Measures sourcing category breadth."
+      comment: "Total number of sourcing events. Baseline KPI for strategic sourcing programme activity."
+    - name: "total_estimated_spend"
+      expr: SUM(CAST(estimated_spend_amount AS DOUBLE))
+      comment: "Total estimated spend under sourcing events. Measures the scale of spend being competitively sourced."
+    - name: "total_baseline_spend"
+      expr: SUM(CAST(baseline_spend_amount AS DOUBLE))
+      comment: "Total baseline spend before sourcing events. Used as the denominator for savings rate calculation."
+    - name: "total_actual_savings"
+      expr: SUM(CAST(actual_savings_amount AS DOUBLE))
+      comment: "Total actual savings realised from sourcing events. Primary ROI KPI for the strategic sourcing programme."
+    - name: "total_savings_target"
+      expr: SUM(CAST(savings_target_amount AS DOUBLE))
+      comment: "Total savings target set for sourcing events. Used to measure savings attainment vs plan."
+    - name: "savings_attainment_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(actual_savings_amount AS DOUBLE)) / NULLIF(SUM(CAST(savings_target_amount AS DOUBLE)), 0), 2)
+      comment: "Actual savings as a percentage of savings target. Measures sourcing programme delivery against plan; below 80% triggers strategic review."
+    - name: "avg_actual_savings_pct"
+      expr: AVG(CAST(actual_savings_percentage AS DOUBLE))
+      comment: "Average savings percentage achieved per sourcing event. Benchmarks negotiation effectiveness across categories."
+    - name: "total_awarded_spend"
+      expr: SUM(CAST(awarded_spend_amount AS DOUBLE))
+      comment: "Total spend awarded through sourcing events. Measures the volume of spend placed under competitive contract."
+    - name: "avg_supplier_participation_count"
+      expr: AVG(CAST(invited_supplier_count AS DOUBLE))
+      comment: "Average number of suppliers invited per sourcing event. Low participation may indicate limited competition and suboptimal pricing."
+    - name: "distinct_supplier_count"
+      expr: COUNT(DISTINCT supplier_id)
+      comment: "Number of unique suppliers engaged across sourcing events. Measures supplier base breadth in competitive sourcing."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_invoice_line_item`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Invoice line-level KPIs for three-way match accuracy, price variance analysis, and invoice processing quality. Enables AP teams to identify billing discrepancies and improve invoice accuracy."
-  source: "`vibe_manufacturing_v1`.`procurement`.`invoice_line_item`"
+  comment: "Goods receipt and inbound delivery KPIs: receipt volumes, quantity accuracy, quality inspection outcomes, and reversal rates. Used by procurement operations and supply chain to manage supplier delivery performance."
+  source: "`vibe_manufacturing_v1`.`procurement`.`procurement_goods_receipt`"
   dimensions:
-    - name: "match_status"
-      expr: match_status
-      comment: "Three-way match status at line level (Matched, Price Variance, Quantity Variance) for exception management."
-    - name: "verification_status"
-      expr: verification_status
-      comment: "Invoice line verification status for AP processing workflow tracking."
-    - name: "line_type"
-      expr: line_type
-      comment: "Type of invoice line (material, service, freight) for spend categorization."
-    - name: "blocking_reason"
-      expr: blocking_reason
-      comment: "Reason for invoice line block. Identifies root causes of payment delays."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant associated with the invoice line for site-level AP analysis."
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax code applied to the invoice line for tax compliance analysis."
+    - name: "goods_receipt_status"
+      expr: goods_receipt_status
+      comment: "Status of the goods receipt (e.g. Posted, Reversed, Pending) for inbound delivery pipeline management."
+    - name: "quality_inspection_status"
+      expr: quality_inspection_status
+      comment: "Quality inspection outcome for received goods. Tracks supplier quality at point of receipt."
+    - name: "quality_inspection_required_flag"
+      expr: quality_inspection_required_flag
+      comment: "Indicates whether quality inspection was required for the receipt."
+    - name: "movement_type"
+      expr: movement_type
+      comment: "Inventory movement type (e.g. 101 GR for PO) for stock movement analysis."
+    - name: "stock_type"
+      expr: stock_type
+      comment: "Type of stock received (e.g. Unrestricted, Quality Inspection, Blocked) for inventory availability analysis."
+    - name: "gr_ir_clearing_status"
+      expr: gr_ir_clearing_status
+      comment: "GR/IR clearing status for AP reconciliation and accrual management."
+    - name: "damage_flag"
+      expr: damage_flag
+      comment: "Indicates whether received goods were damaged. Tracks supplier packaging and logistics quality."
+    - name: "reversal_flag"
+      expr: reversal_flag
+      comment: "Indicates whether the goods receipt was reversed. High reversal rates signal receiving errors or supplier disputes."
     - name: "currency_code"
       expr: currency_code
-      comment: "Invoice line currency for multi-currency AP analysis."
-    - name: "baseline_date_month"
-      expr: DATE_TRUNC('MONTH', baseline_date)
-      comment: "Month of baseline date for payment due date trend analysis."
+      comment: "Currency of the goods receipt for multi-currency inventory valuation."
+    - name: "delivery_date_month"
+      expr: DATE_TRUNC('MONTH', delivery_date)
+      comment: "Month of delivery for inbound delivery trend analysis."
+    - name: "posting_date_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month of inventory posting for period-end accrual and inventory reporting."
   measures:
-    - name: "total_invoice_lines"
+    - name: "total_goods_receipt_count"
       expr: COUNT(1)
-      comment: "Total number of invoice line items. Baseline AP processing volume KPI."
-    - name: "total_line_amount"
-      expr: SUM(CAST(line_amount AS DOUBLE))
-      comment: "Total invoice line amount. Measures AP liability at line level."
-    - name: "total_net_line_amount"
-      expr: SUM(CAST(net_line_amount AS DOUBLE))
-      comment: "Total net invoice line amount excluding tax. Used for cost accrual accuracy."
-    - name: "total_price_variance_amount"
-      expr: SUM(CAST(price_variance_amount AS DOUBLE))
-      comment: "Total price variance between PO price and invoiced price. Measures billing accuracy and supplier compliance."
+      comment: "Total number of goods receipts. Baseline inbound delivery volume KPI."
+    - name: "total_received_quantity"
+      expr: SUM(CAST(received_quantity AS DOUBLE))
+      comment: "Total quantity of goods received. Core inbound supply volume KPI for inventory replenishment tracking."
+    - name: "total_ordered_quantity"
+      expr: SUM(CAST(ordered_quantity AS DOUBLE))
+      comment: "Total quantity ordered on the associated POs. Used as denominator for delivery completeness rate."
+    - name: "total_goods_receipt_value"
+      expr: SUM(CAST(goods_receipt_value AS DOUBLE))
+      comment: "Total value of goods received. Used for inventory valuation and GR/IR accrual reporting."
+    - name: "total_quantity_variance"
+      expr: SUM(CAST(quantity_variance AS DOUBLE))
+      comment: "Total quantity variance between ordered and received. Measures supplier delivery accuracy and short-shipment exposure."
+    - name: "delivery_completeness_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(received_quantity AS DOUBLE)) / NULLIF(SUM(CAST(ordered_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of ordered quantity actually received. A key supplier delivery performance KPI; below target triggers supplier corrective action."
+    - name: "damaged_receipt_count"
+      expr: COUNT(CASE WHEN damage_flag = TRUE THEN 1 END)
+      comment: "Number of goods receipts with damage reported. Tracks inbound quality and packaging compliance."
+    - name: "damaged_receipt_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN damage_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of receipts with damage. High rates indicate supplier packaging or logistics quality issues requiring corrective action."
+    - name: "reversal_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of goods receipts that were reversed. High reversal rates signal receiving process errors or supplier disputes."
+    - name: "quality_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN quality_inspection_status = 'Passed' THEN 1 END) / NULLIF(COUNT(CASE WHEN quality_inspection_required_flag = TRUE THEN 1 END), 0), 2)
+      comment: "Percentage of inspected receipts passing quality inspection. Core supplier quality KPI for incoming goods control."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_supplier_quotation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Supplier quotation and competitive bidding KPIs: bid volumes, pricing competitiveness, award rates, and compliance. Used by category managers and sourcing teams to evaluate supplier responsiveness and bid quality."
+  source: "`vibe_manufacturing_v1`.`procurement`.`supplier_quotation`"
+  dimensions:
+    - name: "quotation_status"
+      expr: quotation_status
+      comment: "Status of the supplier quotation (e.g. Submitted, Awarded, Rejected) for bid pipeline management."
+    - name: "award_flag"
+      expr: award_flag
+      comment: "Indicates whether the quotation was awarded. Used to calculate award rates and competitive win analysis."
+    - name: "technical_compliance_flag"
+      expr: technical_compliance_flag
+      comment: "Indicates technical compliance of the bid. Non-compliant bids are disqualified, affecting competition quality."
+    - name: "commercial_compliance_flag"
+      expr: commercial_compliance_flag
+      comment: "Indicates commercial compliance of the bid for bid qualification analysis."
+    - name: "environmental_compliance_flag"
+      expr: environmental_compliance_flag
+      comment: "Indicates environmental compliance of the bid for sustainability sourcing analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the quotation for multi-currency price comparison."
+    - name: "country_of_origin"
+      expr: country_of_origin
+      comment: "Country of origin of the quoted goods for supply chain risk and trade compliance analysis."
+    - name: "incoterms"
+      expr: incoterms
+      comment: "Delivery terms on the quotation for total landed cost comparison."
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms offered by the supplier for working capital analysis."
+    - name: "submission_date_month"
+      expr: DATE_TRUNC('MONTH', submission_timestamp)
+      comment: "Month of bid submission for sourcing activity trend analysis."
+    - name: "material_group"
+      expr: material_group
+      comment: "Material group of the quoted item for category-level bid analysis."
+  measures:
+    - name: "total_quotation_count"
+      expr: COUNT(1)
+      comment: "Total number of supplier quotations received. Baseline competitive bidding activity KPI."
+    - name: "total_quoted_amount"
+      expr: SUM(CAST(total_quoted_amount AS DOUBLE))
+      comment: "Total value of all supplier quotations. Measures the scale of competitive bids received."
+    - name: "avg_quoted_unit_price"
+      expr: AVG(CAST(quoted_unit_price AS DOUBLE))
+      comment: "Average quoted unit price across all bids. Benchmarks market pricing and identifies outlier bids."
+    - name: "avg_evaluation_score"
+      expr: AVG(CAST(evaluation_score AS DOUBLE))
+      comment: "Average bid evaluation score. Measures overall supplier bid quality and competitiveness."
+    - name: "avg_total_cost_of_ownership"
+      expr: AVG(CAST(total_cost_of_ownership AS DOUBLE))
+      comment: "Average total cost of ownership across bids. Enables TCO-based sourcing decisions beyond unit price."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on invoice lines for tax liability reporting."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount captured on invoice lines. Measures payment terms optimization."
-    - name: "avg_price_variance"
-      expr: AVG(CAST(price_variance AS DOUBLE))
-      comment: "Average price variance per invoice line. Benchmarks supplier billing accuracy."
-    - name: "matched_line_count"
-      expr: COUNT(CASE WHEN match_status = 'Matched' THEN 1 END)
-      comment: "Number of invoice lines passing three-way match. Measures invoice processing quality."
-    - name: "total_invoiced_quantity"
-      expr: SUM(CAST(invoiced_quantity AS DOUBLE))
-      comment: "Total quantity invoiced across all lines. Validates against goods receipt quantities."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_commodity_category`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Category management KPIs covering spend concentration, supplier base, risk profile, and savings targets by commodity category. Enables category managers to prioritize strategic sourcing efforts."
-  source: "`vibe_manufacturing_v1`.`procurement`.`commodity_category`"
-  dimensions:
-    - name: "category_status"
-      expr: category_status
-      comment: "Status of the commodity category (Active, Under Review, Inactive) for portfolio management."
-    - name: "category_level"
-      expr: category_level
-      comment: "Hierarchy level of the category (L1, L2, L3) for drill-down spend analysis."
-    - name: "risk_classification"
-      expr: risk_classification
-      comment: "Supply risk classification (Critical, High, Medium, Low) for risk-based category prioritization."
-    - name: "sourcing_complexity"
-      expr: sourcing_complexity
-      comment: "Complexity of sourcing the category. Informs resource allocation for category management."
-    - name: "unspsc_segment"
-      expr: unspsc_segment
-      comment: "UNSPSC segment for industry-standard category taxonomy alignment."
-    - name: "unspsc_family"
-      expr: unspsc_family
-      comment: "UNSPSC family for mid-level category taxonomy analysis."
-    - name: "preferred_supplier_flag"
-      expr: preferred_supplier_flag
-      comment: "Whether the category has preferred suppliers. Measures contract coverage maturity."
-    - name: "compliance_requirement_flag"
-      expr: compliance_requirement_flag
-      comment: "Whether the category has compliance requirements. Flags regulated spend categories."
-    - name: "last_review_date_month"
-      expr: DATE_TRUNC('MONTH', last_review_date)
-      comment: "Month of last category review for governance cadence monitoring."
-  measures:
-    - name: "total_categories"
-      expr: COUNT(1)
-      comment: "Total number of commodity categories. Baseline category portfolio size KPI."
-    - name: "total_annual_spend"
-      expr: SUM(CAST(annual_spend_amount AS DOUBLE))
-      comment: "Total annual spend across all commodity categories. Primary category spend portfolio KPI."
-    - name: "avg_annual_spend_per_category"
-      expr: AVG(CAST(annual_spend_amount AS DOUBLE))
-      comment: "Average annual spend per category. Benchmarks category spend concentration."
-    - name: "total_cost_reduction_target_pct"
-      expr: AVG(CAST(cost_reduction_target_pct AS DOUBLE))
-      comment: "Average cost reduction target percentage across categories. Measures savings ambition level."
-    - name: "total_price_volatility_index"
-      expr: AVG(CAST(price_volatility_index AS DOUBLE))
-      comment: "Average price volatility index across categories. Identifies high-risk spend categories."
-    - name: "high_risk_category_count"
-      expr: COUNT(CASE WHEN risk_classification = 'Critical' OR risk_classification = 'High' THEN 1 END)
-      comment: "Number of high or critical risk categories. Drives risk mitigation prioritization."
-    - name: "categories_with_preferred_suppliers"
-      expr: COUNT(CASE WHEN preferred_supplier_flag = TRUE THEN 1 END)
-      comment: "Number of categories with preferred suppliers. Measures contract coverage maturity."
-    - name: "categories_with_compliance_requirements"
-      expr: COUNT(CASE WHEN compliance_requirement_flag = TRUE THEN 1 END)
-      comment: "Number of categories with compliance requirements. Measures regulated spend exposure."
+      comment: "Total tax amount across quotations for tax-inclusive cost analysis."
+    - name: "total_freight_cost"
+      expr: SUM(CAST(freight_cost AS DOUBLE))
+      comment: "Total freight cost quoted by suppliers. Tracks logistics cost component in supplier bids."
+    - name: "award_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN award_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of quotations that were awarded. Low rates may indicate poor supplier fit or overly competitive events."
+    - name: "technical_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN technical_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of bids meeting technical requirements. Low rates indicate supplier capability gaps or unclear specifications."
+    - name: "avg_discount_percentage"
+      expr: AVG(CAST(discount_percentage AS DOUBLE))
+      comment: "Average discount offered by suppliers in quotations. Measures negotiation leverage and supplier pricing flexibility."
+    - name: "distinct_supplier_count"
+      expr: COUNT(DISTINCT supplier_id)
+      comment: "Number of unique suppliers submitting quotations. Measures competitive market depth for the sourcing event."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_approval_workflow`
@@ -726,118 +648,142 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Procurement approval workflow efficiency KPIs measuring cycle times, escalation rates, policy violations, and approval bottlenecks. Enables process owners to optimize procurement governance."
+  comment: "Procurement approval workflow KPIs: approval cycle efficiency, escalation rates, policy compliance, and bottleneck identification. Used by procurement operations and compliance to optimise the approval process and reduce cycle time."
   source: "`vibe_manufacturing_v1`.`procurement`.`approval_workflow`"
   dimensions:
-    - name: "workflow_status"
-      expr: workflow_status
-      comment: "Current status of the approval workflow (Pending, Approved, Rejected, Escalated)."
-    - name: "workflow_type"
-      expr: workflow_type
-      comment: "Type of approval workflow (PO, PR, Contract) for process-specific performance analysis."
-    - name: "approval_document_type"
-      expr: approval_document_type
-      comment: "Document type being approved for workflow routing analysis."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Current status of the approval workflow (e.g. Pending, Approved, Rejected, Escalated) for pipeline management."
     - name: "approval_level"
       expr: approval_level
-      comment: "Approval hierarchy level for bottleneck identification."
-    - name: "current_stage"
-      expr: current_stage
-      comment: "Current stage in the approval workflow for pipeline management."
-    - name: "escalation_flag"
-      expr: escalation_flag
-      comment: "Whether the workflow has been escalated. Key governance risk indicator."
+      comment: "Approval level required (e.g. L1, L2, L3) for bottleneck analysis by approval tier."
+    - name: "approval_action"
+      expr: approval_action
+      comment: "Action taken on the approval (e.g. Approve, Reject, Delegate) for workflow action analysis."
+    - name: "approval_document_type"
+      expr: approval_document_type
+      comment: "Type of document being approved (e.g. PO, PR, Contract) for approval volume by document type."
     - name: "policy_violation_flag"
       expr: policy_violation_flag
-      comment: "Whether a policy violation was detected. Compliance monitoring KPI."
-    - name: "company_code"
-      expr: company_code
-      comment: "Legal entity for the approval workflow for entity-level governance reporting."
+      comment: "Indicates whether the approval involved a policy violation. Key compliance dimension."
+    - name: "mandatory_approval_flag"
+      expr: mandatory_approval_flag
+      comment: "Indicates whether approval was mandatory. Used to prioritise mandatory approval SLA monitoring."
+    - name: "parallel_approval_flag"
+      expr: parallel_approval_flag
+      comment: "Indicates whether parallel approval was used. Parallel approvals typically reduce cycle time."
+    - name: "compliance_check_status"
+      expr: compliance_check_status
+      comment: "Result of compliance check during approval for regulatory adherence monitoring."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organisation for org-level approval performance benchmarking."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Buyer group for buyer-level approval workload analysis."
     - name: "approval_request_month"
       expr: DATE_TRUNC('MONTH', approval_request_timestamp)
-      comment: "Month of approval request for workflow volume trend analysis."
+      comment: "Month the approval was requested for trend analysis of approval volumes."
+    - name: "material_category"
+      expr: material_category
+      comment: "Material category of the document under approval for category-level approval analysis."
   measures:
-    - name: "total_approval_workflows"
+    - name: "total_approval_count"
       expr: COUNT(1)
-      comment: "Total number of approval workflows initiated. Baseline procurement governance activity KPI."
+      comment: "Total number of approval workflow instances. Baseline approval activity KPI."
     - name: "total_document_amount"
       expr: SUM(CAST(document_total_amount AS DOUBLE))
-      comment: "Total value of documents under approval. Measures financial exposure in approval pipeline."
+      comment: "Total value of documents going through the approval workflow. Measures the financial scale of approval activity."
     - name: "avg_approval_duration_hours"
       expr: AVG(CAST(approval_duration_hours AS DOUBLE))
-      comment: "Average approval cycle time in hours. Primary procurement process efficiency KPI."
+      comment: "Average time to complete an approval in hours. Core cycle time KPI; high values indicate bottlenecks that delay procurement."
     - name: "total_approval_threshold_amount"
       expr: SUM(CAST(approval_threshold_amount AS DOUBLE))
-      comment: "Total approval threshold value across workflows. Measures financial authorization exposure."
-    - name: "escalated_workflow_count"
-      expr: COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END)
-      comment: "Number of escalated approval workflows. Indicates approval bottlenecks and governance failures."
+      comment: "Total approval threshold amounts across workflows. Used to assess the financial risk exposure managed through the approval process."
     - name: "policy_violation_count"
       expr: COUNT(CASE WHEN policy_violation_flag = TRUE THEN 1 END)
-      comment: "Number of workflows with policy violations detected. Measures procurement compliance risk."
-    - name: "avg_total_stages"
-      expr: AVG(CAST(total_stages AS DOUBLE))
-      comment: "Average number of approval stages per workflow. Measures approval process complexity."
-    - name: "pending_approval_count"
-      expr: COUNT(CASE WHEN workflow_status = 'Pending' THEN 1 END)
-      comment: "Number of workflows currently pending approval. Measures active approval backlog."
+      comment: "Number of approvals involving policy violations. High counts signal systemic procurement policy non-compliance."
+    - name: "policy_violation_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN policy_violation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of approvals with policy violations. A leading indicator of procurement governance risk; drives policy enforcement actions."
+    - name: "approved_count"
+      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END)
+      comment: "Number of approvals granted. Measures approval throughput."
+    - name: "rejected_count"
+      expr: COUNT(CASE WHEN approval_status = 'Rejected' THEN 1 END)
+      comment: "Number of approvals rejected. High rejection rates may indicate poor requisition quality or overly restrictive policies."
+    - name: "approval_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of approval requests that were approved. Measures approval process efficiency and demand quality."
+    - name: "compliance_pass_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_check_status = 'Passed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of approvals passing compliance checks. Measures regulatory adherence in the procurement approval process."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_service_entry_sheet`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`procurement_commodity_category`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Service procurement KPIs measuring service delivery acceptance, invoice verification, and three-way match performance for services. Enables procurement and AP teams to manage service spend quality."
-  source: "`vibe_manufacturing_v1`.`procurement`.`service_entry_sheet`"
+  comment: "Category management KPIs: category portfolio health, contract coverage, preferred supplier penetration, and strategic sourcing priority. Used by category managers and CPO to manage the commodity portfolio and sourcing strategy."
+  source: "`vibe_manufacturing_v1`.`procurement`.`commodity_category`"
   dimensions:
-    - name: "ses_status"
-      expr: ses_status
-      comment: "Status of the service entry sheet (Draft, Submitted, Approved, Rejected) for workflow management."
-    - name: "ses_type"
-      expr: ses_type
-      comment: "Type of service entry sheet for service category analysis."
-    - name: "service_category"
-      expr: service_category
-      comment: "Category of service performed for service spend categorization."
-    - name: "three_way_match_status"
-      expr: three_way_match_status
-      comment: "Three-way match status for service invoices. Key AP compliance indicator."
-    - name: "acceptance_flag"
-      expr: acceptance_flag
-      comment: "Whether the service was formally accepted. Measures service delivery confirmation rate."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant where service was performed for site-level service spend analysis."
-    - name: "company_code"
-      expr: company_code
-      comment: "Legal entity for the service entry for entity-level service spend reporting."
-    - name: "posting_date_month"
-      expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month of SES posting for service spend trend analysis."
+    - name: "category_status"
+      expr: category_status
+      comment: "Status of the commodity category (e.g. Active, Inactive, Under Review) for portfolio health monitoring."
+    - name: "category_level"
+      expr: category_level
+      comment: "Hierarchy level of the category (L1/L2/L3/L4) for drill-down analysis."
+    - name: "risk_classification"
+      expr: risk_classification
+      comment: "Risk classification of the category (e.g. Critical, High, Medium, Low) for supply risk management."
+    - name: "strategic_sourcing_priority"
+      expr: strategic_sourcing_priority
+      comment: "Strategic priority level of the category for resource allocation in sourcing programmes."
+    - name: "spend_type"
+      expr: spend_type
+      comment: "Type of spend (e.g. Direct, Indirect, Services) for spend mix analysis."
+    - name: "sourcing_strategy"
+      expr: sourcing_strategy
+      comment: "Sourcing strategy applied to the category (e.g. Single Source, Dual Source, Competitive) for strategy mix analysis."
+    - name: "contract_coverage_flag"
+      expr: contract_coverage_flag
+      comment: "Indicates whether the category has contract coverage. Uncovered categories represent maverick spend risk."
+    - name: "preferred_supplier_flag"
+      expr: preferred_supplier_flag
+      comment: "Indicates whether a preferred supplier is designated for the category."
+    - name: "compliance_requirement_flag"
+      expr: compliance_requirement_flag
+      comment: "Indicates whether the category has compliance requirements (e.g. regulatory, environmental)."
+    - name: "environmental_compliance_flag"
+      expr: environmental_compliance_flag
+      comment: "Indicates whether environmental compliance is required for the category."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organisation responsible for the category."
+    - name: "unspsc_segment"
+      expr: unspsc_segment
+      comment: "UNSPSC segment classification for industry-standard category benchmarking."
   measures:
-    - name: "total_service_entry_sheets"
+    - name: "total_category_count"
       expr: COUNT(1)
-      comment: "Total number of service entry sheets. Baseline service procurement activity KPI."
-    - name: "total_gross_value"
-      expr: SUM(CAST(gross_value AS DOUBLE))
-      comment: "Total gross value of services recorded. Primary service spend KPI."
-    - name: "total_net_value"
-      expr: SUM(CAST(net_value AS DOUBLE))
-      comment: "Total net value of services excluding tax. Used for service cost accrual."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on service entry sheets for tax liability reporting."
-    - name: "total_accepted_quantity"
-      expr: SUM(CAST(accepted_quantity AS DOUBLE))
-      comment: "Total quantity of services formally accepted. Measures service delivery completion."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price for services. Benchmarks service rate competitiveness."
-    - name: "accepted_ses_count"
-      expr: COUNT(CASE WHEN acceptance_flag = TRUE THEN 1 END)
-      comment: "Number of service entry sheets formally accepted. Measures service delivery success rate."
-    - name: "distinct_suppliers_for_services"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct service suppliers. Measures service supplier base breadth."
+      comment: "Total number of commodity categories in the portfolio. Baseline category management KPI."
+    - name: "avg_cost_reduction_target_pct"
+      expr: AVG(CAST(cost_reduction_target_pct AS DOUBLE))
+      comment: "Average cost reduction target across categories. Measures the ambition level of the category management programme."
+    - name: "contract_covered_category_count"
+      expr: COUNT(CASE WHEN contract_coverage_flag = TRUE THEN 1 END)
+      comment: "Number of categories with contract coverage. Measures spend-under-contract breadth."
+    - name: "contract_coverage_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN contract_coverage_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of categories with contract coverage. A core procurement maturity KPI; higher coverage reduces maverick spend risk."
+    - name: "preferred_supplier_category_count"
+      expr: COUNT(CASE WHEN preferred_supplier_flag = TRUE THEN 1 END)
+      comment: "Number of categories with a designated preferred supplier. Measures supplier rationalisation progress."
+    - name: "high_risk_category_count"
+      expr: COUNT(CASE WHEN risk_classification IN ('Critical', 'High') THEN 1 END)
+      comment: "Number of categories classified as high or critical risk. Drives supply risk mitigation prioritisation."
+    - name: "compliance_required_category_count"
+      expr: COUNT(CASE WHEN compliance_requirement_flag = TRUE THEN 1 END)
+      comment: "Number of categories with mandatory compliance requirements. Used to scope compliance monitoring programmes."
 $$;

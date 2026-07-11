@@ -1,127 +1,71 @@
--- Metric views for domain: customer | Business: Semiconductors | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: customer | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_account`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core customer account metrics tracking account health, credit risk, and revenue performance"
+  comment: "Strategic account health and portfolio metrics. Tracks account risk, credit exposure, and revenue tier distribution to support executive portfolio reviews and sales strategy decisions."
   source: "`vibe_semiconductors_v1`.`customer`.`account`"
   dimensions:
-    - name: "Account Status"
+    - name: "account_status"
       expr: account_status
-      comment: "Current operational status of the customer account"
-    - name: "Account Type"
+      comment: "Lifecycle status of the account (Active, Inactive, Suspended, etc.) for portfolio segmentation."
+    - name: "account_type"
       expr: account_type
-      comment: "Classification of account (direct, distributor, OEM, etc.)"
-    - name: "Credit Rating"
-      expr: credit_rating
-      comment: "Credit risk rating assigned to the account"
-    - name: "Revenue Tier"
+      comment: "Classification of the account (Direct, Distributor, OEM, etc.) to segment revenue and coverage strategy."
+    - name: "revenue_tier"
       expr: revenue_tier
-      comment: "Revenue band classification for account segmentation"
-    - name: "Geographic Region"
+      comment: "Revenue tier bucket (Tier 1, Tier 2, etc.) used to prioritize sales and support resources."
+    - name: "geographic_region"
       expr: geographic_region
-      comment: "Geographic market region of the account"
-    - name: "Industry Vertical"
+      comment: "Geographic region of the account for regional performance analysis."
+    - name: "industry_vertical"
       expr: industry_vertical
-      comment: "Target industry vertical (automotive, consumer, industrial, etc.)"
-    - name: "Strategic Classification"
+      comment: "Industry vertical (Automotive, Consumer, Data Center, etc.) for vertical market analysis."
+    - name: "strategic_classification"
       expr: strategic_classification
-      comment: "Strategic importance tier (key account, strategic partner, standard, etc.)"
-    - name: "Sales Region"
-      expr: sales_region
-      comment: "Sales territory region assignment"
-    - name: "Compliance Status"
+      comment: "Strategic importance classification (Key Account, Growth, Maintenance) for executive prioritization."
+    - name: "credit_rating"
+      expr: credit_rating
+      comment: "Credit rating of the account for financial risk segmentation."
+    - name: "compliance_status"
       expr: compliance_status
-      comment: "Overall compliance standing of the account"
-    - name: "Creation Year"
-      expr: YEAR(creation_date)
-      comment: "Year the account was created"
-    - name: "Creation Quarter"
-      expr: CONCAT('Q', QUARTER(creation_date), '-', YEAR(creation_date))
-      comment: "Quarter and year the account was created"
-    - name: "Last Order Year"
-      expr: YEAR(last_order_date)
-      comment: "Year of most recent order"
+      comment: "Compliance status of the account (Compliant, Under Review, Non-Compliant) for risk management."
+    - name: "sales_region"
+      expr: sales_region
+      comment: "Sales region assignment for territory-level performance tracking."
+    - name: "tax_exempt_flag"
+      expr: tax_exempt_flag
+      comment: "Indicates whether the account is tax-exempt, relevant for revenue and billing analysis."
+    - name: "creation_year"
+      expr: DATE_TRUNC('year', creation_date)
+      comment: "Year the account was created, used for cohort and vintage analysis."
+    - name: "last_order_year"
+      expr: DATE_TRUNC('year', last_order_date)
+      comment: "Year of the most recent order, used to identify dormant accounts."
   measures:
-    - name: "Total Accounts"
+    - name: "total_accounts"
       expr: COUNT(DISTINCT account_id)
-      comment: "Distinct count of customer accounts"
-    - name: "Active Accounts"
-      expr: COUNT(DISTINCT CASE WHEN account_status = 'Active' THEN account_id END)
-      comment: "Count of accounts in active status"
-    - name: "Average Risk Score"
+      comment: "Total number of distinct customer accounts. Baseline KPI for portfolio size tracking."
+    - name: "avg_risk_score"
       expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Mean credit risk score across accounts"
-    - name: "High Risk Accounts"
-      expr: COUNT(DISTINCT CASE WHEN CAST(risk_score AS DOUBLE) > 70 THEN account_id END)
-      comment: "Count of accounts with risk score above 70"
-    - name: "Tax Exempt Accounts"
-      expr: COUNT(DISTINCT CASE WHEN tax_exempt_flag = true THEN account_id END)
-      comment: "Count of accounts with tax exemption status"
-    - name: "Accounts With Recent Orders"
-      expr: COUNT(DISTINCT CASE WHEN last_order_date >= DATE_SUB(CURRENT_DATE(), 90) THEN account_id END)
-      comment: "Count of accounts with orders in the last 90 days"
-    - name: "Dormant Accounts"
-      expr: COUNT(DISTINCT CASE WHEN last_order_date < DATE_SUB(CURRENT_DATE(), 365) OR last_order_date IS NULL THEN account_id END)
-      comment: "Count of accounts with no orders in the past year"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_account_team`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Account team coverage and workload metrics. Used by Sales Operations and HR to ensure adequate customer coverage, identify overloaded team members, and optimize account team assignments."
-  source: "`vibe_semiconductors_v1`.`customer`.`account_team`"
-  dimensions:
-    - name: "assignment_status"
-      expr: assignment_status
-      comment: "Current status of the team assignment (Active, Inactive, Pending) for coverage management."
-    - name: "role"
-      expr: role
-      comment: "Role of the team member on the account for coverage type analysis."
-    - name: "team_role"
-      expr: team_role
-      comment: "Team role classification for organizational coverage analysis."
-    - name: "responsibility_area"
-      expr: responsibility_area
-      comment: "Area of responsibility for workload distribution analysis."
-    - name: "coverage_region"
-      expr: coverage_region
-      comment: "Geographic coverage region for regional coverage gap analysis."
-    - name: "territory"
-      expr: territory
-      comment: "Sales territory for territory coverage analysis."
-    - name: "is_primary_owner"
-      expr: is_primary_owner
-      comment: "Whether the team member is the primary account owner for ownership clarity."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the assignment is currently active for coverage health tracking."
-    - name: "assignment_start_year_month"
-      expr: DATE_TRUNC('month', assignment_start_date)
-      comment: "Month the assignment started for team stability analysis."
-  measures:
-    - name: "total_account_assignments"
-      expr: COUNT(DISTINCT account_team_id)
-      comment: "Total account team assignments. Baseline measure of coverage portfolio size."
-    - name: "active_assignments"
-      expr: COUNT(DISTINCT CASE WHEN is_active = TRUE THEN account_team_id END)
-      comment: "Number of active account team assignments. Tracks current coverage capacity."
-    - name: "unique_accounts_covered"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of distinct accounts with team coverage. Identifies coverage gaps in the account portfolio."
-    - name: "avg_allocation_percent"
-      expr: AVG(CAST(allocation_percent AS DOUBLE))
-      comment: "Average allocation percentage per assignment. High averages signal overloaded team members; low averages signal underutilization."
-    - name: "avg_workload_percentage"
-      expr: AVG(CAST(workload_percentage AS DOUBLE))
-      comment: "Average workload percentage per team assignment. Tracks team capacity utilization for resource planning."
-    - name: "total_allocation_percent"
-      expr: SUM(CAST(allocation_percent AS DOUBLE))
-      comment: "Total allocation percentage across all assignments. Used to identify over-allocated team members when grouped by employee."
+      comment: "Average risk score across accounts. Executives use this to monitor portfolio-level credit and compliance risk."
+    - name: "max_risk_score"
+      expr: MAX(CAST(risk_score AS DOUBLE))
+      comment: "Maximum risk score in the portfolio. Flags the highest-risk account for immediate review."
+    - name: "high_risk_account_count"
+      expr: COUNT(DISTINCT CASE WHEN risk_score >= 75 THEN account_id END)
+      comment: "Number of accounts with risk score >= 75. Drives credit risk intervention decisions."
+    - name: "tax_exempt_account_count"
+      expr: COUNT(DISTINCT CASE WHEN tax_exempt_flag = TRUE THEN account_id END)
+      comment: "Number of tax-exempt accounts. Relevant for revenue recognition and billing compliance."
+    - name: "active_account_count"
+      expr: COUNT(DISTINCT CASE WHEN account_status = 'Active' THEN account_id END)
+      comment: "Number of active accounts. Core metric for sales coverage and pipeline health."
+    - name: "inactive_account_count"
+      expr: COUNT(DISTINCT CASE WHEN account_status = 'Inactive' THEN account_id END)
+      comment: "Number of inactive accounts. Drives win-back campaign prioritization."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_credit_profile`
@@ -129,132 +73,61 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer credit and financial health metrics for risk management and credit policy decisions"
+  comment: "Customer credit risk and exposure metrics. Tracks credit utilization, outstanding balances, overdue amounts, and credit limit adequacy to support finance and risk management decisions."
   source: "`vibe_semiconductors_v1`.`customer`.`credit_profile`"
   dimensions:
-    - name: "Credit Profile Status"
+    - name: "credit_profile_status"
       expr: credit_profile_status
-      comment: "Current status of the credit profile"
-    - name: "Credit Rating Internal"
-      expr: credit_rating_internal
-      comment: "Internal credit rating classification"
-    - name: "Credit Rating External"
-      expr: credit_rating_external
-      comment: "External agency credit rating"
-    - name: "Risk Category"
+      comment: "Current status of the credit profile (Active, Suspended, Under Review) for risk segmentation."
+    - name: "credit_profile_type"
+      expr: credit_profile_type
+      comment: "Type of credit profile (Standard, Preferred, Restricted) for policy-based analysis."
+    - name: "risk_category"
       expr: risk_category
-      comment: "Risk tier classification (low, medium, high)"
-    - name: "Credit Hold Status"
-      expr: CASE WHEN credit_hold_flag = true THEN 'On Hold' ELSE 'Active' END
-      comment: "Whether account is on credit hold"
-    - name: "Preferred Customer Status"
-      expr: CASE WHEN is_preferred_customer = true THEN 'Preferred' ELSE 'Standard' END
-      comment: "Preferred customer designation"
-    - name: "Credit Review Year"
-      expr: YEAR(credit_review_date)
-      comment: "Year of most recent credit review"
-    - name: "Credit Limit Band"
-      expr: CASE WHEN CAST(credit_limit_usd AS DOUBLE) < 100000 THEN 'Under 100K' WHEN CAST(credit_limit_usd AS DOUBLE) < 500000 THEN '100K-500K' WHEN CAST(credit_limit_usd AS DOUBLE) < 1000000 THEN '500K-1M' ELSE 'Over 1M' END
-      comment: "Credit limit tier for segmentation"
+      comment: "Risk category (Low, Medium, High, Critical) for portfolio risk tiering."
+    - name: "credit_rating_internal"
+      expr: credit_rating_internal
+      comment: "Internal credit rating assigned by the finance team for risk-adjusted pricing decisions."
+    - name: "credit_rating_external"
+      expr: credit_rating_external
+      comment: "External credit rating from a rating agency for benchmarking internal assessments."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the credit profile for multi-currency exposure analysis."
+    - name: "credit_hold"
+      expr: credit_hold
+      comment: "Indicates whether the account is on credit hold, directly impacting order fulfillment."
+    - name: "is_preferred_customer"
+      expr: is_preferred_customer
+      comment: "Flags preferred customers who receive enhanced credit terms and priority service."
+    - name: "credit_review_year"
+      expr: DATE_TRUNC('year', credit_review_date)
+      comment: "Year of the last credit review for review cycle compliance tracking."
   measures:
-    - name: "Total Credit Profiles"
-      expr: COUNT(DISTINCT credit_profile_id)
-      comment: "Distinct count of credit profiles"
-    - name: "Total Credit Limit USD"
-      expr: SUM(CAST(credit_limit_usd AS DOUBLE))
-      comment: "Sum of all credit limits in USD"
-    - name: "Total Outstanding Balance USD"
-      expr: SUM(CAST(outstanding_balance_usd AS DOUBLE))
-      comment: "Sum of all outstanding balances in USD"
-    - name: "Total Available Credit USD"
-      expr: SUM(CAST(available_credit_usd AS DOUBLE))
-      comment: "Sum of available credit across all accounts"
-    - name: "Average Credit Limit USD"
-      expr: AVG(CAST(credit_limit_usd AS DOUBLE))
-      comment: "Mean credit limit per account"
-    - name: "Average Credit Utilization Pct"
-      expr: AVG(CAST(credit_utilization_pct AS DOUBLE))
-      comment: "Mean credit utilization percentage across accounts"
-    - name: "Accounts On Credit Hold"
-      expr: COUNT(DISTINCT CASE WHEN credit_hold_flag = true THEN credit_profile_id END)
-      comment: "Count of accounts currently on credit hold"
-    - name: "High Utilization Accounts"
-      expr: COUNT(DISTINCT CASE WHEN CAST(credit_utilization_pct AS DOUBLE) > 80 THEN credit_profile_id END)
-      comment: "Count of accounts with credit utilization above 80%"
-    - name: "Total Overdue Amount USD"
+    - name: "total_credit_limit"
+      expr: SUM(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Total credit limit extended across all customer accounts. Measures total financial exposure approved by finance."
+    - name: "total_outstanding_balance"
+      expr: SUM(CAST(outstanding_balance AS DOUBLE))
+      comment: "Total outstanding balance across all accounts. Core AR exposure metric for treasury and credit management."
+    - name: "total_overdue_amount"
       expr: SUM(CAST(overdue_amount AS DOUBLE))
-      comment: "Sum of all overdue balances in USD"
-    - name: "Preferred Customers"
-      expr: COUNT(DISTINCT CASE WHEN is_preferred_customer = true THEN credit_profile_id END)
-      comment: "Count of accounts with preferred customer status"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_design_registration`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Design registration pipeline metrics tracking customer design activity, NRE commitments, and qualification progress. Used by Sales and Product teams to manage design funnel conversion and protect revenue from channel conflict."
-  source: "`vibe_semiconductors_v1`.`customer`.`customer_design_registration`"
-  dimensions:
-    - name: "registration_status"
-      expr: registration_status
-      comment: "Current status of the design registration (Pending, Approved, Expired, etc.) for funnel management."
-    - name: "qualification_status"
-      expr: qualification_status
-      comment: "Qualification status of the registered design for product readiness tracking."
-    - name: "package_type"
-      expr: package_type
-      comment: "Package type for packaging mix analysis."
-    - name: "process_node_nm"
-      expr: process_node_nm
-      comment: "Process node in nanometers for technology mix analysis."
-    - name: "platform_generation"
-      expr: platform_generation
-      comment: "Platform generation for roadmap alignment."
-    - name: "target_application"
-      expr: target_application
-      comment: "Target application for market vertical analysis."
-    - name: "design_complexity"
-      expr: design_complexity
-      comment: "Design complexity classification for engineering resource planning."
-    - name: "special_pricing_flag"
-      expr: special_pricing_flag
-      comment: "Whether special pricing is required, for pricing exception management."
-    - name: "registration_year_month"
-      expr: DATE_TRUNC('month', registration_date)
-      comment: "Month of registration for trend analysis."
-    - name: "approval_year_month"
-      expr: DATE_TRUNC('month', approval_date)
-      comment: "Month of approval for conversion cycle analysis."
-    - name: "production_target_year_month"
-      expr: DATE_TRUNC('month', production_target_date)
-      comment: "Expected production target month for revenue timing."
-  measures:
-    - name: "total_registrations"
-      expr: COUNT(DISTINCT customer_design_registration_id)
-      comment: "Total design registrations. Baseline measure of design funnel activity volume."
-    - name: "approved_registrations"
-      expr: COUNT(DISTINCT CASE WHEN registration_status = 'Approved' THEN customer_design_registration_id END)
-      comment: "Number of approved design registrations. Tracks successfully protected design opportunities."
-    - name: "total_estimated_annual_volume"
-      expr: SUM(CAST(estimated_annual_volume AS BIGINT))
-      comment: "Total estimated annual unit volume across all registrations. Drives capacity and wafer start planning."
-    - name: "total_nre_budget_amount"
-      expr: SUM(CAST(nre_budget_amount AS DOUBLE))
-      comment: "Total NRE budget committed across design registrations. Tracks engineering investment pipeline."
-    - name: "avg_nre_budget_amount"
-      expr: AVG(CAST(nre_budget_amount AS DOUBLE))
-      comment: "Average NRE budget per registration. Benchmarks NRE deal size for pricing and resource planning."
-    - name: "avg_expected_yield_percent"
-      expr: AVG(CAST(expected_yield_percent AS DOUBLE))
-      comment: "Average expected yield across registered designs. Low yield expectations signal process or design risk."
-    - name: "registrations_with_special_pricing"
-      expr: COUNT(DISTINCT CASE WHEN special_pricing_flag = TRUE THEN customer_design_registration_id END)
-      comment: "Number of registrations requiring special pricing. Tracks pricing exception volume for margin management."
-    - name: "expired_registrations"
-      expr: COUNT(DISTINCT CASE WHEN registration_status = 'Expired' OR expiry_date < CURRENT_DATE THEN customer_design_registration_id END)
-      comment: "Number of expired design registrations. Expired registrations represent lost revenue protection opportunities."
+      comment: "Total overdue amount across all accounts. Drives collections prioritization and bad-debt provisioning."
+    - name: "avg_credit_utilization_pct"
+      expr: AVG(CAST(credit_utilization_pct AS DOUBLE))
+      comment: "Average credit utilization percentage across accounts. High utilization signals elevated default risk."
+    - name: "avg_credit_limit"
+      expr: AVG(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Average credit limit per account. Used to benchmark credit policy adequacy across customer tiers."
+    - name: "credit_hold_account_count"
+      expr: COUNT(DISTINCT CASE WHEN credit_hold = TRUE THEN credit_profile_id END)
+      comment: "Number of accounts currently on credit hold. Directly impacts order fulfillment capacity and revenue."
+    - name: "avg_credit_limit_adjustment"
+      expr: AVG(CAST(credit_limit_adjustment_amount AS DOUBLE))
+      comment: "Average credit limit adjustment amount. Tracks the magnitude of credit policy changes over time."
+    - name: "total_credit_limit_adjustment"
+      expr: SUM(CAST(credit_limit_adjustment_amount AS DOUBLE))
+      comment: "Total net credit limit adjustments. Indicates whether the portfolio is being tightened or expanded."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_design_win`
@@ -262,392 +135,129 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Design win pipeline and revenue opportunity metrics for strategic account planning and forecasting"
+  comment: "Design win pipeline and revenue potential metrics. Design wins are the primary leading indicator of future semiconductor revenue and are tracked at every executive review."
   source: "`vibe_semiconductors_v1`.`customer`.`customer_design_win`"
   dimensions:
-    - name: "Design Win Status"
-      expr: design_win_status
-      comment: "Current stage of the design win (won, active, lost, etc.)"
-    - name: "Design Phase"
-      expr: design_phase
-      comment: "Current design phase (concept, development, qualification, production)"
-    - name: "Application Segment"
-      expr: application_segment
-      comment: "Target application market segment"
-    - name: "End Application"
-      expr: end_application
-      comment: "Final end-use application"
-    - name: "Competitive Displacement"
-      expr: CASE WHEN competitive_displacement_flag = true THEN 'Displacement' ELSE 'New Design' END
-      comment: "Whether win displaced a competitor"
-    - name: "NRE Required"
-      expr: CASE WHEN nre_required_flag = true THEN 'NRE Required' ELSE 'No NRE' END
-      comment: "Whether non-recurring engineering is required"
-    - name: "Win Year"
-      expr: YEAR(win_date)
-      comment: "Year the design win was secured"
-    - name: "Win Quarter"
-      expr: CONCAT('Q', QUARTER(win_date), '-', YEAR(win_date))
-      comment: "Quarter and year of design win"
-    - name: "Production Ramp Year"
-      expr: YEAR(production_ramp_date)
-      comment: "Year production is expected to ramp"
-    - name: "Probability Band"
-      expr: CASE WHEN CAST(win_probability_percent AS DOUBLE) < 25 THEN 'Low (0-25%)' WHEN CAST(win_probability_percent AS DOUBLE) < 50 THEN 'Medium (25-50%)' WHEN CAST(win_probability_percent AS DOUBLE) < 75 THEN 'High (50-75%)' ELSE 'Very High (75-100%)' END
-      comment: "Win probability tier"
-  measures:
-    - name: "Total Design Wins"
-      expr: COUNT(DISTINCT customer_design_win_id)
-      comment: "Distinct count of design win records"
-    - name: "Active Design Wins"
-      expr: COUNT(DISTINCT CASE WHEN design_win_status = 'Active' THEN customer_design_win_id END)
-      comment: "Count of design wins in active status"
-    - name: "Total Estimated Annual Revenue USD"
-      expr: SUM(CAST(estimated_annual_revenue_usd AS DOUBLE))
-      comment: "Sum of estimated annual revenue from all design wins"
-    - name: "Total Estimated Annual Volume"
-      expr: SUM(CAST(estimated_annual_volume AS BIGINT))
-      comment: "Sum of estimated annual unit volume across design wins"
-    - name: "Average Estimated Annual Revenue USD"
-      expr: AVG(CAST(estimated_annual_revenue_usd AS DOUBLE))
-      comment: "Mean estimated annual revenue per design win"
-    - name: "Total NRE Amount USD"
-      expr: SUM(CAST(nre_amount_usd AS DOUBLE))
-      comment: "Sum of non-recurring engineering costs across design wins"
-    - name: "Competitive Displacements"
-      expr: COUNT(DISTINCT CASE WHEN competitive_displacement_flag = true THEN customer_design_win_id END)
-      comment: "Count of design wins that displaced competitors"
-    - name: "Weighted Revenue Opportunity USD"
-      expr: SUM(CAST(estimated_annual_revenue_usd AS DOUBLE) * CAST(win_probability_percent AS DOUBLE) / 100.0)
-      comment: "Probability-weighted sum of estimated annual revenue"
-    - name: "High Probability Wins"
-      expr: COUNT(DISTINCT CASE WHEN CAST(win_probability_percent AS DOUBLE) >= 75 THEN customer_design_win_id END)
-      comment: "Count of design wins with 75%+ win probability"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_ltb_notification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Last-Time-Buy (LTB) notification metrics tracking product discontinuance communications, customer acknowledgment rates, and committed LTB revenue. Used by Product Management and Sales to manage EOL transitions and capture final revenue."
-  source: "`vibe_semiconductors_v1`.`customer`.`customer_ltb_notification`"
-  dimensions:
-    - name: "notification_status"
-      expr: notification_status
-      comment: "Current status of the LTB notification (Issued, Acknowledged, Expired) for EOL management."
-    - name: "customer_ltb_notification_status"
-      expr: customer_ltb_notification_status
-      comment: "Customer-specific LTB notification status for individual account EOL tracking."
-    - name: "notification_type"
-      expr: notification_type
-      comment: "Type of LTB notification for EOL communication classification."
-    - name: "acknowledgment_status"
-      expr: acknowledgment_status
-      comment: "Customer acknowledgment status for compliance and revenue commitment tracking."
-    - name: "notification_channel"
-      expr: notification_channel
-      comment: "Channel used to deliver the notification for communication effectiveness analysis."
-    - name: "priority"
-      expr: priority
-      comment: "Priority of the LTB notification for triage and escalation management."
-    - name: "transition_plan_status"
-      expr: transition_plan_status
-      comment: "Status of the customer transition plan for migration support tracking."
-    - name: "acknowledged_flag"
-      expr: acknowledged_flag
-      comment: "Whether the customer has acknowledged the LTB notification for compliance tracking."
-    - name: "acknowledgment_required_flag"
-      expr: acknowledgment_required_flag
-      comment: "Whether acknowledgment is required for regulatory or contractual compliance."
-    - name: "notification_year_month"
-      expr: DATE_TRUNC('month', notification_date)
-      comment: "Month of notification issuance for EOL activity trend analysis."
-    - name: "final_order_year_month"
-      expr: DATE_TRUNC('month', final_order_date)
-      comment: "Month of final order deadline for LTB revenue capture planning."
-    - name: "final_shipment_year_month"
-      expr: DATE_TRUNC('month', final_shipment_date)
-      comment: "Month of final shipment for supply chain EOL planning."
-  measures:
-    - name: "total_ltb_notifications"
-      expr: COUNT(DISTINCT customer_ltb_notification_id)
-      comment: "Total LTB notifications issued. Baseline measure of EOL communication activity."
-    - name: "acknowledged_notifications"
-      expr: COUNT(DISTINCT CASE WHEN acknowledged_flag = TRUE THEN customer_ltb_notification_id END)
-      comment: "Number of acknowledged LTB notifications. Unacknowledged notifications represent compliance and revenue risk."
-    - name: "unacknowledged_notifications"
-      expr: COUNT(DISTINCT CASE WHEN acknowledged_flag = FALSE OR acknowledged_flag IS NULL THEN customer_ltb_notification_id END)
-      comment: "Number of unacknowledged LTB notifications. Requires follow-up to ensure customers can place final orders."
-    - name: "total_estimated_ltb_revenue_usd"
-      expr: SUM(CAST(estimated_ltb_revenue_usd AS DOUBLE))
-      comment: "Total estimated LTB revenue in USD. Measures the revenue opportunity from EOL last-time-buy orders."
-    - name: "avg_estimated_ltb_revenue_usd"
-      expr: AVG(CAST(estimated_ltb_revenue_usd AS DOUBLE))
-      comment: "Average estimated LTB revenue per notification. Benchmarks EOL revenue opportunity per product-customer pair."
-    - name: "notifications_past_acknowledgment_deadline"
-      expr: COUNT(DISTINCT CASE WHEN acknowledgment_deadline < CURRENT_DATE AND (acknowledged_flag = FALSE OR acknowledged_flag IS NULL) THEN customer_ltb_notification_id END)
-      comment: "Notifications past acknowledgment deadline without customer acknowledgment. Represents compliance and revenue risk requiring escalation."
-    - name: "notifications_past_final_order_date"
-      expr: COUNT(DISTINCT CASE WHEN final_order_date < CURRENT_DATE THEN customer_ltb_notification_id END)
-      comment: "Notifications where the final order date has passed. Tracks EOL completion and any missed revenue opportunities."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_sample_request`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer sample request metrics tracking evaluation activity, fulfillment performance, and sample costs. Used by Sales and Product teams to measure design-in activity and evaluate sample program effectiveness."
-  source: "`vibe_semiconductors_v1`.`customer`.`customer_sample_request`"
-  dimensions:
-    - name: "customer_sample_request_status"
-      expr: customer_sample_request_status
-      comment: "Current status of the sample request (Pending, Fulfilled, Cancelled) for pipeline management."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the sample request for governance tracking."
-    - name: "fulfillment_status"
-      expr: fulfillment_status
-      comment: "Fulfillment status for operational performance tracking."
-    - name: "sample_type"
-      expr: sample_type
-      comment: "Type of sample (Engineering, Production, Qualification) for program mix analysis."
-    - name: "sample_purpose"
-      expr: sample_purpose
-      comment: "Purpose of the sample request (Evaluation, Qualification, Demo) for design-in activity analysis."
-    - name: "priority"
-      expr: priority
-      comment: "Priority of the sample request for fulfillment triage."
-    - name: "evaluation_outcome"
-      expr: evaluation_outcome
-      comment: "Outcome of the sample evaluation (Positive, Negative, Pending) for conversion analysis."
+    - name: "stage"
+      expr: stage
+      comment: "Pipeline stage of the design win (Registered, Qualified, Production, Lost) for funnel analysis."
     - name: "target_application"
       expr: target_application
-      comment: "Target application for the sample for market vertical analysis."
-    - name: "request_year_month"
-      expr: DATE_TRUNC('month', request_date)
-      comment: "Month of sample request for trend analysis."
-    - name: "ship_year_month"
-      expr: DATE_TRUNC('month', ship_date)
-      comment: "Month of sample shipment for fulfillment cycle analysis."
-    - name: "delivery_requested_year_month"
-      expr: DATE_TRUNC('month', delivery_requested_date)
-      comment: "Requested delivery month for on-time fulfillment analysis."
+      comment: "End application (Automotive, AI/ML, 5G, IoT, etc.) for market segment revenue forecasting."
+    - name: "process_node"
+      expr: process_node
+      comment: "Process technology node (e.g., 7nm, 5nm) for technology roadmap alignment analysis."
+    - name: "platform_generation"
+      expr: platform_generation
+      comment: "Product platform generation for portfolio lifecycle management."
+    - name: "package_type"
+      expr: package_type
+      comment: "Packaging type for supply chain and packaging capacity planning."
+    - name: "nre_required_flag"
+      expr: nre_required_flag
+      comment: "Indicates whether NRE (Non-Recurring Engineering) is required, impacting deal economics."
+    - name: "competitive_displacement_flag"
+      expr: competitive_displacement_flag
+      comment: "Flags wins that displaced a competitor, used to track competitive win rate."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the design win revenue estimate for multi-currency reporting."
+    - name: "design_win_source"
+      expr: design_win_source
+      comment: "Source of the design win (Direct, Channel, FAE-led) for sales motion effectiveness analysis."
+    - name: "production_ramp_year"
+      expr: DATE_TRUNC('year', production_ramp_date)
+      comment: "Year of expected production ramp for revenue timing and capacity planning."
+    - name: "tapeout_target_year"
+      expr: DATE_TRUNC('year', tapeout_target_date)
+      comment: "Year of tapeout target for design pipeline scheduling."
+    - name: "registration_year"
+      expr: DATE_TRUNC('year', registration_timestamp)
+      comment: "Year the design win was registered for cohort and vintage analysis."
   measures:
-    - name: "total_sample_requests"
-      expr: COUNT(DISTINCT customer_sample_request_id)
-      comment: "Total sample requests. Baseline measure of design-in activity and customer evaluation pipeline."
-    - name: "fulfilled_sample_requests"
-      expr: COUNT(DISTINCT CASE WHEN fulfillment_status = 'Fulfilled' THEN customer_sample_request_id END)
-      comment: "Number of fulfilled sample requests. Tracks sample program execution effectiveness."
-    - name: "total_sample_cost"
-      expr: SUM(CAST(cost_amount AS DOUBLE))
-      comment: "Total cost of samples provided. Tracks sample program investment for ROI analysis."
-    - name: "avg_sample_cost"
-      expr: AVG(CAST(cost_amount AS DOUBLE))
-      comment: "Average cost per sample request. Benchmarks sample program cost efficiency."
-    - name: "total_net_sample_cost"
-      expr: SUM(CAST(cost_net AS DOUBLE))
-      comment: "Total net cost of samples after adjustments. Tracks actual sample program spend."
-    - name: "positive_evaluation_outcomes"
-      expr: COUNT(DISTINCT CASE WHEN evaluation_outcome = 'Positive' THEN customer_sample_request_id END)
-      comment: "Number of sample requests with positive evaluation outcomes. Positive evaluations are leading indicators of design wins."
-    - name: "overdue_sample_requests"
-      expr: COUNT(DISTINCT CASE WHEN delivery_requested_date < CURRENT_DATE AND fulfillment_status != 'Fulfilled' THEN customer_sample_request_id END)
-      comment: "Sample requests past requested delivery date and not yet fulfilled. Overdue samples risk customer satisfaction and design-in timelines."
-    - name: "unique_accounts_requesting_samples"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of distinct accounts requesting samples. Measures breadth of active design-in engagement."
+    - name: "total_design_wins"
+      expr: COUNT(DISTINCT customer_design_win_id)
+      comment: "Total number of design wins. Primary leading indicator of future revenue volume."
+    - name: "total_estimated_annual_revenue_usd"
+      expr: SUM(CAST(estimated_annual_revenue_usd AS DOUBLE))
+      comment: "Total estimated annual revenue from all design wins. Core pipeline value metric used in executive forecasting."
+    - name: "avg_estimated_annual_revenue_usd"
+      expr: AVG(CAST(estimated_annual_revenue_usd AS DOUBLE))
+      comment: "Average estimated annual revenue per design win. Measures deal size trends and portfolio quality."
+    - name: "total_estimated_annual_unit_volume"
+      expr: SUM(CAST(estimated_annual_unit_volume AS DOUBLE))
+      comment: "Total estimated annual unit volume across all design wins. Drives capacity planning and supply commitments."
+    - name: "total_nre_amount_usd"
+      expr: SUM(CAST(nre_amount_usd AS DOUBLE))
+      comment: "Total NRE revenue from design wins. Tracks engineering services revenue separate from product revenue."
+    - name: "competitive_displacement_count"
+      expr: COUNT(DISTINCT CASE WHEN competitive_displacement_flag = TRUE THEN customer_design_win_id END)
+      comment: "Number of design wins that displaced a competitor. Key metric for competitive strategy effectiveness."
+    - name: "avg_annual_units_per_win"
+      expr: AVG(CAST(estimated_annual_unit_volume AS DOUBLE))
+      comment: "Average annual unit volume per design win. Indicates whether wins are high-volume or niche engagements."
+    - name: "nre_required_win_count"
+      expr: COUNT(DISTINCT CASE WHEN nre_required_flag = TRUE THEN customer_design_win_id END)
+      comment: "Number of design wins requiring NRE investment. Informs R&D resource allocation and deal profitability."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_distributor_agreement`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_design_registration`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Distributor partnership and channel agreement metrics for channel strategy and partner performance management"
-  source: "`vibe_semiconductors_v1`.`customer`.`distributor_agreement`"
+  comment: "Design registration pipeline metrics tracking early-stage customer design engagements. Design registrations are the top-of-funnel precursor to design wins and drive NRE and capacity planning."
+  source: "`vibe_semiconductors_v1`.`customer`.`customer_design_registration`"
   dimensions:
-    - name: "Agreement Status"
-      expr: agreement_status
-      comment: "Current status of the distributor agreement"
-    - name: "Agreement Type"
-      expr: agreement_type
-      comment: "Type of distributor agreement"
-    - name: "Distributor Tier"
-      expr: distributor_tier
-      comment: "Tier classification of the distributor"
-    - name: "Territory"
-      expr: territory
-      comment: "Geographic territory covered by the agreement"
-    - name: "Exclusivity"
-      expr: CASE WHEN exclusivity_flag = true THEN 'Exclusive' ELSE 'Non-Exclusive' END
-      comment: "Whether distributor has exclusive rights"
-    - name: "Auto Renew"
-      expr: CASE WHEN auto_renew_flag = true THEN 'Auto-Renew' ELSE 'Manual Renew' END
-      comment: "Whether agreement auto-renews"
-    - name: "Price Protection"
-      expr: CASE WHEN price_protection_flag = true THEN 'Price Protected' ELSE 'No Protection' END
-      comment: "Whether price protection is included"
-    - name: "Stock Rotation Allowed"
-      expr: CASE WHEN stock_rotation_allowed_flag = true THEN 'Rotation Allowed' ELSE 'No Rotation' END
-      comment: "Whether stock rotation rights are granted"
-    - name: "Effective Year"
-      expr: YEAR(effective_start_date)
-      comment: "Year the agreement became effective"
-    - name: "Expiry Year"
-      expr: YEAR(expiry_date)
-      comment: "Year the agreement expires"
+    - name: "registration_status"
+      expr: registration_status
+      comment: "Status of the design registration (Pending, Approved, Rejected, Expired) for funnel conversion analysis."
+    - name: "qualification_status"
+      expr: qualification_status
+      comment: "Qualification status of the design (Qualified, In Progress, Not Started) for readiness tracking."
+    - name: "target_application"
+      expr: target_application
+      comment: "Target end application for market segment pipeline analysis."
+    - name: "process_node_nm"
+      expr: process_node_nm
+      comment: "Process node in nanometers for technology roadmap alignment."
+    - name: "platform_generation"
+      expr: platform_generation
+      comment: "Platform generation for product lifecycle and roadmap planning."
+    - name: "design_complexity"
+      expr: design_complexity
+      comment: "Complexity tier of the design (Simple, Medium, Complex) for resource and NRE estimation."
+    - name: "package_type"
+      expr: package_type
+      comment: "Package type for packaging capacity and supply chain planning."
+    - name: "nre_budget_currency"
+      expr: nre_budget_currency
+      comment: "Currency of the NRE budget for multi-currency financial reporting."
+    - name: "tapeout_target_year"
+      expr: DATE_TRUNC('year', tapeout_target_date)
+      comment: "Year of tapeout target for fab capacity scheduling."
+    - name: "production_target_year"
+      expr: DATE_TRUNC('year', production_target_date)
+      comment: "Year of production target for revenue timing and supply planning."
   measures:
-    - name: "Total Distributor Agreements"
-      expr: COUNT(DISTINCT distributor_agreement_id)
-      comment: "Distinct count of distributor agreements"
-    - name: "Active Distributor Agreements"
-      expr: COUNT(DISTINCT CASE WHEN agreement_status = 'Active' THEN distributor_agreement_id END)
-      comment: "Count of currently active distributor agreements"
-    - name: "Average Commission Rate Pct"
-      expr: AVG(CAST(commission_rate_pct AS DOUBLE))
-      comment: "Mean commission rate percentage across agreements"
-    - name: "Total Credit Limit USD"
-      expr: SUM(CAST(credit_limit_usd AS DOUBLE))
-      comment: "Sum of credit limits extended to distributors"
-    - name: "Total MDF Entitlement USD"
-      expr: SUM(CAST(mdf_entitlement_amount AS DOUBLE))
-      comment: "Sum of market development fund entitlements"
-    - name: "Average Discount Rate Pct"
-      expr: AVG(CAST(discount_rate_percent AS DOUBLE))
-      comment: "Mean discount rate percentage across agreements"
-    - name: "Exclusive Agreements"
-      expr: COUNT(DISTINCT CASE WHEN exclusivity_flag = true THEN distributor_agreement_id END)
-      comment: "Count of exclusive distributor agreements"
-    - name: "Agreements With Price Protection"
-      expr: COUNT(DISTINCT CASE WHEN price_protection_flag = true THEN distributor_agreement_id END)
-      comment: "Count of agreements with price protection terms"
-    - name: "Auto Renew Agreements"
-      expr: COUNT(DISTINCT CASE WHEN auto_renew_flag = true THEN distributor_agreement_id END)
-      comment: "Count of agreements with auto-renewal"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_engagement_activity`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer engagement and interaction metrics for relationship management and sales effectiveness tracking"
-  source: "`vibe_semiconductors_v1`.`customer`.`engagement_activity`"
-  dimensions:
-    - name: "Activity Type"
-      expr: activity_type
-      comment: "Type of engagement activity (meeting, call, email, demo, etc.)"
-    - name: "Activity Category"
-      expr: activity_category
-      comment: "Category classification of the activity"
-    - name: "Activity Status"
-      expr: activity_status
-      comment: "Current status of the activity"
-    - name: "Activity Outcome"
-      expr: activity_outcome
-      comment: "Outcome or result of the activity"
-    - name: "Activity Channel"
-      expr: activity_channel
-      comment: "Channel through which activity occurred"
-    - name: "Priority"
-      expr: priority
-      comment: "Priority level of the activity"
-    - name: "Is Billable"
-      expr: CASE WHEN is_billable = true THEN 'Billable' ELSE 'Non-Billable' END
-      comment: "Whether activity is billable to customer"
-    - name: "Is Escalated"
-      expr: CASE WHEN is_escalated = true THEN 'Escalated' ELSE 'Normal' END
-      comment: "Whether activity was escalated"
-    - name: "Activity Year"
-      expr: YEAR(activity_date)
-      comment: "Year the activity occurred"
-    - name: "Activity Quarter"
-      expr: CONCAT('Q', QUARTER(activity_date), '-', YEAR(activity_date))
-      comment: "Quarter and year of activity"
-    - name: "Activity Month"
-      expr: DATE_TRUNC('MONTH', activity_date)
-      comment: "Month of activity"
-  measures:
-    - name: "Total Engagement Activities"
-      expr: COUNT(DISTINCT engagement_activity_id)
-      comment: "Distinct count of customer engagement activities"
-    - name: "Completed Activities"
-      expr: COUNT(DISTINCT CASE WHEN activity_status = 'Completed' THEN engagement_activity_id END)
-      comment: "Count of completed engagement activities"
-    - name: "Total Budget Amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Sum of budget amounts across activities"
-    - name: "Billable Activities"
-      expr: COUNT(DISTINCT CASE WHEN is_billable = true THEN engagement_activity_id END)
-      comment: "Count of billable engagement activities"
-    - name: "Escalated Activities"
-      expr: COUNT(DISTINCT CASE WHEN is_escalated = true THEN engagement_activity_id END)
-      comment: "Count of escalated activities"
-    - name: "Activities With Follow-Up"
-      expr: COUNT(DISTINCT CASE WHEN follow_up_due_date IS NOT NULL THEN engagement_activity_id END)
-      comment: "Count of activities requiring follow-up"
-    - name: "Overdue Follow-Ups"
-      expr: COUNT(DISTINCT CASE WHEN follow_up_due_date < CURRENT_DATE() THEN engagement_activity_id END)
-      comment: "Count of activities with overdue follow-up"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_nda_agreement`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "NDA agreement portfolio metrics tracking coverage, expiry risk, and compliance. Used by Legal, Sales, and Compliance teams to ensure all customer engagements involving sensitive IP are properly protected."
-  source: "`vibe_semiconductors_v1`.`customer`.`nda_agreement`"
-  dimensions:
-    - name: "nda_agreement_status"
-      expr: nda_agreement_status
-      comment: "Current status of the NDA (Active, Expired, Terminated) for portfolio coverage analysis."
-    - name: "nda_type"
-      expr: nda_type
-      comment: "Type of NDA (Mutual, One-way) for legal structure analysis."
-    - name: "agreement_type"
-      expr: agreement_type
-      comment: "Agreement type classification for legal portfolio management."
-    - name: "confidentiality_level"
-      expr: confidentiality_level
-      comment: "Confidentiality level of the NDA for IP protection risk assessment."
-    - name: "mutual_flag"
-      expr: mutual_flag
-      comment: "Whether the NDA is mutual for legal obligation symmetry analysis."
-    - name: "auto_renew_flag"
-      expr: auto_renew_flag
-      comment: "Whether the NDA auto-renews for contract management."
-    - name: "governing_law"
-      expr: governing_law
-      comment: "Governing law jurisdiction for legal risk analysis."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Jurisdiction of the NDA for cross-border legal compliance."
-    - name: "effective_year_month"
-      expr: DATE_TRUNC('month', effective_date)
-      comment: "Month the NDA became effective for portfolio vintage analysis."
-    - name: "expiry_year_month"
-      expr: DATE_TRUNC('month', expiry_date)
-      comment: "Month the NDA expires for renewal risk management."
-  measures:
-    - name: "total_nda_agreements"
-      expr: COUNT(DISTINCT nda_agreement_id)
-      comment: "Total NDA agreements. Baseline measure of legal coverage portfolio size."
-    - name: "active_nda_agreements"
-      expr: COUNT(DISTINCT CASE WHEN nda_agreement_status = 'Active' THEN nda_agreement_id END)
-      comment: "Number of active NDAs. Tracks the scope of legally protected customer engagements."
-    - name: "expired_ndas"
-      expr: COUNT(DISTINCT CASE WHEN expiry_date < CURRENT_DATE AND nda_agreement_status = 'Active' THEN nda_agreement_id END)
-      comment: "NDAs that have expired but are still marked active. Represents immediate IP protection risk requiring legal remediation."
-    - name: "unique_accounts_with_nda"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of distinct accounts covered by at least one NDA. Measures breadth of legal IP protection coverage."
-    - name: "mutual_nda_count"
-      expr: COUNT(DISTINCT CASE WHEN mutual_flag = TRUE THEN nda_agreement_id END)
-      comment: "Number of mutual NDAs. Mutual NDAs create reciprocal obligations requiring careful compliance management."
+    - name: "total_design_registrations"
+      expr: COUNT(DISTINCT customer_design_registration_id)
+      comment: "Total design registrations. Top-of-funnel pipeline volume metric for sales and FAE coverage planning."
+    - name: "total_nre_budget"
+      expr: SUM(CAST(nre_budget_amount AS DOUBLE))
+      comment: "Total NRE budget committed across all design registrations. Drives R&D and engineering resource allocation."
+    - name: "avg_nre_budget"
+      expr: AVG(CAST(nre_budget_amount AS DOUBLE))
+      comment: "Average NRE budget per design registration. Benchmarks deal size and engineering investment per engagement."
+    - name: "avg_expected_yield_percent"
+      expr: AVG(CAST(expected_yield_percent AS DOUBLE))
+      comment: "Average expected yield percentage across registrations. Informs cost modeling and profitability projections."
+    - name: "approved_registration_count"
+      expr: COUNT(DISTINCT CASE WHEN registration_status = 'Approved' THEN customer_design_registration_id END)
+      comment: "Number of approved design registrations. Measures pipeline conversion from registration to active engagement."
+    - name: "total_nre_budget_approved"
+      expr: SUM(CAST(CASE WHEN registration_status = 'Approved' THEN nre_budget_amount ELSE 0 END AS DOUBLE))
+      comment: "Total NRE budget for approved registrations only. Represents committed engineering investment."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_price_agreement`
@@ -655,67 +265,129 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer pricing agreement metrics for pricing strategy, margin management, and contract compliance"
+  comment: "Customer pricing and discount metrics. Price agreements govern revenue realization and margin. Tracking discount depth, pricing tiers, and agreement coverage is critical for revenue management."
   source: "`vibe_semiconductors_v1`.`customer`.`price_agreement`"
   dimensions:
-    - name: "Agreement Status"
-      expr: agreement_status
-      comment: "Current status of the pricing agreement"
-    - name: "Agreement Type"
+    - name: "price_agreement_status"
+      expr: price_agreement_status
+      comment: "Status of the price agreement (Active, Expired, Pending Approval) for coverage and compliance tracking."
+    - name: "agreement_type"
       expr: agreement_type
-      comment: "Type of pricing agreement (volume, contract, spot, etc.)"
-    - name: "Pricing Type"
-      expr: pricing_type
-      comment: "Pricing model (fixed, tiered, volume-based, etc.)"
-    - name: "Pricing Channel"
-      expr: pricing_channel
-      comment: "Sales channel for the pricing agreement"
-    - name: "Pricing Region"
-      expr: pricing_region
-      comment: "Geographic region for pricing"
-    - name: "Currency Code"
+      comment: "Type of price agreement (Volume, Spot, Long-Term Contract) for pricing strategy analysis."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the agreement for governance and audit compliance."
+    - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the pricing agreement"
-    - name: "Price Locked"
-      expr: CASE WHEN is_price_locked = true THEN 'Locked' ELSE 'Flexible' END
-      comment: "Whether price is locked or subject to change"
-    - name: "Volume Tier"
+      comment: "Currency of the price agreement for multi-currency revenue analysis."
+    - name: "pricing_channel"
+      expr: pricing_channel
+      comment: "Sales channel (Direct, Distribution, eCommerce) for channel pricing strategy analysis."
+    - name: "pricing_region"
+      expr: pricing_region
+      comment: "Geographic pricing region for regional price competitiveness analysis."
+    - name: "volume_tier"
       expr: volume_tier
-      comment: "Volume tier for tiered pricing"
-    - name: "Approval Year"
-      expr: YEAR(approval_date)
-      comment: "Year the agreement was approved"
-    - name: "Effective Year"
-      expr: YEAR(effective_start_date)
-      comment: "Year the agreement became effective"
-    - name: "Expiry Year"
-      expr: YEAR(expiry_date)
-      comment: "Year the agreement expires"
+      comment: "Volume tier of the agreement for tiered pricing effectiveness analysis."
+    - name: "is_price_locked"
+      expr: is_price_locked
+      comment: "Indicates whether the price is locked, relevant for revenue predictability and hedging."
+    - name: "effective_from_year"
+      expr: DATE_TRUNC('year', effective_from)
+      comment: "Year the price agreement became effective for vintage and renewal cycle analysis."
+    - name: "effective_until_year"
+      expr: DATE_TRUNC('year', effective_until)
+      comment: "Year the price agreement expires for renewal pipeline management."
   measures:
-    - name: "Total Price Agreements"
+    - name: "total_price_agreements"
       expr: COUNT(DISTINCT price_agreement_id)
-      comment: "Distinct count of pricing agreements"
-    - name: "Active Price Agreements"
-      expr: COUNT(DISTINCT CASE WHEN agreement_status = 'Active' THEN price_agreement_id END)
-      comment: "Count of currently active pricing agreements"
-    - name: "Average Unit Price USD"
-      expr: AVG(CAST(unit_price_usd AS DOUBLE))
-      comment: "Mean unit price across all agreements in USD"
-    - name: "Average Discount Pct"
-      expr: AVG(CAST(discount_pct AS DOUBLE))
-      comment: "Mean discount percentage across agreements"
-    - name: "Total Tier Price Value USD"
-      expr: SUM(CAST(tier_price AS DOUBLE))
-      comment: "Sum of tier prices across all agreements"
-    - name: "Locked Price Agreements"
-      expr: COUNT(DISTINCT CASE WHEN is_price_locked = true THEN price_agreement_id END)
-      comment: "Count of agreements with locked pricing"
-    - name: "Agreements Expiring Soon"
-      expr: COUNT(DISTINCT CASE WHEN expiry_date BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), 90) THEN price_agreement_id END)
-      comment: "Count of agreements expiring in the next 90 days"
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(CAST(minimum_order_quantity AS BIGINT))
-      comment: "Mean minimum order quantity across agreements"
+      comment: "Total number of price agreements. Baseline for pricing coverage and governance tracking."
+    - name: "avg_unit_price"
+      expr: AVG(CAST(unit_price AS DOUBLE))
+      comment: "Average unit price across all agreements. Tracks ASP (Average Selling Price) trends for margin management."
+    - name: "avg_discount_percent"
+      expr: AVG(CAST(discount_percent AS DOUBLE))
+      comment: "Average discount percentage granted. Executives use this to monitor pricing discipline and margin erosion."
+    - name: "max_discount_percent"
+      expr: MAX(CAST(discount_percent AS DOUBLE))
+      comment: "Maximum discount percentage granted. Flags outlier discounting that may require approval review."
+    - name: "avg_tier_price"
+      expr: AVG(CAST(tier_price AS DOUBLE))
+      comment: "Average tier price across volume-tiered agreements. Measures effectiveness of volume incentive pricing."
+    - name: "total_minimum_order_quantity"
+      expr: SUM(CAST(minimum_order_quantity AS DOUBLE))
+      comment: "Total minimum order quantity committed across agreements. Informs demand planning and inventory positioning."
+    - name: "active_agreement_count"
+      expr: COUNT(DISTINCT CASE WHEN price_agreement_status = 'Active' THEN price_agreement_id END)
+      comment: "Number of currently active price agreements. Measures pricing coverage across the customer base."
+    - name: "price_locked_agreement_count"
+      expr: COUNT(DISTINCT CASE WHEN is_price_locked = TRUE THEN price_agreement_id END)
+      comment: "Number of price-locked agreements. Indicates revenue predictability and exposure to spot price volatility."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_engagement_activity`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer engagement intensity and quality metrics. Engagement activity drives pipeline conversion and customer retention. Executives track engagement volume, escalation rates, and billable activity to optimize sales and support coverage."
+  source: "`vibe_semiconductors_v1`.`customer`.`engagement_activity`"
+  dimensions:
+    - name: "activity_type"
+      expr: activity_type
+      comment: "Type of engagement activity (Demo, Technical Review, Executive Briefing, Support Call) for coverage analysis."
+    - name: "activity_category"
+      expr: activity_category
+      comment: "Category of the activity (Pre-Sales, Post-Sales, Technical, Executive) for resource allocation analysis."
+    - name: "channel"
+      expr: channel
+      comment: "Engagement channel (In-Person, Virtual, Email, Phone) for channel effectiveness analysis."
+    - name: "outcome"
+      expr: outcome
+      comment: "Outcome of the engagement (Positive, Neutral, Negative, Follow-Up Required) for pipeline impact assessment."
+    - name: "is_escalated"
+      expr: is_escalated
+      comment: "Flags escalated engagements requiring management attention."
+    - name: "is_billable"
+      expr: is_billable
+      comment: "Indicates whether the engagement is billable, relevant for professional services revenue tracking."
+    - name: "region"
+      expr: region
+      comment: "Geographic region of the engagement for regional coverage and resource deployment analysis."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the engagement for export control and regulatory reporting."
+    - name: "risk_flag"
+      expr: risk_flag
+      comment: "Flags high-risk engagements for compliance or relationship risk review."
+    - name: "activity_year"
+      expr: DATE_TRUNC('year', activity_timestamp)
+      comment: "Year of the engagement activity for trend and YoY comparison."
+    - name: "activity_month"
+      expr: DATE_TRUNC('month', activity_timestamp)
+      comment: "Month of the engagement activity for monthly cadence and seasonality analysis."
+  measures:
+    - name: "total_engagement_activities"
+      expr: COUNT(DISTINCT engagement_activity_id)
+      comment: "Total number of engagement activities. Measures sales and FAE coverage intensity across the customer base."
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budget allocated to engagement activities. Tracks customer engagement investment for ROI analysis."
+    - name: "avg_budget_per_activity"
+      expr: AVG(CAST(budget_amount AS DOUBLE))
+      comment: "Average budget per engagement activity. Benchmarks cost-per-touch for sales efficiency optimization."
+    - name: "escalated_activity_count"
+      expr: COUNT(DISTINCT CASE WHEN is_escalated = TRUE THEN engagement_activity_id END)
+      comment: "Number of escalated engagement activities. High escalation rates signal customer satisfaction risk."
+    - name: "billable_activity_count"
+      expr: COUNT(DISTINCT CASE WHEN is_billable = TRUE THEN engagement_activity_id END)
+      comment: "Number of billable engagement activities. Tracks professional services revenue-generating touchpoints."
+    - name: "risk_flagged_activity_count"
+      expr: COUNT(DISTINCT CASE WHEN risk_flag = TRUE THEN engagement_activity_id END)
+      comment: "Number of risk-flagged engagements. Drives compliance review and relationship risk mitigation actions."
+    - name: "unique_accounts_engaged"
+      expr: COUNT(DISTINCT primary_engagement_account_id)
+      comment: "Number of distinct accounts with engagement activity. Measures breadth of active customer coverage."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_qualification_status`
@@ -723,67 +395,161 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer product qualification metrics for quality assurance and customer readiness tracking"
+  comment: "Customer qualification and certification metrics. Qualification status tracks AEC-Q, IATF 16949, and PPAP compliance — mandatory for automotive and industrial semiconductor customers. Executives use this to manage qualification pipeline and revenue readiness."
   source: "`vibe_semiconductors_v1`.`customer`.`qualification_status`"
   dimensions:
-    - name: "Overall Qualification Status"
+    - name: "overall_qualification_status"
       expr: overall_qualification_status
-      comment: "Overall qualification state (qualified, in-progress, failed, etc.)"
-    - name: "Qualification Type"
+      comment: "Overall qualification status (Qualified, In Progress, Failed, Expired) for pipeline readiness tracking."
+    - name: "qualification_type"
       expr: qualification_type
-      comment: "Type of qualification (product, process, supplier, etc.)"
-    - name: "Qualification Level"
-      expr: qualification_level
-      comment: "Level or tier of qualification"
-    - name: "Qualification Standard"
-      expr: qualification_standard
-      comment: "Standard or specification being qualified against"
-    - name: "AEC-Q Status"
+      comment: "Type of qualification (AEC-Q100, IATF 16949, PPAP, Customer-Specific) for compliance program management."
+    - name: "aec_q_status"
       expr: aec_q_status
-      comment: "Automotive Electronics Council qualification status"
-    - name: "PPAP Status"
-      expr: ppap_status
-      comment: "Production Part Approval Process status"
-    - name: "IATF 16949 Status"
+      comment: "AEC-Q qualification status for automotive market readiness tracking."
+    - name: "iatf_16949_status"
       expr: iatf_16949_status
-      comment: "Automotive quality management system certification status"
-    - name: "Lifecycle Status"
+      comment: "IATF 16949 certification status for automotive quality system compliance."
+    - name: "ppap_status"
+      expr: ppap_status
+      comment: "PPAP (Production Part Approval Process) status for automotive production readiness."
+    - name: "lifecycle_status"
       expr: lifecycle_status
-      comment: "Product lifecycle stage"
-    - name: "Requalification Required"
-      expr: CASE WHEN requalification_required_flag = true THEN 'Requalification Required' ELSE 'Current' END
-      comment: "Whether requalification is needed"
-    - name: "Qualification Year"
-      expr: YEAR(qualification_date)
-      comment: "Year qualification was achieved"
-    - name: "Completion Year"
-      expr: YEAR(completion_date)
-      comment: "Year qualification was completed"
+      comment: "Lifecycle status of the qualification for renewal and expiry management."
+    - name: "qualified_product_families"
+      expr: qualified_product_families
+      comment: "Product families covered by the qualification for product-level readiness analysis."
+    - name: "qualification_start_year"
+      expr: DATE_TRUNC('year', qualification_start_date)
+      comment: "Year qualification was initiated for cycle time and throughput analysis."
+    - name: "qualification_completion_year"
+      expr: DATE_TRUNC('year', qualification_completion_date)
+      comment: "Year qualification was completed for on-time delivery tracking."
   measures:
-    - name: "Total Qualification Records"
+    - name: "total_qualifications"
       expr: COUNT(DISTINCT qualification_status_id)
-      comment: "Distinct count of qualification status records"
-    - name: "Qualified Products"
+      comment: "Total number of customer qualifications. Baseline for qualification pipeline volume and capacity planning."
+    - name: "qualified_count"
       expr: COUNT(DISTINCT CASE WHEN overall_qualification_status = 'Qualified' THEN qualification_status_id END)
-      comment: "Count of fully qualified product-customer combinations"
-    - name: "In Progress Qualifications"
+      comment: "Number of fully qualified accounts. Directly represents revenue-ready customer base for qualified products."
+    - name: "in_progress_count"
       expr: COUNT(DISTINCT CASE WHEN overall_qualification_status = 'In Progress' THEN qualification_status_id END)
-      comment: "Count of qualifications currently in progress"
-    - name: "Average Qualification Score"
+      comment: "Number of qualifications in progress. Measures active pipeline for future revenue enablement."
+    - name: "avg_qualification_score"
       expr: AVG(CAST(qualification_score AS DOUBLE))
-      comment: "Mean qualification score across all records"
-    - name: "AEC-Q Qualified Count"
+      comment: "Average qualification score. Tracks quality of qualification outcomes and customer readiness."
+    - name: "aec_q_qualified_count"
       expr: COUNT(DISTINCT CASE WHEN aec_q_status = 'Qualified' THEN qualification_status_id END)
-      comment: "Count of AEC-Q qualified products"
-    - name: "PPAP Approved Count"
+      comment: "Number of AEC-Q qualified accounts. Critical metric for automotive market revenue readiness."
+    - name: "ppap_approved_count"
       expr: COUNT(DISTINCT CASE WHEN ppap_status = 'Approved' THEN qualification_status_id END)
-      comment: "Count of PPAP approved products"
-    - name: "Requalification Required Count"
-      expr: COUNT(DISTINCT CASE WHEN requalification_required_flag = true THEN qualification_status_id END)
-      comment: "Count of products requiring requalification"
-    - name: "Qualification Success Rate Pct"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN overall_qualification_status = 'Qualified' THEN qualification_status_id END) / NULLIF(COUNT(DISTINCT qualification_status_id), 0), 2)
-      comment: "Percentage of qualifications that achieved qualified status"
+      comment: "Number of PPAP-approved qualifications. Required for automotive production launch authorization."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_distributor_agreement`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Distributor channel agreement metrics. Distributor agreements govern channel revenue, MDF entitlements, and stock rotation rights. Executives track agreement coverage, MDF utilization, and discount depth to manage channel profitability."
+  source: "`vibe_semiconductors_v1`.`customer`.`distributor_agreement`"
+  dimensions:
+    - name: "distributor_agreement_status"
+      expr: distributor_agreement_status
+      comment: "Status of the distributor agreement (Active, Expired, Terminated) for channel coverage analysis."
+    - name: "agreement_type"
+      expr: agreement_type
+      comment: "Type of distributor agreement (Authorized, Exclusive, Value-Added) for channel strategy analysis."
+    - name: "tier"
+      expr: tier
+      comment: "Distributor tier (Gold, Silver, Bronze) for tiered channel program management."
+    - name: "territory_country_code"
+      expr: territory_country_code
+      comment: "Country code of the distribution territory for geographic channel coverage analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the agreement for multi-currency channel revenue reporting."
+    - name: "exclusive_distribution"
+      expr: exclusive_distribution
+      comment: "Indicates exclusive distribution rights, relevant for territory conflict and channel strategy decisions."
+    - name: "stock_rotation_rights"
+      expr: stock_rotation_rights
+      comment: "Indicates whether stock rotation rights are granted, impacting inventory and returns management."
+    - name: "effective_start_year"
+      expr: DATE_TRUNC('year', effective_start_date)
+      comment: "Year the agreement became effective for vintage and renewal cycle analysis."
+    - name: "effective_end_year"
+      expr: DATE_TRUNC('year', effective_end_date)
+      comment: "Year the agreement expires for renewal pipeline management."
+  measures:
+    - name: "total_distributor_agreements"
+      expr: COUNT(DISTINCT distributor_agreement_id)
+      comment: "Total number of distributor agreements. Baseline for channel coverage and partner ecosystem size."
+    - name: "total_mdf_entitlement"
+      expr: SUM(CAST(mdf_entitlement_amount AS DOUBLE))
+      comment: "Total Market Development Fund (MDF) entitlement across all distributor agreements. Tracks channel marketing investment."
+    - name: "avg_mdf_entitlement"
+      expr: AVG(CAST(mdf_entitlement_amount AS DOUBLE))
+      comment: "Average MDF entitlement per distributor agreement. Benchmarks channel investment per partner."
+    - name: "avg_discount_rate_percent"
+      expr: AVG(CAST(discount_rate_percent AS DOUBLE))
+      comment: "Average distributor discount rate. Monitors channel margin erosion and pricing discipline."
+    - name: "max_discount_rate_percent"
+      expr: MAX(CAST(discount_rate_percent AS DOUBLE))
+      comment: "Maximum distributor discount rate granted. Flags outlier discounting for approval review."
+    - name: "active_agreement_count"
+      expr: COUNT(DISTINCT CASE WHEN distributor_agreement_status = 'Active' THEN distributor_agreement_id END)
+      comment: "Number of active distributor agreements. Measures current channel coverage and partner engagement."
+    - name: "exclusive_agreement_count"
+      expr: COUNT(DISTINCT CASE WHEN exclusive_distribution = TRUE THEN distributor_agreement_id END)
+      comment: "Number of exclusive distribution agreements. Informs territory conflict management and channel strategy."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_sample_request`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer sample request fulfillment and cost metrics. Sample requests are a key pre-sales activity in semiconductors — tracking fulfillment rates, costs, and cycle times directly impacts design win conversion."
+  source: "`vibe_semiconductors_v1`.`customer`.`customer_sample_request`"
+  dimensions:
+    - name: "customer_sample_request_status"
+      expr: customer_sample_request_status
+      comment: "Status of the sample request (Pending, Approved, Fulfilled, Cancelled) for pipeline tracking."
+    - name: "fulfillment_status"
+      expr: fulfillment_status
+      comment: "Fulfillment status of the sample request for supply chain and logistics performance tracking."
+    - name: "sample_purpose"
+      expr: sample_purpose
+      comment: "Purpose of the sample (Evaluation, Qualification, Prototype) for demand characterization."
+    - name: "cost_currency"
+      expr: cost_currency
+      comment: "Currency of the sample cost for multi-currency cost reporting."
+    - name: "request_year"
+      expr: DATE_TRUNC('year', request_timestamp)
+      comment: "Year the sample was requested for trend and YoY volume analysis."
+    - name: "delivery_requested_year"
+      expr: DATE_TRUNC('year', delivery_requested_date)
+      comment: "Year of requested delivery for lead time and fulfillment cycle analysis."
+  measures:
+    - name: "total_sample_requests"
+      expr: COUNT(DISTINCT customer_sample_request_id)
+      comment: "Total number of sample requests. Measures pre-sales pipeline activity and design engagement intensity."
+    - name: "total_sample_cost"
+      expr: SUM(CAST(cost_amount AS DOUBLE))
+      comment: "Total cost of samples provided. Tracks pre-sales investment for ROI and design win conversion analysis."
+    - name: "avg_sample_cost"
+      expr: AVG(CAST(cost_amount AS DOUBLE))
+      comment: "Average cost per sample request. Benchmarks pre-sales cost efficiency."
+    - name: "total_net_cost"
+      expr: SUM(CAST(cost_net AS DOUBLE))
+      comment: "Total net cost of samples after adjustments. Represents actual pre-sales investment."
+    - name: "total_cost_adjustment"
+      expr: SUM(CAST(cost_adjustment AS DOUBLE))
+      comment: "Total cost adjustments applied to sample requests. Tracks pricing exceptions and special approvals."
+    - name: "fulfilled_request_count"
+      expr: COUNT(DISTINCT CASE WHEN fulfillment_status = 'Fulfilled' THEN customer_sample_request_id END)
+      comment: "Number of fulfilled sample requests. Measures supply chain responsiveness to pre-sales demand."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_segment`
@@ -791,121 +557,56 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Market segment strategic metrics covering revenue targets, discount rates, and market share goals. Used by Marketing, Sales Strategy, and executive leadership to allocate resources across market verticals and evaluate segment performance."
+  comment: "Customer segment strategic metrics. Segments define revenue targets, market share goals, and pricing strategies. Executives use segment metrics to allocate sales resources and evaluate go-to-market effectiveness."
   source: "`vibe_semiconductors_v1`.`customer`.`segment`"
   dimensions:
     - name: "segment_status"
       expr: segment_status
-      comment: "Current status of the segment (Active, Inactive) for portfolio management."
-    - name: "segment_type"
-      expr: segment_type
-      comment: "Type of segment (Geographic, Vertical, Strategic) for segmentation strategy analysis."
-    - name: "market_vertical"
-      expr: market_vertical
-      comment: "Market vertical (Automotive, AI/ML, Consumer, Industrial) for vertical market performance analysis."
+      comment: "Status of the segment (Active, Inactive, Under Review) for portfolio management."
+    - name: "vertical_market"
+      expr: vertical_market
+      comment: "Vertical market (Automotive, Industrial, Consumer, Data Center) for market segment strategy analysis."
+    - name: "sub_vertical"
+      expr: sub_vertical
+      comment: "Sub-vertical for granular market segment targeting and resource allocation."
     - name: "region"
       expr: region
-      comment: "Geographic region of the segment for regional strategy analysis."
+      comment: "Geographic region of the segment for regional go-to-market planning."
     - name: "strategic_priority_tier"
       expr: strategic_priority_tier
-      comment: "Strategic priority tier for resource allocation decisions."
+      comment: "Strategic priority tier (Tier 1, Tier 2, Tier 3) for resource prioritization decisions."
     - name: "pricing_strategy"
       expr: pricing_strategy
-      comment: "Pricing strategy applied to the segment for margin management."
+      comment: "Pricing strategy applied to the segment (Value, Competitive, Cost-Plus) for margin management."
     - name: "sales_motion"
       expr: sales_motion
-      comment: "Sales motion (Direct, Channel, Hybrid) for go-to-market strategy analysis."
+      comment: "Sales motion (Direct, Channel, Digital) for go-to-market effectiveness analysis."
     - name: "tam_band"
       expr: tam_band
-      comment: "Total Addressable Market band for market sizing and opportunity analysis."
+      comment: "Total Addressable Market band for segment sizing and investment prioritization."
     - name: "target_customer_type"
       expr: target_customer_type
-      comment: "Target customer type for segment definition and targeting analysis."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the segment is currently active for portfolio health tracking."
-    - name: "effective_year_month"
-      expr: DATE_TRUNC('month', effective_from)
-      comment: "Month the segment became effective for portfolio vintage analysis."
+      comment: "Target customer type (OEM, ODM, Fabless, System House) for sales coverage planning."
+    - name: "effective_from_year"
+      expr: DATE_TRUNC('year', effective_from)
+      comment: "Year the segment strategy became effective for planning cycle alignment."
   measures:
     - name: "total_segments"
       expr: COUNT(DISTINCT segment_id)
-      comment: "Total number of market segments. Baseline measure of market segmentation breadth."
-    - name: "active_segments"
-      expr: COUNT(DISTINCT CASE WHEN is_active = TRUE THEN segment_id END)
-      comment: "Number of active market segments. Tracks the productive segment portfolio."
+      comment: "Total number of customer segments. Baseline for go-to-market coverage and segmentation complexity."
     - name: "total_revenue_target_usd"
       expr: SUM(CAST(revenue_target_usd AS DOUBLE))
-      comment: "Total revenue target across all segments in USD. Aggregates the company's market revenue ambition for executive planning."
-    - name: "avg_market_share_target_pct"
+      comment: "Total revenue target across all segments. Core top-line planning metric for executive revenue forecasting."
+    - name: "avg_revenue_target_usd"
+      expr: AVG(CAST(revenue_target_usd AS DOUBLE))
+      comment: "Average revenue target per segment. Benchmarks segment sizing and investment allocation."
+    - name: "total_market_share_target_pct"
       expr: AVG(CAST(market_share_target_percent AS DOUBLE))
-      comment: "Average market share target across segments. Benchmarks competitive ambition and informs go-to-market investment."
+      comment: "Average market share target across segments. Tracks ambition level of go-to-market strategy."
     - name: "avg_discount_rate"
       expr: AVG(CAST(discount_rate AS DOUBLE))
-      comment: "Average discount rate across segments. Tracks pricing generosity by segment for margin management."
-    - name: "total_target_revenue_usd"
-      expr: SUM(CAST(target_revenue_usd AS DOUBLE))
-      comment: "Total target revenue across all segments. Cross-validates revenue_target_usd for planning consistency."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_tool_allocation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer tool capacity allocation metrics for fab capacity planning and customer commitment management"
-  source: "`vibe_semiconductors_v1`.`customer`.`tool_allocation`"
-  dimensions:
-    - name: "Allocation Status"
-      expr: allocation_status
-      comment: "Current status of the tool allocation"
-    - name: "Allocation Type"
-      expr: allocation_type
-      comment: "Type of allocation (reserved, committed, flexible, etc.)"
-    - name: "Priority Tier"
-      expr: priority_tier
-      comment: "Priority tier for capacity allocation"
-    - name: "Priority Level"
-      expr: priority_level
-      comment: "Priority level classification"
-    - name: "Overflow Allowed"
-      expr: CASE WHEN overflow_allowed_flag = true THEN 'Overflow Allowed' ELSE 'No Overflow' END
-      comment: "Whether overflow capacity is permitted"
-    - name: "Allocation Period"
-      expr: allocation_period
-      comment: "Time period for the allocation"
-    - name: "Allocation Year"
-      expr: YEAR(allocation_start_date)
-      comment: "Year the allocation started"
-    - name: "Allocation Quarter"
-      expr: CONCAT('Q', QUARTER(allocation_start_date), '-', YEAR(allocation_start_date))
-      comment: "Quarter and year of allocation start"
-  measures:
-    - name: "Total Tool Allocations"
-      expr: COUNT(DISTINCT tool_allocation_id)
-      comment: "Distinct count of tool allocation records"
-    - name: "Active Tool Allocations"
-      expr: COUNT(DISTINCT CASE WHEN allocation_status = 'Active' THEN tool_allocation_id END)
-      comment: "Count of currently active tool allocations"
-    - name: "Total Allocated Capacity Pct"
-      expr: SUM(CAST(allocated_capacity_pct AS DOUBLE))
-      comment: "Sum of allocated capacity percentages"
-    - name: "Average Allocated Capacity Pct"
-      expr: AVG(CAST(allocated_capacity_pct AS DOUBLE))
-      comment: "Mean allocated capacity percentage per allocation"
-    - name: "Total Wafer Starts Per Week"
-      expr: SUM(CAST(wafer_starts_per_week AS BIGINT))
-      comment: "Sum of committed wafer starts per week across allocations"
-    - name: "Average Utilization Target Pct"
-      expr: AVG(CAST(utilization_target_pct AS DOUBLE))
-      comment: "Mean utilization target percentage"
-    - name: "Total Reservation Fee USD"
-      expr: SUM(CAST(reservation_fee_usd AS DOUBLE))
-      comment: "Sum of reservation fees collected"
-    - name: "High Priority Allocations"
-      expr: COUNT(DISTINCT CASE WHEN priority_tier IN ('Tier 1', 'High') THEN tool_allocation_id END)
-      comment: "Count of high-priority tool allocations"
-    - name: "Allocations With Overflow"
-      expr: COUNT(DISTINCT CASE WHEN overflow_allowed_flag = true THEN tool_allocation_id END)
-      comment: "Count of allocations permitting overflow capacity"
+      comment: "Average discount rate across segments. Monitors pricing discipline and margin management by segment."
+    - name: "active_segment_count"
+      expr: COUNT(DISTINCT CASE WHEN segment_status = 'Active' THEN segment_id END)
+      comment: "Number of active segments. Measures current go-to-market coverage breadth."
 $$;

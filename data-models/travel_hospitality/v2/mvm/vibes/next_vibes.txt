@@ -1,35 +1,60 @@
-**Model Quality Score: 79.44/100**
+**Model Quality Score: 92/100**
 
-**Static Analysis Findings (5 actionable):**
-  - [SA:denormalized_natural_key] Product 'event.catering_menu' has both FK 'menu_id' and natural key 'menu_code' for entity 'menu'. The natural key is redundant — use the FK join instead.
-  - [SA:denormalized_natural_key] Product 'spa.treatment_room' has both FK 'room_id' and natural key 'room_code' for entity 'room'. The natural key is redundant — use the FK join instead.
-  - [SA:denormalized_natural_key] Product 'spa.treatment_room' has both FK 'room_id' and natural key 'room_number' for entity 'room'. The natural key is redundant — use the FK join instead.
+**Static Analysis Findings (2 actionable):**
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_rate_plan' and 'reservation.reservation_rate_plan' have the same entity name 'rate_plan' in different domains. One should be the SSOT owner, the other should reference via FK.
   - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_booking' and 'reservation.reservation_booking' have the same entity name 'booking' in different domains. One should be the SSOT owner, the other should reference via FK.
 
-**PRIORITY 1 — connect_table: fnb.inventory_item** — add column property_id (BIGINT) with FK to property.property.property_id — inventory_item currently has zero outbound FKs and must be anchored to the property owning the stock to be queryable per-location.
-**PRIORITY 2 — connect_table: channel.channel_booking** — add column reservation_booking (BIGINT) with FK to reservation.reservation_booking.reservation_booking_id — a channel booking should resolve to the core reservation it generated for revenue attribution and reconciliation.
-**PRIORITY 3 — connect_table: reservation.reservation_booking** — add column channel_rate_plan (BIGINT) with FK to channel.channel_rate_plan.channel_rate_plan_id — bookings sourced via a channel need the specific channel rate plan applied for parity and commission auditing.
-**PRIORITY 4 — connect_table: spa.charge** — add column pos_check (BIGINT) with FK to fnb.pos_check.pos_check_id — spa charges posted to a folio should link to the consolidated POS check for unified billing, consistent with room_service_order.
-**PRIORITY 5 — connect_table: housekeeping.lost_and_found** — add column loyalty_member (BIGINT) with FK to loyalty.member.member_id — lost-and-found items are frequently tied to a loyalty member's stay; currently only guest.profile is linked.
-**PRIORITY 6 — connect_table: revenue.performance_actuals** — add column market_segment (BIGINT) with FK to revenue.market_segment.market_segment_id — actuals must be sliceable by market segment to mirror budget and demand_forecast which already carry it.
-**PRIORITY 7 — connect_table: inventory.availability_snapshot** — add column market_segment (BIGINT) with FK to revenue.market_segment.market_segment_id — availability snapshots are consumed for segment-level forecasting and lack any revenue linkage.
-**PRIORITY 8 — connect_table: loyalty.tier_history** — add column property_id (BIGINT) with FK to property.property.property_id — tier changes are often property-driven and the table has no property anchor for cross-property reporting.
-**PRIORITY 9 — connect_table: event.beo_item** — add column property_id (BIGINT) with FK to property.property.property_id — BEO line items need a property anchor for outlet/property cost rollups; currently only menu references exist.
-**PRIORITY 10 — connect_table: spa.package_treatment_inclusion** — add column property_id (BIGINT) with FK to property.property.property_id — package inclusions should be anchored to property for multi-property package definitions.
-**PRIORITY 11 — connect_table: spa.treatment_menu_item** — add column property_id (BIGINT) with FK to property.property.property_id — treatment menu items lack a property anchor needed for property-specific menus.
-**PRIORITY 12 — connect_table: loyalty.promotion_enrollment** — add column property_id (BIGINT) with FK to property.property.property_id — enrollment events should record the enrolling property for attribution analytics.
-**PRIORITY 13 — connect_table: fnb.recipe_ingredient** — add column property_id (BIGINT) with FK to property.property.property_id — recipe ingredient costing requires a property anchor for property-level food cost tracking.
-**PRIORITY 14 — connect_table: guest.communication_consent** — add column loyalty_member (BIGINT) with FK to loyalty.member.member_id — consent records should also resolve to the loyalty membership for marketing-channel governance within MVM scope.
-**PRIORITY 15 — connect_table: reservation.travel_agent** — add column property_id (BIGINT) with FK to property.property.property_id — travel_agent only links to channel; a property association supports property-level agency production reporting.
-**PRIORITY 16 — connect_table: spa.treatment** — add column property_id (BIGINT) with FK to property.property.property_id — treatment only has a self-ref parent link and no property anchor, limiting per-property treatment catalogs.
-**PRIORITY 17 — connect_table: loyalty.tier** — add column property_id (BIGINT) with FK to property.property.property_id — tier has zero outbound FKs; anchor it to property for brand/property-scoped tier programs.
-**PRIORITY 18 — connect_table: channel.ota_partner** — add column property_id (BIGINT) with FK to property.property.property_id — ota_partner has zero outbound FKs; link to property to support property-scoped OTA relationships.
+**PRIORITY 1 — connect_table: fnb.inventory_item** — add column property_id (BIGINT) with FK to property.property.property_id — inventory_item is ISOLATED (zero inbound and zero outbound FKs); every F&B inventory item must belong to a property for multi-property inventory tracking.
+**PRIORITY 2 — connect_table: fnb.inventory_item** — add column revenue_center_id (BIGINT) with FK to fnb.revenue_center.revenue_center_id — associate F&B inventory items with the revenue center that owns/consumes them.
+**PRIORITY 3 — connect_table: fnb.inventory_item** — add column fnb_outlet_id (BIGINT) with FK to fnb.fnb_outlet.fnb_outlet_id — link inventory items to the outlet stocking them.
+**PRIORITY 4 — connect_table: property.property** — add column hierarchy_id (BIGINT) with FK to property.hierarchy.hierarchy_id — property currently only links to currency; it must attach to the property hierarchy (brand/region/chain) for multi-property rollups.
+**PRIORITY 5 — connect_table: fnb.recipe** — add column property_id (BIGINT) with FK to property.property.property_id — recipes should be scoped to a property for menu engineering and food cost by property.
+**PRIORITY 6 — connect_table: fnb.recipe** — add column menu_item_id (BIGINT) with FK to fnb.menu_item.menu_item_id — reverse direction from menu_item.recipe already exists but recipe should record its primary sellable menu_item for costing.
+**PRIORITY 7 — connect_table: loyalty.tier** — add column property_id (BIGINT) with FK to property.property.property_id — tier only links to currency; must attach to property or hierarchy for program-per-brand support.
+**PRIORITY 8 — connect_table: loyalty.member** — add column profile_id (BIGINT) with FK to guest.profile.profile_id — loyalty member must resolve back to the guest profile single-source-of-truth (currently profile→member exists but member→profile is missing, breaking unified guest view).
+**PRIORITY 9 — connect_table: guest.contact_info** — add column property_id (BIGINT) with FK to property.property.property_id — contact_info has only one FK (profile); property scoping needed for property-specific contact channels.
+**PRIORITY 10 — connect_table: revenue.market_segment** — add column property_id already exists; add column hierarchy_id (BIGINT) with FK to property.hierarchy.hierarchy_id — enable brand-level segment definitions.
+**PRIORITY 11 — connect_table: revenue.performance_actuals** — add column market_segment_id (BIGINT) with FK to revenue.market_segment.market_segment_id — actuals must be reportable by market segment for RGI/MPI/ARI benchmarking.
+**PRIORITY 12 — connect_table: revenue.performance_actuals** — add column room_type_id (BIGINT) with FK to inventory.room_type.room_type_id — RevPAR/ADR must be sliceable by room type.
+**PRIORITY 13 — connect_table: revenue.demand_forecast** — add column channel_id (BIGINT) with FK to channel.channel.channel_id — demand forecasts must be dimensioned by distribution channel.
+**PRIORITY 14 — connect_table: inventory.room_type** — add column currency_id (BIGINT) with FK to property.currency.currency_id — room type has only property FK; base pricing currency should be captured.
+**PRIORITY 15 — connect_table: guest.identity_document** — add column corporate_account_id (BIGINT) with FK to guest.corporate_account.corporate_account_id — corporate travelers' identity documents need corporate linkage for expense/compliance reporting.
+**PRIORITY 16 — connect_table: event.function_space** — add column property_outlet_id (BIGINT) with FK to property.property_outlet.property_outlet_id — function spaces should map to property outlet for F&B and outlet-level P&L attribution.
+**PRIORITY 17 — connect_table: event.catering_menu** — add column revenue_center_id (BIGINT) with FK to fnb.revenue_center.revenue_center_id — catering menus need revenue center assignment.
+**PRIORITY 18 — connect_table: reservation.travel_agent** — add column corporate_account_id (BIGINT) with FK to guest.corporate_account.corporate_account_id — TMCs and agencies often map to corporate accounts.
+**PRIORITY 19 — connect_table: guest.communication_consent** — add column corporate_account_id (BIGINT) with FK to guest.corporate_account.corporate_account_id — consent capture also needed at the corporate contact level.
+**PRIORITY 20 — connect_table: loyalty.member_preference** — add column loyalty_tier_id (BIGINT) with FK to loyalty.tier.tier_id — tier-conditional preferences (e.g., elite-only room preferences) require tier reference.
+**PRIORITY 21 — connect_table: fnb.menu** — add column property_outlet_id (BIGINT) with FK to property.property_outlet.property_outlet_id — menus should attach to a specific outlet, not only fnb_outlet.
+**PRIORITY 22 — connect_table: fnb.menu_item** — add column property_id (BIGINT) with FK to property.property.property_id — menu items are property-scoped for pricing and availability.
+**PRIORITY 23 — connect_table: revenue.negotiated_rate** — add column property_id already present; add column seasonal_calendar_id (BIGINT) with FK to property.seasonal_calendar.seasonal_calendar_id — negotiated rates vary by season.
+**PRIORITY 24 — connect_table: reservation.cancellation_policy** — add column currency_id (BIGINT) with FK to property.currency.currency_id — cancellation fees are currency-denominated.
+**PRIORITY 25 — connect_table: loyalty.reward_catalog** — add column loyalty_tier_id (BIGINT) with FK to loyalty.tier.tier_id — reward eligibility is tier-gated.
+**PRIORITY 26 — connect_table: channel.ota_partner** — add column currency_id (BIGINT) with FK to property.currency.currency_id — OTA settlement currency must be captured.
+**PRIORITY 27 — connect_table: channel.gds_connection** — add column ota_partner_id (BIGINT) with FK to channel.ota_partner.ota_partner_id — GDS connections often intermediate to OTA/wholesale partners.
+**PRIORITY 28 — connect_table: property.meeting_space** — add column facility_id (BIGINT) with FK to property.facility.facility_id — meeting spaces are physical facilities.
+**PRIORITY 29 — connect_table: property.facility** — add column hierarchy_id (BIGINT) with FK to property.hierarchy.hierarchy_id — facility standards often defined at brand hierarchy.
+**PRIORITY 30 — connect_table: revenue.market_segment** — add column seasonal_calendar_id (BIGINT) with FK to property.seasonal_calendar.seasonal_calendar_id — segment mix varies seasonally.
+**PRIORITY 31 — connect_table: inventory.room** — add column property_outlet_id (BIGINT) with FK to property.property_outlet.property_outlet_id — rooms may be associated with specific outlets/wings.
+**PRIORITY 32 — connect_table: fnb.pos_check_line** — add column recipe_id (BIGINT) with FK to fnb.recipe.recipe_id — line-level recipe reference enables real-time food cost.
+**PRIORITY 33 — connect_table: event.event_revenue** — add column market_segment_id (BIGINT) with FK to revenue.market_segment.market_segment_id — event revenue must be segmentable.
+**PRIORITY 34 — connect_table: revenue.dynamic_rate_rule** — add column seasonal_calendar_id (BIGINT) with FK to property.seasonal_calendar.seasonal_calendar_id — DRR often applies within specific seasons.
+**PRIORITY 35 — connect_table: channel.commission_schedule** — add column currency_id (BIGINT) with FK to property.currency.currency_id — commission amounts are currency-denominated.
+**PRIORITY 36 — connect_table: channel.booking_source** — add column property_id (BIGINT) with FK to property.property.property_id — booking source performance rolls up by property.
+**PRIORITY 37 — connect_table: loyalty.accrual_rule** — add column revenue_rate_plan_id (BIGINT) with FK to revenue.revenue_rate_plan.revenue_rate_plan_id — accrual eligibility often varies by rate plan.
+**PRIORITY 38 — connect_table: revenue.inventory_control** — add column seasonal_calendar_id (BIGINT) with FK to property.seasonal_calendar.seasonal_calendar_id — inventory controls are season-driven.
+**PRIORITY 39 — connect_table: guest.vip_designation** — add column property_id already present; add column corporate_account_id — already present; add column segment_id (BIGINT) with FK to guest.segment.segment_id — VIP designations relate to segment membership.
+**PRIORITY 40 — connect_table: reservation.reservation_rate_plan** — add column currency_id (BIGINT) with FK to property.currency.currency_id — rate plan pricing is currency-denominated.
+**PRIORITY 41 — connect_table: event.beo_item** — add column recipe_id (BIGINT) with FK to fnb.recipe.recipe_id — BEO items reference recipes for costing.
+**PRIORITY 42 — connect_table: fnb.stock_transaction** — add column revenue_center_id (BIGINT) with FK to fnb.revenue_center.revenue_center_id — stock movements are revenue-center attributable.
+**PRIORITY 43 — connect_table: revenue.rate_availability** — add column seasonal_calendar_id (BIGINT) with FK to property.seasonal_calendar.seasonal_calendar_id — availability windows are seasonal.
+**PRIORITY 44 — connect_table: loyalty.promotion** — add column property_outlet_id (BIGINT) with FK to property.property_outlet.property_outlet_id — outlet-specific promotions need outlet reference.
+**PRIORITY 45 — connect_table: guest.preference** — add column loyalty_tier_id (BIGINT) with FK to loyalty.tier.tier_id — preference upgrades are commonly tier-driven.
 
-Other known issues from static analysis (4):
+Other known issues from static analysis (5):
   - Table reservation.room_assignment has 2 FK columns pointing to reservation.reservation_booking (reservation_booking_id, room_reservation_booking_id) (generic/unlabeled: reservation_booking_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Table fnb.stock_transaction has 2 FK columns pointing to fnb.fnb_outlet (fnb_outlet_id, primary_stock_fnb_outlet_id) (generic/unlabeled: fnb_outlet_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
-  - Subdomain 'venue_operations' appears in 2 domains: event, property. Consider renaming to qualified form.
-  - 105 attribute(s) match person-data patterns but lack pii_ tags
+  - Table loyalty.member has 2 FK columns pointing to property.property (property_id, member_property_id) (generic/unlabeled: property_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table fnb.stock_transaction has 2 FK columns pointing to fnb.fnb_outlet (fnb_outlet_id, source_fnb_outlet_id) (generic/unlabeled: fnb_outlet_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Subdomain 'inventory_control' appears in 2 domains: fnb, inventory. Consider renaming to qualified form.
+  - 106 attribute(s) match person-data patterns but lack pii_ tags
 
-Deterministic score: 79.44/100 (LLM assessment: 87/100)
+Deterministic score: 92/100 (LLM assessment: 72/100)

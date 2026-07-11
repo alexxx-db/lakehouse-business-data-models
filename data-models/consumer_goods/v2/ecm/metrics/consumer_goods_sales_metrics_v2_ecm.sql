@@ -1,491 +1,77 @@
--- Metric views for domain: sales | Business: Consumer Goods | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: sales | Business: Consumer_Goods | Version: 2 | Generated on: 2026-07-10 13:28:51
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_assortment`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_trade_account`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Account assortment metrics measuring SKU distribution breadth, listing status, and VMI eligibility across the trade account portfolio."
-  source: "`vibe_consumer_goods_v1`.`sales`.`account_assortment`"
+  comment: "Core customer account metrics including account value, credit exposure, and operational performance indicators"
+  source: "`vibe_consumer_goods_v1`.`sales`.`trade_account`"
   dimensions:
-    - name: "account_assortment_status"
-      expr: account_assortment_status
-      comment: "Status of the assortment record (e.g. active, delisted, pending) for distribution management."
-    - name: "listing_status"
-      expr: listing_status
-      comment: "Listing status of the SKU at the account (e.g. listed, delisted, pending) for distribution tracking."
-    - name: "assortment_type"
-      expr: assortment_type
-      comment: "Type of assortment (e.g. core, seasonal, promotional) for range planning analysis."
-    - name: "dsd_flag"
-      expr: dsd_flag
-      comment: "Indicates DSD-served assortment. Used to segment distribution by route-to-market."
-    - name: "vmi_eligible_flag"
-      expr: vmi_eligible_flag
-      comment: "Indicates VMI eligibility for the assortment. Tracks VMI program expansion potential."
-    - name: "exclusive_flag"
-      expr: exclusive_flag
-      comment: "Indicates exclusive assortment items. Tracks competitive differentiation at account level."
-    - name: "promotional_flag"
-      expr: promotional_flag
-      comment: "Indicates promotional assortment items. Used to separate core vs. promotional distribution."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for assortment financial metrics."
-    - name: "listing_date"
-      expr: listing_date
-      comment: "Date the SKU was listed at the account for distribution velocity analysis."
-  measures:
-    - name: "total_assortment_sku_count"
-      expr: COUNT(DISTINCT account_assortment_id)
-      comment: "Total number of SKU-account assortment records. Tracks distribution breadth across the account portfolio."
-    - name: "active_listing_count"
-      expr: COUNT(DISTINCT CASE WHEN listing_status = 'LISTED' THEN account_assortment_id END)
-      comment: "Number of actively listed SKU-account combinations. Primary distribution point (TDP) count metric."
-    - name: "total_moq"
-      expr: SUM(CAST(moq AS DOUBLE))
-      comment: "Total minimum order quantity across assortment records. Used for supply planning and order policy management."
-    - name: "vmi_eligible_sku_count"
-      expr: COUNT(DISTINCT CASE WHEN vmi_eligible_flag = TRUE THEN account_assortment_id END)
-      comment: "Number of VMI-eligible assortment records. Tracks VMI program coverage and expansion opportunity."
-    - name: "avg_assortment_amount"
-      expr: AVG(CAST(amount AS DOUBLE))
-      comment: "Average financial amount per assortment record. Used as a proxy for assortment value contribution."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_call`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Field sales execution metrics covering call frequency, compliance, and effectiveness. Used by sales management to evaluate rep productivity and in-store execution quality."
-  source: "`vibe_consumer_goods_v1`.`sales`.`account_call`"
-  dimensions:
-    - name: "call_date"
-      expr: call_date
-      comment: "Date the sales call was conducted — primary time dimension for call activity trending."
-    - name: "call_type"
-      expr: call_type
-      comment: "Type of sales call (e.g. Routine, Audit, New Listing) — used to analyze call mix and purpose."
-    - name: "call_status"
-      expr: call_status
-      comment: "Status of the call (e.g. Completed, Planned, Cancelled) — used to measure call completion rates."
-    - name: "call_outcome"
-      expr: call_outcome
-      comment: "Outcome of the sales call (e.g. Order Taken, Display Set, Issue Raised) — used to measure call effectiveness."
-    - name: "display_compliance_flag"
-      expr: display_compliance_flag
-      comment: "Indicates whether display compliance was achieved during the call — used for in-store execution KPIs."
-    - name: "shelf_position_compliant_flag"
-      expr: shelf_position_compliant_flag
-      comment: "Indicates whether shelf position was compliant during the call — used for planogram compliance tracking."
-    - name: "corrective_actions_required"
-      expr: corrective_actions_required
-      comment: "Description of corrective actions required — used to identify recurring execution issues."
-    - name: "scheduled_date"
-      expr: scheduled_date
-      comment: "Planned date for the call — used to measure call scheduling adherence."
-  measures:
-    - name: "total_calls"
-      expr: COUNT(1)
-      comment: "Total number of sales calls logged — baseline field activity volume metric."
-    - name: "completed_calls"
-      expr: COUNT(CASE WHEN call_status = 'Completed' THEN 1 END)
-      comment: "Number of completed sales calls — used to measure rep call completion rate."
-    - name: "call_completion_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN call_status = 'Completed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of planned calls completed — key field sales productivity KPI."
-    - name: "display_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN display_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of calls where display compliance was achieved — measures in-store execution quality."
-    - name: "shelf_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN shelf_position_compliant_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of calls where shelf position was compliant — planogram execution KPI."
-    - name: "corrective_action_required_count"
-      expr: COUNT(CASE WHEN corrective_actions_completed_flag = FALSE AND corrective_actions_required IS NOT NULL THEN 1 END)
-      comment: "Number of calls with outstanding corrective actions — used to track unresolved execution issues."
-    - name: "avg_pog_compliance_score"
-      expr: AVG(CAST(pog_compliance_score AS DOUBLE))
-      comment: "Average planogram compliance score across calls — used to benchmark in-store execution quality."
-    - name: "total_orders_taken_value"
-      expr: SUM(CAST(amount AS DOUBLE))
-      comment: "Total order value captured during sales calls — measures direct revenue generation from field activity."
-    - name: "avg_call_amount"
-      expr: AVG(CAST(amount AS DOUBLE))
-      comment: "Average order value per sales call — used to assess rep commercial effectiveness."
-    - name: "calls_with_oos_count"
-      expr: COUNT(CASE WHEN oos_items_count IS NOT NULL AND oos_items_count != '0' THEN 1 END)
-      comment: "Number of calls where out-of-stock items were observed — used to quantify OSA issues in the field."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_credit_profile`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer credit risk and exposure metrics. Used by credit management and finance to monitor credit utilization, risk concentration, and collection health across the customer base."
-  source: "`vibe_consumer_goods_v1`.`sales`.`account_credit_profile`"
-  dimensions:
-    - name: "credit_hold_status"
-      expr: credit_hold_status
-      comment: "Credit hold status of the account — used to identify accounts on hold and revenue at risk."
-    - name: "risk_category"
-      expr: risk_category
-      comment: "Credit risk category (e.g. Low, Medium, High) — primary risk segmentation dimension."
-    - name: "risk_class"
-      expr: risk_class
-      comment: "Credit risk class — used for portfolio-level risk concentration analysis."
+    - name: "account_status"
+      expr: account_status
+      comment: "Current operational status of the trade account"
+    - name: "account_tier"
+      expr: account_tier
+      comment: "Strategic tier classification of the account"
+    - name: "account_type"
+      expr: account_type
+      comment: "Type classification of the trade account"
+    - name: "trade_channel"
+      expr: trade_channel
+      comment: "Primary trade channel for the account"
+    - name: "country_code"
+      expr: headquarters_country_code
+      comment: "Country code of account headquarters"
+    - name: "state_province"
+      expr: headquarters_state_province
+      comment: "State or province of account headquarters"
     - name: "credit_rating"
       expr: credit_rating
-      comment: "Internal credit rating of the account — used for credit policy and limit-setting decisions."
-    - name: "profile_status"
-      expr: profile_status
-      comment: "Status of the credit profile (e.g. Active, Suspended, Closed) — used to filter active credit relationships."
-    - name: "payment_method_preference"
-      expr: payment_method_preference
-      comment: "Preferred payment method — used for cash flow forecasting and payment risk analysis."
-    - name: "dunning_level"
-      expr: dunning_level
-      comment: "Current dunning level for the account — used to prioritize collections activity."
-    - name: "credit_insurance_coverage_flag"
-      expr: credit_insurance_coverage_flag
-      comment: "Indicates whether credit insurance is in place — used to assess risk mitigation coverage."
-    - name: "bankruptcy_flag"
-      expr: bankruptcy_flag
-      comment: "Indicates whether the account has filed for bankruptcy — used to flag high-risk exposure."
+      comment: "Credit rating classification of the account"
+    - name: "vmi_enabled_flag"
+      expr: vmi_enabled_flag
+      comment: "Whether vendor-managed inventory is enabled for this account"
+    - name: "edi_capable_flag"
+      expr: edi_capable_flag
+      comment: "Whether the account has EDI capability"
+    - name: "dsd_delivery_flag"
+      expr: dsd_delivery_flag
+      comment: "Whether direct store delivery is enabled"
+    - name: "account_open_year"
+      expr: YEAR(account_open_date)
+      comment: "Year the account was opened"
   measures:
+    - name: "total_accounts"
+      expr: COUNT(DISTINCT trade_account_id)
+      comment: "Total number of unique trade accounts"
+    - name: "total_acv"
+      expr: SUM(CAST(acv_total AS DOUBLE))
+      comment: "Total annual customer value across all accounts"
+    - name: "avg_acv_per_account"
+      expr: AVG(CAST(acv_total AS DOUBLE))
+      comment: "Average annual customer value per account"
     - name: "total_credit_limit"
-      expr: SUM(CAST(credit_limit AS DOUBLE))
-      comment: "Total credit limit extended across all accounts — measures total credit exposure capacity."
-    - name: "total_credit_used"
-      expr: SUM(CAST(credit_used AS DOUBLE))
-      comment: "Total credit currently utilized — primary credit exposure KPI for risk management."
-    - name: "total_current_exposure"
-      expr: SUM(CAST(current_exposure_amount AS DOUBLE))
-      comment: "Total current credit exposure — used to monitor aggregate AR risk."
-    - name: "total_available_credit"
-      expr: SUM(CAST(available_credit_amount AS DOUBLE))
-      comment: "Total available credit headroom — used to assess capacity for incremental business."
-    - name: "credit_utilization_rate"
-      expr: ROUND(100.0 * SUM(CAST(credit_used AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit AS DOUBLE)), 0), 2)
-      comment: "Credit utilization as a percentage of total credit limit — primary credit risk concentration KPI."
-    - name: "accounts_on_credit_hold"
-      expr: COUNT(CASE WHEN credit_hold_status = 'On Hold' THEN 1 END)
-      comment: "Number of accounts currently on credit hold — used to quantify revenue at risk from credit blocks."
-    - name: "credit_hold_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN credit_hold_status = 'On Hold' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of accounts on credit hold — used to monitor credit portfolio health."
-    - name: "total_credit_insurance_coverage"
-      expr: SUM(CAST(credit_insurance_coverage_amount AS DOUBLE))
-      comment: "Total credit insurance coverage amount — used to assess risk mitigation against total exposure."
-    - name: "insurance_coverage_rate"
-      expr: ROUND(100.0 * SUM(CAST(credit_insurance_coverage_amount AS DOUBLE)) / NULLIF(SUM(CAST(current_exposure_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of credit exposure covered by insurance — measures risk mitigation effectiveness."
-    - name: "account_count"
-      expr: COUNT(1)
-      comment: "Total number of credit profiles — used to track credit portfolio size."
-    - name: "high_risk_account_count"
-      expr: COUNT(CASE WHEN risk_category = 'High' THEN 1 END)
-      comment: "Number of high-risk accounts — used to monitor concentration of credit risk."
-    - name: "high_risk_exposure"
-      expr: SUM(CASE WHEN risk_category = 'High' THEN CAST(current_exposure_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total credit exposure from high-risk accounts — used to quantify tail risk in the AR portfolio."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_sla`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Customer service level agreement metrics. Used by commercial and supply chain teams to monitor SLA commitments, performance targets, and penalty/incentive exposure."
-  source: "`vibe_consumer_goods_v1`.`sales`.`account_sla`"
-  dimensions:
-    - name: "sla_type"
-      expr: sla_type
-      comment: "Type of SLA (e.g. OTIF, Fill Rate, OSA) — used to segment SLA performance by commitment type."
-    - name: "sla_tier"
-      expr: sla_tier
-      comment: "SLA tier level — used to segment accounts by service commitment level."
-    - name: "account_sla_status"
-      expr: account_sla_status
-      comment: "Current status of the SLA (e.g. Active, Expired, Breached) — used to filter live SLA commitments."
-    - name: "measurement_period"
-      expr: measurement_period
-      comment: "Measurement period for the SLA — used for period-level SLA performance analysis."
-    - name: "effective_from_date"
-      expr: effective_from_date
-      comment: "SLA effective start date — used for SLA lifecycle analysis."
-    - name: "effective_to_date"
-      expr: effective_to_date
-      comment: "SLA effective end date — used to identify expiring SLAs."
-    - name: "auto_renewal_flag"
-      expr: auto_renewal_flag
-      comment: "Indicates whether the SLA auto-renews — used for contract management planning."
-  measures:
-    - name: "sla_count"
-      expr: COUNT(1)
-      comment: "Total number of SLA records — used to track SLA portfolio size."
-    - name: "avg_otif_target_pct"
-      expr: AVG(CAST(otif_target_pct AS DOUBLE))
-      comment: "Average OTIF target percentage across SLAs — used to benchmark service commitment levels."
-    - name: "avg_fill_rate_target_pct"
-      expr: AVG(CAST(fill_rate_target_pct AS DOUBLE))
-      comment: "Average fill rate target across SLAs — used to assess service level commitments."
-    - name: "total_penalty_amount"
-      expr: SUM(CAST(penalty_amount AS DOUBLE))
-      comment: "Total penalty exposure across SLA agreements — used to quantify financial risk from SLA breaches."
-    - name: "total_incentive_amount"
-      expr: SUM(CAST(incentive_amount AS DOUBLE))
-      comment: "Total incentive opportunity across SLA agreements — used to quantify upside from SLA over-performance."
-    - name: "avg_minimum_performance_threshold"
-      expr: AVG(CAST(minimum_performance_threshold AS DOUBLE))
-      comment: "Average minimum performance threshold — used to assess floor-level service commitments."
-    - name: "avg_target_metric_value"
-      expr: AVG(CAST(target_metric_value AS DOUBLE))
-      comment: "Average target metric value across SLAs — used to benchmark service targets."
-    - name: "net_incentive_penalty_exposure"
-      expr: SUM(CAST(incentive_amount AS DOUBLE) - CAST(penalty_amount AS DOUBLE))
-      comment: "Net financial exposure (incentive minus penalty) across SLAs — used to assess overall SLA financial position."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_distribution_point`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Distribution point and numeric distribution metrics. Used by category management and sales to track SKU distribution coverage, ACV-weighted distribution, and listing health."
-  source: "`vibe_consumer_goods_v1`.`sales`.`distribution_point`"
-  dimensions:
-    - name: "distribution_status"
-      expr: distribution_status
-      comment: "Current distribution status of the SKU at the point (e.g. Active, Delisted, Pending) — primary distribution health dimension."
-    - name: "distribution_point_status"
-      expr: distribution_point_status
-      comment: "Operational status of the distribution point record — used to filter active vs. inactive points."
-    - name: "channel_type"
-      expr: channel_type
-      comment: "Retail channel type — used for channel-level distribution analysis."
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Distribution channel — used for channel distribution coverage reporting."
-    - name: "is_active"
-      expr: is_active
-      comment: "Active flag for the distribution point — used to filter live distribution."
-    - name: "dsd_flag"
-      expr: dsd_flag
-      comment: "Indicates DSD (Direct Store Delivery) distribution — used to segment DSD vs. warehouse distribution."
-    - name: "tdp_count_flag"
-      expr: tdp_count_flag
-      comment: "Indicates whether this point counts toward TDP (Total Distribution Points) — used for TDP metric calculation."
-    - name: "new_product_flag"
-      expr: new_product_flag
-      comment: "Indicates a new product distribution point — used to track new product launch distribution velocity."
-    - name: "activation_date"
-      expr: activation_date
-      comment: "Date the distribution point was activated — used for distribution ramp analysis."
-    - name: "geographic_market"
-      expr: geographic_market
-      comment: "Geographic market of the distribution point — used for regional distribution coverage analysis."
-  measures:
-    - name: "total_distribution_points"
-      expr: COUNT(1)
-      comment: "Total number of distribution points — baseline numeric distribution metric (TDP count)."
-    - name: "active_distribution_points"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of active distribution points — used to measure live SKU distribution coverage."
-    - name: "tdp_count"
-      expr: COUNT(CASE WHEN tdp_count_flag = TRUE THEN 1 END)
-      comment: "Total Distribution Points (TDP) count — primary numeric distribution KPI for category management."
-    - name: "total_acv_percentage"
-      expr: SUM(CAST(acv_percentage AS DOUBLE))
-      comment: "Sum of ACV percentages across distribution points — used to compute ACV-weighted distribution."
-    - name: "avg_acv_percentage"
-      expr: AVG(CAST(acv_percentage AS DOUBLE))
-      comment: "Average ACV percentage per distribution point — used to assess quality of distribution coverage."
-    - name: "avg_actual_retail_price"
-      expr: AVG(CAST(actual_retail_price AS DOUBLE))
-      comment: "Average actual retail price across distribution points — used to monitor price realization at shelf."
-    - name: "avg_msrp_price"
-      expr: AVG(CAST(msrp_price AS DOUBLE))
-      comment: "Average MSRP across distribution points — used to benchmark actual vs. recommended pricing."
-    - name: "price_to_msrp_ratio"
-      expr: ROUND(100.0 * AVG(CAST(actual_retail_price AS DOUBLE)) / NULLIF(AVG(CAST(msrp_price AS DOUBLE)), 0), 2)
-      comment: "Actual retail price as a percentage of MSRP — used to monitor pricing compliance and promotional depth."
-    - name: "new_distribution_points"
-      expr: COUNT(CASE WHEN new_product_flag = TRUE THEN 1 END)
-      comment: "Number of new product distribution points — used to track new product launch distribution velocity."
-    - name: "dsd_distribution_points"
-      expr: COUNT(CASE WHEN dsd_flag = TRUE THEN 1 END)
-      comment: "Number of DSD distribution points — used to measure DSD channel coverage."
-    - name: "pog_compliant_points"
-      expr: COUNT(CASE WHEN pog_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of distribution points with planogram compliance — used to measure execution quality across distribution."
-    - name: "pog_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN pog_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN is_active = TRUE THEN 1 END), 0), 2)
-      comment: "Planogram compliance rate across active distribution points — measures in-store execution quality at scale."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_invoice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Accounts receivable and billing performance metrics. Covers revenue recognition, payment status, dispute management, and DSO — critical for finance and commercial teams."
-  source: "`vibe_consumer_goods_v1`.`sales`.`invoice`"
-  dimensions:
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current status of the invoice (e.g. Open, Paid, Disputed, Overdue) — primary AR aging dimension."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Payment status of the invoice — used to segment outstanding vs. collected receivables."
-    - name: "billing_type"
-      expr: billing_type
-      comment: "Type of billing document (e.g. Standard, Credit Memo, Debit Memo) — used for billing mix analysis."
-    - name: "invoice_date"
-      expr: invoice_date
-      comment: "Date the invoice was issued — primary time dimension for AR aging and revenue recognition."
-    - name: "due_date"
-      expr: due_date
-      comment: "Payment due date — used to compute overdue exposure and DSO."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Invoice currency — required for multi-currency AR reporting."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (e.g. ACH, Wire, Check) — used for cash flow forecasting."
-    - name: "payment_terms_code"
-      expr: payment_terms_code
-      comment: "Payment terms applied to the invoice — used to segment AR by terms bucket."
-    - name: "distribution_channel_code"
-      expr: distribution_channel_code
-      comment: "Distribution channel associated with the invoice — used for channel revenue reporting."
-    - name: "revenue_recognition_category"
-      expr: revenue_recognition_category
-      comment: "Revenue recognition category — required for ASC 606 / IFRS 15 compliance reporting."
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Indicates whether the invoice is under dispute — used to isolate disputed AR exposure."
-  measures:
-    - name: "total_invoiced_gross_amount"
-      expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross invoiced amount — top-line billed revenue KPI for finance and commercial reporting."
-    - name: "total_invoiced_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net invoiced amount after discounts and allowances — used for net revenue reporting."
-    - name: "total_outstanding_amount"
-      expr: SUM(CAST(outstanding_amount AS DOUBLE))
-      comment: "Total outstanding (unpaid) AR balance — primary cash flow and credit risk KPI."
-    - name: "total_paid_amount"
-      expr: SUM(CAST(paid_amount AS DOUBLE))
-      comment: "Total amount collected — used to track cash collection efficiency."
-    - name: "total_trade_discount_amount"
-      expr: SUM(CAST(trade_discount_amount AS DOUBLE))
-      comment: "Total trade discounts applied on invoices — used to monitor trade spend and net revenue impact."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax billed — required for tax compliance and liability reporting."
-    - name: "total_freight_charge_amount"
-      expr: SUM(CAST(freight_charge_amount AS DOUBLE))
-      comment: "Total freight charges billed to customers — used to assess freight recovery rate."
-    - name: "total_gross_margin_amount"
-      expr: SUM(CAST(gross_margin_amount AS DOUBLE))
-      comment: "Total gross margin on invoiced sales — profitability KPI for commercial finance."
-    - name: "invoice_count"
-      expr: COUNT(1)
-      comment: "Total number of invoices issued — baseline billing volume metric."
-    - name: "disputed_invoice_count"
-      expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
-      comment: "Number of invoices under dispute — used to monitor AR quality and customer satisfaction issues."
-    - name: "disputed_amount"
-      expr: SUM(CASE WHEN dispute_flag = TRUE THEN CAST(outstanding_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total AR balance under dispute — risk exposure KPI for credit and collections teams."
-    - name: "dispute_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of invoices under dispute — signals billing accuracy and customer relationship health."
-    - name: "collection_rate"
-      expr: ROUND(100.0 * SUM(CAST(paid_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of invoiced amount collected — primary cash collection efficiency KPI."
-    - name: "gross_margin_rate"
-      expr: ROUND(100.0 * SUM(CAST(gross_margin_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_amount AS DOUBLE)), 0), 2)
-      comment: "Gross margin as a percentage of net invoiced revenue — profitability ratio for executive reporting."
-    - name: "avg_invoice_value"
-      expr: AVG(CAST(gross_amount AS DOUBLE))
-      comment: "Average invoice value — used to track deal size trends and commercial mix shifts."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_opportunity`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Sales pipeline and opportunity management metrics. Used by sales leadership to forecast revenue, manage pipeline health, and evaluate win/loss performance."
-  source: "`vibe_consumer_goods_v1`.`sales`.`opportunity`"
-  dimensions:
-    - name: "opportunity_status"
-      expr: opportunity_status
-      comment: "Current stage/status of the opportunity (e.g. Prospecting, Proposal, Closed Won) — primary pipeline dimension."
-    - name: "opportunity_type"
-      expr: opportunity_type
-      comment: "Type of opportunity (e.g. New Business, Expansion, Renewal) — used for pipeline mix analysis."
-    - name: "stage"
-      expr: stage
-      comment: "Sales stage of the opportunity — used for funnel conversion analysis."
-    - name: "channel_type"
-      expr: channel_type
-      comment: "Sales channel for the opportunity — used for channel pipeline analysis."
-    - name: "forecast_category"
-      expr: forecast_category
-      comment: "Forecast category (e.g. Commit, Best Case, Pipeline) — used for revenue forecasting."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the expected close — used for annual pipeline planning."
-    - name: "fiscal_quarter"
-      expr: fiscal_quarter
-      comment: "Fiscal quarter of the expected close — used for quarterly pipeline reviews."
-    - name: "expected_close_date"
-      expr: expected_close_date
-      comment: "Expected close date — used for pipeline timing and revenue forecasting."
-    - name: "lead_source"
-      expr: lead_source
-      comment: "Source of the opportunity lead — used to evaluate lead generation channel effectiveness."
-    - name: "jbp_alignment_flag"
-      expr: jbp_alignment_flag
-      comment: "Indicates whether the opportunity is aligned to a Joint Business Plan — used for strategic account tracking."
-  measures:
-    - name: "total_pipeline_value"
-      expr: SUM(CAST(estimated_value AS DOUBLE))
-      comment: "Total estimated value of all pipeline opportunities — primary revenue forecast input for sales leadership."
-    - name: "total_estimated_annual_revenue"
-      expr: SUM(CAST(estimated_annual_revenue AS DOUBLE))
-      comment: "Total estimated annual revenue from pipeline opportunities — used for annual revenue planning."
-    - name: "total_estimated_acv_gain"
-      expr: SUM(CAST(estimated_acv_gain AS DOUBLE))
-      comment: "Total estimated ACV (All Commodity Volume) gain from opportunities — used for distribution expansion planning."
-    - name: "opportunity_count"
-      expr: COUNT(1)
-      comment: "Total number of opportunities in the pipeline — baseline pipeline volume metric."
-    - name: "avg_probability_pct"
-      expr: AVG(CAST(probability_pct AS DOUBLE))
-      comment: "Average win probability across pipeline opportunities — used to weight pipeline value for forecasting."
-    - name: "weighted_pipeline_value"
-      expr: SUM(CAST(estimated_value AS DOUBLE) * CAST(probability_pct AS DOUBLE) / 100.0)
-      comment: "Probability-weighted pipeline value — most accurate revenue forecast metric for executive planning."
-    - name: "avg_opportunity_value"
-      expr: AVG(CAST(estimated_value AS DOUBLE))
-      comment: "Average opportunity value — used to track deal size trends and commercial mix."
-    - name: "won_opportunity_count"
-      expr: COUNT(CASE WHEN opportunity_status = 'Closed Won' THEN 1 END)
-      comment: "Number of won opportunities — used to measure sales conversion success."
-    - name: "lost_opportunity_count"
-      expr: COUNT(CASE WHEN opportunity_status = 'Closed Lost' THEN 1 END)
-      comment: "Number of lost opportunities — used to analyze competitive loss patterns."
-    - name: "win_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN opportunity_status = 'Closed Won' THEN 1 END) / NULLIF(COUNT(CASE WHEN opportunity_status IN ('Closed Won', 'Closed Lost') THEN 1 END), 0), 2)
-      comment: "Win rate as a percentage of closed opportunities — primary sales effectiveness KPI."
-    - name: "won_revenue"
-      expr: SUM(CASE WHEN opportunity_status = 'Closed Won' THEN CAST(estimated_value AS DOUBLE) ELSE 0 END)
-      comment: "Total revenue value of won opportunities — used to measure actual pipeline conversion to revenue."
+      expr: SUM(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Total credit limit extended across all accounts"
+    - name: "avg_credit_limit"
+      expr: AVG(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Average credit limit per account"
+    - name: "total_tdp_count"
+      expr: SUM(CAST(tdp_count AS DOUBLE))
+      comment: "Total trade distribution points across all accounts"
+    - name: "avg_otif_sla_target"
+      expr: AVG(CAST(otif_sla_target_percent AS DOUBLE))
+      comment: "Average on-time-in-full SLA target percentage across accounts"
+    - name: "vmi_enabled_account_count"
+      expr: COUNT(DISTINCT CASE WHEN vmi_enabled_flag = TRUE THEN trade_account_id END)
+      comment: "Number of accounts with VMI enabled"
+    - name: "edi_capable_account_count"
+      expr: COUNT(DISTINCT CASE WHEN edi_capable_flag = TRUE THEN trade_account_id END)
+      comment: "Number of accounts with EDI capability"
+    - name: "dsd_enabled_account_count"
+      expr: COUNT(DISTINCT CASE WHEN dsd_delivery_flag = TRUE THEN trade_account_id END)
+      comment: "Number of accounts with direct store delivery enabled"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_order`
@@ -493,185 +79,236 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core sales order performance metrics covering revenue, margin, volume, and fulfillment efficiency. Primary KPI surface for sales leadership and supply chain steering."
+  comment: "Sales order performance metrics including revenue, margin, fulfillment, and OTIF compliance"
   source: "`vibe_consumer_goods_v1`.`sales`.`order`"
   dimensions:
     - name: "order_status"
       expr: order_status
-      comment: "Current status of the order (e.g. Open, Confirmed, Shipped, Cancelled) — used to filter pipeline vs. fulfilled revenue."
+      comment: "Current status of the sales order"
     - name: "order_type"
       expr: order_type
-      comment: "Classification of the order (e.g. Standard, DSD, VMI, Return) — drives channel-mix analysis."
+      comment: "Type classification of the order"
     - name: "channel_type"
       expr: channel_type
-      comment: "Sales channel through which the order was placed — key dimension for channel P&L."
-    - name: "order_date"
-      expr: order_date
-      comment: "Calendar date the order was placed — used for time-series trending and period comparisons."
-    - name: "requested_delivery_date"
-      expr: requested_delivery_date
-      comment: "Customer-requested delivery date — used to measure on-time performance."
-    - name: "actual_delivery_date"
-      expr: actual_delivery_date
-      comment: "Actual date the order was delivered — used to compute delivery lead time and OTIF."
-    - name: "otif_status"
-      expr: otif_status
-      comment: "On-Time In-Full status flag for the order — primary SLA compliance dimension."
+      comment: "Sales channel through which the order was placed"
     - name: "distribution_channel"
       expr: distribution_channel
-      comment: "Distribution channel code (e.g. Retail, Wholesale, DTC) — used for channel revenue segmentation."
+      comment: "Distribution channel for the order"
     - name: "sales_organization"
       expr: sales_organization
-      comment: "SAP sales organization responsible for the order — used for org-level P&L attribution."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency — required for multi-currency revenue reporting."
-    - name: "priority"
-      expr: priority
-      comment: "Order priority level — used to analyze fulfillment performance by priority tier."
-    - name: "order_source"
-      expr: source
-      comment: "System or channel that originated the order (e.g. EDI, Web, Manual) — used for order intake analysis."
+      comment: "Sales organization responsible for the order"
+    - name: "division"
+      expr: division
+      comment: "Business division for the order"
+    - name: "otif_status"
+      expr: otif_status
+      comment: "On-time-in-full delivery status"
+    - name: "order_year"
+      expr: YEAR(order_date)
+      comment: "Year the order was placed"
+    - name: "order_month"
+      expr: DATE_TRUNC('MONTH', order_date)
+      comment: "Month the order was placed"
+    - name: "order_quarter"
+      expr: CONCAT('Q', QUARTER(order_date), '-', YEAR(order_date))
+      comment: "Fiscal quarter of the order"
+    - name: "incoterm"
+      expr: incoterm
+      comment: "International commercial terms for the order"
+    - name: "payment_terms"
+      expr: payment_terms
+      comment: "Payment terms for the order"
   measures:
-    - name: "total_order_gross_revenue"
+    - name: "total_orders"
+      expr: COUNT(DISTINCT order_id)
+      comment: "Total number of unique sales orders"
+    - name: "total_order_value"
       expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total gross revenue across all orders. Primary top-line revenue KPI for sales leadership."
-    - name: "total_order_net_revenue"
-      expr: SUM(CAST(subtotal_amount AS DOUBLE))
-      comment: "Net revenue (pre-tax, pre-freight subtotal) — used for net sales reporting and margin analysis."
-    - name: "total_gross_margin"
-      expr: SUM(CAST(gross_margin_amount AS DOUBLE))
-      comment: "Total gross margin dollars across orders. Directly informs profitability steering decisions."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount value granted across orders — used to monitor promotional spend and pricing discipline."
-    - name: "total_freight_amount"
-      expr: SUM(CAST(freight_amount AS DOUBLE))
-      comment: "Total freight charges on orders — used to track logistics cost burden on revenue."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected across orders — required for tax liability reporting."
-    - name: "total_order_quantity"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total units ordered — volume KPI used for demand and capacity planning."
-    - name: "order_count"
-      expr: COUNT(1)
-      comment: "Total number of orders placed — baseline volume metric for order intake trending."
+      comment: "Total revenue from all orders"
     - name: "avg_order_value"
       expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average order value — key commercial health indicator; declining AOV signals pricing or mix erosion."
-    - name: "avg_gross_margin_per_order"
+      comment: "Average order value per order"
+    - name: "total_gross_margin"
+      expr: SUM(CAST(gross_margin_amount AS DOUBLE))
+      comment: "Total gross margin across all orders"
+    - name: "avg_gross_margin"
       expr: AVG(CAST(gross_margin_amount AS DOUBLE))
-      comment: "Average gross margin per order — used to assess profitability mix across channels and accounts."
+      comment: "Average gross margin per order"
     - name: "gross_margin_rate"
       expr: ROUND(100.0 * SUM(CAST(gross_margin_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
-      comment: "Gross margin as a percentage of total revenue — primary profitability ratio for executive dashboards."
-    - name: "discount_rate"
-      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
-      comment: "Discount as a percentage of gross revenue — monitors pricing discipline and promotional leakage."
-    - name: "freight_as_pct_of_revenue"
-      expr: ROUND(100.0 * SUM(CAST(freight_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
-      comment: "Freight cost as a percentage of revenue — used to track logistics efficiency and cost-to-serve."
-    - name: "otif_order_count"
-      expr: COUNT(CASE WHEN otif_status = 'OTIF' THEN 1 END)
-      comment: "Count of orders delivered On-Time In-Full — numerator for OTIF rate calculation."
-    - name: "otif_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN otif_status = 'OTIF' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of orders delivered On-Time In-Full — critical SLA KPI for customer satisfaction and penalty avoidance."
-    - name: "cancelled_order_count"
-      expr: COUNT(CASE WHEN order_status = 'Cancelled' THEN 1 END)
-      comment: "Number of cancelled orders — used to monitor order fallout and revenue leakage risk."
-    - name: "cancellation_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN order_status = 'Cancelled' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of orders cancelled — signals demand volatility, supply issues, or customer dissatisfaction."
-    - name: "avg_delivery_lead_time_days"
-      expr: AVG(CAST(DATEDIFF(actual_delivery_date, order_date) AS DOUBLE))
-      comment: "Average days from order placement to delivery — operational efficiency KPI for supply chain and customer service."
+      comment: "Gross margin as a percentage of total order value"
+    - name: "total_cogs"
+      expr: SUM(CAST(cogs_amount AS DOUBLE))
+      comment: "Total cost of goods sold across all orders"
+    - name: "total_freight"
+      expr: SUM(CAST(freight_amount AS DOUBLE))
+      comment: "Total freight charges across all orders"
+    - name: "total_discount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total discount amount across all orders"
+    - name: "total_tax"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount across all orders"
+    - name: "otif_compliant_orders"
+      expr: COUNT(DISTINCT CASE WHEN otif_status = 'Compliant' THEN order_id END)
+      comment: "Number of orders meeting on-time-in-full criteria"
+    - name: "cancelled_orders"
+      expr: COUNT(DISTINCT CASE WHEN order_status = 'Cancelled' THEN order_id END)
+      comment: "Number of cancelled orders"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_return_order`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sales return and reverse logistics metrics. Used by supply chain, quality, and commercial teams to monitor return volume, value, and root cause — directly impacts net revenue and customer satisfaction."
-  source: "`vibe_consumer_goods_v1`.`sales`.`order`"
+  comment: "Invoice and accounts receivable metrics including billing, collections, DSO, and payment performance"
+  source: "`vibe_consumer_goods_v1`.`sales`.`invoice`"
   dimensions:
-    - name: "distribution_channel"
-      expr: distribution_channel
-      comment: "Distribution channel of the original sale — used for channel-level return analysis."
+    - name: "invoice_status"
+      expr: invoice_status
+      comment: "Current status of the invoice"
+    - name: "payment_status"
+      expr: payment_status
+      comment: "Payment status of the invoice"
+    - name: "billing_type"
+      expr: billing_type
+      comment: "Type of billing for the invoice"
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Method of payment for the invoice"
+    - name: "distribution_channel_code"
+      expr: distribution_channel_code
+      comment: "Distribution channel code for the invoice"
+    - name: "sales_organization_code"
+      expr: sales_organization_code
+      comment: "Sales organization code for the invoice"
+    - name: "division_code"
+      expr: division_code
+      comment: "Division code for the invoice"
+    - name: "dispute_flag"
+      expr: dispute_flag
+      comment: "Whether the invoice is under dispute"
+    - name: "invoice_year"
+      expr: YEAR(invoice_date)
+      comment: "Year the invoice was issued"
+    - name: "invoice_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Month the invoice was issued"
+    - name: "due_year_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month the invoice is due"
   measures:
-    - name: "return_order_count"
-      expr: COUNT(1)
-      comment: "Total number of return orders — baseline return volume metric."
+    - name: "total_invoices"
+      expr: COUNT(DISTINCT invoice_id)
+      comment: "Total number of unique invoices"
+    - name: "total_gross_amount"
+      expr: SUM(CAST(gross_amount AS DOUBLE))
+      comment: "Total gross invoice amount before discounts and adjustments"
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Total net invoice amount after discounts"
+    - name: "total_outstanding_amount"
+      expr: SUM(CAST(outstanding_amount AS DOUBLE))
+      comment: "Total outstanding receivables amount"
+    - name: "total_paid_amount"
+      expr: SUM(CAST(paid_amount AS DOUBLE))
+      comment: "Total amount paid across all invoices"
+    - name: "collection_rate"
+      expr: ROUND(100.0 * SUM(CAST(paid_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_amount AS DOUBLE)), 0), 2)
+      comment: "Percentage of invoiced amount that has been collected"
+    - name: "total_trade_discount"
+      expr: SUM(CAST(trade_discount_amount AS DOUBLE))
+      comment: "Total trade discount amount across all invoices"
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax amount across all invoices"
+    - name: "total_freight_charge"
+      expr: SUM(CAST(freight_charge_amount AS DOUBLE))
+      comment: "Total freight charges across all invoices"
+    - name: "total_cogs"
+      expr: SUM(CAST(cost_of_goods_sold_amount AS DOUBLE))
+      comment: "Total cost of goods sold across all invoices"
+    - name: "total_gross_margin"
+      expr: SUM(CAST(gross_margin_amount AS DOUBLE))
+      comment: "Total gross margin across all invoices"
+    - name: "avg_dso"
+      expr: AVG(CAST(days_sales_outstanding AS DOUBLE))
+      comment: "Average days sales outstanding across invoices"
+    - name: "disputed_invoices"
+      expr: COUNT(DISTINCT CASE WHEN dispute_flag = TRUE THEN invoice_id END)
+      comment: "Number of invoices currently under dispute"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_planogram_compliance`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "In-store planogram and shelf execution compliance metrics. Used by category management and field sales to measure retail execution quality and drive corrective action."
-  source: "`vibe_consumer_goods_v1`.`sales`.`planogram_compliance`"
+  comment: "Sales pipeline and opportunity metrics including win rates, forecast accuracy, and revenue potential"
+  source: "`vibe_consumer_goods_v1`.`sales`.`opportunity`"
   dimensions:
-    - name: "audit_date"
-      expr: audit_date
-      comment: "Date of the planogram compliance audit — primary time dimension for execution trending."
-    - name: "audit_type"
-      expr: audit_type
-      comment: "Type of audit conducted (e.g. Routine, Spot Check, Post-Reset) — used to segment compliance by audit type."
-    - name: "planogram_compliance_status"
-      expr: planogram_compliance_status
-      comment: "Overall compliance status of the audit — used to filter compliant vs. non-compliant stores."
-    - name: "corrective_action_required_flag"
-      expr: corrective_action_required_flag
-      comment: "Indicates whether corrective action is required — used to prioritize field follow-up."
-    - name: "osa_compliance_flag"
-      expr: osa_compliance_flag
-      comment: "On-shelf availability compliance flag — used to measure OSA performance at store level."
-    - name: "shelf_position_compliant_flag"
-      expr: shelf_position_compliant_flag
-      comment: "Indicates whether shelf position was compliant — used for planogram adherence tracking."
-    - name: "product_category_code"
-      expr: product_category_code
-      comment: "Product category audited — used for category-level compliance analysis."
-    - name: "pog_version_code"
-      expr: pog_version_code
-      comment: "Planogram version being audited — used to track compliance by POG version."
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "Status of corrective action resolution — used to track issue closure rates."
+    - name: "stage"
+      expr: stage
+      comment: "Current stage of the sales opportunity"
+    - name: "opportunity_type"
+      expr: opportunity_type
+      comment: "Type classification of the opportunity"
+    - name: "channel_type"
+      expr: channel_type
+      comment: "Sales channel for the opportunity"
+    - name: "forecast_category"
+      expr: forecast_category
+      comment: "Forecast category classification"
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the opportunity"
+    - name: "fiscal_quarter"
+      expr: fiscal_quarter
+      comment: "Fiscal quarter of the opportunity"
+    - name: "lead_source"
+      expr: lead_source
+      comment: "Source of the sales lead"
+    - name: "product_category_focus"
+      expr: product_category_focus
+      comment: "Primary product category focus of the opportunity"
+    - name: "jbp_alignment_flag"
+      expr: jbp_alignment_flag
+      comment: "Whether the opportunity aligns with joint business plan"
+    - name: "win_reason"
+      expr: win_reason
+      comment: "Reason for winning the opportunity"
+    - name: "loss_reason"
+      expr: loss_reason
+      comment: "Reason for losing the opportunity"
   measures:
-    - name: "total_audits"
-      expr: COUNT(1)
-      comment: "Total number of planogram compliance audits conducted — baseline execution coverage metric."
-    - name: "avg_compliance_pct"
-      expr: AVG(CAST(compliance_pct AS DOUBLE))
-      comment: "Average planogram compliance percentage across audits — primary in-store execution KPI."
-    - name: "avg_display_compliance_score"
-      expr: AVG(CAST(display_compliance_score AS DOUBLE))
-      comment: "Average display compliance score — used to measure secondary display execution quality."
-    - name: "corrective_action_required_count"
-      expr: COUNT(CASE WHEN corrective_action_required_flag = TRUE THEN 1 END)
-      comment: "Number of audits requiring corrective action — used to quantify execution gap volume."
-    - name: "corrective_action_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN corrective_action_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of audits requiring corrective action — measures overall execution failure rate."
-    - name: "osa_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN osa_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "On-shelf availability compliance rate — critical KPI for lost sales prevention."
-    - name: "shelf_position_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN shelf_position_compliant_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of audits where shelf position was compliant — measures planogram adherence."
-    - name: "unauthorized_substitution_count"
-      expr: COUNT(CASE WHEN unauthorized_substitution_flag = TRUE THEN 1 END)
-      comment: "Number of audits with unauthorized product substitutions — used to protect brand shelf space."
-    - name: "avg_previous_audit_score"
-      expr: AVG(CAST(previous_audit_score AS DOUBLE))
-      comment: "Average prior audit score — used as baseline for measuring compliance improvement trends."
-    - name: "compliance_improvement"
-      expr: ROUND(AVG(CAST(compliance_pct AS DOUBLE)) - AVG(CAST(previous_audit_score AS DOUBLE)), 2)
-      comment: "Average improvement in compliance score vs. prior audit — measures execution improvement trajectory."
+    - name: "total_opportunities"
+      expr: COUNT(DISTINCT opportunity_id)
+      comment: "Total number of unique sales opportunities"
+    - name: "total_estimated_revenue"
+      expr: SUM(CAST(estimated_annual_revenue AS DOUBLE))
+      comment: "Total estimated annual revenue from all opportunities"
+    - name: "weighted_pipeline_value"
+      expr: SUM(CAST(estimated_annual_revenue AS DOUBLE) * CAST(probability_percentage AS DOUBLE) / 100.0)
+      comment: "Probability-weighted pipeline value"
+    - name: "total_estimated_acv_gain"
+      expr: SUM(CAST(estimated_acv_gain AS DOUBLE))
+      comment: "Total estimated annual customer value gain from opportunities"
+    - name: "avg_opportunity_value"
+      expr: AVG(CAST(estimated_annual_revenue AS DOUBLE))
+      comment: "Average estimated revenue per opportunity"
+    - name: "avg_probability"
+      expr: AVG(CAST(probability_percentage AS DOUBLE))
+      comment: "Average win probability across all opportunities"
+    - name: "won_opportunities"
+      expr: COUNT(DISTINCT CASE WHEN stage = 'Closed Won' THEN opportunity_id END)
+      comment: "Number of opportunities closed as won"
+    - name: "lost_opportunities"
+      expr: COUNT(DISTINCT CASE WHEN stage = 'Closed Lost' THEN opportunity_id END)
+      comment: "Number of opportunities closed as lost"
+    - name: "total_estimated_tdp_gain"
+      expr: SUM(CAST(estimated_tdp_gain AS DOUBLE))
+      comment: "Total estimated trade distribution point gain from opportunities"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_pos_transaction`
@@ -679,88 +316,153 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Point-of-sale retail execution metrics covering sell-out velocity, promotional lift, and out-of-stock performance. Essential for category management and trade marketing decisions."
+  comment: "Point-of-sale transaction metrics including retail sales, promotional lift, and out-of-stock tracking"
   source: "`vibe_consumer_goods_v1`.`sales`.`pos_transaction`"
   dimensions:
-    - name: "transaction_date"
-      expr: transaction_date
-      comment: "Date of the POS transaction — primary time dimension for sell-out trending."
     - name: "channel_type"
       expr: channel_type
-      comment: "Retail channel type (e.g. Grocery, Drug, Mass) — used for channel sell-out analysis."
+      comment: "Retail channel type for the transaction"
     - name: "store_format"
       expr: store_format
-      comment: "Physical store format (e.g. Hypermarket, Convenience) — used for format-level performance analysis."
+      comment: "Format of the retail store"
+    - name: "market_name"
+      expr: market_name
+      comment: "Market name for the transaction"
     - name: "store_country_code"
       expr: store_country_code
-      comment: "Country where the store is located — used for geographic sell-out reporting."
+      comment: "Country code of the store"
     - name: "store_state_province"
       expr: store_state_province
-      comment: "State or province of the store — used for regional sell-out analysis."
+      comment: "State or province of the store"
     - name: "promotional_flag"
       expr: promotional_flag
-      comment: "Indicates whether the transaction was on promotion — used to measure promotional lift."
+      comment: "Whether the transaction was promotional"
     - name: "promotion_type"
       expr: promotion_type
-      comment: "Type of promotion applied (e.g. TPR, Display, Feature) — used for promotional effectiveness analysis."
-    - name: "out_of_stock_flag"
-      expr: out_of_stock_flag
-      comment: "Indicates an out-of-stock event at time of transaction — used to quantify lost sales."
+      comment: "Type of promotion applied"
+    - name: "acv_flag"
+      expr: acv_flag
+      comment: "Whether the transaction counts toward ACV"
     - name: "baseline_sales_flag"
       expr: baseline_sales_flag
-      comment: "Indicates whether the sale is baseline (non-promoted) — used to separate base vs. incremental volume."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency — required for multi-currency retail reporting."
+      comment: "Whether the transaction is baseline sales"
+    - name: "out_of_stock_flag"
+      expr: out_of_stock_flag
+      comment: "Whether an out-of-stock condition was recorded"
+    - name: "transaction_year"
+      expr: YEAR(transaction_date)
+      comment: "Year of the transaction"
+    - name: "transaction_month"
+      expr: DATE_TRUNC('MONTH', transaction_date)
+      comment: "Month of the transaction"
     - name: "week_ending_date"
       expr: week_ending_date
-      comment: "Week-ending date for the transaction — standard CPG weekly reporting period."
-    - name: "data_source"
-      expr: data_source
-      comment: "Source of the POS data (e.g. Retailer Direct, Syndicated) — used to assess data coverage and quality."
+      comment: "Week ending date for the transaction"
   measures:
-    - name: "total_sales_amount"
-      expr: SUM(CAST(sales_amount AS DOUBLE))
-      comment: "Total retail sales value (sell-out revenue) — primary consumer demand KPI for category management."
+    - name: "total_transactions"
+      expr: COUNT(DISTINCT pos_transaction_id)
+      comment: "Total number of unique POS transactions"
     - name: "total_units_sold"
       expr: SUM(CAST(units_sold AS DOUBLE))
-      comment: "Total units sold at retail — volume KPI for market share and velocity analysis."
-    - name: "total_extended_retail_value"
+      comment: "Total units sold across all transactions"
+    - name: "total_retail_value"
       expr: SUM(CAST(extended_retail_value AS DOUBLE))
-      comment: "Total extended retail value (units × retail price) — used for market share and ACV-weighted distribution."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total promotional discount value at retail — used to measure trade investment efficiency."
-    - name: "transaction_count"
-      expr: COUNT(1)
-      comment: "Total number of POS transactions — baseline volume metric for retail coverage."
-    - name: "promoted_transaction_count"
-      expr: COUNT(CASE WHEN promotional_flag = TRUE THEN 1 END)
-      comment: "Number of transactions occurring on promotion — used to measure promotional reach."
-    - name: "oos_transaction_count"
-      expr: COUNT(CASE WHEN out_of_stock_flag = TRUE THEN 1 END)
-      comment: "Number of out-of-stock events recorded — used to quantify lost sales and OSA performance."
-    - name: "oos_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN out_of_stock_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Out-of-stock rate as a percentage of total transactions — critical on-shelf availability KPI."
-    - name: "promotional_sales_amount"
-      expr: SUM(CASE WHEN promotional_flag = TRUE THEN CAST(sales_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total sales value generated on promotion — used to calculate promotional lift and ROI."
-    - name: "baseline_sales_amount"
-      expr: SUM(CASE WHEN baseline_sales_flag = TRUE THEN CAST(sales_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total baseline (non-promoted) sales value — used to isolate incremental promotional volume."
+      comment: "Total retail sales value"
     - name: "avg_retail_selling_price"
       expr: AVG(CAST(retail_selling_price AS DOUBLE))
-      comment: "Average retail selling price per transaction — used to monitor price realization and competitive positioning."
+      comment: "Average retail selling price per transaction"
+    - name: "total_discount_amount"
+      expr: SUM(CAST(discount_amount AS DOUBLE))
+      comment: "Total discount amount across all transactions"
+    - name: "promotional_transactions"
+      expr: COUNT(DISTINCT CASE WHEN promotional_flag = TRUE THEN pos_transaction_id END)
+      comment: "Number of promotional transactions"
+    - name: "baseline_transactions"
+      expr: COUNT(DISTINCT CASE WHEN baseline_sales_flag = TRUE THEN pos_transaction_id END)
+      comment: "Number of baseline sales transactions"
+    - name: "oos_incidents"
+      expr: COUNT(DISTINCT CASE WHEN out_of_stock_flag = TRUE THEN pos_transaction_id END)
+      comment: "Number of out-of-stock incidents recorded"
     - name: "avg_units_per_transaction"
       expr: AVG(CAST(units_sold AS DOUBLE))
-      comment: "Average units sold per transaction — basket size indicator for category performance."
-    - name: "promotional_sales_mix"
-      expr: ROUND(100.0 * SUM(CASE WHEN promotional_flag = TRUE THEN CAST(sales_amount AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(sales_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of total sales generated on promotion — used to assess promotional dependency and pricing health."
+      comment: "Average units sold per transaction"
     - name: "avg_data_quality_score"
       expr: AVG(CAST(data_quality_score AS DOUBLE))
-      comment: "Average POS data quality score — used to assess reliability of sell-out data for decision-making."
+      comment: "Average data quality score across transactions"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_credit_profile`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer credit and risk metrics including credit utilization, exposure, and payment performance"
+  source: "`vibe_consumer_goods_v1`.`sales`.`account_credit_profile`"
+  dimensions:
+    - name: "profile_status"
+      expr: profile_status
+      comment: "Current status of the credit profile"
+    - name: "credit_hold_status"
+      expr: credit_hold_status
+      comment: "Credit hold status for the account"
+    - name: "internal_credit_rating"
+      expr: internal_credit_rating
+      comment: "Internal credit rating classification"
+    - name: "external_credit_rating"
+      expr: external_credit_rating
+      comment: "External credit rating from credit bureau"
+    - name: "risk_category"
+      expr: risk_category
+      comment: "Risk category classification"
+    - name: "payment_terms_code"
+      expr: payment_terms_code
+      comment: "Payment terms code for the account"
+    - name: "dunning_level"
+      expr: dunning_level
+      comment: "Current dunning level for collections"
+    - name: "bankruptcy_flag"
+      expr: bankruptcy_flag
+      comment: "Whether the account has filed for bankruptcy"
+    - name: "credit_insurance_coverage_flag"
+      expr: credit_insurance_coverage_flag
+      comment: "Whether credit insurance coverage is in place"
+    - name: "credit_limit_override_flag"
+      expr: credit_limit_override_flag
+      comment: "Whether credit limit has been overridden"
+  measures:
+    - name: "total_credit_profiles"
+      expr: COUNT(DISTINCT account_credit_profile_id)
+      comment: "Total number of unique credit profiles"
+    - name: "total_credit_limit"
+      expr: SUM(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Total credit limit extended across all accounts"
+    - name: "total_current_exposure"
+      expr: SUM(CAST(current_exposure_amount AS DOUBLE))
+      comment: "Total current credit exposure across all accounts"
+    - name: "total_available_credit"
+      expr: SUM(CAST(available_credit_amount AS DOUBLE))
+      comment: "Total available credit across all accounts"
+    - name: "credit_utilization_rate"
+      expr: ROUND(100.0 * SUM(CAST(current_exposure_amount AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit_amount AS DOUBLE)), 0), 2)
+      comment: "Credit utilization as a percentage of total credit limit"
+    - name: "avg_credit_limit"
+      expr: AVG(CAST(credit_limit_amount AS DOUBLE))
+      comment: "Average credit limit per account"
+    - name: "avg_current_exposure"
+      expr: AVG(CAST(current_exposure_amount AS DOUBLE))
+      comment: "Average current exposure per account"
+    - name: "avg_dso_actual"
+      expr: AVG(CAST(dso_actual_days AS DOUBLE))
+      comment: "Average actual days sales outstanding"
+    - name: "total_credit_insurance_coverage"
+      expr: SUM(CAST(credit_insurance_coverage_amount AS DOUBLE))
+      comment: "Total credit insurance coverage amount"
+    - name: "accounts_on_credit_hold"
+      expr: COUNT(DISTINCT CASE WHEN credit_hold_status = 'On Hold' THEN account_credit_profile_id END)
+      comment: "Number of accounts currently on credit hold"
+    - name: "bankruptcy_accounts"
+      expr: COUNT(DISTINCT CASE WHEN bankruptcy_flag = TRUE THEN account_credit_profile_id END)
+      comment: "Number of accounts with bankruptcy filing"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_quota`
@@ -768,70 +470,89 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sales quota and target management metrics. Used by sales leadership to set, track, and evaluate rep and team performance against targets."
+  comment: "Sales quota and target metrics including quota attainment, stretch targets, and commission tracking"
   source: "`vibe_consumer_goods_v1`.`sales`.`quota`"
   dimensions:
-    - name: "quota_type"
-      expr: quota_type
-      comment: "Type of quota (e.g. Revenue, Volume, TDP) — used to segment quota performance by KPI type."
     - name: "quota_status"
       expr: quota_status
-      comment: "Current status of the quota (e.g. Active, Draft, Approved) — used to filter live vs. draft targets."
+      comment: "Current status of the quota"
+    - name: "quota_type"
+      expr: quota_type
+      comment: "Type classification of the quota"
     - name: "period_type"
       expr: period_type
-      comment: "Period type for the quota (e.g. Monthly, Quarterly, Annual) — used for period-level performance analysis."
+      comment: "Period type for the quota (monthly, quarterly, annual)"
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year of the quota — used for annual target vs. actual comparisons."
+      comment: "Fiscal year for the quota"
     - name: "fiscal_quarter"
       expr: fiscal_quarter
-      comment: "Fiscal quarter of the quota — used for quarterly business review performance tracking."
+      comment: "Fiscal quarter for the quota"
+    - name: "fiscal_month"
+      expr: fiscal_month
+      comment: "Fiscal month for the quota"
     - name: "channel_type"
       expr: channel_type
-      comment: "Sales channel the quota applies to — used for channel-level target analysis."
-    - name: "period_start_date"
-      expr: period_start_date
-      comment: "Start date of the quota period — used for time-series quota trending."
-    - name: "period_end_date"
-      expr: period_end_date
-      comment: "End date of the quota period — used to identify active quota windows."
+      comment: "Sales channel for the quota"
+    - name: "distribution_channel"
+      expr: distribution_channel
+      comment: "Distribution channel for the quota"
+    - name: "sales_organization"
+      expr: sales_organization
+      comment: "Sales organization for the quota"
+    - name: "division"
+      expr: division
+      comment: "Business division for the quota"
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the quota — used to filter approved vs. pending targets."
-    - name: "customer_segment"
-      expr: customer_segment
-      comment: "Customer segment the quota targets — used for segment-level quota analysis."
+      comment: "Approval status of the quota"
   measures:
-    - name: "total_quota_amount"
-      expr: SUM(CAST(quota_amount AS DOUBLE))
-      comment: "Total quota target value — primary target-setting KPI for sales planning and compensation."
-    - name: "total_stretch_target"
-      expr: SUM(CAST(stretch_target AS DOUBLE))
-      comment: "Total stretch target value — used to assess upside potential and incentive plan design."
-    - name: "total_minimum_threshold"
-      expr: SUM(CAST(minimum_threshold AS DOUBLE))
-      comment: "Total minimum performance threshold — used to define floor for commission eligibility."
-    - name: "quota_record_count"
-      expr: COUNT(1)
-      comment: "Total number of quota records — used to track quota coverage across reps, teams, and periods."
-    - name: "avg_quota_amount"
-      expr: AVG(CAST(quota_amount AS DOUBLE))
-      comment: "Average quota amount per record — used to benchmark quota levels across reps and territories."
-    - name: "avg_commission_rate"
-      expr: AVG(CAST(commission_rate AS DOUBLE))
-      comment: "Average commission rate across quota records — used to monitor compensation plan cost and design."
-    - name: "avg_accelerator_rate"
-      expr: AVG(CAST(accelerator_rate AS DOUBLE))
-      comment: "Average accelerator rate for over-quota performance — used to assess incentive plan aggressiveness."
+    - name: "total_quotas"
+      expr: COUNT(DISTINCT quota_id)
+      comment: "Total number of unique quotas"
     - name: "total_quota_value"
       expr: SUM(CAST(value AS DOUBLE))
-      comment: "Total quota value (alternate value field) — used for volume-based quota tracking alongside revenue quotas."
-    - name: "approved_quota_count"
-      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END)
-      comment: "Number of approved quota records — used to track quota finalization progress."
-    - name: "quota_approval_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of quota records that have been approved — used to monitor quota-setting process completion."
+      comment: "Total quota value across all quotas"
+    - name: "total_stretch_target"
+      expr: SUM(CAST(stretch_target AS DOUBLE))
+      comment: "Total stretch target value across all quotas"
+    - name: "avg_quota_value"
+      expr: AVG(CAST(value AS DOUBLE))
+      comment: "Average quota value per quota"
+    - name: "avg_stretch_target"
+      expr: AVG(CAST(stretch_target AS DOUBLE))
+      comment: "Average stretch target per quota"
+    - name: "avg_commission_rate"
+      expr: AVG(CAST(commission_rate AS DOUBLE))
+      comment: "Average commission rate across quotas"
+    - name: "avg_accelerator_rate"
+      expr: AVG(CAST(accelerator_rate AS DOUBLE))
+      comment: "Average accelerator rate for over-quota performance"
+    - name: "total_minimum_threshold"
+      expr: SUM(CAST(minimum_threshold AS DOUBLE))
+      comment: "Total minimum threshold value across quotas"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_return_order`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Product return metrics including return rates, reasons, credit processing, and quality disposition"
+  source: "`vibe_consumer_goods_v1`.`sales`.`order`"
+  dimensions:
+    - name: "distribution_channel"
+      expr: distribution_channel
+      comment: "Distribution channel for the return"
+    - name: "sales_organization"
+      expr: sales_organization
+      comment: "Sales organization for the return"
+    - name: "division"
+      expr: division
+      comment: "Business division for the return"
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_deduction`
@@ -839,136 +560,204 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Trade deduction and claims management metrics. Used by finance and commercial teams to monitor deduction volume, validity, and resolution efficiency — directly impacts net revenue realization."
+  comment: "Trade deduction and dispute metrics including claim validation, resolution rates, and root cause analysis"
   source: "`vibe_consumer_goods_v1`.`sales`.`sales_deduction`"
   dimensions:
-    - name: "deduction_type"
-      expr: deduction_type
-      comment: "Type of deduction (e.g. Promotional, Shortage, Pricing) — used to categorize deduction root causes."
     - name: "deduction_status"
       expr: deduction_status
-      comment: "Current status of the deduction (e.g. Open, Resolved, Disputed) — used for AR aging and resolution tracking."
-    - name: "sales_deduction_status"
-      expr: sales_deduction_status
-      comment: "Operational status of the sales deduction record — used for workflow management."
+      comment: "Current status of the deduction"
+    - name: "deduction_type"
+      expr: deduction_type
+      comment: "Type classification of the deduction"
     - name: "valid_claim_flag"
       expr: valid_claim_flag
-      comment: "Indicates whether the deduction claim is valid — used to separate legitimate vs. invalid deductions."
+      comment: "Whether the deduction claim is valid"
     - name: "escalation_flag"
       expr: escalation_flag
-      comment: "Indicates whether the deduction has been escalated — used to prioritize high-risk deductions."
-    - name: "deduction_date"
-      expr: deduction_date
-      comment: "Date the deduction was taken — primary time dimension for deduction trending."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the deduction — required for multi-currency deduction reporting."
+      comment: "Whether the deduction has been escalated"
     - name: "root_cause"
       expr: root_cause
-      comment: "Root cause of the deduction — used to identify systemic issues driving deduction volume."
+      comment: "Root cause of the deduction"
     - name: "distribution_channel"
       expr: distribution_channel
-      comment: "Distribution channel associated with the deduction — used for channel-level deduction analysis."
+      comment: "Distribution channel for the deduction"
+    - name: "sales_organization"
+      expr: sales_organization
+      comment: "Sales organization for the deduction"
+    - name: "division"
+      expr: division
+      comment: "Business division for the deduction"
+    - name: "deduction_year"
+      expr: YEAR(deduction_date)
+      comment: "Year the deduction was recorded"
+    - name: "deduction_month"
+      expr: DATE_TRUNC('MONTH', deduction_date)
+      comment: "Month the deduction was recorded"
   measures:
-    - name: "total_deduction_amount"
-      expr: SUM(CAST(deduction_amount AS DOUBLE))
-      comment: "Total deduction amount taken — primary net revenue impact KPI for commercial finance."
+    - name: "total_deductions"
+      expr: COUNT(DISTINCT sales_deduction_id)
+      comment: "Total number of unique deductions"
     - name: "total_claimed_amount"
       expr: SUM(CAST(claimed_amount AS DOUBLE))
-      comment: "Total amount claimed by customers — used to measure gross deduction exposure."
+      comment: "Total amount claimed in deductions"
     - name: "total_approved_amount"
       expr: SUM(CAST(approved_amount AS DOUBLE))
-      comment: "Total approved deduction amount — used to measure validated trade spend."
+      comment: "Total amount approved for deductions"
     - name: "total_disputed_amount"
       expr: SUM(CAST(disputed_amount AS DOUBLE))
-      comment: "Total disputed deduction amount — used to quantify contested AR exposure."
-    - name: "deduction_count"
-      expr: COUNT(1)
-      comment: "Total number of deduction records — baseline volume metric for deduction management."
-    - name: "valid_deduction_count"
-      expr: COUNT(CASE WHEN valid_claim_flag = TRUE THEN 1 END)
-      comment: "Number of valid deduction claims — used to measure legitimate trade spend."
-    - name: "invalid_deduction_count"
-      expr: COUNT(CASE WHEN valid_claim_flag = FALSE THEN 1 END)
-      comment: "Number of invalid deduction claims — used to quantify revenue leakage from invalid claims."
-    - name: "invalid_deduction_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN valid_claim_flag = FALSE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of deductions that are invalid — key metric for deduction quality and revenue protection."
-    - name: "invalid_deduction_amount"
-      expr: SUM(CASE WHEN valid_claim_flag = FALSE THEN CAST(deduction_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total value of invalid deductions — quantifies recoverable revenue leakage."
-    - name: "approval_rate"
+      comment: "Total amount under dispute"
+    - name: "deduction_approval_rate"
       expr: ROUND(100.0 * SUM(CAST(approved_amount AS DOUBLE)) / NULLIF(SUM(CAST(claimed_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of claimed amount that was approved — used to assess deduction validation rigor."
-    - name: "avg_deduction_amount"
-      expr: AVG(CAST(deduction_amount AS DOUBLE))
-      comment: "Average deduction amount per record — used to benchmark deduction size and identify outliers."
-    - name: "escalated_deduction_count"
-      expr: COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END)
-      comment: "Number of escalated deductions — used to monitor high-risk deduction pipeline."
+      comment: "Percentage of claimed amount that was approved"
+    - name: "avg_claimed_amount"
+      expr: AVG(CAST(claimed_amount AS DOUBLE))
+      comment: "Average claimed amount per deduction"
+    - name: "avg_approved_amount"
+      expr: AVG(CAST(approved_amount AS DOUBLE))
+      comment: "Average approved amount per deduction"
+    - name: "valid_claims"
+      expr: COUNT(DISTINCT CASE WHEN valid_claim_flag = TRUE THEN sales_deduction_id END)
+      comment: "Number of deductions with valid claims"
+    - name: "escalated_deductions"
+      expr: COUNT(DISTINCT CASE WHEN escalation_flag = TRUE THEN sales_deduction_id END)
+      comment: "Number of deductions that have been escalated"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_rebate_agreement`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_retail_store`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sales rebate agreement performance metrics. Used by commercial finance and trade marketing to monitor rebate accruals, settlement efficiency, and program ROI."
-  source: "`vibe_consumer_goods_v1`.`sales`.`sales_rebate_agreement`"
+  comment: "Retail store performance metrics including store count, coverage, format mix, and operational readiness"
+  source: "`vibe_consumer_goods_v1`.`sales`.`retail_store`"
   dimensions:
-    - name: "rebate_type"
-      expr: rebate_type
-      comment: "Type of rebate (e.g. Volume, Growth, Promotional) — used to segment rebate spend by program type."
-    - name: "sales_rebate_agreement_status"
-      expr: sales_rebate_agreement_status
-      comment: "Status of the rebate agreement (e.g. Active, Expired, Pending) — used to filter live agreements."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the agreement — used to track agreement finalization."
-    - name: "settlement_frequency"
-      expr: settlement_frequency
-      comment: "How often rebates are settled (e.g. Monthly, Quarterly, Annual) — used for cash flow planning."
-    - name: "calculation_basis"
-      expr: calculation_basis
-      comment: "Basis for rebate calculation (e.g. Net Sales, Invoice Value) — used for rebate program design analysis."
-    - name: "effective_start_date"
-      expr: effective_start_date
-      comment: "Start date of the rebate agreement — used for agreement lifecycle analysis."
-    - name: "effective_end_date"
-      expr: effective_end_date
-      comment: "End date of the rebate agreement — used to identify expiring agreements."
-    - name: "tier_structure_flag"
-      expr: tier_structure_flag
-      comment: "Indicates whether the rebate has a tiered structure — used to segment tiered vs. flat rebate programs."
-    - name: "auto_renewal_flag"
-      expr: auto_renewal_flag
-      comment: "Indicates whether the agreement auto-renews — used for contract management planning."
+    - name: "store_status"
+      expr: store_status
+      comment: "Current operational status of the store"
+    - name: "store_format"
+      expr: store_format
+      comment: "Format classification of the store"
+    - name: "store_tier"
+      expr: store_tier
+      comment: "Tier classification of the store"
+    - name: "banner_name"
+      expr: banner_name
+      comment: "Banner name of the retail chain"
+    - name: "country_code"
+      expr: country_code
+      comment: "Country code of the store location"
+    - name: "state_province"
+      expr: state_province
+      comment: "State or province of the store location"
+    - name: "city"
+      expr: city
+      comment: "City of the store location"
+    - name: "trading_area"
+      expr: trading_area
+      comment: "Trading area classification"
+    - name: "planogram_zone"
+      expr: planogram_zone
+      comment: "Planogram zone for the store"
+    - name: "pos_system_type"
+      expr: pos_system_type
+      comment: "Point-of-sale system type"
+    - name: "vmi_enabled_flag"
+      expr: vmi_enabled_flag
+      comment: "Whether vendor-managed inventory is enabled"
+    - name: "open_year"
+      expr: YEAR(open_date)
+      comment: "Year the store opened"
   measures:
-    - name: "total_accrued_rebate_amount"
-      expr: SUM(CAST(accrued_rebate_amount AS DOUBLE))
-      comment: "Total accrued rebate liability — primary trade spend liability KPI for commercial finance."
-    - name: "total_settled_rebate_amount"
-      expr: SUM(CAST(settled_rebate_amount AS DOUBLE))
-      comment: "Total rebate amount already settled — used to track cash outflow from rebate programs."
-    - name: "total_maximum_rebate_amount"
-      expr: SUM(CAST(maximum_rebate_amount AS DOUBLE))
-      comment: "Total maximum rebate exposure across all agreements — used for worst-case trade spend planning."
-    - name: "total_minimum_qualification_amount"
-      expr: SUM(CAST(minimum_qualification_amount AS DOUBLE))
-      comment: "Total minimum qualification threshold across agreements — used to assess rebate program accessibility."
-    - name: "agreement_count"
-      expr: COUNT(1)
-      comment: "Total number of rebate agreements — used to track program portfolio size."
-    - name: "active_agreement_count"
-      expr: COUNT(CASE WHEN sales_rebate_agreement_status = 'Active' THEN 1 END)
-      comment: "Number of currently active rebate agreements — used to monitor live trade spend commitments."
-    - name: "avg_rebate_pct"
-      expr: AVG(CAST(rebate_pct AS DOUBLE))
-      comment: "Average rebate percentage across agreements — used to benchmark trade investment rates."
-    - name: "settlement_rate"
-      expr: ROUND(100.0 * SUM(CAST(settled_rebate_amount AS DOUBLE)) / NULLIF(SUM(CAST(accrued_rebate_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of accrued rebates that have been settled — measures rebate settlement efficiency."
-    - name: "unsettled_rebate_amount"
-      expr: SUM(CAST(accrued_rebate_amount AS DOUBLE) - CAST(settled_rebate_amount AS DOUBLE))
-      comment: "Total outstanding unsettled rebate liability — used to monitor open trade spend obligations."
+    - name: "total_stores"
+      expr: COUNT(DISTINCT retail_store_id)
+      comment: "Total number of unique retail stores"
+    - name: "total_acv_weight"
+      expr: SUM(CAST(acv_weight AS DOUBLE))
+      comment: "Total ACV weight across all stores"
+    - name: "total_tdp_weight"
+      expr: SUM(CAST(tdp_weight AS DOUBLE))
+      comment: "Total TDP weight across all stores"
+    - name: "avg_acv_weight"
+      expr: AVG(CAST(acv_weight AS DOUBLE))
+      comment: "Average ACV weight per store"
+    - name: "avg_tdp_weight"
+      expr: AVG(CAST(tdp_weight AS DOUBLE))
+      comment: "Average TDP weight per store"
+    - name: "avg_osa_target"
+      expr: AVG(CAST(osa_target_pct AS DOUBLE))
+      comment: "Average on-shelf availability target percentage"
+    - name: "avg_otif_sla_target"
+      expr: AVG(CAST(otif_sla_target_pct AS DOUBLE))
+      comment: "Average on-time-in-full SLA target percentage"
+    - name: "vmi_enabled_stores"
+      expr: COUNT(DISTINCT CASE WHEN vmi_enabled_flag = TRUE THEN retail_store_id END)
+      comment: "Number of stores with VMI enabled"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_account_segment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Customer segmentation metrics including segment distribution, strategic priority, and channel mix"
+  source: "`vibe_consumer_goods_v1`.`sales`.`account_segment`"
+  dimensions:
+    - name: "segment_code"
+      expr: segment_code
+      comment: "Segment code classification"
+    - name: "segment_name"
+      expr: segment_name
+      comment: "Segment name classification"
+    - name: "customer_tier"
+      expr: customer_tier
+      comment: "Customer tier classification"
+    - name: "acv_tier"
+      expr: acv_tier
+      comment: "Annual customer value tier"
+    - name: "channel_tier"
+      expr: channel_tier
+      comment: "Channel tier classification"
+    - name: "primary_channel_code"
+      expr: primary_channel_code
+      comment: "Primary channel code"
+    - name: "primary_channel_name"
+      expr: primary_channel_name
+      comment: "Primary channel name"
+    - name: "strategic_priority_flag"
+      expr: strategic_priority_flag
+      comment: "Whether the account is a strategic priority"
+    - name: "vmi_eligible_flag"
+      expr: vmi_eligible_flag
+      comment: "Whether the account is eligible for VMI"
+    - name: "dsd_eligible_flag"
+      expr: dsd_eligible_flag
+      comment: "Whether the account is eligible for direct store delivery"
+    - name: "edi_trading_partner_flag"
+      expr: edi_trading_partner_flag
+      comment: "Whether the account is an EDI trading partner"
+    - name: "pricing_strategy"
+      expr: pricing_strategy
+      comment: "Pricing strategy for the segment"
+  measures:
+    - name: "total_account_segments"
+      expr: COUNT(DISTINCT account_segment_id)
+      comment: "Total number of unique account segment assignments"
+    - name: "unique_accounts"
+      expr: COUNT(DISTINCT trade_account_id)
+      comment: "Total number of unique accounts with segment assignments"
+    - name: "avg_otif_sla_target"
+      expr: AVG(CAST(otif_sla_target_pct AS DOUBLE))
+      comment: "Average on-time-in-full SLA target across segments"
+    - name: "strategic_priority_accounts"
+      expr: COUNT(DISTINCT CASE WHEN strategic_priority_flag = TRUE THEN account_segment_id END)
+      comment: "Number of accounts flagged as strategic priority"
+    - name: "vmi_eligible_accounts"
+      expr: COUNT(DISTINCT CASE WHEN vmi_eligible_flag = TRUE THEN account_segment_id END)
+      comment: "Number of accounts eligible for VMI"
+    - name: "dsd_eligible_accounts"
+      expr: COUNT(DISTINCT CASE WHEN dsd_eligible_flag = TRUE THEN account_segment_id END)
+      comment: "Number of accounts eligible for direct store delivery"
+    - name: "edi_trading_partner_accounts"
+      expr: COUNT(DISTINCT CASE WHEN edi_trading_partner_flag = TRUE THEN account_segment_id END)
+      comment: "Number of accounts that are EDI trading partners"
 $$;

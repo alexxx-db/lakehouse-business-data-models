@@ -1,5 +1,5 @@
 -- Schema for Domain: safety | Business: Construction | Version: v2_mvm
--- Generated on: 2026-06-27 01:56:04
+-- Generated on: 2026-07-10 14:35:55
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`safety` COMMENT 'HSE (Health Safety Environment) domain managing incident reports, LTI (Lost Time Injury), TRIR (Total Recordable Incident Rate), near-miss records, SWMS (Safe Work Method Statements), PTW (Permit to Work), TBM (Toolbox Meeting) records, safety audits, corrective actions, PPE compliance, and environmental compliance records. Integrates with Intelex for incident management and OSHA/ISO 45001 regulatory reporting.';
@@ -7,20 +7,21 @@ CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`safety` COMMENT 'HSE (Heal
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident` (
     `incident_id` BIGINT COMMENT 'Unique system-generated identifier for each HSE safety event record. Primary key for the incident master register sourced from Intelex incident management module.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Incident Management process requires linking each incident to the governing contract agreement for liability, insurance, and regulatory reporting.',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Incident investigation requires recording the specific equipment involved for root‑cause analysis and OSHA reporting.',
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Regulatory incident reports must attribute each incident to the owning client account for liability and contract compliance.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Incident cost allocation for insurance and budgeting; safety team records cost_center to charge incident expenses to the appropriate financial ledger.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Incident cost reporting process: property damage, workers comp, and remediation costs from incidents must be posted to specific cost codes for job costing, insurance claims, and budget variance analys',
+    `craft_worker_id` BIGINT COMMENT 'Reference to the injured or involved party (employee, subcontractor worker, or visitor) from the workforce master. Supports PARTY_REFERENCE requirement for TRANSACTION_HEADER role.',
+    `crew_assignment_id` BIGINT COMMENT 'Foreign key linking to workforce.crew_assignment. Business justification: Incidents occur during specific crew assignments. Linking incident to the active crew_assignment captures shift, role, and work location context at time of incident — essential for root cause analysis',
     `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: REQUIRED: Incident reports capture the crew responsible for the work area, supporting root‑cause analysis and crew‑level safety metrics.',
-    `hazard_register_id` BIGINT COMMENT 'Foreign key linking to safety.hazard_register. Business justification: An incident may be linked to a known hazard in the site hazard register — either a hazard that was identified but not adequately controlled, or a new hazard that the incident reveals. This FK enables ',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: Incidents occur on projects governed by an HSE Plan. Direct linkage from incident to hse_plan enables regulatory reporting (OSHA, ISO 45001) that requires incidents to be reported in the context of th',
-    `master_id` BIGINT COMMENT 'Foreign key linking to material.material_master. Business justification: Incident investigations record the material that caused the event; linking to material master supports root‑cause analysis and corrective action.',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Incident records must identify the drawing governing the work area where the incident occurred. This link supports post-incident design review, root cause analysis linking to design deficiencies, and ',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Root‑cause analysis links incidents to the specific interface point where failure occurred; required for HSE reporting.',
+    `material_catalog_id` BIGINT COMMENT 'Foreign key linking to procurement.material_catalog. Business justification: Incidents caused by hazardous or defective materials must be linked to the specific material catalog entry for regulatory reporting (SDS compliance), supplier quality feedback, and material-related in',
     `party_id` BIGINT COMMENT 'Foreign key linking to contract.contract_party. Business justification: Incident investigations need to identify the responsible contract party (e.g., subcontractor) for corrective actions and claim settlement.',
     `permit_to_work_id` BIGINT COMMENT 'Reference to the active Permit to Work (PTW) that was in place at the time of the incident. Critical for determining whether the incident occurred under a valid permit and whether permit controls were adequate or breached.',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-level incident rate statistics (TRIR, LTI frequency by phase) are a standard construction HSE KPI reported at phase gate reviews and in client HSE reports. incident has construction_project_id b',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: An incident is often traceable to a specific risk assessment that either failed to identify the hazard or had inadequate controls. Linking incident to risk_assessment enables root cause analysis at th',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-level TRIR and LTI frequency rate reporting is a standard construction HSE KPI. Incidents must be attributed to a project phase (civil, structural, MEP, commissioning) for phase-gate HSE reviews',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Incident logging captures the client contact who reported the event, enabling audit trails and follow‑up communication.',
     `swms_id` BIGINT COMMENT 'Reference to the Safe Work Method Statement (SWMS) applicable to the task being performed at the time of the incident. Used to assess whether the SWMS was adequate, followed, or requires revision as a corrective action.',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Incident investigation requires identifying the responsible vendor for equipment/material causing the incident, mandated by OSHA incident reporting.',
-    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: Incidents occur at specific work fronts. Linking incident to work_front enables incident frequency analysis by work area — critical for identifying high-risk work fronts, informing resource allocation',
     `body_part_affected` STRING COMMENT 'Specific body part injured (e.g., right hand, lower back, left eye, head). Required field for OSHA 300 log and BLS injury classification. Supports ergonomic and PPE gap analysis. [ENUM-REF-CANDIDATE: head|eye|neck|back|shoulder|arm|hand|finger|leg|knee|foot|toe|multiple|other — promote to reference product]',
     `corrective_action_count` STRING COMMENT 'Number of corrective actions raised against this incident. Provides a quick indicator of investigation depth and systemic response. Detailed corrective actions are tracked in the corrective_action product linked to this incident.',
     `created_at` TIMESTAMP COMMENT 'System audit timestamp recording when the incident record was first created in the data platform. Supports data lineage and Silver layer audit trail requirements.',
@@ -53,7 +54,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident` (
     `root_cause_category` STRING COMMENT 'High-level root cause category identified through formal investigation (e.g., inadequate_procedure, equipment_failure, human_error, environmental_condition, inadequate_supervision, training_deficiency). Drives systemic corrective action programs. [ENUM-REF-CANDIDATE: inadequate_procedure|equipment_failure|human_error|environmental_condition|inadequate_supervision|training_deficiency|design_deficiency — promote to reference product]',
     `severity` STRING COMMENT 'Severity level of the incident aligned to the OSHA recordability hierarchy and HSE severity matrix. LTI (Lost Time Injury) and fatality cases trigger mandatory regulatory notifications. Drives DART rate and TRIR calculations. [ENUM-REF-CANDIDATE: fatality|lti|medical_treatment|restricted_work|first_aid|near_miss|property_damage|environmental — 8 candidates stripped; promote to reference product]',
     `shift` STRING COMMENT 'Work shift during which the incident occurred (day, night, swing). Shift-based incident analysis identifies fatigue-related patterns and informs shift rotation and supervision scheduling decisions.. Valid values are `day|night|swing|not_applicable`',
-    `site_area` STRING COMMENT 'Specific area, zone, or work front within the project site where the incident occurred (e.g., Zone A – Excavation, Level 3 Formwork, Laydown Yard). Supports spatial incident density analysis and targeted safety interventions.',
     `treating_physician` STRING COMMENT 'Name of the physician or medical professional who provided treatment to the injured party. Required for OSHA 300 log and workers compensation case management. Classified as confidential due to medical case sensitivity.',
     `treatment_type` STRING COMMENT 'Type of medical treatment provided to the injured party. Distinguishes first aid cases (non-recordable) from medical treatment cases (OSHA recordable). Drives case management workflow and workers compensation claim initiation.. Valid values are `first_aid|medical_treatment|hospitalization|fatality|restricted_work|no_treatment`',
     `updated_at` TIMESTAMP COMMENT 'System audit timestamp recording the most recent modification to the incident record. Used to detect stale investigations and track investigation progress velocity.',
@@ -65,14 +65,12 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident_investigation` (
     `incident_investigation_id` BIGINT COMMENT 'Unique system-generated identifier for the incident investigation record. Primary key for this entity in the Databricks Silver Layer.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project on which the incident under investigation occurred. Used to associate investigation findings with project-level Health Safety and Environment (HSE) performance.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Investigation cost centre allocation: incident investigation costs (personnel time, external consultants, corrective actions) must be allocated to a cost center for project financial reporting and ove',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Investigation cost reporting: external investigator fees, legal costs, and corrective action implementation costs from incident investigations are posted to specific cost codes. Construction insurers ',
     `incident_id` BIGINT COMMENT 'Reference to the parent Health Safety and Environment (HSE) incident record that triggered this investigation. Links the investigation to the originating incident report in Intelex.',
-    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: The investigation_lead field is a plain-text denormalization of the craft worker leading the investigation. A proper FK enables verification of investigator qualifications (ICAM/TapRoot certification)',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Incident investigations examine whether the risk assessment in place was adequate and whether controls were followed. Linking incident_investigation to risk_assessment enables direct traceability from',
-    `site_id` BIGINT COMMENT 'Reference to the construction site or work location where the incident under investigation occurred. Enables site-level Health Safety and Environment (HSE) performance reporting.',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Incident investigations must identify the employer (vendor/subcontractor) of the injured party — a regulatory requirement under OSHA/WHS. This link enables vendor incident rate calculation (TRIR/LTI) ',
-    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: Incident investigations must identify the specific work front where the incident occurred to assess whether work front controls (SWMS, PTW, risk assessment) were adequate. This FK enables investigatio',
+    `ncr_id` BIGINT COMMENT 'Foreign key linking to quality.ncr. Business justification: Incident investigations frequently identify quality non-conformances as contributing factors (defective materials, failed welds, substandard workmanship). Linking investigation to the NCR supports int',
+    `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: incident_investigation.ptw_reference (STRING) is a text reference to the Permit to Work that was in place at the time of the incident. Incident investigations must formally document whether a valid PT',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Incident investigations must reference the project phase for phase-level lessons-learned integration into phase-gate reviews and for regulatory reporting that requires phase context. incident_investig',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Incident investigations must identify the responsible vendor/subcontractor for regulatory reporting, insurance claims, and vendor performance management. Investigation findings directly feed vendor qu',
+    `wbs_element_id` BIGINT COMMENT 'add column wbs_element_id (BIGINT) with FK to project.wbs_element.wbs_element_id - incident investigations should identify the WBS area where the incident occurred',
     `contributing_factors` STRING COMMENT 'Narrative description of secondary factors that contributed to the incident, such as environmental conditions, equipment state, worker fatigue, or inadequate supervision. Supports multi-causal analysis.',
     `corrective_action_due_date` DATE COMMENT 'Target completion date by which all corrective actions arising from the investigation must be implemented and verified. Used for tracking overdue actions and management escalation.',
     `corrective_action_status` STRING COMMENT 'Aggregate status of corrective actions arising from this investigation, indicating whether actions have been initiated, completed, or verified as effective.. Valid values are `not_started|in_progress|completed|overdue|verified`',
@@ -99,7 +97,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident_investigation`
     `lost_time_days` STRING COMMENT 'Number of calendar days lost due to the incident as determined by the investigation. Used in calculating Lost Time Injury (LTI) frequency rates and Total Recordable Incident Rate (TRIR) for OSHA regulatory reporting.',
     `management_review_date` DATE COMMENT 'Date on which senior management formally reviewed and accepted the investigation report and corrective action plan. Required for ISO 45001 management review compliance.',
     `ppe_compliance_flag` BOOLEAN COMMENT 'Indicates whether the injured party was wearing the required Personal Protective Equipment (PPE) at the time of the incident. Non-compliance is a key contributing factor captured in the investigation.',
-    `ptw_reference` STRING COMMENT 'Reference number of the Permit to Work (PTW) that was active or should have been active for the work activity at the time of the incident. Used to assess whether permit controls were adequate or absent.',
     `recurrence_prevention_measures` STRING COMMENT 'Narrative description of specific engineering controls, administrative controls, or procedural changes recommended to prevent recurrence of the incident type. Aligned with the hierarchy of controls.',
     `regulatory_reference_number` STRING COMMENT 'Reference or case number assigned by the regulatory authority (e.g., OSHA case number) upon submission of the incident report. Used for tracking regulatory correspondence and compliance status.',
     `regulatory_submission_date` DATE COMMENT 'Date on which the incident investigation report or notification was formally submitted to the relevant regulatory authority (e.g., OSHA, EPA). Nullable for non-reportable incidents.',
@@ -114,12 +111,13 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`incident_investigation`
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`swms` (
     `swms_id` BIGINT COMMENT 'Unique system-generated identifier for the Safe Work Method Statement (SWMS) record. Primary key for this entity.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: SWMS implementation incurs labor and material costs; assigning a cost_center allows these costs to flow into project financials.',
-    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: SWMS must be linked to the specific crew performing the high-risk work. HSE compliance requires verifying that every active crew has an approved SWMS covering their current work scope before commencin',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: SWMS documents are prepared and maintained under the project HSE Plan framework. The hse_plan.swms_required = TRUE confirms this mandatory relationship. Linking swms to hse_plan enables project-level ',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: SWMS are prepared for specific construction phases (excavation, structural, MEP, commissioning). swms has construction_project_id and wbs_element_id but no phase_id. Phase gate reviews require confirm',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: A Safe Work Method Statement is developed based on the formal risk assessment for the activity. The risk_assessment is the single source of truth for identified hazards and controls; the SWMS operatio',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: SWMS in construction is prepared by the subcontractor/vendor performing high-risk work. Linking SWMS to vendor enables vendor HSE performance tracking and is required for vendor prequalification audit',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: SWMS documents list required plant/equipment; linking ensures equipment compliance and traceability for each method statement.',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: SWMS preparation requires the relevant construction drawing to identify work area layout, confined spaces, overhead hazards, and access routes. Safety officers reference drawings when writing work ste',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm entity responsible for performing the high-risk activity described in this SWMS. Null if the activity is performed by the principal contractors own workforce.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: SWMS documents are phase-specific deliverables in construction HSE management (e.g., demolition-phase SWMS vs. fit-out-phase SWMS). Phase-level SWMS registers are required for phase-gate HSE approvals',
+    `skill_trade_id` BIGINT COMMENT 'Foreign key linking to workforce.skill_trade. Business justification: SWMS documents are trade-specific — scaffolding, electrical, and rigging SWMS have distinct hazards and controls. Linking SWMS to skill_trade enables trade-based SWMS library management and ensures co',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: SWMS authors reference technical specifications for material handling requirements, PPE mandates, and workmanship standards embedded in hse_requirements and material_requirements fields. Linking SWMS ',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: SWMS are submitted by subcontractors/vendors before commencing high-risk work — a legal requirement in construction. Linking swms to vendor enables vendor SWMS compliance tracking, supports prequalifi',
     `aconex_document_reference` STRING COMMENT 'The unique document identifier assigned by the Aconex document management system for this SWMS record. Used for cross-system traceability and transmittal tracking.',
     `activity_description` STRING COMMENT 'Detailed narrative description of the high-risk construction activity covered by this SWMS, including scope, location, and method of work. Provides the foundational context for all hazard and control entries.',
     `activity_type` STRING COMMENT 'Classification of the high-risk construction activity category covered by this SWMS (e.g., working at heights, confined space entry, excavation, demolition, crane lifts, hot works, electrical works). [ENUM-REF-CANDIDATE: working_at_heights|confined_space|excavation|demolition|crane_lift|hot_works|electrical|trenching|scaffolding|explosive_use — promote to reference product]',
@@ -160,13 +158,16 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`swms` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`permit_to_work` (
     `permit_to_work_id` BIGINT COMMENT 'Unique system-generated identifier for the Permit to Work record. Primary key for the permit_to_work data product in the Databricks Silver Layer.',
-    `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: PTWs on client-owned or client-operated facilities require client account authorization. Client HSE compliance audits and PTW registers are reported per client account. Construction HSE managers expec',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Permit‑to‑Work administration tracks permits against the specific contract agreement to ensure compliance and cost allocation.',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Permit‑to‑Work authorizations often isolate or operate specific equipment; linking records which asset the permit applies to for safety compliance.',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Brownfield and operational-facility construction requires client-side authorization of high-risk permits to work (hot work, confined space, isolation). permit_to_work has account_id → client.account b',
     `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: REQUIRED: PTW is assigned to a specific crew for execution; tracking crew_id enables compliance reporting and work‑scope verification.',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: A Permit to Work is issued under the authority of the project HSE Plan, which defines PTW requirements (hse_plan.ptw_required = TRUE). Linking permit_to_work to hse_plan enables direct traceability fr',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Permit to Work issuance in construction requires referencing the approved drawing for the work area to define isolation points, work boundaries, and hazard zones. PTW systems universally link to the g',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm organization performing the permitted work, if applicable. Enables firm HSE performance tracking and compliance reporting.',
     `party_id` BIGINT COMMENT 'Foreign key linking to contract.contract_party. Business justification: Permits are issued to a contract party (sub‑contractor) and must be linked for audit trails and responsibility tracking.',
-    `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: A Permit to Work must reference the Safe Work Method Statement governing the high-risk activity being authorized. The existing swms_reference (STRING) is a denormalized text reference that should be r',
-    `toolbox_meeting_id` BIGINT COMMENT 'Foreign key linking to safety.toolbox_meeting. Business justification: The permit_to_work table already has tbm_record_reference (BIGINT) which is clearly intended as a FK to the toolbox_meeting record conducted before work commences under the PTW. Formalizing this as to',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Permits to Work in construction identify the performing subcontractor/vendor. Direct vendor FK enables vendor HSE compliance tracking, PTW compliance rate reporting per vendor, and supports vendor pre',
+    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: PTWs legally require identification of the performing authority — the specific authorized craft worker executing the permitted work. Existing performing_authority_name is denormalized. Role-prefix pe',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: PTW registers are maintained per project phase; commissioning phases require specific PTW types (hot-work, confined space). Phase-level PTW compliance reporting is a standard construction HSE audit de',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: PTWs are issued to specific vendors/subcontractors performing high-risk work. A direct vendor_id on permit_to_work enables vendor PTW compliance reporting and HSE performance tracking without requirin',
     `approval_level` STRING COMMENT 'The organizational authority level required to approve this permit, determined by the risk level and permit type. Enforces the sign-off hierarchy in the PTW system.. Valid values are `supervisor|hse_manager|project_manager|site_director`',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time at which the permit received final approval from the designated authority. Distinct from issued_timestamp; represents the formal authorization event.',
     `closed_timestamp` TIMESTAMP COMMENT 'Date and time at which the permit was formally closed upon completion or cancellation of the permitted work. Triggers site reinstatement and isolation removal procedures.',
@@ -182,10 +183,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`permit_to_work` (
     `isolation_details` STRING COMMENT 'Description of the specific isolation points, energy sources, and lockout/tagout procedures required for the permitted work. Populated when isolation_required is True.',
     `isolation_required` BOOLEAN COMMENT 'Indicates whether energy isolation (lockout/tagout) is required before commencing the permitted work. Mandatory for electrical, mechanical, and process isolation scenarios.',
     `issued_timestamp` TIMESTAMP COMMENT 'The date and time at which the permit was formally issued and authorized by the issuing authority. Represents the principal real-world business event time for this transaction. Sourced from Intelex.',
+    `issuing_authority_name` STRING COMMENT 'Full name of the qualified person (typically HSE Manager, Area Authority, or Responsible Engineer) who issued and authorized the permit. Required for regulatory audit and sign-off chain documentation.',
     `issuing_authority_role` STRING COMMENT 'Job title or role designation of the person who issued the permit (e.g., HSE Manager, Area Authority, Electrical Supervisor). Validates competency and authorization level.',
     `last_extended_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent extension of the permit validity period. Populated when extension_count is greater than zero.',
-    `performing_authority_name` STRING COMMENT 'Full name of the person responsible for executing the permitted work (typically the Supervisor or Foreman accepting the permit). Part of the mandatory sign-off chain.',
-    `performing_authority_role` STRING COMMENT 'Job title or role of the person accepting and executing the permitted work (e.g., Foreman, Tradesperson, Subcontractor Supervisor). Validates competency for the work type.',
     `permit_number` STRING COMMENT 'Externally-known, human-readable reference number assigned to the permit by the issuing authority. Used for field reference, correspondence, and regulatory audit trails. Sourced from Intelex Permit to Work module.. Valid values are `^PTW-[A-Z0-9]{3,10}-[0-9]{4,8}$`',
     `permit_status` STRING COMMENT 'Current lifecycle state of the permit within the approval and execution workflow. Drives field access control and compliance dashboards. [ENUM-REF-CANDIDATE: draft|pending_approval|approved|active|suspended|closed|cancelled — promote to reference product]',
     `permit_type` STRING COMMENT 'Classification of the permit based on the category of high-risk work being authorized. Drives the applicable hazard controls, sign-off chain, and regulatory requirements. [ENUM-REF-CANDIDATE: hot_work|confined_space|working_at_heights|electrical_isolation|excavation|radiography|lifting_operations|general_work — promote to reference product]',
@@ -195,11 +195,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`permit_to_work` (
     `suspension_reason` STRING COMMENT 'Narrative reason for suspending the permit mid-execution (e.g., weather change, equipment failure, emergency evacuation). Populated when permit_status is suspended.',
     `tbm_conducted_flag` BOOLEAN COMMENT 'Indicates whether a Toolbox Meeting (TBM) was conducted with the work crew prior to commencing the permitted work. Mandatory pre-work safety briefing requirement.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the permit record was last modified in the system. Supports change tracking, audit compliance, and incremental data loading in the Silver Layer.',
-    `valid_from_timestamp` TIMESTAMP COMMENT '',
-    `valid_to_timestamp` TIMESTAMP COMMENT '',
     `valid_until` TIMESTAMP COMMENT 'The date and time at which the permit expires and work must cease unless renewed. Critical for field enforcement and compliance auditing.',
-    `work_description` STRING COMMENT '',
-    `work_location` STRING COMMENT '',
     `work_location_description` STRING COMMENT 'Specific location within the site where the permitted work is to be performed, including zone, level, grid reference, or equipment tag. Supplements the site_id with granular location detail.',
     `work_scope` STRING COMMENT 'Detailed narrative description of the specific work activities authorized under this permit, including methods, equipment, and materials involved. Sourced from Intelex PTW work description field.',
     `worker_count` STRING COMMENT 'Number of workers authorized to perform work under this permit. Used for site headcount control, emergency muster, and HSE exposure tracking.',
@@ -209,11 +205,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`permit_to_work` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` (
     `toolbox_meeting_id` BIGINT COMMENT 'Primary key for toolbox_meeting',
-    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: Toolbox meetings are conducted with specific crews at shift start. Linking TBM to crew enables HSE compliance reporting on TBM frequency per crew, mandatory in construction safety management systems a',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: Toolbox meetings are conducted at the frequency mandated by the project HSE Plan (hse_plan.tbm_frequency). Linking toolbox_meeting to hse_plan enables compliance reporting against the plans TBM frequ',
-    `risk_assessment_id` BIGINT COMMENT 'Reference to the risk assessment record whose identified hazards and controls were communicated during this Toolbox Meeting. Links TBM content to the formal risk register.',
-    `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: Toolbox meetings are conducted to brief workers on the SWMS for the upcoming work activity. The existing swms_reference_number (STRING) is a denormalized text reference that should be replaced with a ',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Toolbox meetings in construction are conducted for specific subcontractor crews. Linking toolbox_meeting to vendor enables vendor HSE engagement compliance reporting, a contractual KPI tracked in vend',
+    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: Toolbox meetings (TBMs) are conducted with specific crews before work commences each shift. Linking TBM to crew enables crew-level TBM frequency and attendance compliance tracking — a mandatory HSE KP',
+    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: TBM facilitator is a named individual whose qualifications must be verified for HSE compliance audits. The existing facilitator_name is denormalized. Role-prefix facilitator_ distinguishes from othe',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: TBM frequency compliance is reported per project phase for client HSE KPI dashboards and phase-gate reviews. toolbox_meeting has no phase_id FK; phase-level TBM count and attendance rate are standard ',
+    `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: toolbox_meeting.swms_reference_number (STRING) is a text reference to the SWMS being briefed during the TBM. In construction HSE practice, a TBM is conducted to brief workers on the specific SWMS for ',
     `actual_attendee_count` STRING COMMENT 'Actual number of workers who attended and signed off on the Toolbox Meeting. Used to compute attendance rate and demonstrate safety communication compliance under OSHA and ISO 45001.',
     `attendance_rate_pct` DECIMAL(18,2) COMMENT 'Percentage of planned attendees who actually attended and signed off on the Toolbox Meeting (actual_attendee_count / planned_attendee_count × 100). Key HSE KPI for safety communication coverage reporting.',
     `control_measures_communicated` STRING COMMENT 'Description of the specific hazard control measures (elimination, substitution, engineering controls, administrative controls, PPE) communicated to attendees. Demonstrates hierarchy-of-controls compliance per ISO 45001 Clause 8.1.2.',
@@ -245,7 +240,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` (
     `start_time` TIMESTAMP COMMENT 'Date and timestamp when the Toolbox Meeting commenced. Used to verify pre-shift or pre-task timing compliance and to calculate meeting duration.',
     `topics_discussed` STRING COMMENT 'Free-text or structured summary of the safety topics covered during the Toolbox Meeting, including hazard types, regulatory requirements, and site-specific risks communicated to the crew. Sourced from Intelex TBM topic fields.',
     `trade_group` STRING COMMENT 'The trade or crew group attending the Toolbox Meeting (e.g., Civil, Structural Steel, MEP (Mechanical Electrical Plumbing), Concrete, Earthworks). Used to segment HSE communication effectiveness by trade.',
-    `wbs_element_code` STRING COMMENT 'WBS (Work Breakdown Structure) element code from Oracle Primavera P6 identifying the specific work package or activity for which this Toolbox Meeting was conducted. Enables linkage of HSE communication to project schedule activities.',
     `weather_conditions` STRING COMMENT 'Prevailing weather conditions at the time of the Toolbox Meeting. Relevant for outdoor construction sites where weather-related hazards (heat stress, lightning, high winds) are discussed as part of the meeting agenda. [ENUM-REF-CANDIDATE: clear|cloudy|rain|high_wind|extreme_heat|fog|storm — 7 candidates stripped; promote to reference product]',
     `work_area_description` STRING COMMENT 'Description of the specific work area, zone, or work front covered by this Toolbox Meeting. Provides context for the hazards and controls discussed, aligned to the WBS (Work Breakdown Structure) or site zone plan.',
     CONSTRAINT pk_toolbox_meeting PRIMARY KEY(`toolbox_meeting_id`)
@@ -255,18 +249,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hse_inspection` (
     `hse_inspection_id` BIGINT COMMENT 'Unique system-generated identifier for each HSE inspection record. Primary key for the hse_inspection data product. Entity role: TRANSACTION_HEADER — represents a discrete field inspection event with a defined lifecycle.',
     `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: HSE inspections include equipment checks; linking inspection records to the asset enables tracking inspection status and regulatory compliance.',
     `checklist_id` BIGINT COMMENT 'Reference to the standardised checklist template used to conduct the inspection. Templates are aligned to inspection scope and regulatory requirements (e.g., OSHA scaffold checklist, excavation safety checklist).',
-    `construction_project_id` BIGINT COMMENT 'Reference to the construction project against which this inspection was conducted. Links inspection records to project-level HSE performance reporting and EVM analysis. PARTY_REFERENCE category.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: HSE inspection cost allocation: inspector labour, travel, and corrective action costs from inspections are allocated to cost centers for project overhead reporting. Construction finance teams track HS',
-    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: HSE inspections observe specific crews performing work. Linking inspection to crew enables crew-level safety performance reporting (inspection pass rates, deficiency counts per crew) — a standard KPI ',
-    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: HSE inspections are conducted against specific construction drawings (e.g., inspecting rebar placement against the structural drawing). Inspectors must reference the current approved drawing to verify',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: HSE inspection evaluates the HSE plan; adding a FK provides direct navigation from inspection to the plan it reviews.',
-    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: HSE inspections are conducted by specific workers (HSE officers, supervisors). Linking to craft_worker enables inspector qualification verification, workload tracking, and inspector performance report',
-    `project_site_id` BIGINT COMMENT 'Foreign key linking to project.project_site. Business justification: HSE inspections are conducted at specific project sites. hse_inspection has construction_project_id and wbs_element_id but not project_site_id. Site-level inspection compliance tracking and regulatory',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: HSE inspections verify that risk controls identified in risk assessments are physically in place on site. Linking hse_inspection to risk_assessment enables compliance verification reporting — showing ',
-    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: HSE inspections verify workmanship and material compliance against technical specifications (e.g., concrete spec, weld spec). Inspectors must reference the governing spec to assess compliance — a stan',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: HSE inspections on construction sites target specific subcontractor/vendor work areas. Linking hse_inspection to vendor enables vendor HSE performance scoring used directly in vendor_qualification ass',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the WBS element representing the work package or activity area being inspected. Aligns HSE inspection data with project schedule and cost control structures.',
-    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: HSE inspections are conducted at specific work fronts to verify safety controls are in place before and during work. Linking hse_inspection to work_front enables work-front-level HSE compliance dashbo',
+    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: HSE inspections are conducted on active crews performing work on site. Linking inspection to crew enables crew-level safety performance scoring and compliance tracking — a standard construction HSE ma',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: HSE inspections are scoped to specific work areas defined by construction drawings. Inspectors verify physical work conforms to approved drawings and identify unsafe deviations. This link enables draw',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-gate HSE inspection compliance is a contractual requirement in construction. Inspection frequency and pass rates must be reported per phase for client phase-gate approvals and regulatory audits.',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: HSE inspections are routinely conducted on subcontractor/vendor work areas and activities. Linking hse_inspection to vendor enables vendor HSE performance reporting, prequalification scoring updates, ',
     `corrective_action_required` BOOLEAN COMMENT 'Indicates whether one or more formal corrective actions have been raised as a result of deficiencies identified during this inspection. When True, corrective action records are linked via the corrective_action product.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the inspection record was first created in the system. Supports audit trail and data lineage. RECORD_AUDIT_CREATED category.',
     `critical_deficiency_count` STRING COMMENT 'Number of deficiencies classified as critical or high severity — those posing immediate risk to life, health, or structural integrity. Triggers mandatory stop-work authority and escalation protocols.',
@@ -309,12 +295,13 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hse_inspection` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hse_plan` (
     `hse_plan_id` BIGINT COMMENT 'Unique system-generated identifier for the project-level HSE Plan record. Primary key for the hse_plan data product.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: HSE plans are contract‑specific documents required for client‑mandated safety standards and regulatory approvals.',
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: HSE plans are client‑specific documents; associating them with the client account enables client‑wide HSE performance dashboards.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: HSE plan budgeting is tracked per cost_center; linking enables consolidation of HSE expenditures in financial statements.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: HSE plan budget allocation process: safety managers allocate HSE plan expenditure (training, PPE, audits, inspections) to specific cost codes for job costing. Construction contracts require HSE costs ',
-    `master_services_agreement_id` BIGINT COMMENT 'Foreign key linking to client.master_services_agreement. Business justification: MSAs in construction contractually mandate HSE plan production (master_services_agreement.hse_requirements). Contract compliance reporting requires tracing which HSE plans were delivered under each MS',
-    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: The prepared_by field is a plain-text denormalization of the craft worker (HSE professional) who authored the HSE plan. A proper FK enables verification of HSE plan author qualifications and supports ',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Vendor-specific HSE plans are submitted by subcontractors as a prequalification and contract mobilisation requirement. Linking hse_plan to vendor enables tracking of vendor HSE plan approval status, a',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Construction contracts require the client to nominate a specific HSE representative contact who reviews and approves the contractors HSE plan. hse_plan already has client_account_id but lacks the spe',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: HSE Plan Compliance Mapping: HSE plans are authored to address specific regulatory obligations.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: hse_plan.project_phase is a plain-text denormalization of the phase entity. HSE plans are phase-specific contractual documents (pre-construction HSE plan, construction-phase HSE plan). A proper FK ena',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: HSE plans are built directly from technical specifications containing hse_requirements, applicable_standards, and environmental_requirements. Safety managers must trace which technical spec governs ea',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Subcontractor HSE plans are a mandatory vendor prequalification and contract requirement in construction. Linking hse_plan to vendor enables tracking which vendors have submitted compliant HSE plans —',
     `applicable_regulations` STRING COMMENT 'Comma-separated list of regulatory frameworks, standards, and governing body requirements applicable to this HSE Plan (e.g., OSHA 29 CFR 1926, ISO 45001:2018, ISO 14001:2015, NFPA 70E, local jurisdiction building codes). Drives compliance obligation tracking.',
     `approval_date` DATE COMMENT 'Date on which the HSE Plan was formally approved by the authorised approver (typically the Project HSE Manager or Client representative). Marks the transition from draft/review to approved status.',
     `approved_by` STRING COMMENT 'Name or employee identifier of the authorised person who formally approved this version of the HSE Plan. Typically the Project Director, HSE Director, or Client HSE Representative.',
@@ -342,7 +329,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hse_plan` (
     `plan_type` STRING COMMENT 'Classification of the HSE Plan by scope and purpose. Distinguishes between overarching project-level plans, site-specific plans, environmental management plans, emergency response plans, and construction phase plans. [ENUM-REF-CANDIDATE: project_hse_plan|site_specific_hse_plan|environmental_management_plan|emergency_response_plan|construction_phase_plan|occupational_health_plan — promote to reference product]. Valid values are `project_hse_plan|site_specific_hse_plan|environmental_management_plan|emergency_response_plan|construction_phase_plan`',
     `plan_version` STRING COMMENT 'Document version number of the HSE Plan following the project document control versioning convention (e.g., 1.0, 2.1, 3.0). Incremented upon each approved revision.. Valid values are `^[0-9]{1,3}.[0-9]{1,2}$`',
     `ppe_requirements` STRING COMMENT 'Description of the mandatory Personal Protective Equipment (PPE) requirements applicable across the project site as defined in the HSE Plan (e.g., hard hat, safety boots, hi-vis vest, safety glasses, gloves). Site-wide minimum PPE standard.',
-    `project_phase` STRING COMMENT 'Construction project phase to which this HSE Plan version primarily applies. HSE requirements and hazard profiles differ significantly across project phases.. Valid values are `pre_construction|mobilisation|construction|commissioning|demobilisation`',
+    `prepared_by` STRING COMMENT 'Name or employee identifier of the HSE professional who authored and prepared this version of the HSE Plan. Typically the Project HSE Manager or HSE Coordinator.',
     `ptw_required` BOOLEAN COMMENT 'Indicates whether a formal Permit to Work (PTW) system is mandated on this project as per the HSE Plan. When true, designated high-risk activities (hot work, confined space entry, electrical isolation, working at height) require a PTW before commencement.',
     `review_frequency_months` STRING COMMENT 'Frequency in months at which the HSE Plan must be formally reviewed and updated. Typically 6 or 12 months, or triggered by significant project phase changes, incidents, or regulatory updates.',
     `risk_rating` STRING COMMENT 'Overall HSE risk rating assigned to the project based on the site hazard assessment. Drives the level of HSE oversight, inspection frequency, and resource allocation required.. Valid values are `low|medium|high|critical`',
@@ -358,15 +345,17 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hse_plan` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`risk_assessment` (
     `risk_assessment_id` BIGINT COMMENT 'Unique surrogate identifier for each risk assessment record in the hazard and risk register. Primary key for the risk_assessment data product.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Risk mitigation actions have budgeted costs; assigning a cost_center allows integration with risk‑based budgeting reports.',
-    `hazard_register_id` BIGINT COMMENT 'Foreign key linking to safety.hazard_register. Business justification: Risk assessments are performed on hazards identified in the site hazard register. The hazard_register is the live inventory of identified hazards; risk_assessment is the formal quantified assessment o',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: Risk assessments are conducted under the project HSE Plan framework. The hse_plan defines the risk rating methodology (hse_plan.risk_rating) and regulatory requirements that govern risk assessments. L',
-    `master_id` BIGINT COMMENT 'Foreign key linking to material.material_master. Business justification: Risk assessments evaluate hazards of specific materials; linking provides material specs for accurate risk calculations.',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Safety risk assessments in construction are phase-specific (different hazard profiles per phase). risk_assessment has construction_project_id and wbs_element_id but no phase_id. Phase gate reviews and',
-    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Risk assessments in construction are performed for specific vendor/subcontractor work packages. Linking risk_assessment to vendor enables vendor-specific risk profiling, a named input to vendor prequa',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Risk assessments are tied to the contract agreement to align risk registers with contractual obligations and insurance.',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Risk assessments for tasks must reference the exact equipment used to evaluate equipment‑related risks and control measures.',
+    `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Risk assessments are performed for client projects; linking to the client account allows aggregation of risk metrics at the client level.',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm organisation whose workforce or activities are subject to this risk assessment. Supports firm HSE performance monitoring and compliance tracking.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Risk assessments are phase-specific in construction (design-phase RA, construction-phase RA, commissioning RA). Phase-level risk assessment registers are required for phase-gate reviews and client HSE',
+    `skill_trade_id` BIGINT COMMENT 'Foreign key linking to workforce.skill_trade. Business justification: Risk assessments are trade-specific — hazard profiles and control measures differ by trade discipline. Linking risk_assessment to skill_trade enables trade-based risk library management and ensures co',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Risk assessments are performed against specific technical specifications to identify hazards from specified materials, chemicals, and construction processes. Linking risk_assessment to technical_speci',
     `activity_description` STRING COMMENT 'Description of the specific construction activity, task, or work scope during which the hazard is present or could be realised. Supports Job Hazard Analysis (JHA) documentation.',
     `approval_date` DATE COMMENT 'Date on which the risk assessment was formally reviewed and approved by the authorised approver.',
     `approved_by` STRING COMMENT 'Name of the authorised approver (typically HSE Manager or Project Manager) who reviewed and formally approved this risk assessment record.',
+    `assessed_by` STRING COMMENT 'Name of the HSE professional, engineer, or competent person who conducted and documented this risk assessment.',
     `assessment_date` DATE COMMENT 'The date on which this risk assessment was formally conducted and documented. Represents the principal business event date for this record.',
     `assessment_number` STRING COMMENT 'Externally-known unique alphanumeric reference number assigned to this risk assessment record, used in SWMS, PTW, and HSE correspondence. Format: RA-{ProjectCode}-{Sequence}.. Valid values are `^RA-[A-Z0-9]{3,10}-[0-9]{4,6}$`',
     `assessment_status` STRING COMMENT 'Current lifecycle status of the risk assessment record: Open (hazard identified, controls not yet fully implemented), Controlled (controls in place, residual risk tolerable), Eliminated (hazard fully removed), Closed (no longer applicable), or Under Review (being reassessed).. Valid values are `open|controlled|eliminated|closed|under_review`',
@@ -402,9 +391,17 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`risk_assessment` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hazard_register` (
     `hazard_register_id` BIGINT COMMENT 'Unique system-generated identifier for each hazard record in the site hazard register. Primary key for the hazard_register data product.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Hazard registers are linked to the governing contract agreement for compliance reporting and contractual risk allocation.',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Hazard register tracks equipment‑specific hazards to manage risk and comply with safety regulations.',
+    `construction_project_id` BIGINT COMMENT 'Reference to the construction project on which this hazard was identified. Links the hazard to the project master record for site-level hazard visibility and project-level HSE reporting.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Hazard mitigation budgets are charged to specific cost_centers; linking enables hazard‑related cost roll‑up in financial statements.',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: The site hazard register is maintained as a core component of the project HSE Plan. The hse_plan.site_specific_hazards field confirms this relationship — the hazard register operationalizes the site-s',
-    `master_id` BIGINT COMMENT 'Foreign key linking to material.material_master. Business justification: Required for Hazard Register to associate each hazard entry with the master material record for regulatory reporting and traceability.',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Required for Hazard Register to associate each hazard entry with the master material record for regulatory reporting and traceability.',
+    `ncr_id` BIGINT COMMENT 'Foreign key linking to quality.ncr. Business justification: Hazards arising from quality non-conformances (defective scaffolding, substandard structural elements, failed material tests) must be traceable to the originating NCR. This link supports integrated HS',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Hazard registers are maintained and closed out per project phase; phase-gate reviews require evidence that all phase-specific hazards are controlled or closed. hazard_register has no existing phase_id',
+    `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: hazard_register.swms_reference (STRING) is a text reference to the SWMS that controls the identified hazard. In construction HSE, each hazard in the site register must be controlled by a documented SW',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Hazard registers capture hazards arising from specified materials, chemicals, and processes defined in technical specifications. Linking hazard_register to technical_specification enables spec-driven ',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Hazard registers in construction track hazards introduced by vendor-supplied materials, equipment, or subcontractor work methods. Linking hazard_register to vendor enables vendor-specific hazard track',
+    `wbs_element_id` BIGINT COMMENT 'Reference to the WBS element associated with the work activity generating this hazard. Enables linkage between hazard exposure and project schedule activities in Oracle Primavera P6.',
     `actual_closure_date` DATE COMMENT 'Date on which the hazard was verified as eliminated or controlled to an acceptable residual risk level and the record was formally closed. Null if the hazard remains open or controlled.',
     `affected_workers_count` STRING COMMENT 'Estimated number of workers potentially exposed to this hazard during normal site operations. Used for exposure assessment, risk prioritisation, and OSHA regulatory reporting.',
     `control_measures_description` STRING COMMENT 'Narrative description of all control measures currently in place to manage the hazard, including engineering controls, administrative procedures, PPE requirements, and permit conditions. Sourced from Intelex corrective actions and SWMS documentation.',
@@ -435,112 +432,91 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`hazard_register` (
     `residual_likelihood_rating` STRING COMMENT 'Numeric likelihood score after all control measures have been applied, on the same 1–5 scale as initial_likelihood_rating. Reflects the effectiveness of controls in reducing probability of harm.',
     `residual_risk_level` STRING COMMENT 'Qualitative risk band derived from the residual risk score after controls are applied. Determines whether the hazard is tolerable (low/medium) or requires escalation and further treatment (high/critical).. Valid values are `low|medium|high|critical`',
     `residual_risk_score` STRING COMMENT 'Post-control risk score calculated as residual_likelihood_rating × residual_consequence_rating. Represents the remaining risk after controls are applied. Used to determine if the risk is tolerable or requires further treatment.',
+    `responsible_party` STRING COMMENT 'Name or role of the individual or team accountable for implementing and maintaining the control measures for this hazard (e.g., Site Supervisor — Civil Works, HSE Manager). Supports accountability tracking and corrective action follow-up.',
     `site_zone` STRING COMMENT 'Designated zone, area, or work front on the construction site where the hazard is located (e.g., Zone A — Excavation, Level 4 — Formwork, Laydown Area 2). Used for spatial hazard mapping and pre-start briefing targeting.',
-    `swms_reference` STRING COMMENT 'Document reference number of the Safe Work Method Statement (SWMS) that addresses this hazard and its control measures. Links the hazard register to the SWMS document library in Aconex or Procore.',
     `target_closure_date` DATE COMMENT 'Target date by which the hazard is expected to be eliminated or reduced to a tolerable residual risk level. Used for corrective action scheduling and overdue hazard reporting.',
     `tbm_topic_flag` BOOLEAN COMMENT 'Indicates whether this hazard has been selected or is recommended as a topic for an upcoming Toolbox Meeting (TBM). True = flagged for TBM discussion. Supports automated TBM topic selection from the live hazard register.',
     CONSTRAINT pk_hazard_register PRIMARY KEY(`hazard_register_id`)
 ) COMMENT 'Site-level hazard register maintaining a live inventory of identified hazards across construction project sites. Captures hazard type (fall, struck-by, caught-between, electrocution, excavation collapse, chemical exposure), location/zone, initial risk rating (likelihood x consequence), control measures in place, hierarchy of controls applied, responsible party, status (open/controlled/eliminated/closed), last review date, and source (risk assessment/inspection/incident). Serves as the operational SSOT for site hazard visibility, supports daily pre-start briefings, and feeds toolbox meeting topic selection.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` (
-    `environmental_monitoring_id` BIGINT COMMENT 'Primary key for environmental_monitoring',
-    `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Environmental monitoring results are contractually reported to the client account as project owner. Client accounts with hse_compliance_required or leed_certification_required flags drive specific mon',
-    `construction_project_id` BIGINT COMMENT 'Reference to the construction project at which this environmental monitoring measurement was taken. Links monitoring records to project-level environmental compliance tracking.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Environmental monitoring cost allocation: monitoring program costs (equipment, labour, lab fees) must be allocated to a cost center for overhead recovery and project financial reporting. Construction ',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Environmental compliance cost tracking: laboratory testing, instrument hire, and consultant fees for environmental monitoring are charged to specific cost codes in construction job costing. Regulatory',
-    `hazard_register_id` BIGINT COMMENT 'Foreign key linking to safety.hazard_register. Business justification: Environmental monitoring often targets a specific hazard; linking to hazard_register enables hazard‑centric reporting.',
-    `hse_plan_id` BIGINT COMMENT 'Foreign key linking to safety.hse_plan. Business justification: Environmental monitoring programs are defined and mandated by the project HSE Plan (hse_plan.environmental_aspects). Linking environmental_monitoring to hse_plan enables project-level environmental co',
-    `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: Environmental monitoring is often a mandatory condition of a Permit to Work — for example, continuous air quality monitoring during hot work or confined space entry. The existing permit_reference_numb',
-    `project_site_id` BIGINT COMMENT 'Foreign key linking to project.project_site. Business justification: Environmental monitoring is conducted at specific project sites. environmental_monitoring has site_id (site domain) but not project_site_id. Site-level environmental compliance reporting and regulator',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Environmental monitoring is conducted to verify that controls identified in risk assessments for environmental aspects are effective. The risk_assessment.environmental_aspect = TRUE flag confirms that',
-    `work_front_id` BIGINT COMMENT 'Foreign key linking to site.work_front. Business justification: Environmental monitoring (dust, noise, vibration) is conducted at specific work fronts generating the emissions. Linking monitoring records to work_front enables exceedance attribution to specific wor',
-    `corrective_action_reference` STRING COMMENT 'Reference number of the corrective action record raised in Intelex HSE management system in response to this monitoring exceedance. Provides traceability between the environmental measurement and the remediation workflow.',
-    `corrective_action_required` BOOLEAN COMMENT 'Indicates whether a corrective action has been raised or is required as a result of this monitoring record. True = corrective action initiated in Intelex; False = no corrective action required. Populated automatically when exceedance_flag is True or manually by the HSE officer.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time at which this environmental monitoring record was first created and entered into the system (Intelex or source system). Audit trail field for data governance and regulatory record-keeping requirements.',
-    `data_quality_flag` STRING COMMENT 'Quality assurance flag indicating the reliability and validity of the measurement value. Suspect indicates potential instrument malfunction or anomalous conditions; Below Detection Limit indicates the parameter was not detectable at the instruments minimum detection level. Used in QA/QC review.. Valid values are `valid|suspect|invalid|estimated|below_detection_limit`',
-    `detection_limit` DECIMAL(18,2) COMMENT 'The minimum detection limit (MDL) of the instrument or analytical method for this parameter, expressed in the same unit as measurement_value. Used to contextualise results flagged as below_detection_limit and for regulatory reporting of non-detects.',
-    `exceedance_flag` BOOLEAN COMMENT 'Indicates whether the recorded measurement value has exceeded (or fallen below, for minimum thresholds) the applicable regulatory or permit threshold limit. True = exceedance detected; False = within acceptable limits. Triggers corrective action workflow in Intelex.',
-    `exceedance_magnitude` DECIMAL(18,2) COMMENT 'The absolute difference between the measured value and the threshold limit when an exceedance is detected. Null when exceedance_flag is False. Used to prioritise severity of environmental non-compliance and escalation response.',
-    `instrument_calibration_date` DATE COMMENT 'The date on which the monitoring instrument was last calibrated prior to this measurement. Used to verify that measurements were taken with a calibrated instrument within the required calibration interval, supporting regulatory defensibility.',
-    `instrument_calibration_due_date` DATE COMMENT 'The date by which the monitoring instrument must next be calibrated to remain within its valid calibration period. Measurements taken after this date may be flagged as non-compliant for regulatory reporting purposes.',
-    `instrument_code` STRING COMMENT 'Unique identifier or asset tag of the instrument, sensor, or analyser used to take the measurement (e.g., dust monitor serial number, noise meter ID, water quality probe ID). Supports instrument calibration traceability and equipment maintenance records.. Valid values are `^[A-Z0-9_-]{3,30}$`',
-    `instrument_type` STRING COMMENT 'Classification of the instrument or sensor type used for the measurement (e.g., Dust Monitor, Sound Level Meter, Vibration Meter, Multi-parameter Water Quality Probe, Gas Analyser). Used for equipment management and calibration scheduling. [ENUM-REF-CANDIDATE: dust_monitor|sound_level_meter|vibration_meter|water_quality_probe|gas_analyser|turbidimeter|pH_meter|portable_gas_detector — promote to reference product]',
-    `laboratory_name` STRING COMMENT 'Name of the accredited analytical laboratory that performed sample analysis, where applicable (e.g., for water quality, soil contamination, or chemical air quality samples sent for laboratory analysis). Null for field-measured parameters.',
-    `laboratory_report_number` STRING COMMENT 'The unique report or chain-of-custody number issued by the analytical laboratory for the sample analysis. Provides traceability from the field sample to the laboratory result and supports regulatory audit documentation.',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'The date and time at which this environmental monitoring record was most recently modified. Used for data lineage tracking, change auditing, and incremental data pipeline processing in the Databricks silver layer.',
-    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate (WGS84 decimal degrees) of the monitoring point where the measurement was taken. Supports GIS-based environmental impact mapping and spatial analytics.',
-    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate (WGS84 decimal degrees) of the monitoring point where the measurement was taken. Supports GIS-based environmental impact mapping and spatial analytics.',
-    `measurement_timestamp` TIMESTAMP COMMENT 'The exact date and time at which the environmental measurement or reading was taken in the field. This is the principal real-world event time, distinct from record creation audit timestamps. Stored in ISO 8601 format with timezone offset.',
-    `measurement_unit` STRING COMMENT 'The unit of measure for the recorded measurement value (e.g., µg/m³, mg/L, dB(A), mm/s, NTU, pH, ppm, mg/kg). Must align with the unit specified in the applicable environmental permit or regulatory standard for the parameter. [ENUM-REF-CANDIDATE: µg/m³|mg/L|dB(A)|mm/s|NTU|pH|ppm|mg/kg|µS/cm|°C — promote to reference product]',
-    `measurement_value` DECIMAL(18,2) COMMENT 'The numeric reading or measured value recorded for the environmental parameter at the monitoring location and timestamp. This is the principal quantitative observation for this record. Precision to 6 decimal places to accommodate trace-level contaminant readings.',
-    `monitoring_frequency` STRING COMMENT 'The required or actual frequency at which measurements are taken at this monitoring location for this parameter, as specified in the environmental monitoring plan or regulatory permit. Used to verify compliance with permit monitoring schedules. [ENUM-REF-CANDIDATE: continuous|hourly|daily|weekly|monthly|quarterly|event_triggered — 7 candidates stripped; promote to reference product]',
-    `monitoring_location_code` STRING COMMENT 'Unique alphanumeric code identifying the designated monitoring point or station as defined in the environmental monitoring plan or permit. Used as the externally-known identifier in regulatory submissions and Intelex records.. Valid values are `^[A-Z0-9_-]{2,20}$`',
-    `monitoring_location_name` STRING COMMENT 'Descriptive name or label of the specific monitoring point or station where the measurement was taken (e.g., North Perimeter Fence Line, Discharge Point DP-01, Borehole BH-03). Used in permit compliance reports and environmental monitoring plans.',
-    `monitoring_method` STRING COMMENT 'The analytical or measurement method used to obtain the reading (e.g., EPA Method 40 CFR Part 50, ISO 10523 for pH, AS/NZS 4360 for noise). Ensures traceability and regulatory defensibility of measurement results.',
-    `monitoring_parameter` STRING COMMENT 'The specific environmental parameter being measured at this monitoring point (e.g., PM10, PM2.5, NO2, SO2, noise level dB(A), vibration velocity, pH, turbidity, TSS, BOD, lead, arsenic). Aligned with EPA and ISO 14001 environmental monitoring parameter classifications. [ENUM-REF-CANDIDATE: PM10|PM2.5|NO2|SO2|CO|noise_dba|vibration_velocity|pH|turbidity|TSS|BOD|COD|lead|arsenic|benzene|TPH — promote to reference product]',
-    `monitoring_record_status` STRING COMMENT 'Current workflow status of the environmental monitoring record within the Intelex HSE management system. Tracks the record through data entry, verification by the environmental manager, regulatory submission, and closure.. Valid values are `draft|submitted|verified|approved|rejected|closed`',
-    `monitoring_reference_number` STRING COMMENT 'Externally-known unique alphanumeric reference number assigned to this monitoring record, used in regulatory submissions, permit compliance reports, and Intelex HSE management system. Format: ENV-{SITE_CODE}-{SEQUENCE}.. Valid values are `^ENV-[A-Z0-9]{3,10}-[0-9]{4,8}$`',
-    `parameter_category` STRING COMMENT 'High-level classification of the environmental monitoring parameter into the primary environmental media or impact category. Used for domain-level reporting and ISO 14001 environmental aspect categorisation.. Valid values are `air_quality|noise|vibration|water_quality|soil_contamination|dust`',
-    `regulator_notification_date` DATE COMMENT 'The date on which the exceedance or monitoring result was formally notified to the relevant regulatory authority. Null if reported_to_regulator is False. Used to verify compliance with permit notification timeframes.',
-    `regulatory_standard_reference` STRING COMMENT 'The specific regulatory standard, guideline, or code of practice that defines the threshold limit for this parameter (e.g., EPA NAAQS PM10 150 µg/m³ 24-hr, OSHA PEL 1910.1000 Table Z-1, ISO 14001:2015 Clause 9.1.1). Provides traceability for threshold values used in exceedance determination.',
-    `remarks` STRING COMMENT 'Free-text field for the monitoring officer to record contextual observations, anomalies, site conditions, or explanatory notes relevant to this measurement (e.g., Elevated reading attributed to adjacent demolition activity, Instrument battery low during measurement). Supports regulatory audit and investigation.',
-    `reported_to_regulator` BOOLEAN COMMENT 'Indicates whether this monitoring result (particularly exceedances) has been formally reported to the relevant regulatory authority (e.g., EPA, state environmental agency) as required by the environmental permit or applicable legislation.',
-    `sample_duration_minutes` STRING COMMENT 'The duration in minutes over which the sample or measurement was collected or averaged. Relevant for time-averaged parameters such as noise (LAeq), air quality (24-hour PM10), and vibration. Null for instantaneous grab samples.',
-    `sample_type` STRING COMMENT 'Indicates the sampling methodology used to obtain the measurement — whether it is a grab sample (instantaneous), composite sample (time-averaged), continuous real-time reading, passive diffusion sample, or integrated sample over a defined period. Affects interpretation of results.. Valid values are `grab|composite|continuous|passive|integrated`',
-    `threshold_limit` DECIMAL(18,2) COMMENT 'The maximum permissible value (or minimum, for parameters like pH) for the monitored parameter as defined by the applicable environmental permit, regulatory standard, or project-specific environmental management plan. Used to determine exceedance status.',
-    `threshold_type` STRING COMMENT 'Indicates whether the threshold limit represents a maximum permissible value, minimum required value, action level trigger, or alert level for the monitored parameter. Determines the logic used to evaluate exceedance.. Valid values are `maximum|minimum|range_upper|range_lower|action_level|alert_level`',
-    `weather_conditions` STRING COMMENT 'Prevailing weather conditions at the time of measurement. Relevant for contextualising air quality, dust, and noise readings, as weather significantly influences environmental parameter levels and regulatory defensibility of results. [ENUM-REF-CANDIDATE: clear|cloudy|overcast|light_rain|heavy_rain|windy|foggy|storm — 8 candidates stripped; promote to reference product]',
-    `wind_direction` STRING COMMENT 'Cardinal or intercardinal wind direction at the time of measurement. Used in conjunction with wind speed for air quality dispersion analysis and to determine whether site activities are the source of elevated readings at downwind monitoring points. [ENUM-REF-CANDIDATE: N|NE|E|SE|S|SW|W|NW — 8 candidates stripped; promote to reference product]',
-    `wind_speed_ms` DECIMAL(18,2) COMMENT 'Wind speed in metres per second recorded at or near the monitoring location at the time of measurement. Critical contextual data for air quality and dust dispersion modelling and for assessing whether exceedances are attributable to site activities.',
-    CONSTRAINT pk_environmental_monitoring PRIMARY KEY(`environmental_monitoring_id`)
-) COMMENT 'Environmental monitoring measurement records capturing periodic readings for air quality, noise levels, vibration, water quality, and soil contamination at construction sites. Captures monitoring parameter, measurement value, unit, threshold limit, exceedance flag, monitoring location, instrument used, and responsible party. Supports ISO 14001 environmental management and regulatory permit compliance.';
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`safety`.`training` (
+    `training_id` BIGINT COMMENT 'Unique identifier for the safety training record. Primary key.',
+    `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Training records must be tied to the client contract to verify compliance with client‑mandated safety training requirements.',
+    `construction_project_id` BIGINT COMMENT 'Identifier of the construction project for which the training was conducted. Links to project master data.',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Training expenses are charged to a cost_center for budgeting and cost control; required for monthly training cost reports.',
+    `craft_worker_id` BIGINT COMMENT 'Identifier of the construction worker who received the training. Links to workforce master data.',
+    `crew_id` BIGINT COMMENT 'Foreign key linking to workforce.crew. Business justification: HSE training (site inductions, toolbox training) is delivered to entire crews. Crew-level training compliance reporting is a standard construction HSE KPI. Linking training to crew enables crew-wide c',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Subcontractor prequalification requires firms to demonstrate workforce training compliance (tickets, certifications, inductions). Training records must be attributable to the employing firm for bid pr',
+    `incident_id` BIGINT COMMENT 'Foreign key linking to safety.incident. Business justification: Safety training is frequently delivered in response to an incident; linking training to the incident provides traceability.',
+    `job_cost_transaction_id` BIGINT COMMENT 'Foreign key linking to finance.job_cost_transaction. Business justification: Mandatory safety training costs (inductions, certifications, refreshers) are posted as job cost transactions in construction project accounting. The existing plain columns cost and currency are de',
+    `party_id` BIGINT COMMENT 'Foreign key linking to contract.contract_party. Business justification: Training compliance is reported per contract party to satisfy client and regulatory HSE requirements.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-specific training compliance is a contractual HSE requirement in construction (e.g., commissioning-phase competency inductions). Phase-level training completion rates are reported at phase-gate ',
+    `skill_trade_id` BIGINT COMMENT 'Foreign key linking to workforce.skill_trade. Business justification: Training records are trade-specific (rigger certification, scaffolder training, electrical safety). Linking training to skill_trade enables trade-based training compliance reporting and mandatory cert',
+    `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Vendor/subcontractor worker training compliance (site inductions, HSE training) is a contractual and regulatory requirement tracked against the vendor entity. Linking training to vendor enables vendor',
+    `assessment_method` STRING COMMENT 'Method used to assess the workers competency after training: written examination, practical hands-on test, direct observation, verbal interview, or no formal assessment.. Valid values are `written_exam|practical_test|observation|interview|no_assessment`',
+    `assessment_result` STRING COMMENT 'Overall result of the competency assessment: pass (met requirements), fail (did not meet requirements), conditional_pass (passed with conditions or retraining required), or not_assessed (no formal assessment conducted).. Valid values are `pass|fail|conditional_pass|not_assessed`',
+    `assessment_score` DECIMAL(18,2) COMMENT 'Numerical score achieved by the worker in the competency assessment (e.g., 85.50 out of 100). Null if no assessment was conducted.',
+    `attendance_status` STRING COMMENT 'Workers attendance status for the training session: attended (full participation), absent (did not attend), partial (attended part of the session), or excused (authorized absence).. Valid values are `attended|absent|partial|excused`',
+    `certificate_expiry_date` DATE COMMENT 'Date on which the training certification expires and requires renewal or refresher training. Format: yyyy-MM-dd. Null if certification does not expire or was not issued.',
+    `certificate_issue_date` DATE COMMENT 'Date on which the training certificate was officially issued to the worker. Format: yyyy-MM-dd. Null if no certificate was issued.',
+    `certificate_number` STRING COMMENT 'Unique identification number printed on the issued training certificate or card (e.g., OSHA 10-hour card number). Null if no certificate was issued.',
+    `certification_issued` BOOLEAN COMMENT 'Indicates whether a formal certificate or card was issued to the worker upon successful completion of the training. True if issued, False if not.',
+    `training_code` STRING COMMENT 'Unique alphanumeric code identifying the specific training course or module (e.g., OSHA10, OSHA30, INDUCT01, HEIGHTS01).. Valid values are `^[A-Z0-9]{4,12}$`',
+    `comments` STRING COMMENT 'Free-text field for additional notes, observations, or special circumstances related to the training session (e.g., Worker required additional coaching on fall protection harness fitting, Training postponed due to weather).',
+    `compliance_status` STRING COMMENT 'Current compliance status of the workers training record: compliant (training valid and up-to-date), non_compliant (required training not completed or failed), expired (certification has expired), pending_renewal (approaching expiry, renewal in progress), or waived (exempted by authorized personnel).. Valid values are `compliant|non_compliant|expired|pending_renewal|waived`',
+    `delivery_method` STRING COMMENT 'Method by which the training was delivered: classroom instruction, online e-learning, on-site field training, blended (combination), simulator-based, or hands-on practical demonstration.. Valid values are `classroom|online|on_site|blended|simulator|hands_on`',
+    `duration_hours` DECIMAL(18,2) COMMENT 'Total duration of the training session in hours (e.g., 8.00 for an 8-hour OSHA course, 0.50 for a 30-minute toolbox talk).',
+    `end_time` TIMESTAMP COMMENT 'Timestamp when the training session ended. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `language_of_instruction` STRING COMMENT 'Primary language in which the training was delivered (e.g., English, Spanish, Mandarin). Important for multilingual workforce compliance.',
+    `location` STRING COMMENT 'Physical or virtual location where the training was conducted (e.g., site office, training center address, online platform name).',
+    `mandatory_flag` BOOLEAN COMMENT 'Indicates whether this training is mandatory for the workers role or project assignment. True if mandatory, False if optional or voluntary.',
+    `materials_provided` STRING COMMENT 'Description of training materials provided to the worker (e.g., OSHA handbook, safety manual, PPE (Personal Protective Equipment) checklist, online access credentials).',
+    `next_refresher_due_date` DATE COMMENT 'Date by which the worker must complete refresher training to maintain compliance. Format: yyyy-MM-dd. Null if no refresher is required.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this training record was first created in the source system. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this training record was last modified in the source system. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `refresher_frequency_months` STRING COMMENT 'Number of months between required refresher training sessions (e.g., 12 for annual refresher, 36 for three-year renewal). Null if no refresher is required.',
+    `refresher_required` BOOLEAN COMMENT 'Indicates whether periodic refresher training is required to maintain competency and compliance. True if refresher is required, False if one-time training is sufficient.',
+    `regulatory_requirement` STRING COMMENT 'Specific regulatory standard or legal requirement that mandates this training (e.g., OSHA 29 CFR 1926.1053 - Ladder Safety, ISO 45001 Clause 7.2 - Competence, State-specific confined space regulation).',
+    `start_time` TIMESTAMP COMMENT 'Timestamp when the training session started. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `title` STRING COMMENT 'Full descriptive title of the training course or session (e.g., OSHA 30-Hour Construction Safety, Site-Specific Induction for Highway Project XYZ).',
+    `trainer_certification_number` STRING COMMENT 'Certification or accreditation number of the trainer, verifying their authorization to deliver the specific training (e.g., OSHA Outreach Trainer ID).',
+    `training_date` DATE COMMENT 'Date on which the training session was conducted or completed. Format: yyyy-MM-dd.',
+    `training_type` STRING COMMENT 'Category of Health Safety and Environment (HSE) training provided. Includes site induction, OSHA (Occupational Safety and Health Administration) 10/30 hour certifications, first aid, confined space entry, working at heights, scaffolding, excavation safety, fall protection, electrical safety, hot work permits, rigging and lifting, hazardous materials handling, PPE (Personal Protective Equipment) usage, emergency response, fire safety, and TBM (Toolbox Meeting) sessions. [ENUM-REF-CANDIDATE: site_induction|osha_10|osha_30|first_aid|confined_space|working_at_heights|scaffolding|excavation|fall_protection|electrical_safety|hot_work|rigging_lifting|hazmat|ppe_usage|emergency_response|fire_safety|toolbox_meeting — 17 candidates stripped; promote to reference product]',
+    CONSTRAINT pk_training PRIMARY KEY(`training_id`)
+) COMMENT 'Safety training and induction records for construction workers, capturing training type (site induction, OSHA 10/30, first aid, confined space, working at heights), delivery date, trainer, duration, competency assessment result, certification issued, expiry date, and compliance status. Distinct from general workforce training — this is the SSOT for HSE-specific training compliance. Sourced from Intelex and SAP SuccessFactors HSE training modules.';
 
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ADD CONSTRAINT `fk_safety_incident_hazard_register_id` FOREIGN KEY (`hazard_register_id`) REFERENCES `vibe_construction_v1`.`safety`.`hazard_register`(`hazard_register_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ADD CONSTRAINT `fk_safety_incident_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ADD CONSTRAINT `fk_safety_incident_permit_to_work_id` FOREIGN KEY (`permit_to_work_id`) REFERENCES `vibe_construction_v1`.`safety`.`permit_to_work`(`permit_to_work_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ADD CONSTRAINT `fk_safety_incident_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ADD CONSTRAINT `fk_safety_incident_swms_id` FOREIGN KEY (`swms_id`) REFERENCES `vibe_construction_v1`.`safety`.`swms`(`swms_id`);
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ADD CONSTRAINT `fk_safety_incident_investigation_incident_id` FOREIGN KEY (`incident_id`) REFERENCES `vibe_construction_v1`.`safety`.`incident`(`incident_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ADD CONSTRAINT `fk_safety_incident_investigation_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ADD CONSTRAINT `fk_safety_swms_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ADD CONSTRAINT `fk_safety_swms_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ADD CONSTRAINT `fk_safety_permit_to_work_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ADD CONSTRAINT `fk_safety_permit_to_work_swms_id` FOREIGN KEY (`swms_id`) REFERENCES `vibe_construction_v1`.`safety`.`swms`(`swms_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ADD CONSTRAINT `fk_safety_permit_to_work_toolbox_meeting_id` FOREIGN KEY (`toolbox_meeting_id`) REFERENCES `vibe_construction_v1`.`safety`.`toolbox_meeting`(`toolbox_meeting_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ADD CONSTRAINT `fk_safety_toolbox_meeting_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ADD CONSTRAINT `fk_safety_toolbox_meeting_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ADD CONSTRAINT `fk_safety_incident_investigation_permit_to_work_id` FOREIGN KEY (`permit_to_work_id`) REFERENCES `vibe_construction_v1`.`safety`.`permit_to_work`(`permit_to_work_id`);
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ADD CONSTRAINT `fk_safety_toolbox_meeting_swms_id` FOREIGN KEY (`swms_id`) REFERENCES `vibe_construction_v1`.`safety`.`swms`(`swms_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ADD CONSTRAINT `fk_safety_hse_inspection_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ADD CONSTRAINT `fk_safety_hse_inspection_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ADD CONSTRAINT `fk_safety_risk_assessment_hazard_register_id` FOREIGN KEY (`hazard_register_id`) REFERENCES `vibe_construction_v1`.`safety`.`hazard_register`(`hazard_register_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ADD CONSTRAINT `fk_safety_risk_assessment_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ADD CONSTRAINT `fk_safety_hazard_register_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ADD CONSTRAINT `fk_safety_environmental_monitoring_hazard_register_id` FOREIGN KEY (`hazard_register_id`) REFERENCES `vibe_construction_v1`.`safety`.`hazard_register`(`hazard_register_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ADD CONSTRAINT `fk_safety_environmental_monitoring_hse_plan_id` FOREIGN KEY (`hse_plan_id`) REFERENCES `vibe_construction_v1`.`safety`.`hse_plan`(`hse_plan_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ADD CONSTRAINT `fk_safety_environmental_monitoring_permit_to_work_id` FOREIGN KEY (`permit_to_work_id`) REFERENCES `vibe_construction_v1`.`safety`.`permit_to_work`(`permit_to_work_id`);
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ADD CONSTRAINT `fk_safety_environmental_monitoring_risk_assessment_id` FOREIGN KEY (`risk_assessment_id`) REFERENCES `vibe_construction_v1`.`safety`.`risk_assessment`(`risk_assessment_id`);
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ADD CONSTRAINT `fk_safety_hazard_register_swms_id` FOREIGN KEY (`swms_id`) REFERENCES `vibe_construction_v1`.`safety`.`swms`(`swms_id`);
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ADD CONSTRAINT `fk_safety_training_incident_id` FOREIGN KEY (`incident_id`) REFERENCES `vibe_construction_v1`.`safety`.`incident`(`incident_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_construction_v1`.`safety` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_construction_v1`.`safety` SET TAGS ('dbx_domain' = 'safety');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` SET TAGS ('dbx_subdomain' = 'incident_management');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` SET TAGS ('dbx_subdomain' = 'event_management');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Worker ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `crew_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Assignment Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `hazard_register_id` SET TAGS ('dbx_business_glossary_term' = 'Hazard Register Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Point Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `material_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Material Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Party Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Reporter Contact Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `contact_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `body_part_affected` SET TAGS ('dbx_business_glossary_term' = 'Body Part Affected');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `corrective_action_count` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Count');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `created_at` SET TAGS ('dbx_business_glossary_term' = 'Record Created At Timestamp');
@@ -556,15 +532,18 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `incident_st
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `incident_status` SET TAGS ('dbx_value_regex' = 'open|under_investigation|pending_review|closed|void');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `incident_type` SET TAGS ('dbx_business_glossary_term' = 'Incident Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_job_title` SET TAGS ('dbx_business_glossary_term' = 'Injured Party Job Title');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_job_title` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_name` SET TAGS ('dbx_business_glossary_term' = 'Injured Party Full Name');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_type` SET TAGS ('dbx_business_glossary_term' = 'Injured Party Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injured_party_type` SET TAGS ('dbx_value_regex' = 'employee|subcontractor|visitor|public|third_party');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injury_nature` SET TAGS ('dbx_business_glossary_term' = 'Nature of Injury or Illness');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `injury_nature` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `intelex_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Intelex Source Record ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `investigation_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Completed Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `investigation_lead` SET TAGS ('dbx_business_glossary_term' = 'Investigation Lead Name');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `investigation_lead` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `is_environmental_event` SET TAGS ('dbx_business_glossary_term' = 'Environmental Event Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `is_fit_for_duty` SET TAGS ('dbx_business_glossary_term' = 'Fitness for Duty Status');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `is_lti` SET TAGS ('dbx_business_glossary_term' = 'Lost Time Injury (LTI) Flag');
@@ -583,27 +562,24 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `root_cause_
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Incident Severity Classification');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `shift` SET TAGS ('dbx_business_glossary_term' = 'Work Shift at Time of Incident');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `shift` SET TAGS ('dbx_value_regex' = 'day|night|swing|not_applicable');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `site_area` SET TAGS ('dbx_business_glossary_term' = 'Site Area / Zone');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `treating_physician` SET TAGS ('dbx_business_glossary_term' = 'Treating Physician Name');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `treating_physician` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `treatment_type` SET TAGS ('dbx_business_glossary_term' = 'Medical Treatment Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `treatment_type` SET TAGS ('dbx_value_regex' = 'first_aid|medical_treatment|hospitalization|fatality|restricted_work|no_treatment');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `treatment_type` SET TAGS ('dbx_pii_health' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `updated_at` SET TAGS ('dbx_business_glossary_term' = 'Record Updated At Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Weather Conditions at Time of Incident');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `workers_comp_claim_ref` SET TAGS ('dbx_business_glossary_term' = 'Workers Compensation Claim Reference');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident` ALTER COLUMN `workers_comp_claim_ref` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` SET TAGS ('dbx_subdomain' = 'incident_management');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` SET TAGS ('dbx_subdomain' = 'event_management');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `incident_investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Investigation ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Lead Craft Worker Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `ncr_id` SET TAGS ('dbx_business_glossary_term' = 'Ncr Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `contributing_factors` SET TAGS ('dbx_business_glossary_term' = 'Contributing Factors');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `corrective_action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Due Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `corrective_action_status` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Status');
@@ -636,7 +612,6 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUM
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `lost_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lost Time Days');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `management_review_date` SET TAGS ('dbx_business_glossary_term' = 'Management Review Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `ppe_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Personal Protective Equipment (PPE) Compliance Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `ptw_reference` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Reference');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `recurrence_prevention_measures` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Prevention Measures');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `regulatory_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Reference Number');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `regulatory_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Date');
@@ -645,15 +620,17 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUM
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `systemic_cause` SET TAGS ('dbx_business_glossary_term' = 'Systemic Cause');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `witness_count` SET TAGS ('dbx_business_glossary_term' = 'Witness Count');
+ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `witness_count` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`incident_investigation` ALTER COLUMN `work_area_description` SET TAGS ('dbx_business_glossary_term' = 'Work Area Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` SET TAGS ('dbx_subdomain' = 'risk_control');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` SET TAGS ('dbx_subdomain' = 'hazard_control');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `skill_trade_id` SET TAGS ('dbx_business_glossary_term' = 'Skill Trade Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `aconex_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Aconex Document ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `activity_description` SET TAGS ('dbx_business_glossary_term' = 'High-Risk Activity Description');
@@ -667,8 +644,10 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `control_measure
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `document_url` SET TAGS ('dbx_business_glossary_term' = 'SWMS Document URL');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `emergency_procedures` SET TAGS ('dbx_business_glossary_term' = 'Emergency Response Procedures');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `emergency_procedures` SET TAGS ('dbx_pii_contact' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `environmental_controls` SET TAGS ('dbx_business_glossary_term' = 'Environmental Control Measures');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'SWMS Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `hazard_description` SET TAGS ('dbx_business_glossary_term' = 'Identified Hazard Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `initial_risk_consequence` SET TAGS ('dbx_business_glossary_term' = 'Initial Risk Consequence Rating');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `initial_risk_consequence` SET TAGS ('dbx_value_regex' = 'insignificant|minor|moderate|major|catastrophic');
@@ -696,18 +675,23 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `swms_number` SE
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `swms_number` SET TAGS ('dbx_value_regex' = '^SWMS-[A-Z0-9]{2,10}-[0-9]{4,6}$');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `tbm_required` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Required Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'SWMS Title');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `title` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `work_steps` SET TAGS ('dbx_business_glossary_term' = 'Step-by-Step Work Procedure');
 ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `worker_acknowledgement_required` SET TAGS ('dbx_business_glossary_term' = 'Worker Acknowledgement Required Flag');
+ALTER TABLE `vibe_construction_v1`.`safety`.`swms` ALTER COLUMN `worker_acknowledgement_required` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` SET TAGS ('dbx_subdomain' = 'risk_control');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` SET TAGS ('dbx_subdomain' = 'hazard_control');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Client Authorizing Contact Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Party Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Swms Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `toolbox_meeting_id` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Authority Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `approval_level` SET TAGS ('dbx_business_glossary_term' = 'Permit Approval Level');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `approval_level` SET TAGS ('dbx_value_regex' = 'supervisor|hse_manager|project_manager|site_director');
@@ -717,6 +701,7 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `concu
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `control_measures` SET TAGS ('dbx_business_glossary_term' = 'Control Measures Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `emergency_rescue_plan` SET TAGS ('dbx_business_glossary_term' = 'Emergency Rescue Plan Reference');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `emergency_rescue_plan` SET TAGS ('dbx_pii_contact' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `environmental_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Environmental Impact Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `extension_count` SET TAGS ('dbx_business_glossary_term' = 'Permit Extension Count');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `gas_test_required` SET TAGS ('dbx_business_glossary_term' = 'Gas Test Required Flag');
@@ -726,11 +711,11 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `hazar
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `isolation_details` SET TAGS ('dbx_business_glossary_term' = 'Isolation Details Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `isolation_required` SET TAGS ('dbx_business_glossary_term' = 'Isolation Required Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `issued_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Permit Issued Timestamp');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `issuing_authority_name` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Name');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `issuing_authority_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `issuing_authority_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `issuing_authority_role` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Role');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `last_extended_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Permit Extension Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `performing_authority_name` SET TAGS ('dbx_business_glossary_term' = 'Performing Authority Name');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `performing_authority_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `performing_authority_role` SET TAGS ('dbx_business_glossary_term' = 'Performing Authority Role');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `permit_number` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Number');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `permit_number` SET TAGS ('dbx_value_regex' = '^PTW-[A-Z0-9]{3,10}-[0-9]{4,8}$');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `permit_status` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Status');
@@ -742,24 +727,21 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `risk_
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `suspension_reason` SET TAGS ('dbx_business_glossary_term' = 'Permit Suspension Reason');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `tbm_conducted_flag` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Conducted Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `valid_from_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Valid From Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `valid_to_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Valid To Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `valid_until` SET TAGS ('dbx_business_glossary_term' = 'Permit Validity Expiry');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `work_description` SET TAGS ('dbx_business_glossary_term' = 'Work Description');
-ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `work_location` SET TAGS ('dbx_business_glossary_term' = 'Work Location');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `work_location_description` SET TAGS ('dbx_business_glossary_term' = 'Work Location Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `work_scope` SET TAGS ('dbx_business_glossary_term' = 'Permitted Work Scope Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `worker_count` SET TAGS ('dbx_business_glossary_term' = 'Permitted Worker Count');
+ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `worker_count` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`permit_to_work` ALTER COLUMN `valid_from` SET TAGS ('dbx_business_glossary_term' = 'Permit Validity Start');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` SET TAGS ('dbx_subdomain' = 'site_compliance');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` SET TAGS ('dbx_subdomain' = 'training_compliance');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `toolbox_meeting_id` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting Identifier');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Facilitator Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Swms Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `actual_attendee_count` SET TAGS ('dbx_business_glossary_term' = 'Actual Attendee Count');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `actual_attendee_count` SET TAGS ('dbx_pii_flag' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `attendance_rate_pct` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Attendance Rate Percentage');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `control_measures_communicated` SET TAGS ('dbx_business_glossary_term' = 'Control Measures Communicated');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `corrective_action_raised` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Raised');
@@ -768,6 +750,7 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `crea
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `document_attachment_reference` SET TAGS ('dbx_business_glossary_term' = 'Document Attachment Reference');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Duration (Minutes)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `emergency_procedures_reviewed` SET TAGS ('dbx_business_glossary_term' = 'Emergency Procedures Reviewed');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `emergency_procedures_reviewed` SET TAGS ('dbx_pii_contact' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `end_time` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) End Time');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `facilitator_qualification` SET TAGS ('dbx_business_glossary_term' = 'Facilitator HSE Qualification');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `hazards_highlighted` SET TAGS ('dbx_business_glossary_term' = 'Hazards Highlighted');
@@ -788,6 +771,7 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `meet
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `meeting_type` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `meeting_type` SET TAGS ('dbx_value_regex' = 'pre_shift|pre_task|weekly_safety|emergency|visitor_induction');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `planned_attendee_count` SET TAGS ('dbx_business_glossary_term' = 'Planned Attendee Count');
+ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `planned_attendee_count` SET TAGS ('dbx_pii_flag' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `ppe_requirements_communicated` SET TAGS ('dbx_business_glossary_term' = 'Personal Protective Equipment (PPE) Requirements Communicated');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `ptw_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Reference Number');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `sign_off_method` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Sign-Off Method');
@@ -795,26 +779,17 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `sign
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Start Time');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `topics_discussed` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Topics Discussed');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `trade_group` SET TAGS ('dbx_business_glossary_term' = 'Trade Group');
-ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `wbs_element_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Code');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Weather Conditions at Meeting');
 ALTER TABLE `vibe_construction_v1`.`safety`.`toolbox_meeting` ALTER COLUMN `work_area_description` SET TAGS ('dbx_business_glossary_term' = 'Work Area Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` SET TAGS ('dbx_subdomain' = 'site_compliance');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` SET TAGS ('dbx_subdomain' = 'event_management');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `hse_inspection_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Inspection ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Checklist Template ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Craft Worker Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `critical_deficiency_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Deficiency Count');
@@ -857,32 +832,38 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `stop_
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `total_items_checked` SET TAGS ('dbx_business_glossary_term' = 'Total Checklist Items Checked');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Weather Conditions at Inspection');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `worker_count_observed` SET TAGS ('dbx_business_glossary_term' = 'Worker Count Observed');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_inspection` ALTER COLUMN `worker_count_observed` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` SET TAGS ('dbx_subdomain' = 'site_compliance');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` SET TAGS ('dbx_subdomain' = 'hazard_control');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `master_services_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Master Services Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Prepared By Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Client Hse Representative Contact Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Obligation Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `applicable_regulations` SET TAGS ('dbx_business_glossary_term' = 'Applicable Regulations');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Approval Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Approved By');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `audit_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Audit Frequency (Months)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `client_hse_requirements` SET TAGS ('dbx_business_glossary_term' = 'Client Health Safety Environment (HSE) Requirements');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `document_reference` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Document Reference');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Effective Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone Number');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `environmental_aspects` SET TAGS ('dbx_business_glossary_term' = 'Environmental Aspects');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `hse_objective_description` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Objective Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `incident_reporting_procedure` SET TAGS ('dbx_business_glossary_term' = 'Incident Reporting Procedure');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `induction_required` SET TAGS ('dbx_business_glossary_term' = 'Site HSE Induction Required');
@@ -896,13 +877,14 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_number
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Status');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_value_regex' = 'draft|under_review|approved|superseded|cancelled');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_title` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Title');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_title` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_value_regex' = 'project_hse_plan|site_specific_hse_plan|environmental_management_plan|emergency_response_plan|construction_phase_plan');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_version` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Version');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `plan_version` SET TAGS ('dbx_value_regex' = '^[0-9]{1,3}.[0-9]{1,2}$');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `ppe_requirements` SET TAGS ('dbx_business_glossary_term' = 'Personal Protective Equipment (PPE) Requirements');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `project_phase` SET TAGS ('dbx_business_glossary_term' = 'Project Phase');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `project_phase` SET TAGS ('dbx_value_regex' = 'pre_construction|mobilisation|construction|commissioning|demobilisation');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `prepared_by` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Prepared By');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `prepared_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `ptw_required` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Required');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `review_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Plan Review Frequency (Months)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Overall Project Health Safety Environment (HSE) Risk Rating');
@@ -910,24 +892,30 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `risk_rating
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `site_location` SET TAGS ('dbx_business_glossary_term' = 'Site Location');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `site_specific_hazards` SET TAGS ('dbx_business_glossary_term' = 'Site-Specific Hazards');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `subcontractor_hse_requirements` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor Health Safety Environment (HSE) Requirements');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `subcontractor_hse_requirements` SET TAGS ('dbx_pii_flag' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `swms_required` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Required');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `tbm_frequency` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Frequency');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `tbm_frequency` SET TAGS ('dbx_value_regex' = 'daily|weekly|per_shift|as_required');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `trir_target` SET TAGS ('dbx_business_glossary_term' = 'Total Recordable Incident Rate (TRIR) Target');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hse_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` SET TAGS ('dbx_subdomain' = 'risk_control');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` SET TAGS ('dbx_subdomain' = 'hazard_control');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `hazard_register_id` SET TAGS ('dbx_business_glossary_term' = 'Hazard Register Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `skill_trade_id` SET TAGS ('dbx_business_glossary_term' = 'Skill Trade Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `activity_description` SET TAGS ('dbx_business_glossary_term' = 'Activity / Task Description');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By (Person Name)');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `approved_by` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessed_by` SET TAGS ('dbx_business_glossary_term' = 'Assessed By (Person Name)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessed_by` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessed_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessment_number` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Number');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `assessment_number` SET TAGS ('dbx_value_regex' = '^RA-[A-Z0-9]{3,10}-[0-9]{4,6}$');
@@ -966,11 +954,19 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `site
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `source_type` SET TAGS ('dbx_business_glossary_term' = 'Hazard Source Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`risk_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` SET TAGS ('dbx_subdomain' = 'risk_control');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` SET TAGS ('dbx_subdomain' = 'hazard_control');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_register_id` SET TAGS ('dbx_business_glossary_term' = 'Hazard Register ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `ncr_id` SET TAGS ('dbx_business_glossary_term' = 'Ncr Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Swms Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `actual_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Closure Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `affected_workers_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Workers Count');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `control_measures_description` SET TAGS ('dbx_business_glossary_term' = 'Control Measures Description');
@@ -984,6 +980,7 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `haza
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_status` SET TAGS ('dbx_business_glossary_term' = 'Hazard Status');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_status` SET TAGS ('dbx_value_regex' = 'open|controlled|eliminated|closed');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_title` SET TAGS ('dbx_business_glossary_term' = 'Hazard Title');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_title` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_type` SET TAGS ('dbx_business_glossary_term' = 'Hazard Type');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hazard_type` SET TAGS ('dbx_value_regex' = 'fall|struck_by|caught_between|electrocution|excavation_collapse|chemical_exposure');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `hierarchy_of_controls` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy of Controls');
@@ -1009,70 +1006,62 @@ ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `resi
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `residual_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Residual Risk Level');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `residual_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `residual_risk_score` SET TAGS ('dbx_business_glossary_term' = 'Residual Risk Score');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `responsible_party` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party');
+ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `responsible_party` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `site_zone` SET TAGS ('dbx_business_glossary_term' = 'Site Zone');
-ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `swms_reference` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `target_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Target Closure Date');
 ALTER TABLE `vibe_construction_v1`.`safety`.`hazard_register` ALTER COLUMN `tbm_topic_flag` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Topic Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` SET TAGS ('dbx_subdomain' = 'site_compliance');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `environmental_monitoring_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Monitoring Identifier');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `hazard_register_id` SET TAGS ('dbx_business_glossary_term' = 'Hazard Register Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `hse_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Hse Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `corrective_action_reference` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Reference Number');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_value_regex' = 'valid|suspect|invalid|estimated|below_detection_limit');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `detection_limit` SET TAGS ('dbx_business_glossary_term' = 'Instrument Detection Limit');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `exceedance_flag` SET TAGS ('dbx_business_glossary_term' = 'Threshold Exceedance Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `exceedance_magnitude` SET TAGS ('dbx_business_glossary_term' = 'Exceedance Magnitude');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `instrument_calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Instrument Last Calibration Date');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `instrument_calibration_due_date` SET TAGS ('dbx_business_glossary_term' = 'Instrument Calibration Due Date');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `instrument_code` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Instrument ID');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `instrument_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{3,30}$');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `instrument_type` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Instrument Type');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `laboratory_name` SET TAGS ('dbx_business_glossary_term' = 'Analytical Laboratory Name');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `laboratory_report_number` SET TAGS ('dbx_business_glossary_term' = 'Laboratory Report Number');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Location Latitude');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Location Longitude');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `measurement_value` SET TAGS ('dbx_business_glossary_term' = 'Measurement Value');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Frequency');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_location_code` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Location Code');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,20}$');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_location_name` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Location Name');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_method` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Method');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_parameter` SET TAGS ('dbx_business_glossary_term' = 'Environmental Monitoring Parameter');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_record_status` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Record Status');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_record_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|verified|approved|rejected|closed');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Environmental Monitoring Reference Number');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `monitoring_reference_number` SET TAGS ('dbx_value_regex' = '^ENV-[A-Z0-9]{3,10}-[0-9]{4,8}$');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `parameter_category` SET TAGS ('dbx_business_glossary_term' = 'Environmental Parameter Category');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `parameter_category` SET TAGS ('dbx_value_regex' = 'air_quality|noise|vibration|water_quality|soil_contamination|dust');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `regulator_notification_date` SET TAGS ('dbx_business_glossary_term' = 'Regulator Notification Date');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `regulatory_standard_reference` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Standard Reference');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Remarks');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `reported_to_regulator` SET TAGS ('dbx_business_glossary_term' = 'Reported to Regulator Flag');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `sample_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Sample Duration (Minutes)');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `sample_type` SET TAGS ('dbx_business_glossary_term' = 'Sample Type');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `sample_type` SET TAGS ('dbx_value_regex' = 'grab|composite|continuous|passive|integrated');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `threshold_limit` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Threshold Limit');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `threshold_type` SET TAGS ('dbx_business_glossary_term' = 'Threshold Limit Type');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `threshold_type` SET TAGS ('dbx_value_regex' = 'maximum|minimum|range_upper|range_lower|action_level|alert_level');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Prevailing Weather Conditions');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `wind_direction` SET TAGS ('dbx_business_glossary_term' = 'Wind Direction');
-ALTER TABLE `vibe_construction_v1`.`safety`.`environmental_monitoring` ALTER COLUMN `wind_speed_ms` SET TAGS ('dbx_business_glossary_term' = 'Wind Speed (m/s)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` SET TAGS ('dbx_subdomain' = 'training_compliance');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `training_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Training ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Worker ID');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Firm Profile Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `job_cost_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Job Cost Transaction Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Party Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `skill_trade_id` SET TAGS ('dbx_business_glossary_term' = 'Skill Trade Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `assessment_method` SET TAGS ('dbx_business_glossary_term' = 'Assessment Method');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `assessment_method` SET TAGS ('dbx_value_regex' = 'written_exam|practical_test|observation|interview|no_assessment');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `assessment_result` SET TAGS ('dbx_business_glossary_term' = 'Assessment Result');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `assessment_result` SET TAGS ('dbx_value_regex' = 'pass|fail|conditional_pass|not_assessed');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `assessment_score` SET TAGS ('dbx_business_glossary_term' = 'Assessment Score');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `attendance_status` SET TAGS ('dbx_business_glossary_term' = 'Attendance Status');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `attendance_status` SET TAGS ('dbx_value_regex' = 'attended|absent|partial|excused');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `certificate_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `certificate_expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `certificate_issue_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issue Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Certificate Number');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `certification_issued` SET TAGS ('dbx_business_glossary_term' = 'Certification Issued');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `training_code` SET TAGS ('dbx_business_glossary_term' = 'Training Code');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `training_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Comments');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|expired|pending_renewal|waived');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `delivery_method` SET TAGS ('dbx_business_glossary_term' = 'Delivery Method');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `delivery_method` SET TAGS ('dbx_value_regex' = 'classroom|online|on_site|blended|simulator|hands_on');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `duration_hours` SET TAGS ('dbx_business_glossary_term' = 'Duration Hours');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `end_time` SET TAGS ('dbx_business_glossary_term' = 'Training End Time');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `language_of_instruction` SET TAGS ('dbx_business_glossary_term' = 'Language of Instruction');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Training Location');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `mandatory_flag` SET TAGS ('dbx_business_glossary_term' = 'Mandatory Flag');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `materials_provided` SET TAGS ('dbx_business_glossary_term' = 'Training Materials Provided');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `next_refresher_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Refresher Due Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `refresher_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Refresher Frequency Months');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `refresher_required` SET TAGS ('dbx_business_glossary_term' = 'Refresher Required');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `regulatory_requirement` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Training Start Time');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Training Title');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `title` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `trainer_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Trainer Certification Number');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `trainer_certification_number` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `training_date` SET TAGS ('dbx_business_glossary_term' = 'Training Date');
+ALTER TABLE `vibe_construction_v1`.`safety`.`training` ALTER COLUMN `training_type` SET TAGS ('dbx_business_glossary_term' = 'Training Type');

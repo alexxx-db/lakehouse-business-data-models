@@ -1,74 +1,92 @@
--- Metric views for domain: menu | Business: Restaurants | Version: 2 | Generated on: 2026-07-02 03:10:25
+-- Metric views for domain: menu | Business: Restaurants | Version: 2 | Generated on: 2026-07-10 18:21:26
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core menu item performance metrics covering pricing, cost, and portfolio composition. Used by menu engineers and executives to evaluate item-level profitability and portfolio health."
+  comment: "Core menu item performance metrics covering pricing, cost, nutritional profile, and availability across channels and dayparts. Used by menu engineering, culinary, and finance teams to evaluate item portfolio health."
   source: "`vibe_restaurants_v1`.`menu`.`menu_item`"
   dimensions:
     - name: "item_status"
       expr: item_status
-      comment: "Current lifecycle status of the menu item (active, discontinued, test, etc.) for portfolio segmentation."
-    - name: "menu_engineering_class"
-      expr: menu_engineering_class
-      comment: "Menu engineering quadrant classification (Star, Plow Horse, Puzzle, Dog) used to drive pricing and promotion decisions."
+      comment: "Current lifecycle status of the menu item (active, discontinued, pending, etc.)."
     - name: "daypart"
       expr: daypart
-      comment: "Daypart applicability (breakfast, lunch, dinner, late-night) for time-of-day performance analysis."
+      comment: "Daypart the item is available in (breakfast, lunch, dinner, all-day, etc.)."
+    - name: "menu_engineering_class"
+      expr: menu_engineering_class
+      comment: "Menu engineering quadrant classification (star, plow horse, puzzle, dog) used to guide pricing and promotion decisions."
     - name: "restaurant_format"
       expr: restaurant_format
-      comment: "Restaurant format (QSR, fast casual, drive-thru) to segment item performance by service model."
+      comment: "Restaurant format the item is available in (drive-thru, dine-in, fast casual, etc.)."
     - name: "subcategory"
       expr: subcategory
-      comment: "Menu subcategory (burgers, salads, beverages, etc.) for category-level portfolio analysis."
+      comment: "Menu subcategory the item belongs to (e.g., burgers, sides, beverages)."
     - name: "is_lto"
       expr: is_lto
-      comment: "Flag indicating whether the item is a limited-time offer, enabling LTO vs. core menu comparison."
-    - name: "is_vegetarian"
-      expr: is_vegetarian
-      comment: "Vegetarian flag for dietary portfolio composition reporting."
+      comment: "Whether the item is a limited-time offer."
+    - name: "is_combo_eligible"
+      expr: is_combo_eligible
+      comment: "Whether the item can be included in combo meals."
+    - name: "is_3pd_available"
+      expr: is_3pd_available
+      comment: "Whether the item is available on third-party delivery platforms."
+    - name: "is_olo_available"
+      expr: is_olo_available
+      comment: "Whether the item is available for online ordering."
     - name: "is_vegan"
       expr: is_vegan
-      comment: "Vegan flag for dietary portfolio composition reporting."
+      comment: "Whether the item is classified as vegan."
+    - name: "is_vegetarian"
+      expr: is_vegetarian
+      comment: "Whether the item is classified as vegetarian."
     - name: "is_gluten_free"
       expr: is_gluten_free
-      comment: "Gluten-free flag for allergen-sensitive portfolio reporting."
+      comment: "Whether the item is classified as gluten-free."
     - name: "launch_date"
-      expr: DATE_TRUNC('month', launch_date)
-      comment: "Month of item launch for cohort and vintage analysis of menu additions."
+      expr: launch_date
+      comment: "Date the item was launched on the menu."
+    - name: "discontinue_date"
+      expr: discontinue_date
+      comment: "Date the item was or is scheduled to be discontinued."
   measures:
     - name: "total_menu_items"
       expr: COUNT(1)
-      comment: "Total number of menu items in the portfolio. Tracks menu complexity and breadth for engineering reviews."
+      comment: "Total number of menu item records. Used to track portfolio size and complexity."
     - name: "active_menu_items"
       expr: COUNT(CASE WHEN item_status = 'active' THEN 1 END)
-      comment: "Count of currently active menu items. Executives use this to monitor menu complexity and rationalization progress."
+      comment: "Count of currently active menu items. Tracks live portfolio breadth."
     - name: "lto_item_count"
       expr: COUNT(CASE WHEN is_lto = TRUE THEN 1 END)
-      comment: "Number of limited-time offer items currently in the portfolio. Drives LTO pipeline and marketing investment decisions."
+      comment: "Number of limited-time offer items currently in the portfolio. Tracks LTO pipeline depth."
     - name: "avg_base_price"
       expr: AVG(CAST(base_price AS DOUBLE))
-      comment: "Average base selling price across menu items. Used to monitor pricing tier positioning and competitive benchmarking."
+      comment: "Average base selling price across menu items. Tracks pricing tier positioning."
     - name: "avg_item_cost"
       expr: AVG(CAST(cost AS DOUBLE))
-      comment: "Average theoretical cost per menu item. Drives food cost management and margin analysis at the portfolio level."
+      comment: "Average cost to produce a menu item. Used to monitor COGS exposure across the portfolio."
     - name: "avg_gross_margin_per_item"
       expr: AVG(CAST(base_price AS DOUBLE) - CAST(cost AS DOUBLE))
-      comment: "Average gross margin (price minus cost) per menu item. Core profitability KPI for menu engineering decisions."
+      comment: "Average gross margin (price minus cost) per menu item. Key profitability indicator for menu engineering decisions."
     - name: "avg_sodium_mg"
       expr: AVG(CAST(sodium_mg AS DOUBLE))
-      comment: "Average sodium content in milligrams across menu items. Used for nutritional compliance and health-conscious menu strategy."
-    - name: "customizable_item_count"
-      expr: COUNT(CASE WHEN is_customizable = TRUE THEN 1 END)
-      comment: "Number of customizable menu items. Informs digital ordering platform investment and kitchen complexity management."
-    - name: "digital_channel_eligible_items"
-      expr: COUNT(CASE WHEN is_olo_available = TRUE THEN 1 END)
-      comment: "Count of items available on digital/OLO ordering channels. Tracks digital menu completeness for e-commerce revenue strategy."
-    - name: "third_party_delivery_eligible_items"
+      comment: "Average sodium content in milligrams across menu items. Used for nutritional compliance and health-conscious menu planning."
+    - name: "avg_portion_size_grams"
+      expr: AVG(CAST(portion_size_grams AS DOUBLE))
+      comment: "Average portion size in grams. Used to benchmark serving sizes and manage food cost per portion."
+    - name: "items_available_on_3pd"
       expr: COUNT(CASE WHEN is_3pd_available = TRUE THEN 1 END)
-      comment: "Count of items available on third-party delivery platforms. Drives 3PD channel revenue and partnership decisions."
+      comment: "Number of items available on third-party delivery platforms. Tracks digital channel coverage."
+    - name: "items_available_online"
+      expr: COUNT(CASE WHEN is_olo_available = TRUE THEN 1 END)
+      comment: "Number of items available for online ordering. Tracks OLO channel coverage."
+    - name: "pct_items_lto"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_lto = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of menu items that are limited-time offers. High LTO concentration can signal menu instability."
+    - name: "pct_items_combo_eligible"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_combo_eligible = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of menu items eligible for combo bundling. Informs upsell and bundle strategy."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_pmix_record`
@@ -76,156 +94,97 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Product mix (PMIX) performance metrics measuring sales volume, revenue, margin, and menu mix by item. The primary operational KPI view for menu performance management and engineering decisions."
+  comment: "Product mix (PMIX) performance metrics tracking sales volume, revenue, margin, and menu mix by item, daypart, channel, and period. The primary operational dashboard for menu performance and engineering decisions."
   source: "`vibe_restaurants_v1`.`menu`.`pmix_record`"
   dimensions:
     - name: "reporting_date"
-      expr: DATE_TRUNC('week', reporting_date)
-      comment: "Week of the reporting period for trend analysis of item-level sales performance."
+      expr: reporting_date
+      comment: "Date of the PMIX reporting record."
     - name: "reporting_period_type"
       expr: reporting_period_type
-      comment: "Period granularity (daily, weekly, period) for flexible time-series analysis."
+      comment: "Type of reporting period (daily, weekly, period, etc.)."
     - name: "daypart"
       expr: daypart
-      comment: "Daypart (breakfast, lunch, dinner) for time-of-day sales mix analysis."
-    - name: "menu_category"
-      expr: menu_category
-      comment: "Menu category for category-level performance aggregation and comparison."
-    - name: "menu_engineering_classification"
-      expr: menu_engineering_classification
-      comment: "Menu engineering quadrant (Star, Plow Horse, Puzzle, Dog) for strategic portfolio management."
+      comment: "Daypart the sales occurred in (breakfast, lunch, dinner, late night)."
     - name: "sales_channel"
       expr: sales_channel
-      comment: "Sales channel (dine-in, drive-thru, delivery, OLO) for channel-level revenue attribution."
+      comment: "Sales channel (dine-in, drive-thru, delivery, OLO, etc.)."
+    - name: "menu_category"
+      expr: menu_category
+      comment: "Menu category of the item sold (entrees, sides, beverages, desserts)."
+    - name: "menu_engineering_classification"
+      expr: menu_engineering_classification
+      comment: "Menu engineering quadrant (star, plow horse, puzzle, dog) for the item in this period."
     - name: "restaurant_format"
       expr: restaurant_format
-      comment: "Restaurant format for cross-format performance benchmarking."
+      comment: "Restaurant format where sales occurred."
     - name: "ownership_type"
       expr: ownership_type
-      comment: "Ownership model (corporate, franchise) for performance comparison across ownership structures."
+      comment: "Ownership type of the restaurant (company-owned vs. franchised)."
     - name: "is_lto"
       expr: is_lto
-      comment: "LTO flag to isolate limited-time offer performance from core menu performance."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency code for multi-currency revenue reporting."
+      comment: "Whether the item is a limited-time offer."
+    - name: "is_available"
+      expr: is_available
+      comment: "Whether the item was available during the reporting period."
+    - name: "sku_code"
+      expr: sku_code
+      comment: "SKU code of the menu item for cross-system reconciliation."
   measures:
     - name: "total_gross_sales"
       expr: SUM(CAST(gross_sales_amount AS DOUBLE))
-      comment: "Total gross sales revenue across all items in the period. Primary top-line revenue KPI for menu performance."
+      comment: "Total gross sales revenue across all menu items in the period. Primary top-line revenue KPI."
     - name: "total_net_sales"
       expr: SUM(CAST(net_sales_amount AS DOUBLE))
-      comment: "Total net sales after discounts and voids. Used for accurate revenue reporting and P&L alignment."
+      comment: "Total net sales after discounts, comps, and refunds. Core revenue metric for P&L reporting."
     - name: "total_cogs"
       expr: SUM(CAST(cogs_amount AS DOUBLE))
-      comment: "Total cost of goods sold across all items. Core input for food cost management and margin analysis."
+      comment: "Total cost of goods sold across all items. Used to compute gross margin and monitor food cost."
     - name: "total_contribution_margin"
       expr: SUM(CAST(contribution_margin_amount AS DOUBLE))
-      comment: "Total contribution margin (net sales minus COGS). The primary profitability KPI for menu engineering decisions."
-    - name: "avg_selling_price"
-      expr: AVG(CAST(avg_selling_price AS DOUBLE))
-      comment: "Average actual selling price per item record. Tracks price realization vs. list price and promotional impact."
+      comment: "Total contribution margin (net sales minus COGS). Key profitability metric for menu engineering."
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount dollars applied. Monitors promotional spend and discount program effectiveness."
-    - name: "total_refund_amount"
-      expr: SUM(CAST(refund_amount AS DOUBLE))
-      comment: "Total refund dollars issued. Tracks quality and satisfaction issues at the item level."
-    - name: "total_void_amount"
-      expr: SUM(CAST(void_amount AS DOUBLE))
-      comment: "Total voided transaction value. Operational quality indicator for order accuracy and kitchen performance."
-    - name: "avg_cogs_pct"
-      expr: AVG(CAST(cogs_pct AS DOUBLE))
-      comment: "Average food cost percentage across items. Executives use this to monitor margin health against target thresholds."
-    - name: "avg_menu_mix_pct"
-      expr: AVG(CAST(menu_mix_pct AS DOUBLE))
-      comment: "Average menu mix percentage showing item share of total sales volume. Drives portfolio rationalization decisions."
-    - name: "avg_sales_mix_pct"
-      expr: AVG(CAST(sales_mix_pct AS DOUBLE))
-      comment: "Average sales mix percentage showing item share of total revenue. Identifies revenue concentration risk."
-    - name: "total_unavailability_hours"
-      expr: SUM(CAST(unavailability_hours AS DOUBLE))
-      comment: "Total hours items were unavailable (86'd). Tracks supply chain and operational reliability impact on revenue."
+      comment: "Total discount dollars applied. Tracks promotional spend and discount exposure."
     - name: "total_comp_amount"
       expr: SUM(CAST(comp_amount AS DOUBLE))
-      comment: "Total complimentary (comped) item value. Monitors guest recovery costs and employee meal program spend."
+      comment: "Total complimentary (comped) item value. Monitors guest recovery and employee meal costs."
+    - name: "total_refund_amount"
+      expr: SUM(CAST(refund_amount AS DOUBLE))
+      comment: "Total refund dollars issued. Elevated refunds signal quality or service issues."
+    - name: "total_void_amount"
+      expr: SUM(CAST(void_amount AS DOUBLE))
+      comment: "Total voided transaction value. High void rates may indicate POS errors or fraud."
+    - name: "avg_selling_price"
+      expr: AVG(CAST(avg_selling_price AS DOUBLE))
+      comment: "Average actual selling price per item record. Compared against list price to measure discount depth."
+    - name: "avg_cogs_pct"
+      expr: AVG(CAST(cogs_pct AS DOUBLE))
+      comment: "Average COGS as a percentage of sales. Core food cost efficiency metric; target typically 28-32% in QSR."
+    - name: "avg_menu_mix_pct"
+      expr: AVG(CAST(menu_mix_pct AS DOUBLE))
+      comment: "Average menu mix percentage per item. Used to identify high-velocity items and rebalance the portfolio."
+    - name: "avg_sales_mix_pct"
+      expr: AVG(CAST(sales_mix_pct AS DOUBLE))
+      comment: "Average sales mix percentage (revenue share) per item. Identifies revenue-driving items vs. volume drivers."
+    - name: "total_unavailability_hours"
+      expr: SUM(CAST(unavailability_hours AS DOUBLE))
+      comment: "Total hours items were unavailable (86'd or out of stock). Directly impacts revenue and guest satisfaction."
     - name: "distinct_items_sold"
       expr: COUNT(DISTINCT menu_item_id)
-      comment: "Count of distinct menu items generating sales. Measures effective menu breadth and identifies dead SKUs."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_cost`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Item-level food cost and margin metrics for menu engineering and financial planning. Tracks theoretical vs. actual cost performance to drive pricing and recipe optimization decisions."
-  source: "`vibe_restaurants_v1`.`menu`.`item_cost`"
-  dimensions:
-    - name: "cost_calculation_date"
-      expr: DATE_TRUNC('month', cost_calculation_date)
-      comment: "Month of cost calculation for trend analysis of food cost movements."
-    - name: "cost_calculation_method"
-      expr: cost_calculation_method
-      comment: "Method used to calculate cost (theoretical, actual, weighted average) for methodology comparison."
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format for cross-format cost benchmarking."
-    - name: "channel"
-      expr: channel
-      comment: "Sales channel for channel-specific cost analysis (e.g., delivery packaging costs)."
-    - name: "daypart"
-      expr: daypart
-      comment: "Daypart for time-of-day cost analysis."
-    - name: "menu_engineering_class"
-      expr: menu_engineering_class
-      comment: "Menu engineering classification for cost analysis by portfolio quadrant."
-    - name: "is_lto"
-      expr: is_lto
-      comment: "LTO flag to compare cost profiles of limited-time vs. core menu items."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for period-over-period cost variance reporting."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency code for multi-currency cost reporting."
-  measures:
-    - name: "avg_theoretical_cost"
-      expr: AVG(CAST(theoretical_cost_amount AS DOUBLE))
-      comment: "Average theoretical food cost per item. Baseline for food cost management and recipe costing accuracy."
-    - name: "avg_theoretical_cogs_pct"
-      expr: AVG(CAST(theoretical_cogs_pct AS DOUBLE))
-      comment: "Average theoretical COGS percentage. Primary food cost KPI used in menu engineering and pricing strategy."
-    - name: "avg_actual_cogs_pct"
-      expr: AVG(CAST(actual_cogs_pct AS DOUBLE))
-      comment: "Average actual COGS percentage. Compared against theoretical to identify waste, theft, and portioning issues."
-    - name: "avg_cogs_pct_variance"
-      expr: AVG(CAST(cogs_pct_variance AS DOUBLE))
-      comment: "Average variance between actual and target COGS percentage. Triggers investigation when outside acceptable thresholds."
-    - name: "total_theoretical_cost_variance"
-      expr: SUM(CAST(theoretical_cost_variance_amount AS DOUBLE))
-      comment: "Total dollar variance between theoretical and actual food cost. Quantifies financial exposure from cost overruns."
-    - name: "avg_target_cogs_pct"
-      expr: AVG(CAST(target_cogs_pct AS DOUBLE))
-      comment: "Average target COGS percentage set during menu engineering. Benchmark for evaluating actual cost performance."
-    - name: "avg_base_selling_price"
-      expr: AVG(CAST(base_selling_price AS DOUBLE))
-      comment: "Average base selling price at time of cost calculation. Used to validate price-cost relationship and margin targets."
-    - name: "avg_packaging_cost"
-      expr: AVG(CAST(packaging_cost AS DOUBLE))
-      comment: "Average packaging cost per item. Tracks packaging spend especially relevant for delivery channel profitability."
-    - name: "avg_waste_pct"
-      expr: AVG(CAST(waste_pct AS DOUBLE))
-      comment: "Average waste percentage factored into item cost. Drives waste reduction programs and yield improvement initiatives."
-    - name: "avg_yield_pct"
-      expr: AVG(CAST(yield_pct AS DOUBLE))
-      comment: "Average yield percentage for recipe ingredients. Low yield drives up effective food cost and signals prep inefficiency."
-    - name: "avg_primary_protein_cost"
-      expr: AVG(CAST(primary_protein_cost AS DOUBLE))
-      comment: "Average primary protein cost per item. Protein is typically the largest food cost driver; tracked for commodity risk management."
-    - name: "items_with_cost_records"
-      expr: COUNT(DISTINCT menu_item_id)
-      comment: "Count of distinct menu items with active cost records. Measures cost data completeness for financial reporting."
+      comment: "Number of distinct menu items with sales in the period. Measures active portfolio utilization."
+    - name: "gross_margin_pct"
+      expr: ROUND(100.0 * SUM(CAST(contribution_margin_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_sales_amount AS DOUBLE)), 0), 2)
+      comment: "Gross margin as a percentage of gross sales. Executive-level profitability KPI for the menu portfolio."
+    - name: "discount_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_sales_amount AS DOUBLE)), 0), 2)
+      comment: "Discount dollars as a percentage of gross sales. Tracks promotional intensity and margin erosion from discounting."
+    - name: "refund_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(refund_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_sales_amount AS DOUBLE)), 0), 2)
+      comment: "Refund dollars as a percentage of gross sales. Quality and satisfaction signal; elevated rates trigger operational review."
+    - name: "menu_list_price_total"
+      expr: SUM(CAST(menu_list_price AS DOUBLE))
+      comment: "Sum of menu list prices across records. Used with avg_selling_price to compute realized price vs. list price gap."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_price`
@@ -233,126 +192,156 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Menu item pricing metrics tracking price levels, promotional pricing, and franchise price deviation. Used by pricing strategy teams and executives to manage revenue optimization and pricing compliance."
+  comment: "Menu item pricing metrics covering base price, promotional pricing, franchise price deviation, and channel surcharges. Used by pricing strategy, revenue management, and franchise operations teams."
   source: "`vibe_restaurants_v1`.`menu`.`item_price`"
   dimensions:
-    - name: "effective_start_date"
-      expr: DATE_TRUNC('month', effective_start_date)
-      comment: "Month price became effective for price change trend analysis."
-    - name: "channel"
-      expr: channel
-      comment: "Sales channel for channel-specific pricing analysis (dine-in vs. delivery surcharges)."
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format for cross-format price benchmarking."
     - name: "daypart"
       expr: daypart
-      comment: "Daypart for time-of-day pricing analysis."
+      comment: "Daypart the price applies to."
+    - name: "ordering_channel"
+      expr: ordering_channel
+      comment: "Ordering channel the price applies to (dine-in, drive-thru, delivery, OLO)."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format the price applies to."
     - name: "ownership_type"
       expr: ownership_type
-      comment: "Ownership type (corporate, franchise) for price compliance monitoring."
-    - name: "price_change_reason"
-      expr: price_change_reason
-      comment: "Reason for price change (cost increase, competitive response, promotion) for pricing decision audit trail."
-    - name: "price_elasticity_band"
-      expr: price_elasticity_band
-      comment: "Price elasticity band for demand sensitivity segmentation in pricing strategy."
-    - name: "menu_engineering_category"
-      expr: menu_engineering_category
-      comment: "Menu engineering category for price analysis by portfolio quadrant."
+      comment: "Ownership type (company-owned vs. franchised) for price segmentation."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the price record (approved, pending, rejected)."
+    - name: "is_active"
+      expr: is_active
+      comment: "Whether the price record is currently active."
     - name: "is_lto"
       expr: is_lto
-      comment: "LTO flag to compare promotional vs. core menu pricing."
+      comment: "Whether the price is for a limited-time offer."
+    - name: "price_elasticity_band"
+      expr: price_elasticity_band
+      comment: "Price elasticity band classification for the item. Used in pricing strategy to model demand sensitivity."
+    - name: "menu_engineering_category"
+      expr: menu_engineering_category
+      comment: "Menu engineering category associated with this price record."
+    - name: "effective_start_date"
+      expr: effective_start_date
+      comment: "Date from which the price is effective."
+    - name: "effective_end_date"
+      expr: effective_end_date
+      comment: "Date on which the price expires."
     - name: "country_code"
       expr: country_code
-      comment: "Country code for international pricing analysis and currency-adjusted comparisons."
+      comment: "Country the price applies to for international menu pricing analysis."
   measures:
+    - name: "total_price_records"
+      expr: COUNT(1)
+      comment: "Total number of price records. Used to audit pricing coverage across items, channels, and formats."
     - name: "avg_base_price"
       expr: AVG(CAST(base_price AS DOUBLE))
-      comment: "Average base menu price across items and locations. Core pricing KPI for competitive benchmarking and revenue management."
+      comment: "Average base menu price across all price records. Tracks overall pricing tier positioning."
     - name: "avg_promotional_price"
       expr: AVG(CAST(promotional_price AS DOUBLE))
-      comment: "Average promotional price. Measures depth of promotional discounting and its impact on revenue realization."
+      comment: "Average promotional price. Compared against base price to measure promotional discount depth."
     - name: "avg_suggested_retail_price"
       expr: AVG(CAST(suggested_retail_price AS DOUBLE))
-      comment: "Average suggested retail price. Baseline for measuring franchise price compliance and deviation."
+      comment: "Average suggested retail price. Used to benchmark actual pricing against recommended pricing."
     - name: "avg_channel_surcharge"
       expr: AVG(CAST(channel_surcharge AS DOUBLE))
-      comment: "Average channel surcharge applied (e.g., delivery fee uplift). Tracks channel pricing strategy effectiveness."
-    - name: "avg_franchise_price_deviation_pct"
-      expr: AVG(CAST(franchise_price_deviation_pct AS DOUBLE))
-      comment: "Average percentage deviation of franchise prices from suggested retail. Monitors pricing compliance across franchise network."
+      comment: "Average channel surcharge applied (e.g., delivery upcharge). Tracks digital channel pricing premiums."
     - name: "avg_cogs_pct"
       expr: AVG(CAST(cogs_pct AS DOUBLE))
-      comment: "Average COGS percentage at the price record level. Validates that pricing maintains target margin thresholds."
-    - name: "avg_cost_of_goods"
-      expr: AVG(CAST(cost_of_goods AS DOUBLE))
-      comment: "Average cost of goods at time of pricing. Used to validate price-cost relationship and margin adequacy."
-    - name: "active_price_records"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Count of currently active price records. Monitors pricing data completeness and identifies items missing active prices."
+      comment: "Average COGS percentage at the price record level. Used to validate that pricing maintains target food cost margins."
+    - name: "avg_franchise_price_deviation_pct"
+      expr: AVG(CAST(franchise_price_deviation_pct AS DOUBLE))
+      comment: "Average percentage deviation of franchise prices from corporate recommended prices. Monitors franchise pricing compliance."
     - name: "avg_price_override_limit"
       expr: AVG(CAST(price_override_limit AS DOUBLE))
-      comment: "Average maximum price override allowed. Tracks flexibility granted to operators and franchise partners."
-    - name: "distinct_priced_items"
-      expr: COUNT(DISTINCT menu_item_id)
-      comment: "Count of distinct menu items with price records. Measures pricing data completeness across the menu portfolio."
+      comment: "Average maximum price override allowed. Used to govern discretionary pricing authority at the unit level."
+    - name: "avg_cost_of_goods"
+      expr: AVG(CAST(cost_of_goods AS DOUBLE))
+      comment: "Average absolute cost of goods per price record. Supports margin analysis alongside base price."
+    - name: "items_with_active_price"
+      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
+      comment: "Number of price records that are currently active. Ensures pricing coverage for the live menu."
+    - name: "promotional_discount_depth_pct"
+      expr: ROUND(100.0 * (SUM(CAST(base_price AS DOUBLE)) - SUM(CAST(promotional_price AS DOUBLE))) / NULLIF(SUM(CAST(base_price AS DOUBLE)), 0), 2)
+      comment: "Average promotional discount as a percentage of base price across all price records. Measures promotional intensity and margin impact."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_nutrition_profile`
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_cost`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Nutritional content metrics for menu items supporting regulatory compliance, health-conscious menu strategy, and consumer transparency initiatives."
-  source: "`vibe_restaurants_v1`.`menu`.`nutrition_profile`"
+  comment: "Menu item cost analytics covering theoretical vs. actual COGS, food cost percentages, waste, and yield. Used by culinary finance, supply chain, and menu engineering teams to manage food cost and identify variance drivers."
+  source: "`vibe_restaurants_v1`.`menu`.`item_cost`"
   dimensions:
-    - name: "profile_type"
-      expr: profile_type
-      comment: "Type of nutrition profile (standard, modified, allergen-free variant) for segmented nutritional analysis."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the nutrition profile for compliance and data quality monitoring."
-    - name: "effective_date"
-      expr: DATE_TRUNC('month', effective_date)
-      comment: "Month the nutrition profile became effective for tracking nutritional changes over time."
-    - name: "data_source"
-      expr: data_source
-      comment: "Source of nutritional data (lab analysis, supplier data, calculated) for data quality segmentation."
-    - name: "is_current_version"
-      expr: is_current_version
-      comment: "Flag indicating whether this is the current active nutrition profile version."
+    - name: "cost_status"
+      expr: cost_status
+      comment: "Status of the cost record (approved, draft, superseded)."
+    - name: "channel"
+      expr: channel
+      comment: "Sales channel the cost record applies to."
+    - name: "daypart"
+      expr: daypart
+      comment: "Daypart the cost record applies to."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format the cost applies to."
+    - name: "menu_engineering_class"
+      expr: menu_engineering_class
+      comment: "Menu engineering classification for the item at time of cost calculation."
+    - name: "is_lto"
+      expr: is_lto
+      comment: "Whether the cost record is for a limited-time offer item."
+    - name: "cost_calculation_date"
+      expr: cost_calculation_date
+      comment: "Date the cost was calculated. Used for trend analysis of food cost over time."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period the cost record belongs to."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the cost record."
   measures:
-    - name: "avg_calories"
-      expr: AVG(CAST(protein_g AS DOUBLE))
-      comment: "Average protein content in grams across profiled items. Tracks protein positioning for health-conscious menu strategy. Note: uses protein_g as calories column is DIMENSION_ONLY typed."
-    - name: "avg_total_fat_g"
-      expr: AVG(CAST(total_fat_g AS DOUBLE))
-      comment: "Average total fat content in grams. Monitored for nutritional compliance and health-conscious menu positioning."
-    - name: "avg_saturated_fat_g"
-      expr: AVG(CAST(saturated_fat_g AS DOUBLE))
-      comment: "Average saturated fat content. Regulatory and health-strategy KPI for menu nutritional quality."
-    - name: "avg_sodium_mg"
-      expr: AVG(CAST(sodium_mg AS DOUBLE))
-      comment: "Average sodium content in milligrams. Critical health metric tracked for regulatory compliance and consumer health initiatives."
-    - name: "avg_total_carbohydrate_g"
-      expr: AVG(CAST(total_carbohydrate_g AS DOUBLE))
-      comment: "Average total carbohydrate content. Tracked for dietary compliance and low-carb menu strategy."
-    - name: "avg_protein_g"
-      expr: AVG(CAST(protein_g AS DOUBLE))
-      comment: "Average protein content in grams. Supports high-protein menu positioning and nutritional marketing claims."
-    - name: "avg_dietary_fiber_g"
-      expr: AVG(CAST(dietary_fiber_g AS DOUBLE))
-      comment: "Average dietary fiber content. Tracks fiber-rich menu positioning for health-conscious consumer segments."
-    - name: "avg_trans_fat_g"
-      expr: AVG(CAST(trans_fat_g AS DOUBLE))
-      comment: "Average trans fat content. Regulatory compliance KPI — trans fat elimination is a key health and brand standard."
-    - name: "avg_serving_size_g"
-      expr: AVG(CAST(serving_size_g AS DOUBLE))
-      comment: "Average serving size in grams. Tracks portion standardization and consistency across menu items."
-    - name: "items_with_current_nutrition"
-      expr: COUNT(CASE WHEN is_current_version = TRUE THEN 1 END)
-      comment: "Count of items with a current approved nutrition profile. Measures nutritional data completeness for regulatory compliance."
+    - name: "avg_actual_cogs_pct"
+      expr: AVG(CAST(actual_cogs_pct AS DOUBLE))
+      comment: "Average actual COGS percentage. Core food cost KPI; compared against target to identify over/under-cost items."
+    - name: "avg_target_cogs_pct"
+      expr: AVG(CAST(target_cogs_pct AS DOUBLE))
+      comment: "Average target COGS percentage. Benchmark for evaluating actual food cost performance."
+    - name: "avg_theoretical_cogs_pct"
+      expr: AVG(CAST(theoretical_cogs_pct AS DOUBLE))
+      comment: "Average theoretical COGS percentage based on recipe costing. Gap vs. actual indicates waste, theft, or portioning issues."
+    - name: "avg_cogs_pct_variance"
+      expr: AVG(CAST(cogs_pct_variance AS DOUBLE))
+      comment: "Average variance between actual and target COGS percentage. Negative variance means better-than-target food cost."
+    - name: "total_theoretical_cost"
+      expr: SUM(CAST(theoretical_cost_amount AS DOUBLE))
+      comment: "Total theoretical food cost based on recipe costing. Used as the baseline for variance analysis."
+    - name: "total_theoretical_cost_variance"
+      expr: SUM(CAST(theoretical_cost_variance_amount AS DOUBLE))
+      comment: "Total variance between theoretical and actual food cost. Large positive variance signals waste, theft, or portioning problems."
+    - name: "avg_base_selling_price"
+      expr: AVG(CAST(base_selling_price AS DOUBLE))
+      comment: "Average base selling price at time of cost calculation. Used to compute implied margin alongside COGS."
+    - name: "avg_packaging_cost"
+      expr: AVG(CAST(packaging_cost AS DOUBLE))
+      comment: "Average packaging cost per item. Tracks packaging spend as a component of total item cost."
+    - name: "avg_primary_protein_cost"
+      expr: AVG(CAST(primary_protein_cost AS DOUBLE))
+      comment: "Average primary protein cost per item. Protein is typically the largest cost driver; tracks commodity exposure."
+    - name: "avg_waste_pct"
+      expr: AVG(CAST(waste_pct AS DOUBLE))
+      comment: "Average waste percentage per item. High waste rates inflate food cost and signal operational inefficiency."
+    - name: "avg_yield_pct"
+      expr: AVG(CAST(yield_pct AS DOUBLE))
+      comment: "Average yield percentage per item. Low yield increases effective cost per serving."
+    - name: "avg_cost_per_gram"
+      expr: AVG(CAST(cost_per_gram AS DOUBLE))
+      comment: "Average cost per gram across items. Enables normalized cost comparison across different portion sizes."
+    - name: "cogs_variance_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(theoretical_cost_variance_amount AS DOUBLE)) / NULLIF(SUM(CAST(theoretical_cost_amount AS DOUBLE)), 0), 2)
+      comment: "Theoretical cost variance as a percentage of theoretical cost. Measures overall food cost control effectiveness."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_recipe`
@@ -360,132 +349,162 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Recipe performance and cost metrics supporting menu engineering, food safety compliance, and kitchen standardization. Used by culinary, operations, and finance teams."
+  comment: "Recipe portfolio metrics covering food cost, nutritional content, yield, waste, and preparation parameters. Used by culinary R&D, food safety, and menu engineering teams to manage recipe quality and cost."
   source: "`vibe_restaurants_v1`.`menu`.`recipe`"
   dimensions:
     - name: "recipe_status"
       expr: recipe_status
-      comment: "Current status of the recipe (active, draft, retired) for portfolio management."
+      comment: "Current status of the recipe (active, draft, retired, under review)."
     - name: "recipe_type"
       expr: recipe_type
-      comment: "Recipe type (core, LTO, test, seasonal) for portfolio segmentation."
+      comment: "Type of recipe (base, sub-recipe, LTO, seasonal, etc.)."
     - name: "recipe_category"
       expr: recipe_category
-      comment: "Recipe category (entree, side, beverage, dessert) for category-level analysis."
-    - name: "cook_method"
-      expr: cook_method
-      comment: "Cooking method (grill, fry, bake, raw) for kitchen equipment utilization and throughput analysis."
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format for cross-format recipe standardization analysis."
+      comment: "Category the recipe belongs to (entree, side, sauce, beverage, etc.)."
     - name: "daypart"
       expr: daypart
-      comment: "Daypart applicability for time-of-day recipe complexity analysis."
-    - name: "is_vegan"
-      expr: is_vegan
-      comment: "Vegan flag for dietary portfolio composition reporting."
+      comment: "Daypart the recipe is intended for."
+    - name: "channel"
+      expr: channel
+      comment: "Sales channel the recipe is designed for."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format the recipe applies to."
+    - name: "cook_method"
+      expr: cook_method
+      comment: "Cooking method used (grill, fry, bake, steam, etc.). Used for equipment planning and energy cost analysis."
     - name: "is_gluten_free"
       expr: is_gluten_free
-      comment: "Gluten-free flag for allergen-sensitive recipe portfolio reporting."
+      comment: "Whether the recipe is gluten-free."
+    - name: "is_vegan"
+      expr: is_vegan
+      comment: "Whether the recipe is vegan."
+    - name: "is_vegetarian"
+      expr: is_vegetarian
+      comment: "Whether the recipe is vegetarian."
     - name: "haccp_ccp_flag"
       expr: haccp_ccp_flag
-      comment: "Flag indicating recipe has a critical control point for food safety compliance monitoring."
+      comment: "Whether the recipe has a HACCP critical control point. Used for food safety compliance tracking."
+    - name: "effective_date"
+      expr: effective_date
+      comment: "Date the recipe version became effective."
   measures:
     - name: "total_recipes"
       expr: COUNT(1)
-      comment: "Total number of recipes in the system. Tracks recipe library size and complexity."
+      comment: "Total number of recipe records. Tracks recipe portfolio size and version proliferation."
     - name: "active_recipes"
       expr: COUNT(CASE WHEN recipe_status = 'active' THEN 1 END)
-      comment: "Count of currently active recipes. Monitors operational recipe complexity and standardization."
+      comment: "Number of currently active recipes. Measures live culinary portfolio depth."
     - name: "avg_food_cost"
       expr: AVG(CAST(food_cost AS DOUBLE))
-      comment: "Average food cost per recipe. Primary cost management KPI for culinary and finance teams."
+      comment: "Average food cost per recipe. Core cost management metric for culinary and finance teams."
     - name: "avg_food_cost_pct"
       expr: AVG(CAST(food_cost_pct AS DOUBLE))
-      comment: "Average food cost percentage per recipe. Benchmarked against target to identify high-cost recipes requiring reformulation."
+      comment: "Average food cost as a percentage of menu price. Target benchmark varies by format (typically 28-35% in QSR)."
     - name: "avg_menu_price"
       expr: AVG(CAST(menu_price AS DOUBLE))
-      comment: "Average menu selling price associated with recipes. Used to validate price-cost alignment."
+      comment: "Average menu price across recipes. Used to track pricing tier and compare against food cost."
+    - name: "avg_calories"
+      expr: AVG(CAST(calories AS DOUBLE))
+      comment: "Average calorie count per recipe. Used for nutritional compliance and menu health positioning."
+    - name: "avg_sodium_mg"
+      expr: AVG(CAST(sodium_mg AS DOUBLE))
+      comment: "Average sodium content in milligrams per recipe. Monitored for regulatory compliance and health positioning."
     - name: "avg_waste_pct"
       expr: AVG(CAST(waste_pct AS DOUBLE))
-      comment: "Average waste percentage across recipes. Drives waste reduction programs and yield improvement initiatives."
+      comment: "Average waste percentage per recipe. High waste inflates food cost and signals prep inefficiency."
     - name: "avg_yield_quantity"
       expr: AVG(CAST(yield_quantity AS DOUBLE))
-      comment: "Average yield quantity per recipe batch. Supports portion standardization and batch cooking efficiency."
-    - name: "avg_total_time_seconds"
-      expr: AVG(CAST(total_time_seconds AS DOUBLE))
-      comment: "Average total preparation time in seconds. Drives kitchen throughput planning and speed-of-service optimization."
-    - name: "avg_calories_from_fat"
-      expr: AVG(CAST(calories_from_fat AS DOUBLE))
-      comment: "Average calories from fat per recipe. Nutritional KPI for health-conscious menu strategy and regulatory compliance."
+      comment: "Average yield quantity per recipe. Used to normalize cost-per-serving calculations."
+    - name: "avg_cook_temperature_f"
+      expr: AVG(CAST(cook_temperature_f AS DOUBLE))
+      comment: "Average cooking temperature in Fahrenheit. Used for food safety compliance and equipment calibration."
+    - name: "avg_holding_temperature_f"
+      expr: AVG(CAST(holding_temperature_f AS DOUBLE))
+      comment: "Average holding temperature in Fahrenheit. Critical for food safety; must stay within HACCP-defined safe zones."
+    - name: "avg_serving_size_g"
+      expr: AVG(CAST(serving_size_g AS DOUBLE))
+      comment: "Average serving size in grams. Used for portion control and cost-per-gram benchmarking."
     - name: "recipes_with_haccp_ccp"
       expr: COUNT(CASE WHEN haccp_ccp_flag = TRUE THEN 1 END)
-      comment: "Count of recipes with HACCP critical control points. Food safety compliance KPI for regulatory audit readiness."
+      comment: "Number of recipes with HACCP critical control points. Used for food safety audit planning and compliance reporting."
+    - name: "implied_gross_margin_per_recipe"
+      expr: AVG(CAST(menu_price AS DOUBLE) - CAST(food_cost AS DOUBLE))
+      comment: "Average implied gross margin (menu price minus food cost) per recipe. Guides recipe prioritization in menu engineering."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_lto`
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_combo_meal`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Limited-time offer (LTO) pipeline and performance metrics. Used by marketing, culinary, and operations executives to manage LTO strategy, launch readiness, and financial targets."
-  source: "`vibe_restaurants_v1`.`menu`.`menu_lto`"
+  comment: "Combo meal portfolio metrics covering bundle pricing, discount depth, food cost, and availability across channels and dayparts. Used by menu engineering, marketing, and pricing teams to optimize bundle strategy."
+  source: "`vibe_restaurants_v1`.`menu`.`combo_meal`"
   dimensions:
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Current lifecycle stage of the LTO (concept, approved, launched, discontinued) for pipeline management."
-    - name: "lto_type"
-      expr: lto_type
-      comment: "Type of LTO (seasonal, promotional, test market, national) for portfolio segmentation."
+    - name: "combo_status"
+      expr: combo_status
+      comment: "Current status of the combo meal (active, discontinued, pending launch)."
+    - name: "combo_type"
+      expr: combo_type
+      comment: "Type of combo (value meal, family bundle, kids meal, etc.)."
+    - name: "daypart"
+      expr: daypart
+      comment: "Daypart the combo is available in."
     - name: "restaurant_format"
       expr: restaurant_format
-      comment: "Restaurant format for cross-format LTO performance comparison."
-    - name: "region_code"
-      expr: region_code
-      comment: "Geographic region for regional LTO rollout analysis."
-    - name: "rollout_scope"
-      expr: rollout_scope
-      comment: "Rollout scope (national, regional, test market) for launch scale analysis."
-    - name: "season_or_occasion"
-      expr: season_or_occasion
-      comment: "Season or occasion driving the LTO for seasonal performance benchmarking."
-    - name: "planned_launch_date"
-      expr: DATE_TRUNC('quarter', planned_launch_date)
-      comment: "Quarter of planned launch for pipeline capacity planning."
+      comment: "Restaurant format the combo is available in."
+    - name: "menu_engineering_class"
+      expr: menu_engineering_class
+      comment: "Menu engineering classification for the combo."
     - name: "is_national_launch"
       expr: is_national_launch
-      comment: "Flag for national vs. regional/test launches for investment scale analysis."
-    - name: "is_returning_item"
-      expr: is_returning_item
-      comment: "Flag for returning LTO items vs. new concepts for performance benchmarking."
+      comment: "Whether the combo is a national launch vs. regional/test market."
+    - name: "is_3pd_available"
+      expr: is_3pd_available
+      comment: "Whether the combo is available on third-party delivery platforms."
+    - name: "is_olo_available"
+      expr: is_olo_available
+      comment: "Whether the combo is available for online ordering."
+    - name: "country_code"
+      expr: country_code
+      comment: "Country the combo is available in."
+    - name: "launch_date"
+      expr: launch_date
+      comment: "Date the combo was launched."
+    - name: "ownership_model"
+      expr: ownership_model
+      comment: "Ownership model (company-owned vs. franchised) for the combo."
   measures:
-    - name: "total_lto_items"
+    - name: "total_combos"
       expr: COUNT(1)
-      comment: "Total LTO items in the pipeline. Tracks LTO program scale and pipeline capacity."
-    - name: "active_lto_items"
-      expr: COUNT(CASE WHEN lifecycle_status = 'launched' THEN 1 END)
-      comment: "Count of currently active/launched LTO items. Monitors live LTO complexity and operational burden."
-    - name: "avg_planned_duration_days"
-      expr: AVG(CAST(planned_duration_days AS DOUBLE))
-      comment: "Average planned duration of LTO items in days. Informs LTO calendar planning and supply chain commitment windows."
-    - name: "avg_suggested_retail_price"
-      expr: AVG(CAST(suggested_retail_price AS DOUBLE))
-      comment: "Average suggested retail price for LTO items. Tracks LTO pricing strategy and premium positioning."
-    - name: "avg_target_food_cost_pct"
-      expr: AVG(CAST(target_food_cost_pct AS DOUBLE))
-      comment: "Average target food cost percentage for LTO items. Validates LTO profitability at launch planning stage."
+      comment: "Total number of combo meal records. Tracks bundle portfolio size."
+    - name: "active_combos"
+      expr: COUNT(CASE WHEN combo_status = 'active' THEN 1 END)
+      comment: "Number of currently active combo meals. Measures live bundle portfolio depth."
+    - name: "avg_bundle_price"
+      expr: AVG(CAST(bundle_price AS DOUBLE))
+      comment: "Average bundle selling price. Tracks pricing tier for combo offerings."
+    - name: "avg_individual_items_price_sum"
+      expr: AVG(CAST(individual_items_price_sum AS DOUBLE))
+      comment: "Average sum of individual item prices if purchased separately. Used to compute bundle savings."
+    - name: "avg_bundle_discount_amount"
+      expr: AVG(CAST(bundle_discount_amount AS DOUBLE))
+      comment: "Average discount provided by the bundle vs. individual item prices. Measures bundle value proposition."
+    - name: "avg_food_cost_pct"
+      expr: AVG(CAST(food_cost_pct AS DOUBLE))
+      comment: "Average food cost percentage for combo meals. Ensures bundles maintain acceptable margin thresholds."
+    - name: "avg_item_cost"
+      expr: AVG(CAST(item_cost AS DOUBLE))
+      comment: "Average total item cost for combo meals. Used alongside bundle price to compute combo gross margin."
     - name: "avg_pmix_target_pct"
       expr: AVG(CAST(pmix_target_pct AS DOUBLE))
-      comment: "Average product mix target percentage for LTO items. Benchmarks expected LTO contribution to total sales mix."
-    - name: "food_safety_approved_count"
-      expr: COUNT(CASE WHEN food_safety_approved = TRUE THEN 1 END)
-      comment: "Count of LTO items with food safety approval. Tracks launch readiness and compliance gate completion."
-    - name: "nutritional_approved_count"
-      expr: COUNT(CASE WHEN nutritional_approved = TRUE THEN 1 END)
-      comment: "Count of LTO items with nutritional approval. Monitors regulatory compliance readiness for menu labeling requirements."
-    - name: "national_launch_count"
-      expr: COUNT(CASE WHEN is_national_launch = TRUE THEN 1 END)
-      comment: "Count of national LTO launches. Tracks scale of national marketing investment and supply chain commitment."
+      comment: "Average product mix target percentage for combos. Used to set sales velocity expectations for bundle items."
+    - name: "bundle_savings_pct"
+      expr: ROUND(100.0 * SUM(CAST(bundle_discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(individual_items_price_sum AS DOUBLE)), 0), 2)
+      comment: "Bundle discount as a percentage of individual item price sum. Quantifies the consumer value proposition of combo bundling."
+    - name: "combos_on_3pd"
+      expr: COUNT(CASE WHEN is_3pd_available = TRUE THEN 1 END)
+      comment: "Number of combos available on third-party delivery. Tracks digital channel bundle coverage."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_engineering_review`
@@ -493,55 +512,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Menu engineering review metrics tracking portfolio optimization outcomes, complexity management, and strategic menu decisions. Used by menu strategy and executive teams for quarterly business reviews."
+  comment: "Menu engineering review metrics tracking review outcomes, item disposition decisions, complexity scores, and contribution margin benchmarks. Used by menu strategy and culinary leadership to govern the menu engineering cycle."
   source: "`vibe_restaurants_v1`.`menu`.`engineering_review`"
   dimensions:
     - name: "review_status"
       expr: review_status
-      comment: "Current status of the engineering review (in-progress, complete, approved) for pipeline management."
+      comment: "Current status of the engineering review (in-progress, complete, pending approval)."
     - name: "review_cycle"
       expr: review_cycle
-      comment: "Review cycle (quarterly, annual, ad-hoc) for cadence analysis."
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format for cross-format engineering review comparison."
+      comment: "Review cycle cadence (quarterly, semi-annual, annual)."
     - name: "review_scope_type"
       expr: review_scope_type
-      comment: "Scope of the review (full menu, category, daypart) for analysis granularity."
-    - name: "implementation_status"
-      expr: implementation_status
-      comment: "Implementation status of review recommendations for execution tracking."
-    - name: "review_date"
-      expr: DATE_TRUNC('quarter', review_date)
-      comment: "Quarter of the review for trend analysis of menu engineering activity."
+      comment: "Scope of the review (full menu, category, daypart, channel)."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format the review applies to."
     - name: "engineering_framework"
       expr: engineering_framework
-      comment: "Framework used (BCG matrix, custom) for methodology consistency tracking."
+      comment: "Menu engineering framework used (BCG matrix, contribution margin matrix, etc.)."
+    - name: "implementation_status"
+      expr: implementation_status
+      comment: "Status of implementing the review recommendations."
     - name: "is_franchise_applicable"
       expr: is_franchise_applicable
-      comment: "Flag indicating whether review applies to franchise locations for network-wide impact assessment."
+      comment: "Whether the review applies to franchise locations."
+    - name: "review_date"
+      expr: review_date
+      comment: "Date the engineering review was conducted."
+    - name: "channel_scope"
+      expr: channel_scope
+      comment: "Channel scope of the review (all channels, delivery only, dine-in only, etc.)."
   measures:
     - name: "total_reviews"
       expr: COUNT(1)
-      comment: "Total number of engineering reviews conducted. Tracks menu management cadence and governance activity."
-    - name: "avg_menu_complexity_score_before"
-      expr: AVG(CAST(menu_complexity_score_before AS DOUBLE))
-      comment: "Average menu complexity score before review. Baseline for measuring complexity reduction from engineering actions."
-    - name: "avg_menu_complexity_score_after"
-      expr: AVG(CAST(menu_complexity_score_after AS DOUBLE))
-      comment: "Average menu complexity score after review. Measures effectiveness of menu simplification initiatives."
-    - name: "avg_complexity_reduction"
-      expr: AVG(CAST(menu_complexity_score_before AS DOUBLE) - CAST(menu_complexity_score_after AS DOUBLE))
-      comment: "Average reduction in menu complexity score per review. Key outcome metric for menu simplification strategy."
+      comment: "Total number of engineering reviews conducted. Tracks cadence and coverage of menu engineering governance."
     - name: "avg_contribution_margin"
       expr: AVG(CAST(avg_contribution_margin AS DOUBLE))
-      comment: "Average contribution margin across reviewed items. Tracks profitability improvement from engineering decisions."
-    - name: "avg_popularity_index"
+      comment: "Average contribution margin across items evaluated in engineering reviews. Core profitability benchmark for menu decisions."
+    - name: "avg_menu_item_popularity_index"
       expr: AVG(CAST(avg_menu_item_popularity_index AS DOUBLE))
-      comment: "Average menu item popularity index across reviews. Measures guest demand alignment with portfolio decisions."
+      comment: "Average menu item popularity index across reviews. Combined with margin, drives star/plow horse/puzzle/dog classification."
+    - name: "avg_complexity_score_before"
+      expr: AVG(CAST(menu_complexity_score_before AS DOUBLE))
+      comment: "Average menu complexity score before engineering review actions. Baseline for measuring simplification impact."
+    - name: "avg_complexity_score_after"
+      expr: AVG(CAST(menu_complexity_score_after AS DOUBLE))
+      comment: "Average menu complexity score after engineering review actions. Measures effectiveness of menu simplification efforts."
+    - name: "avg_complexity_reduction"
+      expr: AVG(CAST(menu_complexity_score_before AS DOUBLE) - CAST(menu_complexity_score_after AS DOUBLE))
+      comment: "Average reduction in menu complexity score per review. Positive values indicate successful simplification."
     - name: "avg_cogs_pct_threshold"
       expr: AVG(CAST(cogs_pct_threshold AS DOUBLE))
-      comment: "Average COGS threshold used in engineering reviews. Tracks consistency of financial criteria applied across reviews."
+      comment: "Average COGS percentage threshold used in engineering reviews. Tracks how aggressively food cost targets are set."
+    - name: "reviews_with_allergen_required"
+      expr: COUNT(CASE WHEN allergen_review_required = TRUE THEN 1 END)
+      comment: "Number of reviews requiring allergen review. Tracks food safety compliance workload in the engineering cycle."
+    - name: "reviews_with_nutritional_required"
+      expr: COUNT(CASE WHEN nutritional_review_required = TRUE THEN 1 END)
+      comment: "Number of reviews requiring nutritional review. Tracks regulatory compliance workload."
+    - name: "reviews_with_food_safety_required"
+      expr: COUNT(CASE WHEN food_safety_review_required = TRUE THEN 1 END)
+      comment: "Number of reviews requiring food safety review. Ensures food safety is integrated into menu engineering decisions."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_86_event`
@@ -549,223 +580,213 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Item 86 (out-of-stock) event metrics tracking frequency, duration, and operational impact of item unavailability. Used by operations and supply chain executives to manage availability and revenue risk."
+  comment: "Item 86 (out-of-stock) event metrics tracking frequency, duration, and operational impact of menu item unavailability. Used by operations, supply chain, and menu teams to reduce stockouts and their revenue impact."
   source: "`vibe_restaurants_v1`.`menu`.`item_86_event`"
   dimensions:
     - name: "event_status"
       expr: event_status
-      comment: "Current status of the 86 event (active, resolved) for real-time availability monitoring."
+      comment: "Current status of the 86 event (active, resolved, escalated)."
     - name: "reason_code"
       expr: reason_code
-      comment: "Root cause code for the 86 event (supply shortage, equipment failure, prep issue) for root cause analysis."
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format for cross-format availability benchmarking."
-    - name: "channel_affected"
-      expr: channel_affected
-      comment: "Sales channel affected by the 86 event for channel-specific revenue impact analysis."
+      comment: "Root cause code for the 86 event (supply shortage, equipment failure, prep issue, etc.)."
     - name: "daypart_affected"
       expr: daypart_affected
-      comment: "Daypart during which the 86 event occurred for time-of-day availability analysis."
-    - name: "is_lto_item"
-      expr: is_lto_item
-      comment: "Flag indicating whether the 86'd item is an LTO for LTO supply chain risk monitoring."
+      comment: "Daypart during which the item was unavailable."
+    - name: "channel_affected"
+      expr: channel_affected
+      comment: "Sales channel affected by the 86 event."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format where the 86 event occurred."
     - name: "is_food_safety_related"
       expr: is_food_safety_related
-      comment: "Flag for food safety-related 86 events for compliance and risk reporting."
-    - name: "start_timestamp"
-      expr: DATE_TRUNC('week', start_timestamp)
-      comment: "Week of the 86 event for trend analysis of availability issues."
+      comment: "Whether the 86 event was triggered by a food safety concern."
+    - name: "is_recall_related"
+      expr: is_recall_related
+      comment: "Whether the 86 event was triggered by a product recall."
+    - name: "is_lto_item"
+      expr: is_lto_item
+      comment: "Whether the 86'd item is a limited-time offer. LTO stockouts have outsized marketing and guest satisfaction impact."
+    - name: "ownership_model"
+      expr: ownership_model
+      comment: "Ownership model of the affected restaurant."
+    - name: "olo_suppressed"
+      expr: olo_suppressed
+      comment: "Whether the item was suppressed from online ordering during the event."
+    - name: "pos_suppressed"
+      expr: pos_suppressed
+      comment: "Whether the item was suppressed from the POS during the event."
   measures:
     - name: "total_86_events"
       expr: COUNT(1)
-      comment: "Total number of item 86 events. Primary availability KPI tracking operational reliability and supply chain performance."
-    - name: "avg_duration_minutes"
-      expr: AVG(CAST(duration_minutes AS DOUBLE))
-      comment: "Average duration of 86 events in minutes. Measures operational responsiveness and supply chain recovery speed."
-    - name: "total_duration_minutes"
-      expr: SUM(CAST(duration_minutes AS DOUBLE))
-      comment: "Total minutes of item unavailability. Quantifies cumulative operational impact of 86 events."
-    - name: "avg_inventory_on_hand"
-      expr: AVG(CAST(inventory_quantity_on_hand AS DOUBLE))
-      comment: "Average inventory quantity on hand at time of 86 event. Identifies par level adequacy and reorder point issues."
-    - name: "avg_par_level"
-      expr: AVG(CAST(par_level_quantity AS DOUBLE))
-      comment: "Average par level quantity for 86'd items. Benchmarks against on-hand quantity to evaluate par level adequacy."
+      comment: "Total number of item 86 events. High frequency signals supply chain or operational reliability issues."
     - name: "food_safety_86_events"
       expr: COUNT(CASE WHEN is_food_safety_related = TRUE THEN 1 END)
-      comment: "Count of 86 events triggered by food safety concerns. Critical compliance KPI for regulatory risk management."
+      comment: "Number of 86 events triggered by food safety concerns. Critical compliance and risk metric."
     - name: "recall_related_86_events"
       expr: COUNT(CASE WHEN is_recall_related = TRUE THEN 1 END)
-      comment: "Count of 86 events related to ingredient recalls. Tracks supply chain risk exposure and recall response effectiveness."
+      comment: "Number of 86 events triggered by product recalls. Tracks supply chain risk exposure."
+    - name: "lto_86_events"
+      expr: COUNT(CASE WHEN is_lto_item = TRUE THEN 1 END)
+      comment: "Number of 86 events affecting LTO items. LTO stockouts damage marketing ROI and guest experience."
+    - name: "avg_inventory_on_hand"
+      expr: AVG(CAST(inventory_quantity_on_hand AS DOUBLE))
+      comment: "Average inventory quantity on hand at time of 86 event. Near-zero values confirm genuine stockout vs. system error."
+    - name: "avg_par_level_quantity"
+      expr: AVG(CAST(par_level_quantity AS DOUBLE))
+      comment: "Average par level quantity for 86'd items. Compared against on-hand quantity to assess par level adequacy."
+    - name: "pct_events_food_safety_related"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_food_safety_related = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of 86 events that are food safety related. Elevated rates trigger food safety protocol reviews."
+    - name: "pct_events_olo_suppressed"
+      expr: ROUND(100.0 * COUNT(CASE WHEN olo_suppressed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of 86 events where the item was suppressed from online ordering. Measures digital channel availability impact."
+    - name: "distinct_items_86d"
+      expr: COUNT(DISTINCT primary_menu_item_id)
+      comment: "Number of distinct menu items that experienced an 86 event. Breadth of stockout exposure across the menu."
     - name: "distinct_units_with_86_events"
       expr: COUNT(DISTINCT unit_id)
-      comment: "Count of distinct restaurant units experiencing 86 events. Identifies locations with systemic supply or operational issues."
+      comment: "Number of distinct restaurant units that experienced 86 events. Identifies systemic supply chain issues vs. isolated incidents."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_allergen_declaration`
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_lto`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Allergen declaration compliance metrics tracking declaration completeness, review status, and regulatory submission readiness. Used by food safety, legal, and operations teams for compliance governance."
-  source: "`vibe_restaurants_v1`.`menu`.`allergen_declaration`"
+  comment: "Limited-time offer (LTO) lifecycle metrics covering launch performance, food cost targets, approval status, and rollout scope. Used by marketing, culinary, and operations teams to manage the LTO pipeline and evaluate launch readiness."
+  source: "`vibe_restaurants_v1`.`menu`.`menu_lto`"
   dimensions:
-    - name: "declaration_status"
-      expr: declaration_status
-      comment: "Current status of the allergen declaration (draft, approved, expired) for compliance monitoring."
-    - name: "declaration_type"
-      expr: declaration_type
-      comment: "Type of allergen declaration (contains, may-contain, free-from) for risk classification."
-    - name: "cross_contact_risk_level"
-      expr: cross_contact_risk_level
-      comment: "Cross-contact risk level (high, medium, low) for risk-based compliance prioritization."
-    - name: "channel_applicability"
-      expr: channel_applicability
-      comment: "Channel scope of the declaration for channel-specific compliance reporting."
-    - name: "regulatory_submission_required"
-      expr: regulatory_submission_required
-      comment: "Flag indicating regulatory submission is required for compliance deadline tracking."
-    - name: "gluten_free_certified"
-      expr: gluten_free_certified
-      comment: "Gluten-free certification flag for certified item portfolio tracking."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Current lifecycle stage of the LTO (concept, approved, in-market, retired)."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the LTO (approved, pending, rejected)."
+    - name: "lto_type"
+      expr: lto_type
+      comment: "Type of LTO (seasonal, promotional, test market, national launch)."
+    - name: "rollout_scope"
+      expr: rollout_scope
+      comment: "Geographic or operational scope of the LTO rollout (national, regional, test market)."
+    - name: "restaurant_format"
+      expr: restaurant_format
+      comment: "Restaurant format the LTO is available in."
+    - name: "daypart"
+      expr: daypart
+      comment: "Daypart the LTO is targeted at."
+    - name: "is_national_launch"
+      expr: is_national_launch
+      comment: "Whether the LTO is a national launch."
+    - name: "is_returning_item"
+      expr: is_returning_item
+      comment: "Whether the LTO is a returning fan-favorite item."
+    - name: "is_test_market"
+      expr: is_test_market
+      comment: "Whether the LTO is in test market phase."
+    - name: "season_or_occasion"
+      expr: season_or_occasion
+      comment: "Season or occasion the LTO is tied to (summer, holiday, Super Bowl, etc.)."
+    - name: "planned_launch_date"
+      expr: planned_launch_date
+      comment: "Planned launch date for the LTO."
+    - name: "actual_launch_date"
+      expr: actual_launch_date
+      comment: "Actual launch date for the LTO. Compared against planned to measure launch execution accuracy."
+  measures:
+    - name: "total_ltos"
+      expr: COUNT(1)
+      comment: "Total number of LTO records. Tracks LTO pipeline volume."
+    - name: "active_ltos"
+      expr: COUNT(CASE WHEN lifecycle_status = 'in-market' THEN 1 END)
+      comment: "Number of LTOs currently in market. Tracks live promotional menu complexity."
+    - name: "food_safety_approved_ltos"
+      expr: COUNT(CASE WHEN food_safety_approved = TRUE THEN 1 END)
+      comment: "Number of LTOs with food safety approval. Ensures compliance before launch."
+    - name: "nutritional_approved_ltos"
+      expr: COUNT(CASE WHEN nutritional_approved = TRUE THEN 1 END)
+      comment: "Number of LTOs with nutritional approval. Tracks regulatory compliance readiness."
+    - name: "avg_target_food_cost_pct"
+      expr: AVG(CAST(target_food_cost_pct AS DOUBLE))
+      comment: "Average target food cost percentage for LTOs. Ensures LTOs are priced to maintain margin targets."
+    - name: "avg_suggested_retail_price"
+      expr: AVG(CAST(suggested_retail_price AS DOUBLE))
+      comment: "Average suggested retail price for LTOs. Tracks LTO pricing tier positioning."
+    - name: "avg_pmix_target_pct"
+      expr: AVG(CAST(pmix_target_pct AS DOUBLE))
+      comment: "Average product mix target percentage for LTOs. Sets velocity expectations for LTO performance evaluation."
+    - name: "pct_ltos_food_safety_approved"
+      expr: ROUND(100.0 * COUNT(CASE WHEN food_safety_approved = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of LTOs with food safety approval. Low rates signal compliance bottlenecks in the launch pipeline."
+    - name: "pct_ltos_national_launch"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_national_launch = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of LTOs that are national launches vs. regional/test. Tracks national vs. local innovation balance."
+    - name: "returning_item_lto_count"
+      expr: COUNT(CASE WHEN is_returning_item = TRUE THEN 1 END)
+      comment: "Number of LTOs that are returning fan-favorite items. Returning items typically have lower launch risk and higher initial velocity."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_nutrition_profile`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Nutritional profile metrics across the menu portfolio covering macronutrients, sodium, calories, and regulatory compliance status. Used by culinary R&D, regulatory affairs, and marketing teams for nutritional transparency and compliance."
+  source: "`vibe_restaurants_v1`.`menu`.`nutrition_profile`"
+  dimensions:
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the nutritional profile (approved, pending, expired)."
+    - name: "profile_type"
+      expr: profile_type
+      comment: "Type of nutritional profile (standard, combo, modified, lab-tested)."
+    - name: "data_source"
+      expr: data_source
+      comment: "Source of nutritional data (lab analysis, database, calculated)."
+    - name: "is_current_version"
+      expr: is_current_version
+      comment: "Whether this is the current active version of the nutritional profile."
     - name: "effective_date"
-      expr: DATE_TRUNC('month', effective_date)
-      comment: "Month declaration became effective for compliance timeline analysis."
+      expr: effective_date
+      comment: "Date the nutritional profile became effective."
+    - name: "expiration_date"
+      expr: expiration_date
+      comment: "Date the nutritional profile expires and requires re-certification."
   measures:
-    - name: "total_declarations"
+    - name: "total_nutrition_profiles"
       expr: COUNT(1)
-      comment: "Total allergen declarations in the system. Tracks compliance documentation completeness."
-    - name: "pending_regulatory_submissions"
-      expr: COUNT(CASE WHEN regulatory_submission_required = TRUE THEN 1 END)
-      comment: "Count of declarations requiring regulatory submission. Critical compliance KPI for legal and food safety teams."
-    - name: "gluten_free_certified_items"
-      expr: COUNT(CASE WHEN gluten_free_certified = TRUE THEN 1 END)
-      comment: "Count of items with gluten-free certification. Tracks certified dietary portfolio for consumer transparency."
-    - name: "high_cross_contact_risk_items"
-      expr: COUNT(CASE WHEN cross_contact_risk_level = 'high' THEN 1 END)
-      comment: "Count of items with high cross-contact allergen risk. Priority compliance KPI for food safety risk management."
-    - name: "distinct_items_with_declarations"
-      expr: COUNT(DISTINCT menu_item_id)
-      comment: "Count of distinct menu items with allergen declarations. Measures allergen documentation coverage across the menu."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_pricing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Pricing performance metrics for menu items, useful for pricing strategy and margin optimization"
-  source: "`vibe_restaurants_v1`.`menu`.`item_price`"
-  dimensions:
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Format of the restaurant (e.g., quick-service, casual, fine-dining)"
-    - name: "country_code"
-      expr: country_code
-      comment: "ISO country code where the price is applied"
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the price"
-    - name: "daypart"
-      expr: daypart
-      comment: "Daypart applicability of the price"
-    - name: "price_region_code"
-      expr: price_region_code
-      comment: "Regional pricing code"
-    - name: "price_effective_month"
-      expr: DATE_TRUNC('month', effective_start_date)
-      comment: "Month of price effectiveness"
-  measures:
-    - name: "count_price_records"
-      expr: COUNT(1)
-      comment: "Total number of price records for menu items"
-    - name: "avg_base_price"
-      expr: AVG(CAST(base_price AS DOUBLE))
-      comment: "Average base price across menu items"
-    - name: "avg_promotional_price"
-      expr: AVG(CAST(promotional_price AS DOUBLE))
-      comment: "Average promotional price across menu items"
-    - name: "avg_price_override_limit"
-      expr: AVG(CAST(price_override_limit AS DOUBLE))
-      comment: "Average price override limit amount"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_overview`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "High‑level overview of menus across the enterprise, supporting portfolio management"
-  source: "`vibe_restaurants_v1`.`menu`.`menu`"
-  dimensions:
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format (e.g., quick-service, casual, fine-dining)"
-    - name: "country_code"
-      expr: country_code
-      comment: "Country code where the menu is deployed"
-    - name: "is_default"
-      expr: is_default
-      comment: "Indicates if this is the default menu for the location"
-    - name: "is_franchise_menu"
-      expr: is_franchise_menu
-      comment: "Flag indicating franchise‑owned menu"
-    - name: "menu_effective_month"
-      expr: DATE_TRUNC('month', effective_start_date)
-      comment: "Month when the menu became effective"
-  measures:
-    - name: "count_menus"
-      expr: COUNT(1)
-      comment: "Total number of menu records"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_sales_performance`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Core sales performance KPIs for menu items, driving revenue and profitability decisions"
-  source: "`vibe_restaurants_v1`.`menu`.`pmix_record`"
-  dimensions:
-    - name: "restaurant_format"
-      expr: restaurant_format
-      comment: "Restaurant format (e.g., quick-service, casual)"
-    - name: "sales_channel"
-      expr: sales_channel
-      comment: "Channel through which the sale occurred"
-    - name: "daypart"
-      expr: daypart
-      comment: "Daypart of the sale"
-    - name: "reporting_month"
-      expr: DATE_TRUNC('month', reporting_date)
-      comment: "Month of the reporting date"
-    - name: "menu_engineering_classification"
-      expr: menu_engineering_classification
-      comment: "Engineering classification of the menu item"
-  measures:
-    - name: "count_sales_records"
-      expr: COUNT(1)
-      comment: "Total number of sales records in the PMIX view"
-    - name: "total_gross_sales_amount"
-      expr: SUM(CAST(gross_sales_amount AS DOUBLE))
-      comment: "Total gross sales amount"
-    - name: "total_net_sales_amount"
-      expr: SUM(CAST(net_sales_amount AS DOUBLE))
-      comment: "Total net sales amount after discounts and refunds"
-    - name: "total_contribution_margin_amount"
-      expr: SUM(CAST(contribution_margin_amount AS DOUBLE))
-      comment: "Total contribution margin amount"
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discount amount applied"
-    - name: "total_refund_amount"
-      expr: SUM(CAST(refund_amount AS DOUBLE))
-      comment: "Total refund amount"
-    - name: "avg_menu_mix_pct"
-      expr: AVG(CAST(menu_mix_pct AS DOUBLE))
-      comment: "Average menu mix percentage"
-    - name: "avg_sales_mix_pct"
-      expr: AVG(CAST(sales_mix_pct AS DOUBLE))
-      comment: "Average sales mix percentage"
+      comment: "Total number of nutritional profiles. Tracks nutritional documentation coverage across the menu."
+    - name: "current_approved_profiles"
+      expr: COUNT(CASE WHEN is_current_version = TRUE AND approval_status = 'approved' THEN 1 END)
+      comment: "Number of currently approved and active nutritional profiles. Measures regulatory compliance coverage."
+    - name: "avg_total_fat_g"
+      expr: AVG(CAST(total_fat_g AS DOUBLE))
+      comment: "Average total fat content in grams across menu items. Used for nutritional positioning and health-conscious menu planning."
+    - name: "avg_saturated_fat_g"
+      expr: AVG(CAST(saturated_fat_g AS DOUBLE))
+      comment: "Average saturated fat content in grams. Monitored for heart health positioning and regulatory thresholds."
+    - name: "avg_sodium_mg"
+      expr: AVG(CAST(sodium_mg AS DOUBLE))
+      comment: "Average sodium content in milligrams. High sodium is a key regulatory and consumer health concern in QSR."
+    - name: "avg_total_carbohydrate_g"
+      expr: AVG(CAST(total_carbohydrate_g AS DOUBLE))
+      comment: "Average total carbohydrate content in grams. Used for low-carb menu positioning and diabetic-friendly options."
+    - name: "avg_protein_g"
+      expr: AVG(CAST(protein_g AS DOUBLE))
+      comment: "Average protein content in grams. Used for high-protein menu positioning and athletic/fitness consumer targeting."
+    - name: "avg_dietary_fiber_g"
+      expr: AVG(CAST(dietary_fiber_g AS DOUBLE))
+      comment: "Average dietary fiber content in grams. Used for digestive health positioning."
+    - name: "avg_total_sugars_g"
+      expr: AVG(CAST(total_sugars_g AS DOUBLE))
+      comment: "Average total sugar content in grams. Monitored for regulatory compliance and health-conscious menu planning."
+    - name: "avg_trans_fat_g"
+      expr: AVG(CAST(trans_fat_g AS DOUBLE))
+      comment: "Average trans fat content in grams. Regulatory compliance metric; many jurisdictions require near-zero trans fat."
+    - name: "avg_serving_size_g"
+      expr: AVG(CAST(serving_size_g AS DOUBLE))
+      comment: "Average serving size in grams. Used for portion standardization and per-serving nutritional benchmarking."
+    - name: "pct_profiles_current_approved"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_current_version = TRUE AND approval_status = 'approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of nutritional profiles that are current and approved. Low rates indicate compliance gaps requiring remediation."
 $$;

@@ -1,62 +1,105 @@
--- Metric views for domain: guest | Business: Travel Hospitality | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: guest | Business: Travel_Hospitality | Version: 2 | Generated on: 2026-07-10 20:26:53
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_communication_consent`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest consent and privacy compliance metrics. Drives GDPR/CCPA compliance monitoring, marketing eligibility management, and consent lifecycle governance."
+  comment: "Communication Consent business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`communication_consent`"
   dimensions:
-    - name: "consent_type"
-      expr: consent_type
-      comment: "Type of consent (marketing, profiling, third-party sharing) — primary filter for consent portfolio analysis."
-    - name: "consent_status"
-      expr: consent_status
-      comment: "Current status of the consent record (granted, withdrawn, expired) — critical for compliance monitoring."
-    - name: "consent_method"
+    - name: "Consent Audit Trail"
+      expr: consent_audit_trail
+    - name: "Consent Capture Url"
+      expr: consent_capture_url
+    - name: "Consent Expiry Date"
+      expr: consent_expiry_date
+    - name: "Consent Granted Date"
+      expr: consent_granted_date
+    - name: "Consent Granted Timestamp"
+      expr: consent_granted_timestamp
+    - name: "Consent Language Code"
+      expr: consent_language_code
+    - name: "Consent Method"
       expr: consent_method
-      comment: "Method by which consent was captured (web, in-person, email) — measures consent channel effectiveness."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Legal jurisdiction of the consent (GDPR, CCPA, etc.) — enables jurisdiction-level compliance reporting."
-    - name: "legal_basis"
-      expr: legal_basis
-      comment: "Legal basis for processing (legitimate interest, consent, contract) — required for GDPR compliance reporting."
-    - name: "consent_source"
+    - name: "Consent Notes"
+      expr: consent_notes
+    - name: "Consent Purpose"
+      expr: consent_purpose
+    - name: "Consent Source"
       expr: consent_source
-      comment: "Source system or channel where consent was captured — enables consent provenance analysis."
-    - name: "consent_granted_date"
-      expr: DATE_TRUNC('month', consent_granted_date)
-      comment: "Month consent was granted — enables consent volume trend and campaign consent capture analysis."
+    - name: "Consent Status"
+      expr: consent_status
+    - name: "Consent Text Version"
+      expr: consent_text_version
+    - name: "Consent Type"
+      expr: consent_type
+    - name: "Consent Withdrawn Date"
+      expr: consent_withdrawn_date
+    - name: "Consent Withdrawn Timestamp"
+      expr: consent_withdrawn_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
   measures:
-    - name: "total_active_consents"
-      expr: SUM(CASE WHEN consent_status = 'granted' AND record_active_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of currently active granted consents — measures addressable marketing audience under consent compliance."
-    - name: "total_consent_records"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total consent records — baseline for consent portfolio size and compliance audit coverage."
-    - name: "consent_withdrawal_count"
-      expr: SUM(CASE WHEN consent_status = 'withdrawn' THEN 1 ELSE 0 END)
-      comment: "Count of withdrawn consents — monitors opt-out trends and marketing list attrition."
-    - name: "consent_withdrawal_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN consent_status = 'withdrawn' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of consents that have been withdrawn — key compliance and brand trust KPI."
-    - name: "double_opt_in_confirmed_count"
-      expr: SUM(CASE WHEN double_opt_in_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of double opt-in confirmed consents — measures highest-quality consent tier for email marketing compliance."
-    - name: "double_opt_in_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN double_opt_in_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of consents with double opt-in confirmation — measures consent quality and email deliverability risk."
-    - name: "suppression_list_count"
-      expr: SUM(CASE WHEN suppression_list_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of guests on suppression lists — measures do-not-contact compliance exposure."
-    - name: "profiling_consent_count"
-      expr: SUM(CASE WHEN profiling_consent_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of guests with profiling consent — measures addressable audience for AI/ML personalization under GDPR."
-    - name: "third_party_sharing_consent_count"
-      expr: SUM(CASE WHEN third_party_sharing_consent_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of guests consenting to third-party data sharing — measures partner marketing addressable audience."
+    - name: "Distinct Communication Consent"
+      expr: COUNT(DISTINCT communication_consent_id)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_contact_info`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Contact Info business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`contact_info`"
+  dimensions:
+    - name: "Address Line1"
+      expr: address_line1
+    - name: "Address Line2"
+      expr: address_line2
+    - name: "Address Type"
+      expr: address_type
+    - name: "Address Validated Date"
+      expr: address_validated_date
+    - name: "Address Validation Status"
+      expr: address_validation_status
+    - name: "Bounce Reason"
+      expr: bounce_reason
+    - name: "City"
+      expr: city
+    - name: "Contact Channel"
+      expr: contact_channel
+    - name: "Contact Status"
+      expr: contact_status
+    - name: "Contact Type"
+      expr: contact_type
+    - name: "Country Code"
+      expr: country_code
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Expiry Date"
+      expr: data_retention_expiry_date
+    - name: "Do Not Contact"
+      expr: do_not_contact
+    - name: "Email Address"
+      expr: email_address
+    - name: "Email Type"
+      expr: email_type
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Contact Info"
+      expr: COUNT(DISTINCT contact_info_id)
+    - name: "Total Latitude"
+      expr: SUM(latitude)
+    - name: "Average Latitude"
+      expr: AVG(latitude)
+    - name: "Total Longitude"
+      expr: SUM(longitude)
+    - name: "Average Longitude"
+      expr: AVG(longitude)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_corporate_account`
@@ -64,164 +107,270 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Corporate account performance and portfolio metrics. Drives account management investment, contract renewal decisions, and corporate segment revenue strategy."
+  comment: "Corporate Account business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`corporate_account`"
   dimensions:
-    - name: "account_status"
+    - name: "Account Manager Email"
+      expr: account_manager_email
+    - name: "Account Manager Name"
+      expr: account_manager_name
+    - name: "Account Status"
       expr: account_status
-      comment: "Status of the corporate account (active, inactive, prospect) — primary filter for active portfolio analysis."
-    - name: "account_type"
+    - name: "Account Type"
       expr: account_type
-      comment: "Type of corporate account (direct, TMC, consortia) — enables account type mix and revenue analysis."
-    - name: "market_segment_code"
-      expr: market_segment_code
-      comment: "Market segment of the corporate account — supports revenue mix and pricing strategy analysis."
-    - name: "rate_program_type"
-      expr: rate_program_type
-      comment: "Rate program type (LRA, non-LRA, consortia) — enables rate program economics analysis."
-    - name: "billing_address_country_code"
+    - name: "Annual Room Night Target"
+      expr: annual_room_night_target
+    - name: "Billing Address City"
+      expr: billing_address_city
+    - name: "Billing Address Country Code"
       expr: billing_address_country_code
-      comment: "Country of the corporate account — enables geographic market analysis and contract compliance."
-    - name: "loyalty_program_eligible"
-      expr: loyalty_program_eligible
-      comment: "Whether the account is eligible for loyalty program — measures loyalty-linked corporate volume."
-    - name: "mice_eligible"
-      expr: mice_eligible
-      comment: "Whether the account is eligible for MICE business — measures MICE pipeline from corporate accounts."
-    - name: "contract_start_date"
-      expr: DATE_TRUNC('year', contract_start_date)
-      comment: "Contract start year — enables cohort analysis of account contract vintage and renewal cycles."
+    - name: "Billing Address Line1"
+      expr: billing_address_line1
+    - name: "Billing Instruction"
+      expr: billing_instruction
+    - name: "Blackout Dates Policy"
+      expr: blackout_dates_policy
+    - name: "Company Name"
+      expr: company_name
+    - name: "Contract End Date"
+      expr: contract_end_date
+    - name: "Contract Start Date"
+      expr: contract_start_date
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Credit Currency Code"
+      expr: credit_currency_code
+    - name: "Crm Account Reference"
+      expr: crm_account_reference
   measures:
-    - name: "total_annual_revenue_target"
-      expr: SUM(CAST(annual_revenue_target AS DOUBLE))
-      comment: "Total annual revenue target across corporate accounts — measures contracted corporate revenue pipeline."
-    - name: "avg_annual_revenue_target"
-      expr: AVG(CAST(annual_revenue_target AS DOUBLE))
-      comment: "Average annual revenue target per corporate account — benchmarks account value for portfolio prioritization."
-    - name: "total_credit_limit"
-      expr: SUM(CAST(credit_limit AS DOUBLE))
-      comment: "Total credit limit extended across corporate accounts — measures financial exposure and credit risk."
-    - name: "avg_discount_percent"
-      expr: AVG(CAST(discount_percent AS DOUBLE))
-      comment: "Average discount percentage across corporate accounts — monitors rate integrity and negotiation outcomes."
-    - name: "total_active_accounts"
-      expr: SUM(CASE WHEN account_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Count of active corporate accounts — measures active corporate portfolio size for account management resourcing."
-    - name: "direct_billing_enabled_count"
-      expr: SUM(CASE WHEN direct_billing_enabled = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of accounts with direct billing enabled — measures accounts receivable exposure and billing complexity."
-    - name: "total_accounts"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total corporate account records — baseline portfolio size KPI."
-    - name: "loyalty_eligible_account_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN loyalty_program_eligible = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of corporate accounts eligible for loyalty program — measures loyalty program corporate penetration."
+    - name: "Distinct Corporate Account"
+      expr: COUNT(DISTINCT corporate_account_id)
+    - name: "Total Annual Revenue Target"
+      expr: SUM(annual_revenue_target)
+    - name: "Average Annual Revenue Target"
+      expr: AVG(annual_revenue_target)
+    - name: "Total Credit Limit"
+      expr: SUM(credit_limit)
+    - name: "Average Credit Limit"
+      expr: AVG(credit_limit)
+    - name: "Total Discount Percent"
+      expr: SUM(discount_percent)
+    - name: "Average Discount Percent"
+      expr: AVG(discount_percent)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_loyalty_enrollment`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_corporate_property_contract`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest promotion and loyalty enrollment metrics tracking enrollment volume, completion rates, and bonus award performance — KPIs for loyalty program growth and promotional campaign effectiveness."
+  comment: "Corporate Property Contract business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`corporate_property_contract`"
+  dimensions:
+    - name: "Annual Room Night Target"
+      expr: annual_room_night_target
+    - name: "Blackout Dates Policy"
+      expr: blackout_dates_policy
+    - name: "Contract End Date"
+      expr: contract_end_date
+    - name: "Contract Start Date"
+      expr: contract_start_date
+    - name: "Contract Status"
+      expr: contract_status
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Direct Billing Enabled"
+      expr: direct_billing_enabled
+    - name: "Last Pickup Review Date"
+      expr: last_pickup_review_date
+    - name: "Los Minimum Nights"
+      expr: los_minimum_nights
+    - name: "Negotiated Rate Code"
+      expr: negotiated_rate_code
+    - name: "Payment Terms"
+      expr: payment_terms
+    - name: "Property Account Manager Email"
+      expr: property_account_manager_email
+    - name: "Property Account Manager Name"
+      expr: property_account_manager_name
+    - name: "Rate Program Type"
+      expr: rate_program_type
+    - name: "Updated Timestamp"
+      expr: updated_timestamp
+    - name: "Contract End Date Month"
+      expr: DATE_TRUNC('MONTH', contract_end_date)
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Corporate Property Contract"
+      expr: COUNT(DISTINCT corporate_property_contract_id)
+    - name: "Total Annual Revenue Target"
+      expr: SUM(annual_revenue_target)
+    - name: "Average Annual Revenue Target"
+      expr: AVG(annual_revenue_target)
+    - name: "Total Credit Limit"
+      expr: SUM(credit_limit)
+    - name: "Average Credit Limit"
+      expr: AVG(credit_limit)
+    - name: "Total Discount Percent"
+      expr: SUM(discount_percent)
+    - name: "Average Discount Percent"
+      expr: AVG(discount_percent)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_group_function_space_booking`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Group Function Space Booking business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`group_function_space_booking`"
+  dimensions:
+    - name: "Actual Attendance"
+      expr: actual_attendance
+    - name: "Av Requirements"
+      expr: av_requirements
+    - name: "Booking Date"
+      expr: booking_date
+    - name: "Booking Status"
+      expr: booking_status
+    - name: "Catering Minimum Met"
+      expr: catering_minimum_met
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Event End Datetime"
+      expr: event_end_datetime
+    - name: "Event Start Datetime"
+      expr: event_start_datetime
+    - name: "Guaranteed Attendance"
+      expr: guaranteed_attendance
+    - name: "Setup Type"
+      expr: setup_type
+    - name: "Special Setup Notes"
+      expr: special_setup_notes
+    - name: "Booking Date Month"
+      expr: DATE_TRUNC('MONTH', booking_date)
+    - name: "Event End Datetime Month"
+      expr: DATE_TRUNC('MONTH', event_end_datetime)
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Group Function Space Booking"
+      expr: COUNT(DISTINCT group_function_space_booking_id)
+    - name: "Total Rental Amount"
+      expr: SUM(rental_amount)
+    - name: "Average Rental Amount"
+      expr: AVG(rental_amount)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_guest_enrollment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Guest Enrollment business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`guest_enrollment`"
   dimensions:
-    - name: "guest_enrollment_status"
-      expr: guest_enrollment_status
-      comment: "Current status of the enrollment (e.g., active, completed, opted-out) for funnel analysis."
-    - name: "enrollment_channel"
+    - name: "Award Date"
+      expr: award_date
+    - name: "Bonus Awarded Flag"
+      expr: bonus_awarded_flag
+    - name: "Channel"
       expr: channel
-      comment: "Channel through which the guest enrolled (e.g., web, mobile, front desk) for channel effectiveness analysis."
-    - name: "enrollment_month"
-      expr: DATE_TRUNC('MONTH', guest_enrollment_date)
-      comment: "Month of enrollment for trend analysis of loyalty program growth."
-    - name: "completion_month"
+    - name: "Completion Date"
+      expr: completion_date
+    - name: "Guest Enrollment Date"
+      expr: guest_enrollment_date
+    - name: "Guest Enrollment Status"
+      expr: guest_enrollment_status
+    - name: "Opt Out Date"
+      expr: opt_out_date
+    - name: "Award Date Month"
+      expr: DATE_TRUNC('MONTH', award_date)
+    - name: "Completion Date Month"
       expr: DATE_TRUNC('MONTH', completion_date)
-      comment: "Month of enrollment completion for measuring program completion velocity."
   measures:
-    - name: "total_enrollments"
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Guest Enrollment"
       expr: COUNT(DISTINCT guest_enrollment_id)
-      comment: "Total number of guest enrollments — primary volume KPI for loyalty and promotional program growth."
-    - name: "completed_enrollment_count"
-      expr: COUNT(DISTINCT CASE WHEN guest_enrollment_status = 'COMPLETED' THEN guest_enrollment_id END)
-      comment: "Number of enrollments that reached completion — measures program engagement and fulfillment effectiveness."
-    - name: "enrollment_completion_rate_pct"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN guest_enrollment_status = 'COMPLETED' THEN guest_enrollment_id END) / NULLIF(COUNT(DISTINCT guest_enrollment_id), 0), 2)
-      comment: "Percentage of enrollments that were completed — key KPI for promotional program design and incentive calibration."
-    - name: "bonus_awarded_enrollment_count"
-      expr: COUNT(DISTINCT CASE WHEN bonus_awarded_flag = TRUE THEN guest_enrollment_id END)
-      comment: "Number of enrollments where a bonus was awarded — measures bonus fulfillment rate and promotional cost."
-    - name: "opt_out_rate_pct"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN opt_out_date IS NOT NULL THEN guest_enrollment_id END) / NULLIF(COUNT(DISTINCT guest_enrollment_id), 0), 2)
-      comment: "Percentage of enrollments that resulted in opt-out — elevated rates signal program design or communication issues."
-    - name: "average_progress_value"
-      expr: AVG(CAST(progress_value AS DOUBLE))
-      comment: "Average progress value across active enrollments — measures engagement depth within promotional programs."
+    - name: "Total Enrollment Reference"
+      expr: SUM(enrollment_reference)
+    - name: "Average Enrollment Reference"
+      expr: AVG(enrollment_reference)
+    - name: "Total Progress Value"
+      expr: SUM(progress_value)
+    - name: "Average Progress Value"
+      expr: AVG(progress_value)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_group_block`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_guest_group_block`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Group business performance metrics covering contracted room nights, pickup, attrition, and deposit compliance. Drives group sales strategy and revenue management decisions."
+  comment: "Guest Group Block business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`guest_group_block`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property hosting the group block — enables property-level group business performance analysis."
-    - name: "block_status"
+    - name: "Accessible Rooms Requested"
+      expr: accessible_rooms_requested
+    - name: "Arrival Date"
+      expr: arrival_date
+    - name: "Billing Master Folio Instructions"
+      expr: billing_master_folio_instructions
+    - name: "Block Status"
       expr: block_status
-      comment: "Current status of the group block (tentative, definite, cancelled) — primary filter for active pipeline analysis."
-    - name: "group_type"
-      expr: group_type
-      comment: "Type of group (corporate, association, leisure, MICE) — enables group segment mix and revenue analysis."
-    - name: "market_segment_code"
-      expr: market_segment_code
-      comment: "Market segment of the group — supports revenue mix and displacement analysis."
-    - name: "arrival_date"
-      expr: DATE_TRUNC('month', arrival_date)
-      comment: "Arrival month of the group — enables forward-looking group pipeline and pace analysis."
-    - name: "source_of_business_code"
-      expr: source_of_business_code
-      comment: "Source of business for the group — measures channel effectiveness for group sales."
-    - name: "currency_code"
+    - name: "Cancellation Date"
+      expr: cancellation_date
+    - name: "Cancellation Policy Code"
+      expr: cancellation_policy_code
+    - name: "Complimentary Rooms Contracted"
+      expr: complimentary_rooms_contracted
+    - name: "Contracted Date"
+      expr: contracted_date
+    - name: "Contracted Room Nights"
+      expr: contracted_room_nights
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
       expr: currency_code
-      comment: "Currency of the group contract — required for multi-currency revenue consolidation."
+    - name: "Cutoff Date"
+      expr: cutoff_date
+    - name: "Delphi Opportunity Reference"
+      expr: delphi_opportunity_reference
+    - name: "Departure Date"
+      expr: departure_date
+    - name: "Deposit Due Date"
+      expr: deposit_due_date
+    - name: "Group Code"
+      expr: group_code
   measures:
-    - name: "total_contracted_revenue"
-      expr: SUM(CAST(contracted_rate_amount AS DOUBLE))
-      comment: "Total contracted rate revenue across group blocks — primary group revenue pipeline KPI."
-    - name: "avg_contracted_rate"
-      expr: AVG(CAST(contracted_rate_amount AS DOUBLE))
-      comment: "Average contracted rate per group block — measures group rate quality vs transient displacement."
-    - name: "total_deposit_required"
-      expr: SUM(CAST(deposit_required_amount AS DOUBLE))
-      comment: "Total deposit amounts required across group blocks — measures financial commitment and cash flow exposure."
-    - name: "total_deposit_received"
-      expr: SUM(CAST(deposit_received_amount AS DOUBLE))
-      comment: "Total deposits actually received — measures deposit compliance and financial risk mitigation."
-    - name: "deposit_collection_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(deposit_received_amount AS DOUBLE)) / NULLIF(SUM(CAST(deposit_required_amount AS DOUBLE)), 0), 2)
-      comment: "Percentage of required deposits collected — monitors group financial risk and contract compliance."
-    - name: "avg_attrition_pct"
-      expr: AVG(CAST(attrition_pct AS DOUBLE))
-      comment: "Average attrition percentage across group blocks — measures group pickup performance vs contracted commitment."
-    - name: "avg_wash_pct"
-      expr: AVG(CAST(wash_pct AS DOUBLE))
-      comment: "Average wash percentage applied to group blocks — measures revenue management adjustment to group commitments."
-    - name: "total_group_blocks"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of group blocks — baseline volume KPI for group sales pipeline sizing."
-    - name: "active_group_block_count"
-      expr: SUM(CASE WHEN block_status NOT IN ('cancelled', 'lost') THEN 1 ELSE 0 END)
-      comment: "Count of active (non-cancelled) group blocks — measures live group pipeline for revenue forecasting."
-    - name: "repeat_group_count"
-      expr: SUM(CASE WHEN repeat_group_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of repeat group bookings — measures group loyalty and account retention performance."
-    - name: "vip_group_count"
-      expr: SUM(CASE WHEN vip_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of VIP-flagged group blocks — measures high-touch group volume requiring elevated service resources."
+    - name: "Distinct Guest Group Block"
+      expr: COUNT(DISTINCT guest_group_block_id)
+    - name: "Total Attrition Pct"
+      expr: SUM(attrition_pct)
+    - name: "Average Attrition Pct"
+      expr: AVG(attrition_pct)
+    - name: "Total Contracted Rate Amount"
+      expr: SUM(contracted_rate_amount)
+    - name: "Average Contracted Rate Amount"
+      expr: AVG(contracted_rate_amount)
+    - name: "Total Deposit Received Amount"
+      expr: SUM(deposit_received_amount)
+    - name: "Average Deposit Received Amount"
+      expr: AVG(deposit_received_amount)
+    - name: "Total Deposit Required Amount"
+      expr: SUM(deposit_required_amount)
+    - name: "Average Deposit Required Amount"
+      expr: AVG(deposit_required_amount)
+    - name: "Total Wash Pct"
+      expr: SUM(wash_pct)
+    - name: "Average Wash Pct"
+      expr: AVG(wash_pct)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_household`
@@ -229,47 +378,101 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Household-level guest metrics tracking multi-member household value, loyalty status, and revenue contribution — KPIs for household-based marketing, family program design, and lifetime value expansion strategies."
+  comment: "Household business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`household`"
-  filter: household_status = 'ACTIVE'
   dimensions:
-    - name: "household_type"
-      expr: household_type
-      comment: "Type of household (e.g., family, couple, solo) for household segment analysis."
-    - name: "loyalty_tier"
-      expr: loyalty_tier
-      comment: "Loyalty tier of the household for tier-based value analysis."
-    - name: "country_code"
+    - name: "Address Line 1"
+      expr: address_line_1
+    - name: "Address Line 2"
+      expr: address_line_2
+    - name: "Adult Count"
+      expr: adult_count
+    - name: "Child Count"
+      expr: child_count
+    - name: "City"
+      expr: city
+    - name: "Country Code"
       expr: country_code
-      comment: "Country of the household for geographic distribution analysis."
-    - name: "preferred_currency"
-      expr: preferred_currency
-      comment: "Preferred currency of the household for multi-currency revenue reporting."
-    - name: "last_stay_month"
-      expr: DATE_TRUNC('MONTH', last_stay_date)
-      comment: "Month of the household's last stay for recency analysis and re-engagement targeting."
-    - name: "vip_flag"
-      expr: CAST(vip_flag AS STRING)
-      comment: "Whether the household has VIP status for premium service planning."
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Crm Account Code"
+      expr: crm_account_code
+    - name: "External Reference Code"
+      expr: external_reference_code
+    - name: "Household Status"
+      expr: household_status
+    - name: "Household Type"
+      expr: household_type
+    - name: "Last Stay Date"
+      expr: last_stay_date
+    - name: "Lifetime Nights"
+      expr: lifetime_nights
+    - name: "Loyalty Tier"
+      expr: loyalty_tier
+    - name: "Marketing Opt In"
+      expr: marketing_opt_in
+    - name: "Member Count"
+      expr: member_count
   measures:
-    - name: "total_active_households"
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Household"
       expr: COUNT(DISTINCT household_id)
-      comment: "Total number of active households — measures the household-level CRM database size for family program planning."
-    - name: "total_household_lifetime_revenue"
-      expr: SUM(CAST(lifetime_revenue AS DOUBLE))
-      comment: "Total lifetime revenue across all active households — aggregate household portfolio value KPI."
-    - name: "average_household_lifetime_revenue"
-      expr: AVG(CAST(lifetime_revenue AS DOUBLE))
-      comment: "Average lifetime revenue per household — used to benchmark household value and identify upsell opportunities."
-    - name: "average_household_adr"
-      expr: AVG(CAST(average_daily_rate AS DOUBLE))
-      comment: "Average daily rate across household stays — measures household price sensitivity and rate strategy effectiveness."
-    - name: "marketing_opted_in_household_count"
-      expr: COUNT(DISTINCT CASE WHEN marketing_opt_in = TRUE THEN household_id END)
-      comment: "Number of households opted into marketing — determines the household-level marketable audience size."
-    - name: "vip_household_count"
-      expr: COUNT(DISTINCT CASE WHEN vip_flag = TRUE THEN household_id END)
-      comment: "Number of VIP households — sizes the premium household segment for elevated service resource planning."
+    - name: "Total Average Daily Rate"
+      expr: SUM(average_daily_rate)
+    - name: "Average Average Daily Rate"
+      expr: AVG(average_daily_rate)
+    - name: "Total Lifetime Revenue"
+      expr: SUM(lifetime_revenue)
+    - name: "Average Lifetime Revenue"
+      expr: AVG(lifetime_revenue)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_identity_document`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Identity Document business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`identity_document`"
+  dimensions:
+    - name: "Capture Channel"
+      expr: capture_channel
+    - name: "Capture Timestamp"
+      expr: capture_timestamp
+    - name: "Compliance Flag"
+      expr: compliance_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Category"
+      expr: data_retention_category
+    - name: "Date Of Birth"
+      expr: date_of_birth
+    - name: "Document Number"
+      expr: document_number
+    - name: "Document Scan Reference"
+      expr: document_scan_reference
+    - name: "Document Scan Timestamp"
+      expr: document_scan_timestamp
+    - name: "Document Type"
+      expr: document_type
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Full Name On Document"
+      expr: full_name_on_document
+    - name: "Gdpr Consent Flag"
+      expr: gdpr_consent_flag
+    - name: "Gender"
+      expr: gender
+    - name: "Government Report Status"
+      expr: government_report_status
+    - name: "Government Report Timestamp"
+      expr: government_report_timestamp
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Identity Document"
+      expr: COUNT(DISTINCT identity_document_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_lifetime_value`
@@ -277,129 +480,196 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest lifetime value and predictive analytics metrics. Drives CRM investment decisions, loyalty program economics, and churn prevention strategy."
+  comment: "Lifetime Value business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`lifetime_value`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property scope for LTV calculation — enables property-level guest value benchmarking."
-    - name: "ltv_tier"
-      expr: ltv_tier
-      comment: "LTV tier classification (e.g., platinum, gold, silver) — primary segmentation for CRM investment prioritization."
-    - name: "loyalty_tier_code"
-      expr: loyalty_tier_code
-      comment: "Loyalty program tier at time of LTV calculation — links LTV to loyalty program economics."
-    - name: "market_segment_code"
-      expr: market_segment_code
-      comment: "Market segment for LTV analysis — enables segment-level value and investment decisions."
-    - name: "churn_risk_flag"
+    - name: "Calculation Date"
+      expr: calculation_date
+    - name: "Calculation Method"
+      expr: calculation_method
+    - name: "Churn Risk Flag"
       expr: churn_risk_flag
-      comment: "Boolean flag indicating high churn risk — primary filter for retention campaign targeting."
-    - name: "calculation_date"
-      expr: DATE_TRUNC('month', calculation_date)
-      comment: "Month of LTV calculation — enables trend analysis of portfolio value over time."
-    - name: "preferred_brand_code"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Days Since Last Stay"
+      expr: days_since_last_stay
+    - name: "First Stay Date"
+      expr: first_stay_date
+    - name: "Guest Tenure Days"
+      expr: guest_tenure_days
+    - name: "Last Updated Timestamp"
+      expr: last_updated_timestamp
+    - name: "Loyalty Member Number"
+      expr: loyalty_member_number
+    - name: "Loyalty Tier Code"
+      expr: loyalty_tier_code
+    - name: "Ltv Tier"
+      expr: ltv_tier
+    - name: "Market Segment Code"
+      expr: market_segment_code
+    - name: "Most Recent Stay Date"
+      expr: most_recent_stay_date
+    - name: "Preferred Brand Code"
       expr: preferred_brand_code
-      comment: "Guest preferred brand — supports brand-level LTV and loyalty investment analysis."
-    - name: "vip_flag"
-      expr: vip_flag
-      comment: "VIP designation flag — enables VIP vs non-VIP LTV comparison for service investment decisions."
+    - name: "Total Complaints"
+      expr: total_complaints
   measures:
-    - name: "total_ltv_score"
-      expr: SUM(CAST(ltv_score AS DOUBLE))
-      comment: "Sum of LTV scores across guest portfolio — measures total predicted value of the guest base."
-    - name: "avg_ltv_score"
-      expr: AVG(CAST(ltv_score AS DOUBLE))
-      comment: "Average LTV score per guest — primary KPI for CRM investment prioritization and portfolio health."
-    - name: "total_lifetime_revenue"
-      expr: SUM(CAST(total_revenue AS DOUBLE))
-      comment: "Total realized lifetime revenue across all guests — measures cumulative guest portfolio value."
-    - name: "avg_lifetime_revenue_per_guest"
-      expr: AVG(CAST(total_revenue AS DOUBLE))
-      comment: "Average lifetime revenue per guest — core metric for CRM ROI and acquisition cost benchmarking."
-    - name: "total_projected_12m_revenue"
-      expr: SUM(CAST(projected_12m_revenue AS DOUBLE))
-      comment: "Total projected 12-month revenue across guest portfolio — forward-looking revenue pipeline KPI."
-    - name: "avg_projected_12m_revenue"
-      expr: AVG(CAST(projected_12m_revenue AS DOUBLE))
-      comment: "Average projected 12-month revenue per guest — drives CRM budget allocation decisions."
-    - name: "avg_churn_risk_score"
-      expr: AVG(CAST(churn_risk_score AS DOUBLE))
-      comment: "Average churn risk score across guest portfolio — monitors overall retention risk level."
-    - name: "high_churn_risk_guest_count"
-      expr: SUM(CASE WHEN churn_risk_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of guests flagged as high churn risk — drives retention campaign sizing and urgency."
-    - name: "avg_adr"
-      expr: AVG(CAST(average_daily_rate AS DOUBLE))
-      comment: "Average ADR across guest lifetime value records — measures rate quality of the guest portfolio."
-    - name: "avg_length_of_stay"
-      expr: AVG(CAST(average_length_of_stay AS DOUBLE))
-      comment: "Average length of stay across guest LTV records — measures stay depth and revenue opportunity."
-    - name: "avg_nps_score"
-      expr: AVG(CAST(average_nps_score AS DOUBLE))
-      comment: "Average NPS score across guest portfolio — links guest satisfaction to lifetime value for experience investment decisions."
-    - name: "avg_gss_score"
-      expr: AVG(CAST(average_gss_score AS DOUBLE))
-      comment: "Average GSS score across guest LTV records — measures satisfaction quality of high-value guests."
-    - name: "total_room_revenue"
-      expr: SUM(CAST(total_room_revenue AS DOUBLE))
-      comment: "Total room revenue contribution across guest portfolio — measures rooms division share of LTV."
-    - name: "total_ancillary_revenue"
-      expr: SUM(CAST(total_ancillary_revenue AS DOUBLE))
-      comment: "Total ancillary revenue contribution across guest portfolio — measures upsell share of LTV."
-    - name: "avg_next_stay_propensity_score"
-      expr: AVG(CAST(next_stay_propensity_score AS DOUBLE))
-      comment: "Average next-stay propensity score — forward-looking demand signal for targeted re-engagement campaigns."
-    - name: "avg_data_quality_score"
-      expr: AVG(CAST(data_quality_score AS DOUBLE))
-      comment: "Average data quality score across LTV records — monitors CRM data completeness for model reliability."
-    - name: "unique_guest_count"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Count of unique guests with LTV records — measures CRM coverage of the active guest base."
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Lifetime Value"
+      expr: COUNT(DISTINCT lifetime_value_id)
+    - name: "Total Average Daily Rate"
+      expr: SUM(average_daily_rate)
+    - name: "Average Average Daily Rate"
+      expr: AVG(average_daily_rate)
+    - name: "Total Average Gss Score"
+      expr: SUM(average_gss_score)
+    - name: "Average Average Gss Score"
+      expr: AVG(average_gss_score)
+    - name: "Total Average Length Of Stay"
+      expr: SUM(average_length_of_stay)
+    - name: "Average Average Length Of Stay"
+      expr: AVG(average_length_of_stay)
+    - name: "Total Average Nps Score"
+      expr: SUM(average_nps_score)
+    - name: "Average Average Nps Score"
+      expr: AVG(average_nps_score)
+    - name: "Total Average Revenue Per Stay"
+      expr: SUM(average_revenue_per_stay)
+    - name: "Average Average Revenue Per Stay"
+      expr: AVG(average_revenue_per_stay)
+    - name: "Total Churn Risk Score"
+      expr: SUM(churn_risk_score)
+    - name: "Average Churn Risk Score"
+      expr: AVG(churn_risk_score)
+    - name: "Total Data Quality Score"
+      expr: SUM(data_quality_score)
+    - name: "Average Data Quality Score"
+      expr: AVG(data_quality_score)
+    - name: "Total Ltv Score"
+      expr: SUM(ltv_score)
+    - name: "Average Ltv Score"
+      expr: AVG(ltv_score)
+    - name: "Total Next Stay Propensity Score"
+      expr: SUM(next_stay_propensity_score)
+    - name: "Average Next Stay Propensity Score"
+      expr: AVG(next_stay_propensity_score)
+    - name: "Total Projected 12m Revenue"
+      expr: SUM(projected_12m_revenue)
+    - name: "Average Projected 12m Revenue"
+      expr: AVG(projected_12m_revenue)
+    - name: "Total Total Ancillary Revenue"
+      expr: SUM(total_ancillary_revenue)
+    - name: "Average Total Ancillary Revenue"
+      expr: AVG(total_ancillary_revenue)
+    - name: "Total Total Fb Revenue"
+      expr: SUM(total_fb_revenue)
+    - name: "Average Total Fb Revenue"
+      expr: AVG(total_fb_revenue)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_predictive_score`
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_note`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "AI/ML predictive scoring metrics for churn risk, upsell propensity, and next-best-offer targeting. Drives personalization, retention, and revenue optimization campaigns."
-  source: "`vibe_travel_hospitality_v1`.`guest`.`predictive_score`"
+  comment: "Note business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`note`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property scope for predictive scores — enables property-level AI/ML activation and targeting."
-    - name: "score_type"
-      expr: score_type
-      comment: "Type of predictive score (churn, upsell, NBO) — primary filter for campaign type selection."
-    - name: "model_version"
-      expr: model_version
-      comment: "ML model version that produced the score — enables model performance comparison and governance."
-    - name: "prediction_date"
-      expr: DATE_TRUNC('month', prediction_date)
-      comment: "Month of prediction — enables trend analysis of model output volume and score distribution."
-    - name: "next_best_offer_code"
-      expr: next_best_offer_code
-      comment: "Next best offer code recommended — measures offer distribution and campaign targeting coverage."
+    - name: "Action Date"
+      expr: action_date
+    - name: "Assigned Department"
+      expr: assigned_department
+    - name: "Authoring Department"
+      expr: authoring_department
+    - name: "Note Category"
+      expr: note_category
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Category"
+      expr: data_retention_category
+    - name: "Display On Checkin"
+      expr: display_on_checkin
+    - name: "Display On Checkout"
+      expr: display_on_checkout
+    - name: "Display On Reservation"
+      expr: display_on_reservation
+    - name: "Expiry Date"
+      expr: expiry_date
+    - name: "Gdpr Consent Flag"
+      expr: gdpr_consent_flag
+    - name: "Guest Segment"
+      expr: guest_segment
+    - name: "Is Confidential"
+      expr: is_confidential
+    - name: "Is Vip Alert"
+      expr: is_vip_alert
+    - name: "Language Code"
+      expr: language_code
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
   measures:
-    - name: "total_scored_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Count of unique guests with active predictive scores — measures AI/ML model coverage of the guest base."
-    - name: "total_score_records"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total predictive score records — baseline volume for model run monitoring and coverage tracking."
-    - name: "avg_score_value"
-      expr: AVG(CAST(score_value AS DOUBLE))
-      comment: "Average predictive score value across all scored guests — monitors overall model output distribution."
-    - name: "avg_next_best_offer_score"
-      expr: AVG(CAST(next_best_offer_score AS DOUBLE))
-      comment: "Average next-best-offer propensity score — measures strength of NBO recommendations for campaign ROI forecasting."
-    - name: "high_upsell_propensity_count"
-      expr: SUM(CASE WHEN score_type = 'upsell' AND score_value >= 0.7 THEN 1 ELSE 0 END)
-      comment: "Count of guests with high upsell propensity (score >= 0.7) — sizes the upsell campaign addressable audience."
-    - name: "expired_score_count"
-      expr: SUM(CASE WHEN expires_at_timestamp < CURRENT_TIMESTAMP() THEN 1 ELSE 0 END)
-      comment: "Count of expired predictive scores — monitors model freshness and triggers re-scoring pipeline runs."
+    - name: "Distinct Note"
+      expr: COUNT(DISTINCT note_id)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_preference`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Preference business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`preference`"
+  dimensions:
+    - name: "Allergy Detail"
+      expr: allergy_detail
+    - name: "Amenity Preferences"
+      expr: amenity_preferences
+    - name: "Bed Type Preference"
+      expr: bed_type_preference
+    - name: "Preference Category"
+      expr: preference_category
+    - name: "Preference Code"
+      expr: preference_code
+    - name: "Communication Channel Preference"
+      expr: communication_channel_preference
+    - name: "Consent Date"
+      expr: consent_date
+    - name: "Consent Given"
+      expr: consent_given
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Classification"
+      expr: data_classification
+    - name: "Dietary Restriction"
+      expr: dietary_restriction
+    - name: "Fulfillment Notes"
+      expr: fulfillment_notes
+    - name: "Fulfillment Status"
+      expr: fulfillment_status
+    - name: "Housekeeping Schedule Preference"
+      expr: housekeeping_schedule_preference
+    - name: "Is Ada Requirement"
+      expr: is_ada_requirement
+    - name: "Is Allergy"
+      expr: is_allergy
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Preference"
+      expr: COUNT(DISTINCT preference_id)
+    - name: "Total Room Temperature Celsius"
+      expr: SUM(room_temperature_celsius)
+    - name: "Average Room Temperature Celsius"
+      expr: AVG(room_temperature_celsius)
+    - name: "Total Value"
+      expr: SUM(value)
+    - name: "Average Value"
+      expr: AVG(value)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_privacy_request`
@@ -407,46 +677,46 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Privacy request (DSAR/erasure/rectification) operational metrics. Drives GDPR/CCPA compliance SLA monitoring, regulatory risk management, and privacy operations resourcing."
+  comment: "Privacy Request business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`privacy_request`"
   dimensions:
-    - name: "request_type"
-      expr: request_type
-      comment: "Type of privacy request (access, erasure, rectification, portability) — primary filter for compliance workload analysis."
-    - name: "request_status"
-      expr: request_status
-      comment: "Current status of the request (open, in-progress, completed, rejected) — operational SLA monitoring dimension."
-    - name: "regulatory_jurisdiction"
-      expr: regulatory_jurisdiction
-      comment: "Regulatory jurisdiction (GDPR, CCPA, LGPD) — enables jurisdiction-level compliance reporting."
-    - name: "submission_channel"
-      expr: submission_channel
-      comment: "Channel through which the request was submitted — measures request intake channel distribution."
-    - name: "submission_date"
-      expr: DATE_TRUNC('month', submission_date)
-      comment: "Month of request submission — enables trend analysis of privacy request volume for resourcing."
-    - name: "outcome"
-      expr: outcome
-      comment: "Outcome of the privacy request (fulfilled, rejected, partially fulfilled) — measures compliance effectiveness."
+    - name: "Assigned Handler Email"
+      expr: assigned_handler_email
+    - name: "Assigned Handler Name"
+      expr: assigned_handler_name
+    - name: "Completion Date"
+      expr: completion_date
+    - name: "Completion Timestamp"
+      expr: completion_timestamp
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Crm Case Reference"
+      expr: crm_case_reference
+    - name: "Data Format"
+      expr: data_format
+    - name: "Data Scope"
+      expr: data_scope
+    - name: "Delivery Method"
+      expr: delivery_method
+    - name: "Extended Due Date"
+      expr: extended_due_date
+    - name: "Extension Granted Flag"
+      expr: extension_granted_flag
+    - name: "Extension Reason"
+      expr: extension_reason
+    - name: "Guest Comments"
+      expr: guest_comments
+    - name: "Guest Communication Sent Count"
+      expr: guest_communication_sent_count
+    - name: "Guest Country Code"
+      expr: guest_country_code
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
   measures:
-    - name: "total_requests"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total privacy requests received — baseline volume KPI for compliance operations resourcing and regulatory reporting."
-    - name: "open_request_count"
-      expr: SUM(CASE WHEN request_status NOT IN ('completed', 'rejected', 'closed') THEN 1 ELSE 0 END)
-      comment: "Count of open/in-progress privacy requests — measures current compliance operations backlog."
-    - name: "legal_hold_count"
-      expr: SUM(CASE WHEN legal_hold_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of requests under legal hold — measures legal risk exposure requiring escalated handling."
-    - name: "extension_granted_count"
-      expr: SUM(CASE WHEN extension_granted_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of requests granted deadline extensions — monitors SLA compliance risk and regulatory exposure."
-    - name: "third_party_notification_required_count"
-      expr: SUM(CASE WHEN third_party_notification_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of requests requiring third-party notification — measures downstream data processor compliance obligations."
-    - name: "completion_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN request_status = 'completed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of privacy requests completed — primary GDPR/CCPA SLA compliance KPI for regulatory reporting."
+    - name: "Distinct Privacy Request"
+      expr: COUNT(DISTINCT privacy_request_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_profile`
@@ -454,111 +724,46 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest profile quality, consent, and loyalty enrollment metrics. Drives CRM data governance, marketing eligibility, and loyalty program growth decisions."
+  comment: "Profile business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`profile`"
   dimensions:
-    - name: "loyalty_tier"
-      expr: loyalty_tier
-      comment: "Current loyalty tier of the guest — primary segmentation for loyalty program investment and benefit design."
-    - name: "guest_type"
-      expr: guest_type
-      comment: "Guest classification type (leisure, corporate, group) — enables segment-level profile quality analysis."
-    - name: "profile_status"
-      expr: profile_status
-      comment: "Active/inactive/merged status of the profile — critical for CRM data quality and active base sizing."
-    - name: "country_of_residence_code"
+    - name: "Accessibility Needs"
+      expr: accessibility_needs
+    - name: "Birth Date"
+      expr: birth_date
+    - name: "Company Name"
+      expr: company_name
+    - name: "Country Of Residence Code"
       expr: country_of_residence_code
-      comment: "Guest country of residence — enables geographic market analysis and GDPR jurisdiction scoping."
-    - name: "preferred_language_code"
-      expr: preferred_language_code
-      comment: "Guest preferred language — drives localization and communication personalization decisions."
-    - name: "loyalty_enrollment_date"
-      expr: DATE_TRUNC('month', loyalty_enrollment_date)
-      comment: "Month of loyalty enrollment — enables cohort analysis of loyalty program growth."
-    - name: "vip_status"
-      expr: vip_status
-      comment: "VIP status classification — enables VIP segment sizing and service investment analysis."
-    - name: "is_merge_survivor"
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Creation Property Code"
+      expr: creation_property_code
+    - name: "Crm Contact Reference"
+      expr: crm_contact_reference
+    - name: "Data Privacy Consent Date"
+      expr: data_privacy_consent_date
+    - name: "Email"
+      expr: email
+    - name: "Email Opt In"
+      expr: email_opt_in
+    - name: "Family Name"
+      expr: family_name
+    - name: "Gdpr Erasure Requested"
+      expr: gdpr_erasure_requested
+    - name: "Gender"
+      expr: gender
+    - name: "Given Name"
+      expr: given_name
+    - name: "Guest Type"
+      expr: guest_type
+    - name: "Is Merge Survivor"
       expr: is_merge_survivor
-      comment: "Whether this profile survived a merge — filters to canonical profiles for accurate guest counting."
   measures:
-    - name: "total_active_profiles"
-      expr: SUM(CASE WHEN profile_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Count of active guest profiles — primary CRM base size KPI for marketing reach and loyalty program scale."
-    - name: "total_profiles"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total guest profile records including all statuses — baseline for data quality and deduplication analysis."
-    - name: "loyalty_enrolled_count"
-      expr: SUM(CASE WHEN loyalty_member_number IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of profiles with loyalty membership — measures loyalty program enrollment penetration."
-    - name: "loyalty_enrollment_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN loyalty_member_number IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of profiles enrolled in loyalty program — key loyalty growth and acquisition KPI."
-    - name: "marketing_opt_in_count"
-      expr: SUM(CASE WHEN marketing_opt_in = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of profiles opted into marketing communications — measures addressable marketing audience size."
-    - name: "marketing_opt_in_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN marketing_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of profiles opted into marketing — critical for campaign reach planning and consent compliance."
-    - name: "gdpr_erasure_requested_count"
-      expr: SUM(CASE WHEN gdpr_erasure_requested = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of profiles with active GDPR erasure requests — monitors privacy compliance risk and operational backlog."
-    - name: "merged_profile_count"
-      expr: SUM(CASE WHEN merged_into_profile_id IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of profiles that have been merged — measures CRM deduplication activity and data quality improvement."
-    - name: "vip_profile_count"
-      expr: SUM(CASE WHEN vip_status IS NOT NULL AND vip_status != '' THEN 1 ELSE 0 END)
-      comment: "Count of profiles with VIP status — measures VIP segment size for service resource planning."
-    - name: "sms_opt_in_count"
-      expr: SUM(CASE WHEN sms_opt_in = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of profiles opted into SMS communications — measures mobile channel addressable audience."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_profile_merge`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Guest profile merge quality and data governance metrics — KPIs for CRM data quality management, deduplication effectiveness, and GDPR consent continuity during profile consolidation."
-  source: "`vibe_travel_hospitality_v1`.`guest`.`profile_merge_history`"
-  dimensions:
-    - name: "merge_status"
-      expr: merge_status
-      comment: "Status of the merge operation (e.g., completed, failed, rolled back) for data quality monitoring."
-    - name: "merge_method"
-      expr: merge_method
-      comment: "Method used for the merge (e.g., automatic, manual, rule-based) for process quality analysis."
-    - name: "merge_reason"
-      expr: merge_reason
-      comment: "Reason for the merge (e.g., duplicate detection, guest request) for root cause analysis."
-    - name: "validation_status"
-      expr: validation_status
-      comment: "Validation status of the merge for data quality governance reporting."
-    - name: "merge_month"
-      expr: DATE_TRUNC('MONTH', merge_timestamp)
-      comment: "Month the merge was executed for trend analysis of deduplication activity."
-  measures:
-    - name: "total_profile_merges"
-      expr: COUNT(DISTINCT profile_merge_history_id)
-      comment: "Total number of profile merge operations — measures deduplication activity and CRM data quality investment."
-    - name: "successful_merge_count"
-      expr: COUNT(DISTINCT CASE WHEN merge_status = 'COMPLETED' THEN profile_merge_history_id END)
-      comment: "Number of successfully completed profile merges — measures deduplication throughput and effectiveness."
-    - name: "merge_success_rate_pct"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN merge_status = 'COMPLETED' THEN profile_merge_history_id END) / NULLIF(COUNT(DISTINCT profile_merge_history_id), 0), 2)
-      comment: "Percentage of merge operations that completed successfully — low rates indicate data quality or system issues."
-    - name: "average_matching_confidence_score"
-      expr: AVG(CAST(matching_confidence_score AS DOUBLE))
-      comment: "Average confidence score of profile matching — measures algorithmic merge quality and risk of false positives."
-    - name: "gdpr_consent_retained_merge_count"
-      expr: COUNT(DISTINCT CASE WHEN gdpr_consent_retained = TRUE THEN profile_merge_history_id END)
-      comment: "Number of merges where GDPR consent was successfully retained — critical compliance KPI for data subject rights continuity."
-    - name: "rollback_eligible_merge_count"
-      expr: COUNT(DISTINCT CASE WHEN rollback_eligible_flag = TRUE THEN profile_merge_history_id END)
-      comment: "Number of merges still eligible for rollback — measures reversibility window for data governance risk management."
-    - name: "total_loyalty_points_transferred"
-      expr: SUM(CAST(loyalty_points_transferred AS DOUBLE))
-      comment: "Total loyalty points transferred during profile merges — financial impact KPI for loyalty liability management."
+    - name: "Distinct Profile"
+      expr: COUNT(DISTINCT profile_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_profile_merge_history`
@@ -566,49 +771,101 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest profile deduplication and merge quality metrics. Drives CRM data governance, identity resolution effectiveness, and GDPR compliance for merged records."
+  comment: "Profile Merge History business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`profile_merge_history`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property where the merge was initiated — enables property-level data quality analysis."
-    - name: "merge_status"
-      expr: merge_status
-      comment: "Status of the merge operation (completed, failed, rolled-back) — monitors merge pipeline reliability."
-    - name: "merge_method"
+    - name: "Contact Info Migrated Count"
+      expr: contact_info_migrated_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Category"
+      expr: data_retention_category
+    - name: "Error Message"
+      expr: error_message
+    - name: "Gdpr Consent Retained"
+      expr: gdpr_consent_retained
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Matching Criteria"
+      expr: matching_criteria
+    - name: "Merge Batch Code"
+      expr: merge_batch_code
+    - name: "Merge Comments"
+      expr: merge_comments
+    - name: "Merge Method"
       expr: merge_method
-      comment: "Method used for merge (automated, manual, bulk) — measures automation rate of deduplication operations."
-    - name: "merge_reason"
+    - name: "Merge Reason"
       expr: merge_reason
-      comment: "Reason for the merge (duplicate detection, guest request, system migration) — enables root cause analysis."
-    - name: "merge_timestamp"
-      expr: DATE_TRUNC('month', merge_timestamp)
-      comment: "Month of merge operation — enables trend analysis of deduplication activity volume."
-    - name: "validation_status"
-      expr: validation_status
-      comment: "Validation status of the merge (validated, failed, pending) — monitors merge quality assurance."
+    - name: "Merge Status"
+      expr: merge_status
+    - name: "Merge Timestamp"
+      expr: merge_timestamp
+    - name: "Notes Migrated Count"
+      expr: notes_migrated_count
+    - name: "Operator Department"
+      expr: operator_department
+    - name: "Operator Name"
+      expr: operator_name
   measures:
-    - name: "total_merges"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total profile merge operations — baseline KPI for CRM deduplication activity and data quality investment."
-    - name: "successful_merge_count"
-      expr: SUM(CASE WHEN merge_status = 'completed' THEN 1 ELSE 0 END)
-      comment: "Count of successfully completed merges — measures deduplication pipeline effectiveness."
-    - name: "merge_success_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN merge_status = 'completed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of merge operations that completed successfully — primary data quality pipeline reliability KPI."
-    - name: "rollback_eligible_count"
-      expr: SUM(CASE WHEN rollback_eligible_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of merges still eligible for rollback — measures reversible merge exposure for data governance risk."
-    - name: "avg_matching_confidence_score"
-      expr: AVG(CAST(matching_confidence_score AS DOUBLE))
-      comment: "Average confidence score of merge matching — monitors identity resolution algorithm quality."
-    - name: "gdpr_consent_retained_count"
-      expr: SUM(CASE WHEN gdpr_consent_retained = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of merges where GDPR consent was retained — monitors privacy compliance in deduplication operations."
-    - name: "avg_loyalty_points_transferred"
-      expr: AVG(CAST(loyalty_points_transferred AS DOUBLE))
-      comment: "Average loyalty points transferred per merge — measures loyalty program impact of deduplication operations."
+    - name: "Distinct Profile Merge History"
+      expr: COUNT(DISTINCT profile_merge_history_id)
+    - name: "Total Loyalty Points Transferred"
+      expr: SUM(loyalty_points_transferred)
+    - name: "Average Loyalty Points Transferred"
+      expr: AVG(loyalty_points_transferred)
+    - name: "Total Matching Confidence Score"
+      expr: SUM(matching_confidence_score)
+    - name: "Average Matching Confidence Score"
+      expr: AVG(matching_confidence_score)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_relationship`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Relationship business metrics"
+  source: "`vibe_travel_hospitality_v1`.`guest`.`relationship`"
+  dimensions:
+    - name: "Billing Authority Flag"
+      expr: billing_authority_flag
+    - name: "Booking Authority Flag"
+      expr: booking_authority_flag
+    - name: "Consent Date"
+      expr: consent_date
+    - name: "Consent Flag"
+      expr: consent_flag
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Data Retention Expiry Date"
+      expr: data_retention_expiry_date
+    - name: "Direction"
+      expr: direction
+    - name: "Emergency Contact Flag"
+      expr: emergency_contact_flag
+    - name: "End Date"
+      expr: end_date
+    - name: "Gdpr Lawful Basis"
+      expr: gdpr_lawful_basis
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
+    - name: "Notes"
+      expr: notes
+    - name: "Primary Contact Flag"
+      expr: primary_contact_flag
+    - name: "Priority"
+      expr: priority
+    - name: "Relationship Status"
+      expr: relationship_status
+    - name: "Relationship Type"
+      expr: relationship_type
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Relationship"
+      expr: COUNT(DISTINCT relationship_id)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_segment`
@@ -616,53 +873,78 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest segmentation metrics tracking segment assignment quality, revenue contribution by segment, and loyalty program eligibility — KPIs for revenue strategy, pricing, and targeted marketing investment decisions."
+  comment: "Segment business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`segment`"
-  filter: segment_status = 'ACTIVE'
   dimensions:
-    - name: "segment_type"
-      expr: segment_type
-      comment: "Type of segment (e.g., behavioral, demographic, value-based) for segmentation strategy analysis."
-    - name: "segment_category"
-      expr: segment_category
-      comment: "Category of the segment for hierarchical reporting and campaign targeting."
-    - name: "rate_strategy_type"
-      expr: rate_strategy_type
-      comment: "Rate strategy associated with the segment for pricing alignment analysis."
-    - name: "assignment_method"
+    - name: "Advance Booking Window Days"
+      expr: advance_booking_window_days
+    - name: "Assignment Date"
+      expr: assignment_date
+    - name: "Assignment Effective Date"
+      expr: assignment_effective_date
+    - name: "Assignment Expiry Date"
+      expr: assignment_expiry_date
+    - name: "Assignment Method"
       expr: assignment_method
-      comment: "Method used to assign guests to the segment (e.g., rule-based, ML model) for data quality governance."
-    - name: "hierarchy_level"
+    - name: "Assignment Notes"
+      expr: assignment_notes
+    - name: "Assignment Reason Code"
+      expr: assignment_reason_code
+    - name: "Cancellation Policy Code"
+      expr: cancellation_policy_code
+    - name: "Segment Category"
+      expr: segment_category
+    - name: "Segment Code"
+      expr: segment_code
+    - name: "Commission Eligible"
+      expr: commission_eligible
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Displacement Analysis Eligible"
+      expr: displacement_analysis_eligible
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Hierarchy Level"
       expr: hierarchy_level
-      comment: "Hierarchy level of the segment for parent-child segment reporting."
-    - name: "assignment_month"
-      expr: DATE_TRUNC('MONTH', assignment_date)
-      comment: "Month of segment assignment for trend analysis of segment population changes."
   measures:
-    - name: "total_segment_assignments"
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Segment"
       expr: COUNT(DISTINCT segment_id)
-      comment: "Total number of active segment assignments — measures segmentation coverage across the guest base."
-    - name: "unique_segmented_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Number of unique guests with an active segment assignment — measures segmentation model coverage."
-    - name: "average_assignment_confidence_score"
-      expr: AVG(CAST(assignment_confidence_score AS DOUBLE))
-      comment: "Average confidence score of segment assignments — low scores indicate model retraining or rule refinement is needed."
-    - name: "average_revpar_contribution_pct"
-      expr: AVG(CAST(revpar_contribution_pct AS DOUBLE))
-      comment: "Average RevPAR contribution percentage by segment — used to prioritize high-value segments in revenue strategy."
-    - name: "average_ancillary_revenue_per_stay"
-      expr: AVG(CAST(ancillary_revenue_per_stay AS DOUBLE))
-      comment: "Average ancillary revenue per stay by segment — informs upsell strategy and package design by segment."
-    - name: "average_fb_attachment_rate_pct"
-      expr: AVG(CAST(fb_attachment_rate_pct AS DOUBLE))
-      comment: "Average F&B attachment rate by segment — identifies segments with high F&B affinity for targeted promotions."
-    - name: "loyalty_eligible_segment_count"
-      expr: COUNT(DISTINCT CASE WHEN loyalty_points_eligible = TRUE THEN segment_id END)
-      comment: "Number of segments eligible for loyalty points earning — measures loyalty program reach across segmentation model."
-    - name: "yield_managed_segment_count"
-      expr: COUNT(DISTINCT CASE WHEN yield_management_flag = TRUE THEN segment_id END)
-      comment: "Number of segments subject to yield management — measures revenue management coverage across the segment portfolio."
+    - name: "Total Adr Index Vs Property"
+      expr: SUM(adr_index_vs_property)
+    - name: "Average Adr Index Vs Property"
+      expr: AVG(adr_index_vs_property)
+    - name: "Total Ancillary Revenue Per Stay"
+      expr: SUM(ancillary_revenue_per_stay)
+    - name: "Average Ancillary Revenue Per Stay"
+      expr: AVG(ancillary_revenue_per_stay)
+    - name: "Total Assignment Confidence Score"
+      expr: SUM(assignment_confidence_score)
+    - name: "Average Assignment Confidence Score"
+      expr: AVG(assignment_confidence_score)
+    - name: "Total Average Los Days"
+      expr: SUM(average_los_days)
+    - name: "Average Average Los Days"
+      expr: AVG(average_los_days)
+    - name: "Total Commission Rate Pct"
+      expr: SUM(commission_rate_pct)
+    - name: "Average Commission Rate Pct"
+      expr: AVG(commission_rate_pct)
+    - name: "Total Fb Attachment Rate Pct"
+      expr: SUM(fb_attachment_rate_pct)
+    - name: "Average Fb Attachment Rate Pct"
+      expr: AVG(fb_attachment_rate_pct)
+    - name: "Total Loyalty Points Multiplier"
+      expr: SUM(loyalty_points_multiplier)
+    - name: "Average Loyalty Points Multiplier"
+      expr: AVG(loyalty_points_multiplier)
+    - name: "Total Revpar Contribution Pct"
+      expr: SUM(revpar_contribution_pct)
+    - name: "Average Revpar Contribution Pct"
+      expr: AVG(revpar_contribution_pct)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_segment_membership`
@@ -670,40 +952,40 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Guest segment membership and assignment quality metrics. Drives marketing segmentation effectiveness, CRM targeting precision, and segment lifecycle management."
+  comment: "Segment Membership business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`segment_membership`"
   dimensions:
-    - name: "membership_status"
-      expr: membership_status
-      comment: "Current status of segment membership (active, expired, pending) — primary filter for active segment population."
-    - name: "assignment_method"
+    - name: "Assignment Date"
+      expr: assignment_date
+    - name: "Assignment Effective Date"
+      expr: assignment_effective_date
+    - name: "Assignment Expiry Date"
+      expr: assignment_expiry_date
+    - name: "Assignment Method"
       expr: assignment_method
-      comment: "Method used to assign guest to segment (rules-based, ML, manual) — measures segmentation automation quality."
-    - name: "assignment_reason_code"
+    - name: "Assignment Reason Code"
       expr: assignment_reason_code
-      comment: "Reason code for segment assignment — enables assignment quality and override analysis."
-    - name: "assignment_date"
-      expr: DATE_TRUNC('month', assignment_date)
-      comment: "Month of segment assignment — enables trend analysis of segmentation activity and model refresh cycles."
-    - name: "assignment_expiry_date"
-      expr: DATE_TRUNC('month', assignment_expiry_date)
-      comment: "Month segment membership expires — enables proactive re-segmentation planning."
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Last Refresh Date"
+      expr: last_refresh_date
+    - name: "Membership Status"
+      expr: membership_status
+    - name: "Updated Timestamp"
+      expr: updated_timestamp
+    - name: "Assignment Date Month"
+      expr: DATE_TRUNC('MONTH', assignment_date)
+    - name: "Assignment Effective Date Month"
+      expr: DATE_TRUNC('MONTH', assignment_effective_date)
   measures:
-    - name: "total_active_memberships"
-      expr: SUM(CASE WHEN membership_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Count of active segment memberships — measures current segmented audience size for campaign targeting."
-    - name: "total_memberships"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total segment membership records — baseline for segmentation coverage and model output volume."
-    - name: "unique_segmented_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Count of unique guests with segment assignments — measures segmentation model coverage of the guest base."
-    - name: "avg_assignment_confidence_score"
-      expr: AVG(CAST(assignment_confidence_score AS DOUBLE))
-      comment: "Average confidence score of segment assignments — monitors ML segmentation model quality and reliability."
-    - name: "high_confidence_assignment_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN assignment_confidence_score >= 0.8 THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of segment assignments with high confidence (>=0.8) — measures segmentation model precision for targeting quality."
+    - name: "Distinct Segment Membership"
+      expr: COUNT(DISTINCT segment_membership_id)
+    - name: "Total Assignment Confidence Score"
+      expr: SUM(assignment_confidence_score)
+    - name: "Average Assignment Confidence Score"
+      expr: AVG(assignment_confidence_score)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_stay_history`
@@ -711,85 +993,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core guest stay performance metrics covering revenue, ADR, length of stay, ancillary attachment, and loyalty engagement. Primary KPI surface for revenue management and guest experience steering."
+  comment: "Stay History business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`stay_history`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property where the stay occurred — enables property-level performance benchmarking."
-    - name: "market_segment_code"
-      expr: market_segment_code
-      comment: "Market segment classification (e.g., transient, group, corporate) for revenue mix analysis."
-    - name: "booking_channel_code"
+    - name: "Arrival Date"
+      expr: arrival_date
+    - name: "Booking Channel Code"
       expr: booking_channel_code
-      comment: "Channel through which the booking was made — critical for distribution cost and channel mix analysis."
-    - name: "stay_status"
-      expr: stay_status
-      comment: "Status of the stay record (checked-in, checked-out, no-show, cancelled) for operational filtering."
-    - name: "loyalty_tier_at_stay"
-      expr: loyalty_tier_at_stay
-      comment: "Guest loyalty tier at time of stay — enables tier-based revenue and behavior analysis."
-    - name: "room_type_code"
-      expr: room_type_code
-      comment: "Room type occupied — supports room-type revenue mix and upsell analysis."
-    - name: "rate_plan_code"
-      expr: rate_plan_code
-      comment: "Rate plan applied to the stay — supports rate strategy and yield analysis."
-    - name: "arrival_date"
-      expr: DATE_TRUNC('month', arrival_date)
-      comment: "Arrival month bucket for trend analysis of stay volume and revenue over time."
-    - name: "guest_type"
+    - name: "Booking Date"
+      expr: booking_date
+    - name: "Checkin Timestamp"
+      expr: checkin_timestamp
+    - name: "Checkout Timestamp"
+      expr: checkout_timestamp
+    - name: "Complimentary Flag"
+      expr: complimentary_flag
+    - name: "Confirmation Number"
+      expr: confirmation_number
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Currency Code"
+      expr: currency_code
+    - name: "Departure Date"
+      expr: departure_date
+    - name: "Do Not Disturb Flag"
+      expr: do_not_disturb_flag
+    - name: "Guest Type"
       expr: guest_type
-      comment: "Classification of guest type (leisure, business, group) for segment-level performance analysis."
-    - name: "vip_code"
-      expr: vip_code
-      comment: "VIP designation code at time of stay — enables VIP segment revenue and service analysis."
+    - name: "Los Nights"
+      expr: los_nights
+    - name: "Loyalty Member Number"
+      expr: loyalty_member_number
+    - name: "Loyalty Points Earned"
+      expr: loyalty_points_earned
+    - name: "Loyalty Tier At Stay"
+      expr: loyalty_tier_at_stay
   measures:
-    - name: "total_room_revenue"
-      expr: SUM(CAST(room_revenue AS DOUBLE))
-      comment: "Total room revenue across all stays. Primary top-line revenue KPI for rooms division."
-    - name: "total_ancillary_revenue"
-      expr: SUM(CAST(ancillary_revenue AS DOUBLE))
-      comment: "Total ancillary (non-room) revenue — measures upsell and attachment performance."
-    - name: "total_fb_revenue"
-      expr: SUM(CAST(fb_revenue AS DOUBLE))
-      comment: "Total food and beverage revenue attached to stays — measures F&B attachment rate contribution."
-    - name: "total_folio_revenue"
-      expr: SUM(CAST(total_folio_amount AS DOUBLE))
-      comment: "Total folio amount including all charges — comprehensive revenue per stay portfolio measure."
-    - name: "total_tax_collected"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected across stays — required for financial reporting and compliance."
-    - name: "avg_daily_rate"
-      expr: AVG(CAST(adr AS DOUBLE))
-      comment: "Average Daily Rate across stays. Core RevPAR component and pricing performance KPI. (Column renamed from revpar per VREQ-044 — correctly measures revenue per occupied room night = ADR.)"
-    - name: "avg_length_of_stay_nights"
-      expr: AVG(CAST(length_of_stay_nights AS DOUBLE))
-      comment: "Average length of stay in nights. Drives revenue forecasting and operational planning. (Uses length_of_stay_nights per VREQ-064.)"
-    - name: "avg_gss_score"
-      expr: AVG(CAST(gss_score AS DOUBLE))
-      comment: "Average Guest Satisfaction Score across stays — primary guest experience quality KPI."
-    - name: "total_stay_count"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total number of stay records — baseline volume KPI for occupancy and demand analysis."
-    - name: "unique_guest_count"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Count of unique guests with stays — measures guest reach and repeat visitation base."
-    - name: "service_recovery_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN service_recovery_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of stays requiring service recovery — key guest experience quality and operational risk KPI."
-    - name: "complimentary_stay_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN complimentary_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of stays that were complimentary — monitors comp room cost and loyalty program economics."
-    - name: "avg_room_revenue_per_stay"
-      expr: AVG(CAST(room_revenue AS DOUBLE))
-      comment: "Average room revenue per stay record — measures per-stay monetization effectiveness."
-    - name: "avg_total_folio_per_stay"
-      expr: AVG(CAST(total_folio_amount AS DOUBLE))
-      comment: "Average total folio value per stay — comprehensive per-stay spend KPI for revenue management."
-    - name: "avg_ancillary_revenue_per_stay"
-      expr: AVG(CAST(ancillary_revenue AS DOUBLE))
-      comment: "Average ancillary revenue per stay — measures upsell and cross-sell effectiveness per visit."
+    - name: "Distinct Stay History"
+      expr: COUNT(DISTINCT stay_history_id)
+    - name: "Total Adr"
+      expr: SUM(adr)
+    - name: "Average Adr"
+      expr: AVG(adr)
+    - name: "Total Ancillary Revenue"
+      expr: SUM(ancillary_revenue)
+    - name: "Average Ancillary Revenue"
+      expr: AVG(ancillary_revenue)
+    - name: "Total Fb Revenue"
+      expr: SUM(fb_revenue)
+    - name: "Average Fb Revenue"
+      expr: AVG(fb_revenue)
+    - name: "Total Gss Score"
+      expr: SUM(gss_score)
+    - name: "Average Gss Score"
+      expr: AVG(gss_score)
+    - name: "Total Room Revenue"
+      expr: SUM(room_revenue)
+    - name: "Average Room Revenue"
+      expr: AVG(room_revenue)
+    - name: "Total Tax Amount"
+      expr: SUM(tax_amount)
+    - name: "Average Tax Amount"
+      expr: AVG(tax_amount)
+    - name: "Total Total Folio Amount"
+      expr: SUM(total_folio_amount)
+    - name: "Average Total Folio Amount"
+      expr: AVG(total_folio_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_vip_designation`
@@ -797,53 +1068,48 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "VIP guest designation and service commitment metrics. Drives VIP program economics, service resource allocation, and high-value guest retention strategy."
+  comment: "Vip Designation business metrics"
   source: "`vibe_travel_hospitality_v1`.`guest`.`vip_designation`"
   dimensions:
-    - name: "property_id"
-      expr: property_id
-      comment: "Property of the VIP designation — enables property-level VIP portfolio and service resource analysis."
-    - name: "vip_level"
-      expr: vip_level
-      comment: "VIP level classification — primary segmentation for service tier investment and resource allocation."
-    - name: "designation_status"
-      expr: designation_status
-      comment: "Current status of the VIP designation (active, expired, revoked) — filters to active VIP commitments."
-    - name: "designation_scope"
-      expr: designation_scope
-      comment: "Scope of the VIP designation (property, brand, global) — measures VIP program reach and commitment level."
-    - name: "effective_from"
-      expr: DATE_TRUNC('year', effective_from)
-      comment: "Year VIP designation became effective — enables cohort analysis of VIP program growth."
-    - name: "designation_reason"
+    - name: "Airport Transfer Required"
+      expr: airport_transfer_required
+    - name: "Alias Name"
+      expr: alias_name
+    - name: "Amenity Tier Code"
+      expr: amenity_tier_code
+    - name: "Concurrent Designation Count"
+      expr: concurrent_designation_count
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Designation Code"
+      expr: designation_code
+    - name: "Designation Notes"
+      expr: designation_notes
+    - name: "Designation Reason"
       expr: designation_reason
-      comment: "Reason for VIP designation (revenue, loyalty, celebrity, etc.) — measures VIP qualification criteria distribution."
+    - name: "Designation Scope"
+      expr: designation_scope
+    - name: "Designation Status"
+      expr: designation_status
+    - name: "Do Not Disturb"
+      expr: do_not_disturb
+    - name: "Effective From"
+      expr: effective_from
+    - name: "Effective Until"
+      expr: effective_until
+    - name: "Gm Greeting Required"
+      expr: gm_greeting_required
+    - name: "Incognito Checkin"
+      expr: incognito_checkin
+    - name: "Last Stay Date"
+      expr: last_stay_date
   measures:
-    - name: "total_active_vip_designations"
-      expr: SUM(CASE WHEN designation_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Count of active VIP designations — measures current VIP portfolio size for service resource planning."
-    - name: "total_vip_designations"
+    - name: "Row Count"
       expr: COUNT(1)
-      comment: "Total VIP designation records — baseline for VIP program scale and historical trend analysis."
-    - name: "unique_vip_guests"
-      expr: COUNT(DISTINCT profile_id)
-      comment: "Count of unique guests with VIP designations — measures VIP program reach across the guest base."
-    - name: "avg_revenue_threshold"
-      expr: AVG(CAST(revenue_threshold_amount AS DOUBLE))
-      comment: "Average revenue threshold for VIP qualification — monitors VIP program economics and qualification bar."
-    - name: "total_revenue_threshold"
-      expr: SUM(CAST(revenue_threshold_amount AS DOUBLE))
-      comment: "Total revenue threshold committed across VIP designations — measures total VIP program revenue commitment."
-    - name: "gm_greeting_required_count"
-      expr: SUM(CASE WHEN gm_greeting_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of VIP guests requiring GM greeting — measures high-touch service commitment volume for GM scheduling."
-    - name: "security_escort_required_count"
-      expr: SUM(CASE WHEN security_escort_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of VIP guests requiring security escort — measures security resource commitment for VIP arrivals."
-    - name: "upgrade_eligible_count"
-      expr: SUM(CASE WHEN upgrade_eligible = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of VIP guests eligible for room upgrades — measures upgrade inventory commitment and upsell opportunity cost."
-    - name: "media_blackout_count"
-      expr: SUM(CASE WHEN media_blackout = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of VIP guests with media blackout policy — measures privacy-sensitive VIP handling volume."
+    - name: "Distinct Vip Designation"
+      expr: COUNT(DISTINCT vip_designation_id)
+    - name: "Total Revenue Threshold Amount"
+      expr: SUM(revenue_threshold_amount)
+    - name: "Average Revenue Threshold Amount"
+      expr: AVG(revenue_threshold_amount)
 $$;

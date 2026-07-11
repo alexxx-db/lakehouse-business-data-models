@@ -1,5 +1,5 @@
--- Schema for Domain: finance | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:50:42
+-- Schema for Domain: finance | Business: Travel_Hospitality | Version: v2_ecm
+-- Generated on: 2026-07-10 20:57:51
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_travel_hospitality_v1`.`finance` COMMENT 'Financial management including GL, AP, AR, budgeting, forecasting, and financial reporting per USALI standards and GAAP/IFRS. Manages property-level P&L, departmental accounting, capital expenditure tracking (CapEx, FF&E), and consolidated financial statements. Tracks GOP, EBITDA, NOI calculations. Integrates with SAP S/4HANA. Supports SOX financial controls for publicly traded entities.';
@@ -126,13 +126,14 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` (
     `journal_entry_id` BIGINT COMMENT 'Unique identifier for the journal entry record. Primary key for the journal entry transaction.',
     `allocation_run_id` BIGINT COMMENT 'Identifier of the cost allocation or expense distribution run that generated this journal entry, if applicable. Null for non-allocation entries. Used to track automated allocation postings.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Journal entries are allocated to cost centers for departmental accounting. The cost_center STRING attribute should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cost ',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Journal entries are allocated to cost centers for departmental accounting. The cost_center STRING attribute should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cost',
     `fixed_asset_id` BIGINT COMMENT 'Identifier of the fixed asset or FF&E item to which this journal entry is related, if applicable. Used for asset acquisition, depreciation, and disposal tracking.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Journal entries post to GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master data for financi',
     `payroll_run_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_run. Business justification: Payroll journal entries must reference the source payroll run for audit trail, GL-to-payroll reconciliation, and SOX compliance - enables auditors to trace GL postings back to source payroll calculati',
     `employee_id` BIGINT COMMENT 'User ID or employee identifier of the person who created this journal entry in the system. Part of the SOX-compliant audit trail.',
-    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Journal entries are allocated to profit centers for revenue-generating business unit tracking. The profit_center STRING attribute should be replaced with a proper FK to profit_center.profit_center_id ',
+    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Journal entries are allocated to profit centers for revenue-generating business unit tracking. The profit_center STRING attribute should be replaced with a proper FK to profit_center.profit_center_id',
     `property_id` BIGINT COMMENT 'Identifier of the hotel property or resort to which this journal entry is attributed. Enables property-level P&L and financial reporting.',
+    `quaternary_journal_last_modified_by_user_employee_id` BIGINT COMMENT 'User ID or employee identifier of the person who last modified this journal entry record. Part of the change tracking audit trail.',
     `recurring_entry_template_id` BIGINT COMMENT 'Identifier of the recurring journal entry template from which this entry was generated, if applicable. Null for non-recurring entries. Used to track automated periodic postings.',
     `revenue_center_id` BIGINT COMMENT 'Foreign key linking to fnb.revenue_center. Business justification: Manual journal entries often adjust revenue center-specific accounts (accruals, corrections, allocations). JE already links to cost_center and profit_center; adding revenue_center enables direct F&B d',
     `tertiary_journal_posted_by_user_employee_id` BIGINT COMMENT 'User ID or employee identifier of the person who executed the final posting of this journal entry to the general ledger. Null if not yet posted. Part of SOX segregation of duties controls.',
@@ -171,7 +172,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_li
     `journal_entry_id` BIGINT COMMENT 'Reference to the parent journal entry header. Links this line to the overall journal entry batch and posting context.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Each journal entry line posts to a specific GL account. The gl_account_code and gl_account_name STRING attributes should be replaced with a proper FK to ledger.ledger_id to enable joining to the autho',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Each journal entry line is allocated to a specific profit center for revenue-generating business unit tracking. The profit_center_code STRING should be replaced with a proper FK to profit_center.profi',
-    `property_id` BIGINT COMMENT 'FK to property.property.property_id',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: GL line items for vendor expenses (utilities, maintenance, services) need direct vendor attribution for spend analytics, vendor performance tracking, and USALI departmental cost reporting by vendor.',
     `amount_group_currency` DECIMAL(18,2) COMMENT 'Line item amount converted to the corporate currency. Used for consolidated financial statements and EBITDA reporting.',
     `amount_local_currency` DECIMAL(18,2) COMMENT 'Line item amount converted to the property or entity local currency. Used for property-level P&L and GOP calculation.',
@@ -196,6 +196,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_li
     `payment_terms_code` STRING COMMENT 'Payment terms code for AP/AR line items. Determines due date calculation and discount eligibility.. Valid values are `^[A-Z0-9]{2,6}$`',
     `posting_key` STRING COMMENT 'SAP posting key that controls the account type and debit/credit behavior. Standard SAP GL posting control mechanism.. Valid values are `^[0-9]{2}$`',
     `project_code` STRING COMMENT 'Project or work breakdown structure (WBS) element for capital projects, renovations, or PIP (Property Improvement Plan) tracking.. Valid values are `^[A-Z0-9]{4,12}$`',
+    `property_code` STRING COMMENT 'Property identifier for multi-property financial consolidation. Enables property-level P&L, GOP, and NOI reporting.. Valid values are `^[A-Z0-9]{3,10}$`',
     `reference_document_number` STRING COMMENT 'External reference document number (invoice, receipt, PO). Links GL entry to source operational transaction.. Valid values are `^[A-Z0-9]{1,16}$`',
     `reversal_indicator` BOOLEAN COMMENT 'Indicates whether this line item is a reversal entry. Used for error correction and period-end adjustments.',
     `reversed_document_number` STRING COMMENT 'Document number of the original entry that this line reverses. Maintains audit trail for corrections.. Valid values are `^[0-9]{10}$`',
@@ -214,7 +215,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` (
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: AP invoices are allocated to cost centers for departmental accounting per USALI standards. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to enable joini',
     `franchise_agreement_id` BIGINT COMMENT 'Foreign key linking to property.franchise_agreement. Business justification: Franchise fee invoices (royalty, marketing, reservation fees) reference specific franchise agreements for rate validation and compliance tracking. Real AP processing verifies fees against agreement te',
     `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.goods_receipt. Business justification: Three-way match validation requires direct link from invoice to goods receipt for quantity/quality verification, critical for F&B perishables and FF&E capital purchases before payment processing.',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: AP invoices post to GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master data (account_name, ',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: AP invoices post to GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master data (account_name,',
     `property_id` BIGINT COMMENT 'Identifier of the property to which this invoice is assigned. Links to the property master.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the purchase order number that authorized this procurement. May be null for non-PO invoices.',
     `revenue_center_id` BIGINT COMMENT 'Foreign key linking to fnb.revenue_center. Business justification: Outlet-specific AP invoices (supplies, equipment, services) must allocate to revenue centers for departmental P&L accuracy. Enables USALI-compliant expense allocation, supports outlet-level profitabil',
@@ -401,56 +402,11 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` (
     CONSTRAINT pk_ar_payment PRIMARY KEY(`ar_payment_id`)
 ) COMMENT 'Accounts Receivable payment transaction recording collections received from guests, corporate accounts, and OTA partners against AR invoices. Captures payment date, payment method (credit card, direct bill, OTA settlement), amount received, currency, exchange rate, and application to specific invoices. Supports revenue recognition and cash management. Sourced from Oracle OPERA PMS cashiering and SAP S/4HANA AR.';
 
-CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` (
-    `finance_budget_id` BIGINT COMMENT 'Unique identifier for the finance budget record. Primary key.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Financial budgets are allocated to cost centers for departmental budget planning. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cos',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Financial budgets are planned for specific GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account mast',
-    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Financial budgets are allocated to profit centers for revenue-generating business unit budget planning. The profit_center_code STRING should be replaced with a proper FK to profit_center.profit_center',
-    `property_id` BIGINT COMMENT 'Reference to the property for which this budget applies. Links to property master data.',
-    `amount` DECIMAL(18,2) COMMENT 'The planned or forecasted monetary amount for this budget line item. Represents the target financial value for the specified GL account, cost center, and fiscal period combination.',
-    `approved_by` STRING COMMENT 'Name or identifier of the executive or committee who approved this budget. Supports SOX financial controls and audit trail.',
-    `approved_date` DATE COMMENT 'The date on which this budget was formally approved. Critical for audit trail and SOX compliance.',
-    `budget_category` STRING COMMENT 'High-level classification of the budget line: revenue (rooms, F&B, events), operating expense (utilities, supplies), labor expense (wages, benefits), capital expenditure (CapEx), or furniture, fixtures, and equipment (FF&E) reserve.. Valid values are `revenue|operating_expense|labor_expense|capex|ffe_reserve`',
-    `budget_name` STRING COMMENT 'Descriptive name of the budget (e.g., FY2024 Annual Operating Budget, Q2 2024 Reforecast).',
-    `budget_number` STRING COMMENT 'Externally-known unique identifier for this budget document. Used for reference in management reports and approvals.',
-    `budget_status` STRING COMMENT 'Current lifecycle status of the budget: draft (in preparation), submitted (awaiting approval), under review (being evaluated), approved (finalized), active (in use), closed (period ended), or superseded (replaced by newer version). [ENUM-REF-CANDIDATE: draft|submitted|under_review|approved|active|closed|superseded — 7 candidates stripped; promote to reference product]',
-    `budget_type` STRING COMMENT 'Classification of the budget by planning cycle: annual operating budget, quarterly forecast, monthly budget, rolling forecast, reforecast, or capital expenditure budget.. Valid values are `annual|quarterly|monthly|rolling_forecast|reforecast|capital`',
-    `budgeted_adr` DECIMAL(18,2) COMMENT 'Forecasted Average Daily Rate for the budget period. Calculated as rooms revenue divided by rooms sold. Key rooms division KPI.',
-    `budgeted_available_rooms` STRING COMMENT 'Forecasted total number of room nights available for sale during the budget period. Accounts for planned renovations and out-of-order rooms.',
-    `budgeted_covers` STRING COMMENT 'Forecasted total number of F&B covers (guests served) for the budget period. Key volume metric for food and beverage operations.',
-    `budgeted_cpor` DECIMAL(18,2) COMMENT 'Forecasted Cost Per Occupied Room for the budget period. Calculated as total departmental expenses divided by rooms sold. Measures cost efficiency.',
-    `budgeted_ebitda` DECIMAL(18,2) COMMENT 'Forecasted EBITDA for the budget period. Represents operating profitability before financing and non-cash charges.',
-    `budgeted_events_revenue` DECIMAL(18,2) COMMENT 'Forecasted total events and meetings revenue for the budget period. Includes MICE (Meetings, Incentives, Conferences, Exhibitions) revenue.',
-    `budgeted_fnb_revenue` DECIMAL(18,2) COMMENT 'Forecasted total food and beverage revenue for the budget period. Includes restaurant, bar, banquet, and room service revenue.',
-    `budgeted_gop` DECIMAL(18,2) COMMENT 'Forecasted Gross Operating Profit for the budget period. Calculated as total revenue minus departmental expenses and undistributed operating expenses. Key profitability metric per USALI.',
-    `budgeted_goppar` DECIMAL(18,2) COMMENT 'Forecasted Gross Operating Profit Per Available Room for the budget period. Calculated as GOP divided by available rooms. Measures profitability efficiency.',
-    `budgeted_labor_expense` DECIMAL(18,2) COMMENT 'Forecasted total labor costs including wages, salaries, benefits, and payroll taxes for the budget period.',
-    `budgeted_noi` DECIMAL(18,2) COMMENT 'Forecasted Net Operating Income for the budget period. Represents property-level profitability after all operating expenses but before debt service and taxes.',
-    `budgeted_occupancy_rate` DECIMAL(18,2) COMMENT 'Forecasted occupancy rate as a percentage for the budget period. Calculated as rooms sold divided by rooms available. Key demand metric.',
-    `budgeted_operating_expense` DECIMAL(18,2) COMMENT 'Forecasted total operating expenses excluding labor for the budget period. Includes utilities, supplies, maintenance, and other departmental expenses.',
-    `budgeted_other_revenue` DECIMAL(18,2) COMMENT 'Forecasted revenue from other sources (spa, parking, telecommunications, etc.) for the budget period.',
-    `budgeted_revpar` DECIMAL(18,2) COMMENT 'Forecasted Revenue Per Available Room for the budget period. Calculated as rooms revenue divided by available rooms, or ADR multiplied by occupancy rate. Primary revenue performance metric.',
-    `budgeted_room_nights` STRING COMMENT 'Forecasted total number of room nights sold for the budget period. Key volume metric for rooms division.',
-    `budgeted_rooms_revenue` DECIMAL(18,2) COMMENT 'Forecasted total rooms revenue for the budget period. Key metric for rooms division performance planning.',
-    `budgeted_total_revenue` DECIMAL(18,2) COMMENT 'Forecasted total revenue across all departments for the budget period. Sum of rooms, F&B, events, and other revenue.',
-    `budgeted_trevpar` DECIMAL(18,2) COMMENT 'Forecasted Total Revenue Per Available Room for the budget period. Calculated as total property revenue divided by available rooms. Measures total revenue productivity.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this budget record was first created in the system. Supports audit trail and data lineage.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the budget amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
-    `effective_end_date` DATE COMMENT 'The date on which this budget ceases to be effective. Null for open-ended budgets.',
-    `effective_start_date` DATE COMMENT 'The date from which this budget becomes effective and active for planning and variance analysis.',
-    `fiscal_period` STRING COMMENT 'The fiscal period within the year (e.g., P01, P02, Q1, FY). Supports monthly, quarterly, and annual budget granularity.',
-    `fiscal_year` STRING COMMENT 'The fiscal year to which this budget applies (e.g., 2024).',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this budget record was last updated. Supports change tracking and audit trail.',
-    `notes` STRING COMMENT 'Free-text notes and commentary regarding budget assumptions, variances from prior periods, strategic initiatives, or special considerations.',
-    `version` STRING COMMENT 'Version identifier for the budget (e.g., V1.0, V2.1 Reforecast). Supports tracking of budget revisions and reforecasts.',
-    CONSTRAINT pk_finance_budget PRIMARY KEY(`finance_budget_id`)
-) COMMENT 'Annual and periodic financial budget master representing planned and forecasted financial targets at both header and line-item granularity. Each budget contains line items by GL account, cost center, profit center, and fiscal period combination. Supports approved annual budgets, rolling forecasts, and reforecasts (distinguished by budget type/version). Captures budgeted revenue (rooms, F&B, events), budgeted expenses (labor, CPOR, FF&E reserve contributions), and budgeted KPIs (ADR, OCC, RevPAR, GOP, EBITDA, NOI). Enables granular budget-vs-actual and forecast-vs-actual variance analysis at the account, department, and property level. Supports USALI departmental budget reporting and management review. Sourced from SAP S/4HANA Planning and Budgeting module. SSOT: defers to revenue.revenue_budget (MVM). [SSOT_OWNER] [SSOT MASTER for group finance.finance_budget] [SSOT:budget] Canonical single-source-of-truth for the budget concept; other domain variants are domain-specific specializations referencing this owner.';
-
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` (
     `budget_line_id` BIGINT COMMENT 'Unique identifier for the budget line item. Primary key.',
     `category_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_category. Business justification: Budget planning allocates spend by procurement category (F&B, housekeeping, maintenance, FF&E) for CPOR tracking, category-level variance analysis, and strategic sourcing decisions in hospitality oper',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Budget lines are allocated to cost centers for departmental budget planning. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cost cen',
-    `finance_budget_id` BIGINT COMMENT 'Reference to the parent budget header to which this line item belongs.',
+    `budget_id` BIGINT COMMENT 'Reference to the parent budget header to which this line item belongs.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Budget lines are planned for specific GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master da',
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Budget lines for departmental operating expenses must tie to org units for operational budget ownership, manager accountability, and departmental variance reporting - enables department managers to tr',
     `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Labor budget lines must tie to specific positions for headcount planning, position control, and budget-to-actual variance analysis - enables finance to track budgeted vs actual headcount by position a',
@@ -491,7 +447,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` (
     `capex_request_id` BIGINT COMMENT 'Reference to the original CapEx request or approval that authorized the acquisition of this fixed asset.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Fixed assets are allocated to cost centers for departmental asset tracking and depreciation allocation. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to',
     `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.goods_receipt. Business justification: Asset capitalization date and initial valuation depend on goods receipt posting for FF&E and capital improvements; required for PIP project tracking and depreciation start date determination.',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Fixed assets post to GL accounts for asset capitalization and depreciation tracking. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account ',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Fixed assets post to GL accounts for asset capitalization and depreciation tracking. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account',
     `property_facility_id` BIGINT COMMENT 'Foreign key linking to property.facility. Business justification: Fixed assets (HVAC, kitchen equipment, pool systems) are physically located in specific facilities. Real asset management requires location tracking for maintenance scheduling, depreciation allocation',
     `property_id` BIGINT COMMENT 'Reference to the property or business unit where this fixed asset is located and capitalized.',
     `purchase_order_id` BIGINT COMMENT 'Purchase order number associated with the acquisition of this fixed asset.',
@@ -535,7 +491,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` (
     `tax_posting_id` BIGINT COMMENT 'Unique identifier for the tax posting transaction record.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Tax postings are allocated to cost centers for departmental tax expense tracking. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cos',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Tax postings post to GL accounts for tax liability and expense tracking. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master data ',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Tax postings post to GL accounts for tax liability and expense tracking. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master data',
     `profile_id` BIGINT COMMENT 'Reference to the guest profile for occupancy tax and transient occupancy tax postings.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Tax postings reference revenue centers for tax allocation. The revenue_center_code STRING should be replaced with a proper FK. Note: The target is profit_center because the existing FK profit_center.r',
     `property_id` BIGINT COMMENT 'Reference to the property where the tax transaction originated.',
@@ -576,7 +532,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` (
     `bank_account_id` BIGINT COMMENT 'Unique identifier for the bank account record. Primary key.',
-    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Bank accounts are linked to GL accounts for bank reconciliation and cash management. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account ',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Bank accounts are linked to GL accounts for bank reconciliation and cash management. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account',
     `master_account_bank_account_id` BIGINT COMMENT 'Reference to the master bank account for zero balance account (ZBA) cash pooling arrangements. Null if this is not a ZBA or if this is the master account.',
     `property_id` BIGINT COMMENT 'Reference to the property or corporate entity that owns this bank account. Links to property master data.',
     `account_closed_date` DATE COMMENT 'The date the bank account was closed, if applicable. Null for active accounts.',
@@ -627,9 +583,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` 
     `hma_contract_id` BIGINT COMMENT 'Reference to the Hotel Management Agreement contract that governs the terms and conditions of this management fee.',
     `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Management fees post to GL accounts for expense tracking and P&L reporting. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account master da',
     `ownership_entity_id` BIGINT COMMENT 'Reference to the property owner entity that is being charged the management fee under the Hotel Management Agreement (HMA).',
-    `primary_prior_period_management_fee_id` BIGINT COMMENT 'Self-referencing FK on management_fee (prior_period_management_fee_id)',
+    `prior_period_management_fee_id` BIGINT COMMENT 'Self-referencing FK on management_fee (prior_period_management_fee_id)',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Management fees are allocated to profit centers for revenue-generating business unit expense tracking. The profit_center_code STRING should be replaced with a proper FK to profit_center.profit_center_',
     `property_id` BIGINT COMMENT 'Reference to the hotel property for which the management fee is calculated.',
+    `reversed_fee_management_fee_id` BIGINT COMMENT 'Reference to the original management fee record that this entry reverses, if applicable.',
     `adjustment_amount` DECIMAL(18,2) COMMENT 'Any adjustments applied to the calculated management fee (e.g., prior period corrections, contractual adjustments, dispute resolutions).',
     `adjustment_reason` STRING COMMENT 'Business reason or explanation for any adjustment applied to the management fee amount.',
     `approval_status` STRING COMMENT 'Approval status of the management fee calculation, indicating whether it has been reviewed and approved by authorized personnel.. Valid values are `pending|approved|rejected|under_review`',
@@ -711,10 +668,10 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distributi
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` (
     `payment_run_id` BIGINT COMMENT 'Primary key for payment_run',
     `bank_account_id` BIGINT COMMENT 'Reference to the source bank account from which funds will be disbursed for this payment run.',
+    `created_by_user_employee_id` BIGINT COMMENT 'Reference to the user who created this payment run. Required for audit trails and segregation of duties per SOX controls.',
+    `employee_id` BIGINT COMMENT 'Reference to the user who approved this payment run for execution. Required for SOX audit trails and segregation of duties.',
     `gl_batch_id` BIGINT COMMENT 'Reference to the GL batch in SAP S/4HANA where payment run transactions were posted for financial consolidation.',
     `legal_entity_id` BIGINT COMMENT 'Reference to the legal entity executing the payment run. Critical for multi-entity consolidated financial reporting per GAAP/IFRS.',
-    `employee_id` BIGINT COMMENT 'Reference to the user who created this payment run. Required for audit trails and segregation of duties per SOX controls.',
-    `payment_employee_id` BIGINT COMMENT 'Reference to the user who approved this payment run for execution. Required for SOX audit trails and segregation of duties.',
     `property_id` BIGINT COMMENT 'Reference to the hotel property or resort for which this payment run is being executed. Supports property-level financial segregation per USALI standards.',
     `reversal_payment_run_id` BIGINT COMMENT 'Self-referencing FK on payment_run (reversal_payment_run_id)',
     `approval_required_flag` BOOLEAN COMMENT 'Indicates whether this payment run requires managerial or executive approval before execution, typically based on amount thresholds or payment type per SOX controls.',
@@ -735,7 +692,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` (
     `payment_file_format` STRING COMMENT 'The technical format of the payment file: NACHA for ACH, ISO20022 for international standards, BAI2 for bank reconciliation, MT940 for SWIFT, proprietary for custom bank formats.',
     `payment_file_name` STRING COMMENT 'The name of the payment file generated for bank transmission (e.g., NACHA file for ACH, SWIFT file for wire transfers).',
     `payment_method` STRING COMMENT 'The financial instrument used for disbursement: ACH for automated clearing house transfers, wire for same-day transfers, check for paper instruments, card for credit/debit payments, cash for on-premise disbursements, virtual_card for single-use card numbers.',
-    `payment_run_status` STRING COMMENT 'Current lifecycle status of the payment run: draft for initial creation, pending_approval awaiting authorization, approved ready for execution, processing during disbursement, completed when all payments successful, failed if errors occurred, cancelled if terminated before completion.',
     `processing_fee_amount` DECIMAL(18,2) COMMENT 'Total fees charged by payment processors, banks, or payment networks for executing this payment run.',
     `reconciliation_date` DATE COMMENT 'The date when this payment run was successfully reconciled against bank statements.',
     `reconciliation_status` STRING COMMENT 'Status of bank reconciliation for this payment run: pending awaiting bank confirmation, reconciled when all payments match bank records, discrepancy if mismatches found, under_review during investigation.',
@@ -743,6 +699,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` (
     `run_number` STRING COMMENT 'Business identifier for the payment run, formatted as PR-YYYYMMDD-NNNN for external reference and audit trails.',
     `run_type` STRING COMMENT 'Classification of the payment run based on its purpose and scheduling: scheduled for regular cycles, ad_hoc for one-time payments, emergency for urgent disbursements, payroll for employee compensation, vendor for supplier payments, refund for guest reimbursements.',
     `scheduled_date` DATE COMMENT 'The planned date when the payment run is scheduled to execute and disburse funds.',
+    `payment_run_status` STRING COMMENT 'Current lifecycle status of the payment run: draft for initial creation, pending_approval awaiting authorization, approved ready for execution, processing during disbursement, completed when all payments successful, failed if errors occurred, cancelled if terminated before completion.',
     `successful_amount` DECIMAL(18,2) COMMENT 'The total amount successfully disbursed from payments that completed without errors.',
     `successful_payment_count` STRING COMMENT 'The number of payment transactions that were successfully processed and disbursed.',
     `total_amount` DECIMAL(18,2) COMMENT 'The total gross amount of all payments included in this run before any adjustments or fees.',
@@ -753,8 +710,8 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` (
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` (
     `capex_request_id` BIGINT COMMENT 'Primary key for capex_request',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who approved the capital expenditure request. Null if not yet approved.',
-    `capex_requestor_employee_id` BIGINT COMMENT 'Identifier of the employee who initiated the capital expenditure request.',
     `property_id` BIGINT COMMENT 'Identifier of the property or hotel location for which the capital expenditure is requested.',
+    `requestor_employee_id` BIGINT COMMENT 'Identifier of the employee who initiated the capital expenditure request.',
     `revised_capex_request_id` BIGINT COMMENT 'Self-referencing FK on capex_request (revised_capex_request_id)',
     `vendor_id` BIGINT COMMENT 'Identifier of the primary vendor or contractor selected to execute the capital expenditure project. Null if not yet selected.',
     `actual_completion_date` DATE COMMENT 'Actual date when the capital expenditure project was completed and the asset placed in service. Null if not yet completed.',
@@ -792,13 +749,12 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` (
     `requestor_name` STRING COMMENT 'Full name of the employee who initiated the capital expenditure request.',
     `roi_percentage` DECIMAL(18,2) COMMENT 'Estimated return on investment percentage for the capital expenditure project, used in financial justification.',
     `sox_control_required` BOOLEAN COMMENT 'Indicates whether this capital expenditure request is subject to SOX financial controls and audit requirements for publicly traded entities.',
+    `vendor_name` STRING COMMENT 'Name of the primary vendor or contractor selected to execute the capital expenditure project. Null if not yet selected.',
     CONSTRAINT pk_capex_request PRIMARY KEY(`capex_request_id`)
 ) COMMENT 'Master reference table for capex_request. Referenced by capex_request_id.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` (
     `recurring_entry_template_id` BIGINT COMMENT 'Primary key for recurring_entry_template',
-    `property_id` BIGINT COMMENT 'FK to property.property.property_id',
-    `control_id` BIGINT COMMENT 'Reference identifier linking this template to specific SOX financial controls for publicly traded entities.',
     `superseded_recurring_entry_template_id` BIGINT COMMENT 'Self-referencing FK on recurring_entry_template (superseded_recurring_entry_template_id)',
     `amount_type` STRING COMMENT 'Indicates whether the journal entry amount is a fixed value, variable (entered at generation time), or calculated using a formula.',
     `approval_required_flag` BOOLEAN COMMENT 'Indicates whether entries generated from this template require explicit approval before posting, supporting SOX segregation of duties controls.',
@@ -825,11 +781,13 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_
     `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this recurring entry template record was last modified, critical for SOX audit trail and version control.',
     `next_scheduled_date` DATE COMMENT 'Date when this template is scheduled to generate its next journal entry based on recurrence frequency.',
     `notes` STRING COMMENT 'Additional notes, instructions, or comments related to this recurring entry template for operational guidance and knowledge transfer.',
+    `property_code` STRING COMMENT 'Property or hotel identifier for property-level financial tracking and consolidated reporting.',
     `recurrence_frequency` STRING COMMENT 'Frequency at which this template generates journal entries (daily, weekly, monthly, quarterly, semi-annually, or annually).',
-    `recurring_entry_template_status` STRING COMMENT 'Current lifecycle status of the recurring entry template indicating whether it is in draft, actively generating entries, temporarily suspended, permanently inactive, or archived.',
     `reversal_period_offset` STRING COMMENT 'Number of accounting periods after the original entry when the reversal should occur. Typically 1 for next-period reversals.',
     `reversal_required_flag` BOOLEAN COMMENT 'Indicates whether entries generated from this template require automatic reversal in the subsequent accounting period (true for accruals and certain adjusting entries).',
     `sap_integration_flag` BOOLEAN COMMENT 'Indicates whether this template is integrated with SAP S/4HANA for automated journal entry posting and synchronization.',
+    `sox_control_code` BIGINT COMMENT 'Reference identifier linking this template to specific SOX financial controls for publicly traded entities.',
+    `recurring_entry_template_status` STRING COMMENT 'Current lifecycle status of the recurring entry template indicating whether it is in draft, actively generating entries, temporarily suspended, permanently inactive, or archived.',
     `tax_impact_flag` BOOLEAN COMMENT 'Indicates whether entries from this template have income tax implications requiring coordination with tax accounting and reporting.',
     `template_code` STRING COMMENT 'Unique business identifier code for the recurring entry template, used for external reference and reporting.',
     `template_description` STRING COMMENT 'Detailed description of the recurring entry template including its purpose, business rationale, and any special instructions for processing.',
@@ -841,22 +799,21 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` (
     `allocation_run_id` BIGINT COMMENT 'Primary key for allocation_run',
-    `employee_id` BIGINT COMMENT 'Reference to the user who approved this allocation run for execution, ensuring segregation of duties.',
-    `allocation_employee_id` BIGINT COMMENT 'Reference to the user who initiated or triggered this allocation run.',
-    `allocation_reversed_run_id` BIGINT COMMENT 'Reference to the original allocation run that this run is reversing. Populated only when reversal_flag is True.',
     `allocation_rule_set_id` BIGINT COMMENT 'Reference to the predefined set of allocation rules and parameters applied in this run.',
+    `approved_by_user_employee_id` BIGINT COMMENT 'Reference to the user who approved this allocation run for execution, ensuring segregation of duties.',
+    `employee_id` BIGINT COMMENT 'Reference to the user who initiated or triggered this allocation run.',
     `fiscal_period_id` BIGINT COMMENT 'Reference to the fiscal period for which this allocation run is executed.',
     `gl_batch_id` BIGINT COMMENT 'The batch identifier in the general ledger system where allocation journal entries were posted.',
     `legal_entity_id` BIGINT COMMENT 'Reference to the legal entity under which this allocation run is processed for consolidated financial reporting.',
-    `primary_reversal_allocation_run_id` BIGINT COMMENT 'Self-referencing FK on allocation_run (reversal_allocation_run_id)',
     `property_id` BIGINT COMMENT 'Reference to the property for which this allocation run is executed. Null for corporate-level allocations.',
+    `reversal_allocation_run_id` BIGINT COMMENT 'Self-referencing FK on allocation_run (reversal_allocation_run_id)',
+    `reversed_run_id` BIGINT COMMENT 'Reference to the original allocation run that this run is reversing. Populated only when reversal_flag is True.',
     `cost_center_id` BIGINT COMMENT 'Reference to the originating cost center from which costs are being allocated.',
     `accounting_period` STRING COMMENT 'The accounting period in YYYY-MM format for which allocations are being processed.',
     `actual_execution_timestamp` TIMESTAMP COMMENT 'The actual date and time when the allocation run processing was initiated.',
     `allocation_basis` STRING COMMENT 'Detailed description of the allocation basis or driver used for cost distribution (e.g., occupied room nights, revenue percentage, employee count, square footage).',
     `allocation_line_count` STRING COMMENT 'The total number of individual allocation line items generated in this run.',
     `allocation_method` STRING COMMENT 'The methodology used to distribute costs across departments, properties, or cost centers (direct assignment, step-down, reciprocal, activity-based costing, revenue-based, headcount-based, or square footage-based).',
-    `allocation_run_status` STRING COMMENT 'Current lifecycle status of the allocation run indicating its processing state.',
     `approval_timestamp` TIMESTAMP COMMENT 'The date and time when the allocation run was approved for execution.',
     `completion_timestamp` TIMESTAMP COMMENT 'The date and time when the allocation run processing was completed successfully or terminated.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this allocation run record was first created in the system.',
@@ -872,6 +829,7 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` 
     `run_number` STRING COMMENT 'Business-facing unique identifier for the allocation run, formatted as AR-YYYYMMDD-NNNN.',
     `run_type` STRING COMMENT 'Classification of the allocation run based on the scope and nature of cost distribution (departmental, property-level, corporate, intercompany, overhead, or capital expenditure).',
     `scheduled_execution_date` DATE COMMENT 'The planned date for executing this allocation run as part of the monthly close calendar.',
+    `allocation_run_status` STRING COMMENT 'Current lifecycle status of the allocation run indicating its processing state.',
     `target_cost_center_count` STRING COMMENT 'The number of distinct cost centers or departments that received allocated costs in this run.',
     `total_amount_allocated` DECIMAL(18,2) COMMENT 'The total monetary value of costs distributed in this allocation run across all target cost centers or departments.',
     `validation_notes` STRING COMMENT 'Detailed notes or warnings from the validation process, including any exceptions or manual overrides applied.',
@@ -929,9 +887,9 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` (
     `fiscal_period_id` BIGINT COMMENT 'Primary key for fiscal_period',
-    `fiscal_prior_year_period_id` BIGINT COMMENT 'Reference to the corresponding fiscal period in the prior year. Used for year-over-year variance analysis and comparative financial reporting.',
-    `primary_prior_fiscal_period_id` BIGINT COMMENT 'Self-referencing FK on fiscal_period (prior_fiscal_period_id)',
-    `property_id` BIGINT COMMENT 'FK to property.property.property_id',
+    `prior_fiscal_period_id` BIGINT COMMENT 'Self-referencing FK on fiscal_period (prior_fiscal_period_id)',
+    `prior_year_period_id` BIGINT COMMENT 'Reference to the corresponding fiscal period in the prior year. Used for year-over-year variance analysis and comparative financial reporting.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - fiscal periods may vary by property jurisdiction and legal entity',
     `budget_version` STRING COMMENT 'The budget version or scenario associated with this fiscal period (e.g., Original Budget, Revised Budget, Forecast). Used for budget vs actual variance analysis.',
     `business_days_in_period` STRING COMMENT 'Total number of business days (excluding weekends and holidays) in this fiscal period. Used for operational metrics and productivity calculations.',
     `calendar_month` STRING COMMENT 'The calendar month number (1-12) in which the period starts. Used for calendar-based reporting and seasonality analysis.',
@@ -943,7 +901,6 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` (
     `fiscal_period_description` STRING COMMENT 'Additional descriptive text or notes about this fiscal period, including special circumstances, adjustments, or reporting considerations.',
     `end_date` DATE COMMENT 'The last calendar date included in this fiscal period. Defines the end boundary for transaction posting and financial reporting.',
     `fiscal_month` STRING COMMENT 'The fiscal month number within the fiscal year (1-12). Null for non-monthly periods. Used for monthly financial close and management reporting.',
-    `fiscal_period_status` STRING COMMENT 'Current lifecycle status of the fiscal period. Open: period is active and transactions can be posted. Closed: period is closed for regular posting but can be reopened. Locked: period is finalized and cannot accept new transactions without special authorization. Archived: period is archived for historical reference only.',
     `fiscal_quarter` STRING COMMENT 'The fiscal quarter number within the fiscal year (1-4). Null for non-quarterly periods. Used for quarterly financial reporting and SEC filings.',
     `fiscal_week` STRING COMMENT 'The fiscal week number within the fiscal year (1-52 or 1-53). Null for non-weekly periods. Used for weekly operational and revenue reporting in hospitality operations.',
     `fiscal_year` STRING COMMENT 'The fiscal year to which this period belongs (e.g., 2024). Used for year-over-year comparisons and annual financial statement consolidation.',
@@ -958,15 +915,16 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` (
     `reopen_date` DATE COMMENT 'The date when a previously closed period was reopened for adjustments. Null if period has never been reopened. Used for audit trail and SOX compliance monitoring.',
     `reporting_currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code used for financial reporting in this period (e.g., USD, EUR, GBP). Used for multi-currency consolidation.',
     `start_date` DATE COMMENT 'The first calendar date included in this fiscal period. Defines the beginning of the period for transaction posting and financial reporting.',
+    `fiscal_period_status` STRING COMMENT 'Current lifecycle status of the fiscal period. Open: period is active and transactions can be posted. Closed: period is closed for regular posting but can be reopened. Locked: period is finalized and cannot accept new transactions without special authorization. Archived: period is archived for historical reference only.',
     CONSTRAINT pk_fiscal_period PRIMARY KEY(`fiscal_period_id`)
 ) COMMENT 'Master reference table for fiscal_period. Referenced by fiscal_period_id.';
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` (
     `gl_batch_id` BIGINT COMMENT 'Primary key for gl_batch',
-    `gl_original_batch_id` BIGINT COMMENT 'Reference to the original GL batch that this batch reverses, if this is a reversal batch. Used to track the relationship between reversal entries and their original accruals. Null if this is not a reversal batch.',
-    `gl_reversal_batch_id` BIGINT COMMENT 'Reference to the GL batch that reverses this batch, if applicable. Used to track the relationship between original accrual entries and their subsequent reversals. Null if batch has not been reversed.',
-    `primary_reversal_gl_batch_id` BIGINT COMMENT 'Self-referencing FK on gl_batch (reversal_gl_batch_id)',
-    `property_id` BIGINT COMMENT 'FK connection added per structural fix',
+    `original_batch_id` BIGINT COMMENT 'Reference to the original GL batch that this batch reverses, if this is a reversal batch. Used to track the relationship between reversal entries and their original accruals. Null if this is not a reversal batch.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - GL batches are posted at property level and this table only has a self-reference with reversal',
+    `reversal_batch_id` BIGINT COMMENT 'Reference to the GL batch that reverses this batch, if applicable. Used to track the relationship between original accrual entries and their subsequent reversals. Null if batch has not been reversed.',
+    `reversal_gl_batch_id` BIGINT COMMENT 'Self-referencing FK on gl_batch (reversal_gl_batch_id)',
     `accounting_period` STRING COMMENT 'The fiscal period to which this GL batch applies, typically in format YYYY-MM or period number (e.g., 2024-01, Period 3 FY2024). Used for period-end closing and financial reporting alignment.',
     `approval_required` BOOLEAN COMMENT 'Indicates whether this GL batch requires formal approval before it can be posted to the general ledger. True if approval workflow is required, False if batch can be posted without approval.',
     `approved_by` STRING COMMENT 'User ID or name of the person who approved the GL batch for posting. Required for SOX compliance and audit trail. Null if batch has not been approved or does not require approval.',
@@ -1004,16 +962,15 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` (
 
 CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` (
     `allocation_rule_set_id` BIGINT COMMENT 'Primary key for allocation_rule_set',
-    `employee_id` BIGINT COMMENT 'Identifier of the user who created this allocation rule set record in the system.',
-    `allocation_employee_id` BIGINT COMMENT 'Identifier of the user who approved this allocation rule set for active use in financial processing.',
-    `allocation_last_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who most recently modified this allocation rule set record.',
-    `property_id` BIGINT COMMENT 'FK connection added per structural fix',
+    `created_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who created this allocation rule set record in the system.',
+    `employee_id` BIGINT COMMENT 'Identifier of the user who approved this allocation rule set for active use in financial processing.',
+    `last_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user who most recently modified this allocation rule set record.',
+    `property_id` BIGINT COMMENT 'add column property_id (BIGINT) with FK to property.property.property_id - allocation rule sets apply to specific properties or legal entities and this table only has a self-reference',
     `superseded_allocation_rule_set_id` BIGINT COMMENT 'Self-referencing FK on allocation_rule_set (superseded_allocation_rule_set_id)',
     `allocation_basis` STRING COMMENT 'The business driver or metric used as the basis for allocation calculations (e.g., room nights, square footage, headcount, revenue, labor hours).',
     `allocation_frequency` STRING COMMENT 'The cadence at which this allocation rule set is executed in the financial close process.',
     `allocation_method` STRING COMMENT 'The calculation methodology used by this rule set to distribute costs or revenues across entities (direct assignment, step-down, reciprocal, percentage-based, driver-based, or activity-based costing).',
     `allocation_percentage` DECIMAL(18,2) COMMENT 'Fixed percentage used for allocation when the allocation method is percentage-based. Value between 0.00 and 100.00.',
-    `allocation_rule_set_status` STRING COMMENT 'Current lifecycle status of the allocation rule set indicating whether it is actively being used in financial processing.',
     `approval_workflow_code` STRING COMMENT 'Reference to the approval workflow configuration that governs the review and approval process for allocations generated by this rule set.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when this allocation rule set was approved for active use.',
     `audit_trail_required` BOOLEAN COMMENT 'Boolean flag indicating whether detailed audit trail logging is required for all allocations performed using this rule set.',
@@ -1041,10 +998,57 @@ CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_
     `source_entity_type` STRING COMMENT 'The type of organizational entity from which costs or revenues are being allocated (property, department, cost center, profit center, division, region, or brand).',
     `source_system_code` STRING COMMENT 'Code identifying the source system from which this allocation rule set was created or integrated (e.g., SAP S/4HANA, Oracle Financials, custom allocation engine).',
     `sox_control_flag` BOOLEAN COMMENT 'Boolean flag indicating whether this allocation rule set is subject to SOX financial controls and requires enhanced audit trail and segregation of duties.',
+    `allocation_rule_set_status` STRING COMMENT 'Current lifecycle status of the allocation rule set indicating whether it is actively being used in financial processing.',
     `target_entity_type` STRING COMMENT 'The type of organizational entity to which costs or revenues are being allocated (property, department, cost center, profit center, division, region, or brand).',
     `version_number` STRING COMMENT 'Version number of this allocation rule set configuration used to track changes and maintain historical versions for audit and rollback purposes.',
     CONSTRAINT pk_allocation_rule_set PRIMARY KEY(`allocation_rule_set_id`)
 ) COMMENT 'Master reference table for allocation_rule_set. Referenced by allocation_rule_set_id.';
+
+CREATE OR REPLACE TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` (
+    `budget_id` BIGINT COMMENT 'Primary key for budget',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Financial budgets are allocated to cost centers for departmental budget planning. The cost_center_code STRING should be replaced with a proper FK to cost_center.cost_center_id to enable joining to cos',
+    `finance_budget_id` BIGINT COMMENT 'Unique identifier for the finance budget record. Primary key.',
+    `ledger_id` BIGINT COMMENT 'Foreign key linking to finance.ledger. Business justification: Financial budgets are planned for specific GL accounts in the chart of accounts. The gl_account_code STRING should be replaced with a proper FK to ledger.ledger_id to enable joining to GL account mast',
+    `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Financial budgets are allocated to profit centers for revenue-generating business unit budget planning. The profit_center_code STRING should be replaced with a proper FK to profit_center.profit_center',
+    `property_id` BIGINT COMMENT 'Reference to the property for which this budget applies. Links to property master data.',
+    `amount` DECIMAL(18,2) COMMENT 'The planned or forecasted monetary amount for this budget line item. Represents the target financial value for the specified GL account, cost center, and fiscal period combination.',
+    `approved_by` STRING COMMENT 'Name or identifier of the executive or committee who approved this budget. Supports SOX financial controls and audit trail.',
+    `approved_date` DATE COMMENT 'The date on which this budget was formally approved. Critical for audit trail and SOX compliance.',
+    `budget_number` STRING COMMENT 'Externally-known unique identifier for this budget document. Used for reference in management reports and approvals.',
+    `budget_status` STRING COMMENT 'Current lifecycle status of the budget: draft (in preparation), submitted (awaiting approval), under review (being evaluated), approved (finalized), active (in use), closed (period ended), or superseded (replaced by newer version). [ENUM-REF-CANDIDATE: draft|submitted|under_review|approved|active|closed|superseded — 7 candidates stripped; promote to reference product]',
+    `budget_type` STRING COMMENT 'Classification of the budget by planning cycle: annual operating budget, quarterly forecast, monthly budget, rolling forecast, reforecast, or capital expenditure budget.. Valid values are `annual|quarterly|monthly|rolling_forecast|reforecast|capital`',
+    `budgeted_adr` DECIMAL(18,2) COMMENT 'Forecasted Average Daily Rate for the budget period. Calculated as rooms revenue divided by rooms sold. Key rooms division KPI.',
+    `budgeted_available_rooms` STRING COMMENT 'Forecasted total number of room nights available for sale during the budget period. Accounts for planned renovations and out-of-order rooms.',
+    `budgeted_covers` STRING COMMENT 'Forecasted total number of F&B covers (guests served) for the budget period. Key volume metric for food and beverage operations.',
+    `budgeted_cpor` DECIMAL(18,2) COMMENT 'Forecasted Cost Per Occupied Room for the budget period. Calculated as total departmental expenses divided by rooms sold. Measures cost efficiency.',
+    `budgeted_ebitda` DECIMAL(18,2) COMMENT 'Forecasted EBITDA for the budget period. Represents operating profitability before financing and non-cash charges.',
+    `budgeted_events_revenue` DECIMAL(18,2) COMMENT 'Forecasted total events and meetings revenue for the budget period. Includes MICE (Meetings, Incentives, Conferences, Exhibitions) revenue.',
+    `budgeted_fnb_revenue` DECIMAL(18,2) COMMENT 'Forecasted total food and beverage revenue for the budget period. Includes restaurant, bar, banquet, and room service revenue.',
+    `budgeted_gop` DECIMAL(18,2) COMMENT 'Forecasted Gross Operating Profit for the budget period. Calculated as total revenue minus departmental expenses and undistributed operating expenses. Key profitability metric per USALI.',
+    `budgeted_goppar` DECIMAL(18,2) COMMENT 'Forecasted Gross Operating Profit Per Available Room for the budget period. Calculated as GOP divided by available rooms. Measures profitability efficiency.',
+    `budgeted_labor_expense` DECIMAL(18,2) COMMENT 'Forecasted total labor costs including wages, salaries, benefits, and payroll taxes for the budget period.',
+    `budgeted_noi` DECIMAL(18,2) COMMENT 'Forecasted Net Operating Income for the budget period. Represents property-level profitability after all operating expenses but before debt service and taxes.',
+    `budgeted_occupancy_rate` DECIMAL(18,2) COMMENT 'Forecasted occupancy rate as a percentage for the budget period. Calculated as rooms sold divided by rooms available. Key demand metric.',
+    `budgeted_operating_expense` DECIMAL(18,2) COMMENT 'Forecasted total operating expenses excluding labor for the budget period. Includes utilities, supplies, maintenance, and other departmental expenses.',
+    `budgeted_other_revenue` DECIMAL(18,2) COMMENT 'Forecasted revenue from other sources (spa, parking, telecommunications, etc.) for the budget period.',
+    `budgeted_revpar` DECIMAL(18,2) COMMENT 'Forecasted Revenue Per Available Room for the budget period. Calculated as rooms revenue divided by available rooms, or ADR multiplied by occupancy rate. Primary revenue performance metric.',
+    `budgeted_room_nights` STRING COMMENT 'Forecasted total number of room nights sold for the budget period. Key volume metric for rooms division.',
+    `budgeted_rooms_revenue` DECIMAL(18,2) COMMENT 'Forecasted total rooms revenue for the budget period. Key metric for rooms division performance planning.',
+    `budgeted_total_revenue` DECIMAL(18,2) COMMENT 'Forecasted total revenue across all departments for the budget period. Sum of rooms, F&B, events, and other revenue.',
+    `budgeted_trevpar` DECIMAL(18,2) COMMENT 'Forecasted Total Revenue Per Available Room for the budget period. Calculated as total property revenue divided by available rooms. Measures total revenue productivity.',
+    `budget_category` STRING COMMENT 'High-level classification of the budget line: revenue (rooms, F&B, events), operating expense (utilities, supplies), labor expense (wages, benefits), capital expenditure (CapEx), or furniture, fixtures, and equipment (FF&E) reserve.. Valid values are `revenue|operating_expense|labor_expense|capex|ffe_reserve`',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this budget record was first created in the system. Supports audit trail and data lineage.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the budget amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
+    `effective_end_date` DATE COMMENT 'The date on which this budget ceases to be effective. Null for open-ended budgets.',
+    `effective_start_date` DATE COMMENT 'The date from which this budget becomes effective and active for planning and variance analysis.',
+    `fiscal_period` STRING COMMENT 'The fiscal period within the year (e.g., P01, P02, Q1, FY). Supports monthly, quarterly, and annual budget granularity.',
+    `fiscal_year` STRING COMMENT 'The fiscal year to which this budget applies (e.g., 2024).',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this budget record was last updated. Supports change tracking and audit trail.',
+    `budget_name` STRING COMMENT 'Descriptive name of the budget (e.g., FY2024 Annual Operating Budget, Q2 2024 Reforecast).',
+    `notes` STRING COMMENT 'Free-text notes and commentary regarding budget assumptions, variances from prior periods, strategic initiatives, or special considerations.',
+    `version` STRING COMMENT 'Version identifier for the budget (e.g., V1.0, V2.1 Reforecast). Supports tracking of budget revisions and reforecasts.',
+    CONSTRAINT pk_finance_budget PRIMARY KEY(`budget_id`)
+) COMMENT 'Annual and periodic financial budget master representing planned and forecasted financial targets at both header and line-item granularity. Each budget contains line items by GL account, cost center, profit center, and fiscal period combination. Supports approved annual budgets, rolling forecasts, and reforecasts (distinguished by budget type/version). Captures budgeted revenue (rooms, F&B, events), budgeted expenses (labor, CPOR, FF&E reserve contributions), and budgeted KPIs (ADR, OCC, RevPAR, GOP, EBITDA, NOI). Enables granular budget-vs-actual and forecast-vs-actual variance analysis at the account, department, and property level. Supports USALI departmental budget reporting and management review. Sourced from SAP S/4HANA Planning and Budgeting module.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ADD CONSTRAINT `fk_finance_ledger_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
@@ -1073,11 +1077,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ADD CONSTRAINT `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ADD CONSTRAINT `fk_finance_ar_payment_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ADD CONSTRAINT `fk_finance_ar_payment_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ledger`(`ledger_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ADD CONSTRAINT `fk_finance_ar_payment_reversed_payment_ar_payment_id` FOREIGN KEY (`reversed_payment_ar_payment_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ar_payment`(`ar_payment_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ledger`(`ledger_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ADD CONSTRAINT `fk_finance_budget_line_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ADD CONSTRAINT `fk_finance_budget_line_finance_budget_id` FOREIGN KEY (`finance_budget_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`finance_budget`(`finance_budget_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ADD CONSTRAINT `fk_finance_budget_line_budget_id` FOREIGN KEY (`budget_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`finance_budget`(`budget_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ADD CONSTRAINT `fk_finance_budget_line_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ledger`(`ledger_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ADD CONSTRAINT `fk_finance_budget_line_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ADD CONSTRAINT `fk_finance_fixed_asset_capex_request_id` FOREIGN KEY (`capex_request_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`capex_request`(`capex_request_id`);
@@ -1092,8 +1093,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ADD CONSTRAINT
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_hma_contract_id` FOREIGN KEY (`hma_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`hma_contract`(`hma_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ledger`(`ledger_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_primary_prior_period_management_fee_id` FOREIGN KEY (`primary_prior_period_management_fee_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`management_fee`(`management_fee_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_prior_period_management_fee_id` FOREIGN KEY (`prior_period_management_fee_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`management_fee`(`management_fee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ADD CONSTRAINT `fk_finance_management_fee_reversed_fee_management_fee_id` FOREIGN KEY (`reversed_fee_management_fee_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`management_fee`(`management_fee_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ADD CONSTRAINT `fk_finance_owner_distribution_hma_contract_id` FOREIGN KEY (`hma_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`hma_contract`(`hma_contract_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ADD CONSTRAINT `fk_finance_owner_distribution_prior_period_owner_distribution_id` FOREIGN KEY (`prior_period_owner_distribution_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`owner_distribution`(`owner_distribution_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ADD CONSTRAINT `fk_finance_payment_run_bank_account_id` FOREIGN KEY (`bank_account_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`bank_account`(`bank_account_id`);
@@ -1101,27 +1103,29 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ADD CONSTRAINT 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ADD CONSTRAINT `fk_finance_payment_run_reversal_payment_run_id` FOREIGN KEY (`reversal_payment_run_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`payment_run`(`payment_run_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ADD CONSTRAINT `fk_finance_capex_request_revised_capex_request_id` FOREIGN KEY (`revised_capex_request_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`capex_request`(`capex_request_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ADD CONSTRAINT `fk_finance_recurring_entry_template_superseded_recurring_entry_template_id` FOREIGN KEY (`superseded_recurring_entry_template_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template`(`recurring_entry_template_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_allocation_reversed_run_id` FOREIGN KEY (`allocation_reversed_run_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_run`(`allocation_run_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_allocation_rule_set_id` FOREIGN KEY (`allocation_rule_set_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set`(`allocation_rule_set_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_fiscal_period_id` FOREIGN KEY (`fiscal_period_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`fiscal_period`(`fiscal_period_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_gl_batch_id` FOREIGN KEY (`gl_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_primary_reversal_allocation_run_id` FOREIGN KEY (`primary_reversal_allocation_run_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_run`(`allocation_run_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_reversal_allocation_run_id` FOREIGN KEY (`reversal_allocation_run_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_run`(`allocation_run_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_reversed_run_id` FOREIGN KEY (`reversed_run_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_run`(`allocation_run_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ADD CONSTRAINT `fk_finance_allocation_run_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ADD CONSTRAINT `fk_finance_hma_contract_superseded_hma_contract_id` FOREIGN KEY (`superseded_hma_contract_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`hma_contract`(`hma_contract_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ADD CONSTRAINT `fk_finance_fiscal_period_fiscal_prior_year_period_id` FOREIGN KEY (`fiscal_prior_year_period_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`fiscal_period`(`fiscal_period_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ADD CONSTRAINT `fk_finance_fiscal_period_primary_prior_fiscal_period_id` FOREIGN KEY (`primary_prior_fiscal_period_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`fiscal_period`(`fiscal_period_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_gl_original_batch_id` FOREIGN KEY (`gl_original_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_gl_reversal_batch_id` FOREIGN KEY (`gl_reversal_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_primary_reversal_gl_batch_id` FOREIGN KEY (`primary_reversal_gl_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ADD CONSTRAINT `fk_finance_fiscal_period_prior_fiscal_period_id` FOREIGN KEY (`prior_fiscal_period_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`fiscal_period`(`fiscal_period_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ADD CONSTRAINT `fk_finance_fiscal_period_prior_year_period_id` FOREIGN KEY (`prior_year_period_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`fiscal_period`(`fiscal_period_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_original_batch_id` FOREIGN KEY (`original_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_reversal_batch_id` FOREIGN KEY (`reversal_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ADD CONSTRAINT `fk_finance_gl_batch_reversal_gl_batch_id` FOREIGN KEY (`reversal_gl_batch_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`gl_batch`(`gl_batch_id`);
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ADD CONSTRAINT `fk_finance_allocation_rule_set_superseded_allocation_rule_set_id` FOREIGN KEY (`superseded_allocation_rule_set_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set`(`allocation_rule_set_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_budget_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_budget_finance_budget_id` FOREIGN KEY (`finance_budget_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`finance_budget`(`budget_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_budget_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`ledger`(`ledger_id`);
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_budget_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_travel_hospitality_v1`.`finance`.`profit_center`(`profit_center_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`finance` SET TAGS ('dbx_division' = 'corporate');
 ALTER SCHEMA `vibe_travel_hospitality_v1`.`finance` SET TAGS ('dbx_domain' = 'finance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
@@ -1130,9 +1134,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `accoun
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_number` SET TAGS ('dbx_value_regex' = '^[0-9]{4,10}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_subcategory` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Subcategory');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_type` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `account_type` SET TAGS ('dbx_value_regex' = 'asset|liability|equity|revenue|expense');
@@ -1150,7 +1151,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `effect
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `functional_area` SET TAGS ('dbx_business_glossary_term' = 'Functional Area Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `income_statement_section` SET TAGS ('dbx_business_glossary_term' = 'Income Statement Section');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `income_statement_section` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Active Status Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `is_control_account` SET TAGS ('dbx_business_glossary_term' = 'Control Account Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `is_intercompany` SET TAGS ('dbx_business_glossary_term' = 'Intercompany Account Indicator');
@@ -1165,14 +1165,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `postin
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `sox_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Sarbanes-Oxley (SOX) Control Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ledger` ALTER COLUMN `tax_category` SET TAGS ('dbx_business_glossary_term' = 'Tax Category Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `parent_cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Cost Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `annual_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Annual Budget Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `annual_budget_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `audit_trail_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `budget_allocation_flag` SET TAGS ('dbx_business_glossary_term' = 'Budget Allocation Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
@@ -1209,39 +1206,27 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `p
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `revenue_posting_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Revenue Posting Allowed Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `sox_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Sarbanes-Oxley (SOX) Control Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `square_footage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_business_glossary_term' = 'Uniform System of Accounts for the Lodging Industry (USALI) Department Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`cost_center` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2,4}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `ownership_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Ownership Entity ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `parent_profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Profit Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `brand_code` SET TAGS ('dbx_business_glossary_term' = 'Brand Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `business_area_code` SET TAGS ('dbx_business_glossary_term' = 'Business Area Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `business_area_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Closure Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
@@ -1251,7 +1236,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `controlling_area_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1260,10 +1244,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `functional_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Functional Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `functional_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Level');
@@ -1273,34 +1255,27 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_name` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_status` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_status` SET TAGS ('dbx_value_regex' = 'active|inactive|suspended|closed|pending_activation');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_type` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `room_count` SET TAGS ('dbx_business_glossary_term' = 'Room Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Seating Capacity');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `segment_code` SET TAGS ('dbx_business_glossary_term' = 'Segment Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `segment_code` SET TAGS ('dbx_value_regex' = 'luxury|premium|select_service|extended_stay|resort|other');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `short_name` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Short Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `square_footage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `star_rating` SET TAGS ('dbx_business_glossary_term' = 'Star Rating');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `state_province_code` SET TAGS ('dbx_business_glossary_term' = 'State or Province Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `state_province_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `state_province_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`profit_center` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Jurisdiction Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `journal_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `allocation_run_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Run ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1308,15 +1283,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `payroll_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Run Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `quaternary_journal_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `recurring_entry_template_id` SET TAGS ('dbx_business_glossary_term' = 'Recurring Entry Template ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `revenue_center_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `tertiary_journal_posted_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Posted By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `tertiary_journal_posted_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `tertiary_journal_posted_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `audit_trail_notes` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `capex_indicator` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) Indicator');
@@ -1350,15 +1322,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `transaction_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Transaction Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry` ALTER COLUMN `transaction_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `journal_entry_line_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry Line ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `journal_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `amount_group_currency` SET TAGS ('dbx_business_glossary_term' = 'Amount in Group Currency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `amount_local_currency` SET TAGS ('dbx_business_glossary_term' = 'Amount in Local Currency');
@@ -1395,6 +1364,8 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `posting_key` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `project_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `property_code` SET TAGS ('dbx_business_glossary_term' = 'Property Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `property_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `reference_document_number` SET TAGS ('dbx_business_glossary_term' = 'Reference Document Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `reference_document_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,16}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `reversal_indicator` SET TAGS ('dbx_business_glossary_term' = 'Reversal Indicator');
@@ -1414,8 +1385,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`journal_entry_line` ALTER COLUMN `usali_department_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Payable (AP) Invoice ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `franchise_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Id (Foreign Key)');
@@ -1464,18 +1433,16 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `ta
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_business_glossary_term' = 'Three-Way Match Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_value_regex' = 'matched|unmatched|exception');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `vendor_tax_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Tax Identification Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_invoice` ALTER COLUMN `vendor_tax_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `ap_payment_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Payable (AP) Payment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Payable (AP) Invoice ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `original_payment_ap_payment_id` SET TAGS ('dbx_business_glossary_term' = 'Original Payment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `payment_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Run ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
@@ -1518,8 +1485,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `wi
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ap_payment` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Receivable (AR) Invoice ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
@@ -1531,42 +1496,28 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `ag
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `aging_bucket` SET TAGS ('dbx_value_regex' = 'current|1_30_days|31_60_days|61_90_days|over_90_days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `ancillary_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Ancillary Revenue Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 1');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_business_glossary_term' = 'Billing City');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Billing Contact Email');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Billing Contact Phone');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Country Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_country_code` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_entity_name` SET TAGS ('dbx_business_glossary_term' = 'Billing Entity Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_entity_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Billing Entity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Postal Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_state_province` SET TAGS ('dbx_business_glossary_term' = 'Billing State or Province');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_state_province` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `billing_state_province` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `collection_status` SET TAGS ('dbx_business_glossary_term' = 'Collection Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `collection_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|on_hold|escalated|legal|resolved');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1607,15 +1558,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `wr
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_invoice` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `ar_payment_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Receivable (AR) Payment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Receivable (AR) Invoice ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `corporate_account_id` SET TAGS ('dbx_business_glossary_term' = 'Corporate Account ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Cashier ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `profile_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Profile ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `ota_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Online Travel Agency (OTA) Partner ID');
@@ -1623,19 +1570,14 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `pr
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `reversed_payment_ar_payment_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Payment ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `applied_amount` SET TAGS ('dbx_business_glossary_term' = 'Applied Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `authorization_code` SET TAGS ('dbx_business_glossary_term' = 'Authorization Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `authorization_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `base_currency_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Currency Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `base_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Base Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `base_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `card_last_four` SET TAGS ('dbx_business_glossary_term' = 'Card Last Four Digits');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `card_last_four` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `card_last_four` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `card_last_four` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `card_type` SET TAGS ('dbx_business_glossary_term' = 'Card Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `cardholder_name` SET TAGS ('dbx_business_glossary_term' = 'Cardholder Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `cardholder_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `cardholder_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `check_number` SET TAGS ('dbx_business_glossary_term' = 'Check Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `deposit_date` SET TAGS ('dbx_business_glossary_term' = 'Deposit Date');
@@ -1661,73 +1603,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `se
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `shift_code` SET TAGS ('dbx_business_glossary_term' = 'Shift ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `transaction_fee` SET TAGS ('dbx_business_glossary_term' = 'Transaction Fee');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `transaction_reference` SET TAGS ('dbx_business_glossary_term' = 'Transaction ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `transaction_reference` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`ar_payment` ALTER COLUMN `unapplied_amount` SET TAGS ('dbx_business_glossary_term' = 'Unapplied Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_subdomain' = 'budget_planning');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_reference' = 'revenue.revenue_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_mvm_ssot_role' = 'referencing');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_concept' = 'budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_owner' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_authority' = 'single_source_of_truth');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_structure_preserved' = 'v2');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_group' = 'budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_canonical' = 'finance.finance_budget');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_ssot_role' = 'canonical');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_business_glossary_term' = 'Budget Category');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_value_regex' = 'revenue|operating_expense|labor_expense|capex|ffe_reserve');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_business_glossary_term' = 'Budget Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_number` SET TAGS ('dbx_business_glossary_term' = 'Budget Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_status` SET TAGS ('dbx_business_glossary_term' = 'Budget Status');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Budget Type');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'annual|quarterly|monthly|rolling_forecast|reforecast|capital');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_adr` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Average Daily Rate (ADR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_available_rooms` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Available Rooms');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_covers` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Covers');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_cpor` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost Per Occupied Room (CPOR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_ebitda` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_events_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Events Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_fnb_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Food and Beverage (F&B) Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_gop` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Gross Operating Profit (GOP)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_goppar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Gross Operating Profit Per Available Room (GOPPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_labor_expense` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Labor Expense');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_noi` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Net Operating Income (NOI)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_occupancy_rate` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Occupancy Rate (OCC)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_operating_expense` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Operating Expense (OpEx)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_other_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Other Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_revpar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Revenue Per Available Room (RevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Room Nights');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_rooms_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Rooms Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Total Revenue');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_trevpar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Total Revenue Per Available Room (TRevPAR)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `fiscal_period` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Budget Notes');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Budget Version');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` SET TAGS ('dbx_subdomain' = 'budget_planning');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `budget_line_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Line ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `category_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position Id (Foreign Key)');
@@ -1769,9 +1651,7 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `u
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`budget_line` ALTER COLUMN `variance_threshold_percent` SET TAGS ('dbx_business_glossary_term' = 'Variance Threshold Percent');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_subdomain' = 'asset_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `capex_request_id` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) Request ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1815,14 +1695,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `n
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `pip_reference` SET TAGS ('dbx_business_glossary_term' = 'Property Improvement Plan (PIP) Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `salvage_value` SET TAGS ('dbx_business_glossary_term' = 'Salvage Value');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `salvage_value` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `useful_life_years` SET TAGS ('dbx_business_glossary_term' = 'Useful Life (Years)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fixed_asset` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_posting_id` SET TAGS ('dbx_business_glossary_term' = 'Tax Posting ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
@@ -1839,7 +1716,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `c
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `document_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Document Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Tax Due Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `exemption_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Exemption Certificate Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `exemption_certificate_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `exemption_indicator` SET TAGS ('dbx_business_glossary_term' = 'Tax Exemption Indicator');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `filing_date` SET TAGS ('dbx_business_glossary_term' = 'Tax Filing Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `filing_status` SET TAGS ('dbx_business_glossary_term' = 'Tax Filing Status');
@@ -1862,31 +1738,26 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `t
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_jurisdiction` SET TAGS ('dbx_business_glossary_term' = 'Tax Jurisdiction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_rate_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `tax_type` SET TAGS ('dbx_business_glossary_term' = 'Tax Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `transaction_date` SET TAGS ('dbx_business_glossary_term' = 'Tax Transaction Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`tax_posting` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `master_account_bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Master Account ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `master_account_bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `master_account_bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `master_account_bank_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `master_account_bank_account_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_closed_date` SET TAGS ('dbx_business_glossary_term' = 'Account Closed Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number_masked` SET TAGS ('dbx_business_glossary_term' = 'Masked Bank Account Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number_masked` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number_masked` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number_masked` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_number_masked` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_opened_date` SET TAGS ('dbx_business_glossary_term' = 'Account Opened Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `account_purpose` SET TAGS ('dbx_business_glossary_term' = 'Account Purpose');
@@ -1900,18 +1771,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_code` SET TAGS ('dbx_business_glossary_term' = 'Bank Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Bank Contact Email Address');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_email` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Contact Name');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Bank Contact Phone Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_phone` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `company_code` SET TAGS ('dbx_business_glossary_term' = 'Company Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1920,17 +1788,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `current_balance` SET TAGS ('dbx_business_glossary_term' = 'Current Balance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `electronic_banking_enabled` SET TAGS ('dbx_business_glossary_term' = 'Electronic Banking Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `iban` SET TAGS ('dbx_business_glossary_term' = 'International Bank Account Number (IBAN)');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `iban` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `iban` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `iban` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `iban` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `interest_bearing` SET TAGS ('dbx_business_glossary_term' = 'Interest Bearing Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `interest_rate` SET TAGS ('dbx_business_glossary_term' = 'Interest Rate');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `is_primary_account` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Account Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `is_zero_balance_account` SET TAGS ('dbx_business_glossary_term' = 'Is Zero Balance Account (ZBA) Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `last_reconciliation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reconciliation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `last_statement_balance` SET TAGS ('dbx_business_glossary_term' = 'Last Bank Statement Balance');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `last_statement_balance` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `last_statement_date` SET TAGS ('dbx_business_glossary_term' = 'Last Bank Statement Date');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `last_statement_date` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `minimum_balance_required` SET TAGS ('dbx_business_glossary_term' = 'Minimum Balance Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -1939,31 +1805,25 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `reconciliation_status` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `reconciliation_status` SET TAGS ('dbx_value_regex' = 'reconciled|pending|discrepancy|not_started');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `routing_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Routing Number');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `routing_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `routing_number` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `routing_number` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `routing_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_business_glossary_term' = 'SWIFT Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`bank_account` ALTER COLUMN `wire_transfer_enabled` SET TAGS ('dbx_business_glossary_term' = 'Wire Transfer Enabled Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` SET TAGS ('dbx_subdomain' = 'owner_reporting');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` SET TAGS ('dbx_subdomain' = 'owner_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `management_fee_id` SET TAGS ('dbx_business_glossary_term' = 'Management Fee ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `management_fee_id` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `hma_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Hotel Management Agreement (HMA) Contract ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `ownership_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Entity ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `primary_prior_period_management_fee_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Period Management Fee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `primary_prior_period_management_fee_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `primary_prior_period_management_fee_id` SET TAGS ('dbx_pii_tracked' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `prior_period_management_fee_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Period Management Fee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `reversed_fee_management_fee_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Management Fee ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `adjustment_amount` SET TAGS ('dbx_business_glossary_term' = 'Fee Adjustment Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `adjustment_reason` SET TAGS ('dbx_business_glossary_term' = 'Fee Adjustment Reason');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Fee Approval Status');
@@ -1978,7 +1838,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Management Fee Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_number` SET TAGS ('dbx_business_glossary_term' = 'Management Fee Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Management Fee Rate Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_rate_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_status` SET TAGS ('dbx_business_glossary_term' = 'Management Fee Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_type` SET TAGS ('dbx_business_glossary_term' = 'Management Fee Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `fee_type` SET TAGS ('dbx_value_regex' = 'base_fee|incentive_fee|combined_fee|special_fee|termination_fee|transition_fee');
@@ -2000,21 +1859,15 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `source_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Document Reference');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`management_fee` ALTER COLUMN `sox_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Sarbanes-Oxley (SOX) Control Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` SET TAGS ('dbx_subdomain' = 'owner_reporting');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` SET TAGS ('dbx_subdomain' = 'owner_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `owner_distribution_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Distribution ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `hma_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Hma Contract Id (Foreign Key)');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `ownership_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Entity ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `prior_period_owner_distribution_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Period Owner Distribution Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `prior_period_owner_distribution_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `base_management_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Base Management Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `base_management_fee_amount` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `calculation_date` SET TAGS ('dbx_business_glossary_term' = 'Calculation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -2034,7 +1887,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `gop_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Operating Profit (GOP) Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `gross_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Revenue Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `incentive_management_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Incentive Management Fee Amount');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `incentive_management_fee_amount` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `insurance_premium_amount` SET TAGS ('dbx_business_glossary_term' = 'Insurance Premium Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `noi_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Operating Income (NOI) Amount');
@@ -2053,26 +1905,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER CO
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`owner_distribution` ALTER COLUMN `working_capital_reserve_balance` SET TAGS ('dbx_business_glossary_term' = 'Working Capital Reserve Balance');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` SET TAGS ('dbx_subdomain' = 'payables_receivables');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` SET TAGS ('dbx_structure_preserved' = 'v2');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Run Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_classification' = 'restricted');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_confidentiality' = 'confidential');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii' = 'pii_financial');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `created_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `gl_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Batch Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `reversal_payment_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Payment Run Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `reversal_payment_run_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completion Timestamp');
@@ -2080,7 +1923,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `c
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_run_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `error_message` SET TAGS ('dbx_business_glossary_term' = 'Error Message');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `error_message` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `execution_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Execution Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `external_reference_code` SET TAGS ('dbx_business_glossary_term' = 'External Reference Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `failed_amount` SET TAGS ('dbx_business_glossary_term' = 'Failed Amount');
@@ -2092,7 +1934,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `n
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_file_format` SET TAGS ('dbx_business_glossary_term' = 'Payment File Format');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_file_name` SET TAGS ('dbx_business_glossary_term' = 'Payment File Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_run_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `processing_fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Processing Fee Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `reconciliation_date` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `reconciliation_status` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Status');
@@ -2100,24 +1941,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `r
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Run Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `run_type` SET TAGS ('dbx_business_glossary_term' = 'Run Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `payment_run_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `successful_amount` SET TAGS ('dbx_business_glossary_term' = 'Successful Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `successful_payment_count` SET TAGS ('dbx_business_glossary_term' = 'Successful Payment Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `total_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`payment_run` ALTER COLUMN `total_payment_count` SET TAGS ('dbx_business_glossary_term' = 'Total Payment Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` SET TAGS ('dbx_subdomain' = 'asset_management');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `capex_request_id` SET TAGS ('dbx_business_glossary_term' = 'Capex Request Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approver Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `capex_requestor_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requestor Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `capex_requestor_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `capex_requestor_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `requestor_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requestor Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `revised_capex_request_id` SET TAGS ('dbx_business_glossary_term' = 'Revised Capex Request Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `revised_capex_request_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
@@ -2153,17 +1988,12 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `requested_amount` SET TAGS ('dbx_business_glossary_term' = 'Requested Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `requestor_name` SET TAGS ('dbx_business_glossary_term' = 'Requestor Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `roi_percentage` SET TAGS ('dbx_business_glossary_term' = 'Roi Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `roi_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `sox_control_required` SET TAGS ('dbx_business_glossary_term' = 'Sox Control Required');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`capex_request` ALTER COLUMN `vendor_name` SET TAGS ('dbx_business_glossary_term' = 'Vendor Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `recurring_entry_template_id` SET TAGS ('dbx_business_glossary_term' = 'Recurring Entry Template Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `control_id` SET TAGS ('dbx_business_glossary_term' = 'Sox Control Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `superseded_recurring_entry_template_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Recurring Entry Template Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `superseded_recurring_entry_template_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `amount_type` SET TAGS ('dbx_business_glossary_term' = 'Amount Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
@@ -2189,11 +2019,13 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `next_scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `property_code` SET TAGS ('dbx_business_glossary_term' = 'Property Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `recurrence_frequency` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Frequency');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `recurring_entry_template_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `reversal_period_offset` SET TAGS ('dbx_business_glossary_term' = 'Reversal Period Offset');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `reversal_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Reversal Required Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `sap_integration_flag` SET TAGS ('dbx_business_glossary_term' = 'Sap Integration Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `sox_control_code` SET TAGS ('dbx_business_glossary_term' = 'Sox Control Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `recurring_entry_template_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `tax_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Impact Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `template_code` SET TAGS ('dbx_business_glossary_term' = 'Template Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `template_description` SET TAGS ('dbx_business_glossary_term' = 'Template Description');
@@ -2201,37 +2033,28 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` AL
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `usali_category` SET TAGS ('dbx_business_glossary_term' = 'Usali Category');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`recurring_entry_template` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_run_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Run Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_reversed_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Run Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_rule_set_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Rule Set Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `approved_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Employee Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `gl_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Batch Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `legal_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `primary_reversal_allocation_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Allocation Run Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `primary_reversal_allocation_run_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `reversal_allocation_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Allocation Run Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `reversed_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Run Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Source Cost Center Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `accounting_period` SET TAGS ('dbx_business_glossary_term' = 'Accounting Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `actual_execution_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Execution Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_basis` SET TAGS ('dbx_business_glossary_term' = 'Allocation Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_line_count` SET TAGS ('dbx_business_glossary_term' = 'Allocation Line Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_method` SET TAGS ('dbx_business_glossary_term' = 'Allocation Method');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_run_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Completion Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `error_message` SET TAGS ('dbx_business_glossary_term' = 'Error Message');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `error_message` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `gl_posting_date` SET TAGS ('dbx_business_glossary_term' = 'Gl Posting Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `gl_posting_status` SET TAGS ('dbx_business_glossary_term' = 'Gl Posting Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `is_automated` SET TAGS ('dbx_business_glossary_term' = 'Is Automated');
@@ -2242,31 +2065,27 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Run Number');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `run_type` SET TAGS ('dbx_business_glossary_term' = 'Run Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `scheduled_execution_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Execution Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `allocation_run_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `target_cost_center_count` SET TAGS ('dbx_business_glossary_term' = 'Target Cost Center Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `total_amount_allocated` SET TAGS ('dbx_business_glossary_term' = 'Total Amount Allocated');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `validation_notes` SET TAGS ('dbx_business_glossary_term' = 'Validation Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `validation_status` SET TAGS ('dbx_business_glossary_term' = 'Validation Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_run` ALTER COLUMN `variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Variance Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` SET TAGS ('dbx_subdomain' = 'owner_reporting');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` SET TAGS ('dbx_subdomain' = 'owner_relations');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `hma_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Hma Contract Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Operator Party Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `ownership_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Ownership Entity Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `superseded_hma_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Hma Contract Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `superseded_hma_contract_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `accounting_standard` SET TAGS ('dbx_business_glossary_term' = 'Accounting Standard');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `amendment_count` SET TAGS ('dbx_business_glossary_term' = 'Amendment Count');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `assignment_rights_flag` SET TAGS ('dbx_business_glossary_term' = 'Assignment Rights Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `audit_rights_flag` SET TAGS ('dbx_business_glossary_term' = 'Audit Rights Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `base_management_fee_percentage` SET TAGS ('dbx_business_glossary_term' = 'Base Management Fee Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `base_management_fee_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `budget_approval_authority` SET TAGS ('dbx_business_glossary_term' = 'Budget Approval Authority');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `capital_expenditure_reserve_percentage` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure Reserve Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `capital_expenditure_reserve_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `confidentiality_period_years` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Period Years');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `contract_name` SET TAGS ('dbx_business_glossary_term' = 'Contract Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `contract_notes` SET TAGS ('dbx_business_glossary_term' = 'Contract Notes');
@@ -2276,7 +2095,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `data_classification` SET TAGS ('dbx_business_glossary_term' = 'Data Classification');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `data_classification` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `dispute_resolution_method` SET TAGS ('dbx_business_glossary_term' = 'Dispute Resolution Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
@@ -2284,7 +2102,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `force_majeure_clause_flag` SET TAGS ('dbx_business_glossary_term' = 'Force Majeure Clause Flag');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `governing_law_jurisdiction` SET TAGS ('dbx_business_glossary_term' = 'Governing Law Jurisdiction');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `incentive_fee_percentage` SET TAGS ('dbx_business_glossary_term' = 'Incentive Fee Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `incentive_fee_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `indemnification_cap_amount` SET TAGS ('dbx_business_glossary_term' = 'Indemnification Cap Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `insurance_responsibility` SET TAGS ('dbx_business_glossary_term' = 'Insurance Responsibility');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `last_amendment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Amendment Date');
@@ -2300,15 +2117,11 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `termination_notice_days` SET TAGS ('dbx_business_glossary_term' = 'Termination Notice Days');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`hma_contract` ALTER COLUMN `working_capital_amount` SET TAGS ('dbx_business_glossary_term' = 'Working Capital Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_prior_year_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Year Period Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_prior_year_period_id` SET TAGS ('dbx_self_referencing' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `primary_prior_fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Fiscal Period Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `primary_prior_fiscal_period_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `prior_fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Fiscal Period Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `prior_year_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Year Period Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `budget_version` SET TAGS ('dbx_business_glossary_term' = 'Budget Version');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `business_days_in_period` SET TAGS ('dbx_business_glossary_term' = 'Business Days In Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `calendar_month` SET TAGS ('dbx_business_glossary_term' = 'Calendar Month');
@@ -2320,7 +2133,6 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_period_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_month` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Month');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_period_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_quarter` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Quarter');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_week` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Week');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
@@ -2335,20 +2147,17 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN 
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `reopen_date` SET TAGS ('dbx_business_glossary_term' = 'Reopen Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `reporting_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Reporting Currency Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`fiscal_period` ALTER COLUMN `fiscal_period_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `gl_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Batch Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `gl_original_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Original Batch Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `gl_reversal_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Batch Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `primary_reversal_gl_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Gl Batch Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `primary_reversal_gl_batch_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `original_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Original Batch Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `reversal_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Batch Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `reversal_gl_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Gl Batch Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `accounting_period` SET TAGS ('dbx_business_glossary_term' = 'Accounting Period');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `approved_by` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `batch_name` SET TAGS ('dbx_business_glossary_term' = 'Batch Name');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
@@ -2366,11 +2175,9 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `fisc
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `is_balanced` SET TAGS ('dbx_business_glossary_term' = 'Is Balanced');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `is_recurring` SET TAGS ('dbx_business_glossary_term' = 'Is Recurring');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `modified_by` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `posted_by` SET TAGS ('dbx_business_glossary_term' = 'Posted By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `posted_by` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `posted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Posted Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `recurring_frequency` SET TAGS ('dbx_business_glossary_term' = 'Recurring Frequency');
@@ -2380,30 +2187,18 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `sour
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `total_credit_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Credit Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `total_debit_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Debit Amount');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`gl_batch` ALTER COLUMN `created_by` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` SET TAGS ('dbx_subdomain' = 'general_ledger');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` SET TAGS ('dbx_governance' = 'section2_supreme_authority');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` SET TAGS ('dbx_structure_preserved' = 'v2');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` SET TAGS ('dbx_subdomain' = 'general_accounting');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_rule_set_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Rule Set Identifier');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_last_modified_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_last_modified_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `created_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `last_modified_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User Id');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property Identifier');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `superseded_allocation_rule_set_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Allocation Rule Set Id');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `superseded_allocation_rule_set_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_basis` SET TAGS ('dbx_business_glossary_term' = 'Allocation Basis');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_frequency` SET TAGS ('dbx_business_glossary_term' = 'Allocation Frequency');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_method` SET TAGS ('dbx_business_glossary_term' = 'Allocation Method');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_business_glossary_term' = 'Allocation Percentage');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_pii_tracked' = 'true');
-ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_rule_set_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `approval_workflow_code` SET TAGS ('dbx_business_glossary_term' = 'Approval Workflow Id');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `audit_trail_required` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Required');
@@ -2431,5 +2226,54 @@ ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER C
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `source_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Source Entity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `sox_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Sox Control Flag');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `allocation_rule_set_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `target_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Target Entity Type');
 ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`allocation_rule_set` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` SET TAGS ('dbx_subdomain' = 'general_accounting');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'budget Identifier');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_id` SET TAGS ('dbx_ssot_owner' = 'true');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Budget ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `ledger_id` SET TAGS ('dbx_business_glossary_term' = 'Ledger Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `property_id` SET TAGS ('dbx_business_glossary_term' = 'Property ID');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_number` SET TAGS ('dbx_business_glossary_term' = 'Budget Number');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_status` SET TAGS ('dbx_business_glossary_term' = 'Budget Status');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Budget Type');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'annual|quarterly|monthly|rolling_forecast|reforecast|capital');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_adr` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Average Daily Rate (ADR)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_available_rooms` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Available Rooms');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_covers` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Covers');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_cpor` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost Per Occupied Room (CPOR)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_ebitda` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_events_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Events Revenue');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_fnb_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Food and Beverage (F&B) Revenue');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_gop` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Gross Operating Profit (GOP)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_goppar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Gross Operating Profit Per Available Room (GOPPAR)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_labor_expense` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Labor Expense');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_noi` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Net Operating Income (NOI)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_occupancy_rate` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Occupancy Rate (OCC)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_operating_expense` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Operating Expense (OpEx)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_other_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Other Revenue');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_revpar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Revenue Per Available Room (RevPAR)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_room_nights` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Room Nights');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_rooms_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Rooms Revenue');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_total_revenue` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Total Revenue');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budgeted_trevpar` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Total Revenue Per Available Room (TRevPAR)');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_business_glossary_term' = 'Budget Category');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_value_regex' = 'revenue|operating_expense|labor_expense|capex|ffe_reserve');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `fiscal_period` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_business_glossary_term' = 'Budget Name');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Budget Notes');
+ALTER TABLE `vibe_travel_hospitality_v1`.`finance`.`finance_budget` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Budget Version');

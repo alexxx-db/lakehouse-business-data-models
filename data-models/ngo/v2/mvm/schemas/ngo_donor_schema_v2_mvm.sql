@@ -1,15 +1,17 @@
 -- Schema for Domain: donor | Business: Ngo | Version: v2_mvm
--- Generated on: 2026-07-03 06:20:32
+-- Generated on: 2026-07-10 20:23:30
 
 -- ========= DATABASE =========
-CREATE DATABASE IF NOT EXISTS `vibe_ngo_v1`.`donor` COMMENT 'Systems of record: Raisers Edge NXT (National Committee fundraising), Salesforce Nonprofit Cloud (constituent CRM for National Committees), SAP CRM (institutional donor management). For UN agencies, donor management is handled via SAP Grants Management and donor portals.';
+CREATE DATABASE IF NOT EXISTS `vibe_ngo_v1`.`donor` COMMENT 'SSOT for all donor and funder relationships including institutional donors (USAID, DFID, UN agencies, DAC members), foundations, corporate sponsors, and individual major gift contributors. Manages donor cultivation, prospect research, stewardship, gift processing, pledge management, and CRM constituent engagement in Salesforce Nonprofit Cloud and Raisers Edge NXT.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`constituent` (
     `constituent_id` BIGINT COMMENT 'Unique identifier for the constituent record. Primary key for the constituent entity representing every donor, funder, and supporter in the CRM (Constituent Relationship Management) system.',
-    `country_id` BIGINT COMMENT 'Foreign key linking to field.country. Business justification: Constituent records carry denormalized country fields (country_of_origin, mailing_country_code). A proper FK to the country reference table enforces referential integrity and enables country-level don',
+    `country_id` BIGINT COMMENT 'add column country_id (BIGINT) with FK to field.country.country_id - donor constituents have a country of residence/registration that is essential for compliance and stewardship',
+    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Constituents (donors) are managed by specific country offices — local major donors are assigned to the country office relationship management team. Portfolio assignment by country office is standard N',
     `communication_preference` STRING COMMENT 'The constituents preferred method of communication for stewardship, acknowledgment, and cultivation activities.. Valid values are `email|phone|mail|sms|no_contact`',
     `constituent_type` STRING COMMENT 'The classification of the constituent entity. Individual = private person major gift donor; Institutional = government agency or public sector donor (USAID, DFID/FCDO); Foundation = private or family foundation; Corporate = business or corporate sponsor; Bilateral = government-to-government donor (DAC member); Multilateral = international organization (UN agencies, World Bank); Household = family unit for joint giving. [ENUM-REF-CANDIDATE: individual|institutional|foundation|corporate|bilateral|multilateral|household — 7 candidates stripped; promote to reference product]',
+    `country_of_origin` STRING COMMENT 'The three-letter ISO 3166-1 alpha-3 country code representing the constituents country of origin or headquarters. For bilateral and multilateral donors, this is the donor country. For foundations and corporates, this is the country of incorporation.. Valid values are `^[A-Z]{3}$`',
     `crm_source_record_code` STRING COMMENT 'The unique identifier of this constituent record in the source CRM system. Used for data lineage, reconciliation, and bi-directional sync.',
     `crm_source_system` STRING COMMENT 'The source CRM system from which this constituent record originated. Salesforce Nonprofit Cloud = Salesforce NPSP or Nonprofit Cloud; Raisers Edge NXT = Blackbaud Raisers Edge NXT; Other = other donor management system.. Valid values are `salesforce_nonprofit_cloud|raisers_edge_nxt|other`',
     `dac_member_flag` BOOLEAN COMMENT 'Indicates whether this constituent is a member of the OECD Development Assistance Committee. True = DAC member; False = not a DAC member. Used for ODA reporting and donor classification.',
@@ -30,10 +32,10 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`constituent` (
     `mailing_address_line1` STRING COMMENT 'The first line of the constituents mailing address, typically containing street number and street name or PO Box.',
     `mailing_address_line2` STRING COMMENT 'The second line of the constituents mailing address, typically containing apartment, suite, or building information.',
     `mailing_city` STRING COMMENT 'The city or municipality of the constituents mailing address.',
+    `mailing_country_code` STRING COMMENT 'The three-letter ISO 3166-1 alpha-3 country code of the constituents mailing address (e.g., USA, GBR, CHE).. Valid values are `^[A-Z]{3}$`',
     `mailing_postal_code` STRING COMMENT 'The postal code or ZIP code of the constituents mailing address.',
     `mailing_state_province` STRING COMMENT 'The state, province, or administrative region of the constituents mailing address.',
     `oda_eligibility_flag` BOOLEAN COMMENT 'Indicates whether gifts from this constituent qualify as ODA under DAC (Development Assistance Committee) criteria. True = ODA-eligible; False = not ODA-eligible. Used for IATI reporting and donor transparency.',
-    `organization_affiliation` STRING COMMENT 'The name of the organization or institution the constituent is affiliated with. For individual donors, this may be their employer or foundation board membership; for institutional contacts, this is the parent agency or department.',
     `preferred_grant_modality` STRING COMMENT 'The type of grant funding this donor typically provides. Restricted = tied to specific projects or activities; Unrestricted = general operating support; Project = specific project funding; Program = program-level funding; Core = institutional core support; Capital = infrastructure or capital expenditure; Endowment = long-term endowment funding. [ENUM-REF-CANDIDATE: restricted|unrestricted|project|program|core|capital|endowment — 7 candidates stripped; promote to reference product]',
     `preferred_name` STRING COMMENT 'The name the constituent prefers to be addressed by in communications and correspondence. May differ from legal name for individuals (e.g., nickname, shortened name) or organizations (e.g., brand name, acronym).',
     `primary_email` STRING COMMENT 'The primary email address for constituent communication, gift acknowledgment, and stewardship correspondence. This is the operational source of truth for digital outreach.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
@@ -45,13 +47,16 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`constituent` (
     `relationship_tier` STRING COMMENT 'The donor cultivation and stewardship tier assigned to this constituent based on giving history, capacity, and engagement. Major = major gift donor; Principal = top-tier institutional funder; Leadership = leadership circle member; Sustaining = recurring donor; Annual = annual fund donor; Lapsed = former donor; Prospect = prospective donor under cultivation. [ENUM-REF-CANDIDATE: major|principal|leadership|sustaining|annual|lapsed|prospect — 7 candidates stripped; promote to reference product]',
     `salutation` STRING COMMENT 'The formal greeting or title used when addressing the constituent in written or verbal communication (e.g., Mr., Ms., Dr., His Excellency, The Honorable).',
     CONSTRAINT pk_constituent PRIMARY KEY(`constituent_id`)
-) COMMENT 'Donor constituent record for fundraising and relationship management. Source systems: Raisers Edge NXT (National Committees), Salesforce NPSP (National Committees), SAP CRM (institutional donors). Systems-of-record: Salesforce Nonprofit Cloud (National Committees), Raisers Edge NXT, SAP CRM (institutional donors). Framework: IATI Organisation Standard.';
+) COMMENT 'Master identity record and single source of truth for all donor and funder constituents across Salesforce Nonprofit Cloud and Raisers Edge NXT. Represents every entity that gives to or funds the NGO — individual major gift contributors, institutional donors (USAID, DFID/FCDO, UN agencies, DAC members), bilateral and multilateral agencies, private foundations, corporate sponsors, and households. Captures full constituent profile including legal name, preferred name/salutation, constituent type (individual, institutional, foundation, corporate, bilateral, multilateral, household), organization affiliation, IATI organization identifier, communication preferences, GDPR/data consent flags, deceased indicator, ODA eligibility flag, indirect cost rate (ICR/NICRA) terms, preferred grant modality, relationship tier, funder classification (bilateral, multilateral, DAC), country of origin, and CRM source system reference. All gift, pledge, grant, soft credit, and cultivation records reference this entity as the authoritative donor identity.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`prospect` (
     `prospect_id` BIGINT COMMENT 'Unique identifier for the prospect record. Primary key for the prospect entity.',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to donor.campaign. Business justification: Prospects are often identified through specific campaigns (e.g., acquisition campaign identifies new prospects). Campaign attribution for prospect identification enables source tracking and campaign e',
     `constituent_id` BIGINT COMMENT 'Reference to the constituent record in the CRM (Constituent Relationship Management) system. Links prospect to their constituent profile in Salesforce Nonprofit Cloud or Raisers Edge NXT.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: NGO prospect cultivation is managed by country offices. Geographic interest alignment, relationship ownership, and prospect pipeline reporting by country office are standard major gifts management pro',
+    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Prospects are assigned to country offices for cultivation and solicitation. Country office fundraising teams manage their own prospect pipelines. Country office prospect pipeline reporting and solicit',
+    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: A prospect in the cultivation pipeline is typically being cultivated toward a specific donor-designated fund (e.g., an endowment, a restricted program fund). Linking prospect.donor_fund_id → donor_fun',
+    `partner_org_id` BIGINT COMMENT 'Foreign key linking to partnership.partner_org. Business justification: Co-financing prospect pipeline management: NGOs actively prospect partner orgs for major co-funding commitments. A direct prospect→partner_org link enables partner-specific prospect pipeline reports a',
+    `proposal_id` BIGINT COMMENT 'Foreign key linking to grant.proposal. Business justification: NGO business development teams cultivate prospects in the context of specific proposals being developed. Tracking prospect-to-proposal pipeline is a named BD process enabling win/loss analysis and pro',
     `ability_score` STRING COMMENT 'Ability score component of the LAI (Linkage-Ability-Interest) assessment. Measures financial capacity to make a significant gift. Typically scored 1-5.',
     `board_affiliation` STRING COMMENT 'Known board memberships or trustee positions held by the prospect at other nonprofit organizations, foundations, or corporate boards. Indicates philanthropic engagement and network connections.',
     `communication_preference` STRING COMMENT 'Prospects preferred method of communication for cultivation and stewardship activities.. Valid values are `email|phone|mail|in_person|no_preference`',
@@ -95,18 +100,18 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`prospect` (
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`gift` (
     `gift_id` BIGINT COMMENT 'Unique identifier for the gift transaction. Primary key for the gift data product.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to partnership.agreement. Business justification: Gifts may be restricted, returned, or refused due to safeguarding incidents involving the donor. Tracks financial impact of safeguarding cases, supports gift acceptance policy enforcement, and documen',
     `appeal_id` BIGINT COMMENT 'Reference to the specific appeal or solicitation within a campaign that generated this gift.',
-    `award_id` BIGINT COMMENT 'Foreign key linking to grant.award. Business justification: A restricted gift is directly associated with a grant award for restricted fund accounting reconciliation. Linking gift to award enables matching gift receipts to award funding, critical for NGO finan',
+    `award_id` BIGINT COMMENT 'Foreign key linking to grant.award. Business justification: Gifts are recorded as grant income against specific awards for grant income reconciliation and financial reporting. NGO finance teams must match gift receipts to award obligations. This is a named pro',
     `campaign_id` BIGINT COMMENT 'Reference to the fundraising campaign that solicited or attributed this gift.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Gifts are received and processed by country offices. Country-level fundraising revenue reporting, IATI transaction attribution, and donor receipting are all country-office-level processes requiring th',
-    `donor_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.donor_requirement. Business justification: Gifts received under grant agreements must satisfy specific donor requirements (restricted use, reporting conditions). Linking gift directly to donor_requirement enables compliance verification that e',
-    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Gifts are frequently made in response to specific emergencies. Emergency-specific gift tracking is required for CERF donor reporting, flash appeal accountability, IATI transaction reporting, and commu',
-    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: A gift is designated to a specific donor fund (restricted or unrestricted). The donor_fund is the SSOT for fund designations. Without this FK, gift fund designation is captured only as free-text restr',
+    `commodity_id` BIGINT COMMENT 'Foreign key linking to supply.commodity. Business justification: In-kind gift recording: NGOs receive in-kind donations of specific commodities (food, medicines, NFIs). Linking gift to commodity enables in-kind valuation, inventory entry, and IATI in-kind contribut',
+    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Gifts are allocated to specific country offices for fund disbursement and financial reconciliation. Country office finance teams require gift-to-office traceability for budget management, donor restri',
+    `event_registration_id` BIGINT COMMENT 'Foreign key linking to donor.event_registration. Business justification: A gift made at or in response to a fundraising event can be traced to a specific attendee registration record. gift already has fundraising_event_id for event-level attribution, but event_registration',
+    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: Every gift in an NGO fundraising model must be designated to a specific donor fund — this is the core mechanism by which restricted and unrestricted gifts are allocated to programmatic purposes. gift.',
+    `funding_source_id` BIGINT COMMENT 'Foreign key linking to grant.funding_source. Business justification: Gifts are deposited into specific finance funds for GL posting, restriction tracking, and fund balance management. Core nonprofit financial operation linking fundraising revenue to accounting records.',
     `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to donor.fundraising_event. Business justification: Gifts can be made at or through fundraising events (ticket purchase, auction bid, event donation). Event attribution enables event ROI calculation, revenue tracking, and event effectiveness analysis. ',
-    `indicator_target_id` BIGINT COMMENT 'Foreign key linking to mel.indicator_target. Business justification: Restricted gifts are designated to fund achievement of a specific indicator target (e.g., a donor funds reaching a specific beneficiary count target). This restricted gift tracking process requires li',
-    `major_gift_opportunity_id` BIGINT COMMENT 'Foreign key linking to donor.major_gift_opportunity. Business justification: Gifts can close major gift opportunities. Linking closed opportunities to realized gifts enables pipeline conversion tracking, forecasting accuracy analysis, and gift officer performance measurement. ',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Individual gifts (non-cash, foreign-source, quid pro quo) trigger specific compliance obligations (IRS Form 8283, FARA reporting, quid pro quo disclosure). NGO compliance teams must link each qualifyi',
     `original_gift_id` BIGINT COMMENT 'Reference to the original employee gift that this matching gift is matching. Populated only for matching gifts.',
+    `partner_org_id` BIGINT COMMENT 'Foreign key linking to partnership.partner_org. Business justification: Federal grants received as gifts (pass-through awards) are included in single audit federal expenditure calculations. Grants accounting identifies which gifts are federal pass-throughs for audit scope',
     `pledge_id` BIGINT COMMENT 'Foreign key linking to donor.pledge. Business justification: Gifts can be payments against pledges. This FK is CRITICAL for pledge fulfillment tracking, balance calculation, and installment schedule management. Nullable (not all gifts are pledge payments; some ',
     `constituent_id` BIGINT COMMENT 'Reference to the donor who made this gift. Links to the donor master record in the donor domain.',
     `acknowledgement_date` DATE COMMENT 'Date the donor acknowledgement or thank-you letter was sent for this gift.',
@@ -117,7 +122,6 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`gift` (
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the gift amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `fee_amount` DECIMAL(18,2) COMMENT 'Transaction processing fees or costs deducted from the gross gift amount (e.g., credit card fees, wire transfer fees).',
     `gift_date` DATE COMMENT 'The date the gift was received or pledged. This is the principal business event timestamp for revenue recognition per FASB ASC 958.',
-    `gift_number` STRING COMMENT 'Externally-known unique business identifier for this gift transaction, used for donor communication and receipt references.',
     `gift_status` STRING COMMENT 'Current lifecycle status of the gift transaction in the processing workflow.. Valid values are `pending|received|processed|acknowledged|refunded|cancelled`',
     `gift_type` STRING COMMENT 'Discriminator indicating the nature and form of the gift. Determines processing rules, revenue recognition treatment, and IRS substantiation requirements. [ENUM-REF-CANDIDATE: cash|check|wire|in-kind|stock|cryptocurrency|matching|tribute|pledge|recurring|refund|adjustment — 12 candidates stripped; promote to reference product]',
     `gl_account_code` STRING COMMENT 'General ledger account code where this gift revenue is posted in the financial system per the Chart of Accounts (CoA).',
@@ -133,8 +137,9 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`gift` (
     `notification_recipient_address` STRING COMMENT 'Mailing address for sending tribute gift notification to the honorees family or designated recipient.',
     `notification_recipient_name` STRING COMMENT 'Name of the person who should be notified about this tribute gift (typically a family member of the honoree).',
     `notification_sent_flag` BOOLEAN COMMENT 'Indicates whether the tribute gift notification has been sent to the designated recipient.',
-    `payment_channel` DECIMAL(18,2) COMMENT 'The interface or touchpoint through which the donor made the gift, used for campaign attribution and channel effectiveness analysis. [ENUM-REF-CANDIDATE: online|mobile-app|direct-mail|phone|in-person|event|major-gift-officer|peer-to-peer|text-to-give|other — 10 candidates stripped; promote to reference product]',
-    `payment_method` DECIMAL(18,2) COMMENT 'The financial instrument or mechanism used to make the gift payment. [ENUM-REF-CANDIDATE: credit-card|debit-card|ach|wire-transfer|check|cash|paypal|stock-transfer|cryptocurrency|mobile-payment|other — 11 candidates stripped; promote to reference product]',
+    `number` STRING COMMENT 'Externally-known unique business identifier for this gift transaction, used for donor communication and receipt references.',
+    `payment_channel` STRING COMMENT 'The interface or touchpoint through which the donor made the gift, used for campaign attribution and channel effectiveness analysis. [ENUM-REF-CANDIDATE: online|mobile-app|direct-mail|phone|in-person|event|major-gift-officer|peer-to-peer|text-to-give|other — 10 candidates stripped; promote to reference product]',
+    `payment_method` STRING COMMENT 'The financial instrument or mechanism used to make the gift payment. [ENUM-REF-CANDIDATE: credit-card|debit-card|ach|wire-transfer|check|cash|paypal|stock-transfer|cryptocurrency|mobile-payment|other — 11 candidates stripped; promote to reference product]',
     `receipt_number` STRING COMMENT 'Unique receipt number issued for this gift for IRS substantiation and donor tax deduction purposes.',
     `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this gift record was first created in the system.',
     `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this gift record was last modified in the system.',
@@ -145,22 +150,19 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`gift` (
     `tribute_flag` BOOLEAN COMMENT 'Indicates whether this gift is made in honor or memory of another person (tribute gift).',
     `tribute_type` STRING COMMENT 'Classification of the tribute gift as either in honor of a living person or in memory of a deceased person. Populated only when tribute_flag is true.. Valid values are `in-honor-of|in-memory-of`',
     CONSTRAINT pk_gift PRIMARY KEY(`gift_id`)
-) COMMENT 'Financial gift or donation transaction. Source systems: Raisers Edge NXT, Salesforce Nonprofit Cloud, payment processors. For UN agencies, contributions are tracked in SAP Grants Management. Systems-of-record: Salesforce Nonprofit Cloud, Raisers Edge NXT, SAP FI-AR. Framework: IPSAS 23 / US GAAP ASC 958-605 / IATI v2.03 transaction.';
+) COMMENT 'Authoritative transactional ledger and single source of truth for every financial transaction in the donor domain — gifts, donations, matching gifts, tribute gifts, refunds, adjustments, and acknowledgements — processed through Salesforce Nonprofit Cloud and Raisers Edge NXT. This is the ONE table that answers what is this donors total giving? Captures gift date, amount, currency, gift type discriminator (cash, check, wire, in-kind, stock, crypto, matching, tribute, refund/adjustment, recurring), fund designation, campaign and appeal attribution, gift source (online, direct mail, event, major gift officer), payment method, batch reference, anonymous flag, restricted vs. unrestricted designation, and GL posting reference. For matching gifts: match ratio, matching employer/corporation, match request date, match approval status, match payment received date, maximum match amount. For tribute gifts: tribute type (in-memoriam, in-honor-of), honoree name, honoree relationship, notification recipient, notification sent flag. For refunds/adjustments: original gift reference, refund date, refund amount, refund reason, refund method, GL reversal reference. For acknowledgements: acknowledgement type, acknowledgement date, receipt number, delivery method, acknowledgement status, IRS-compliant language flag, goods-or-services disclosure. Core financial transaction for donor revenue recognition per FASB ASC 958 and IRS 501(c)(3) substantiation requirements.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`pledge` (
     `pledge_id` BIGINT COMMENT 'Unique identifier for the pledge commitment record. Primary key.',
     `appeal_id` BIGINT COMMENT 'Reference to the specific appeal or solicitation that generated this pledge.',
-    `award_id` BIGINT COMMENT 'Foreign key linking to grant.award. Business justification: A pledge commitment funds a specific award. Linking pledge to award enables pledge fulfillment tracking against award funding, cash flow forecasting for award implementation, and reconciliation betwee',
     `campaign_id` BIGINT COMMENT 'Reference to the fundraising campaign associated with this pledge.',
+    `commodity_id` BIGINT COMMENT 'Foreign key linking to supply.commodity. Business justification: In-kind pledge pipeline planning: companies pledge specific commodities (e.g., 5,000 blankets) before delivery. Linking pledge to commodity enables supply pipeline forecasting, procurement gap analysi',
     `constituent_id` BIGINT COMMENT 'Reference to the donor who made this pledge commitment.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Pledges are managed and stewarded by country offices. Installment tracking, reminder schedules, and country-level pledge pipeline reporting are standard NGO finance processes. Country directors need v',
-    `donor_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.donor_requirement. Business justification: Pledge agreements with institutional funders carry specific donor requirements (branding, audit clauses, narrative reports). Linking pledge to donor_requirement enables compliance tracking of pledge-s',
-    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Multi-year emergency response pledges are common in NGO fundraising. Linking pledges to emergencies enables emergency-level funding pipeline tracking, funding gap analysis against humanitarian respons',
-    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: A pledge commitment is designated to a specific donor fund. Without this FK, pledge fund designation is not formally linked to the authoritative donor_fund record. Adding pledge.donor_fund_id → donor_',
-    `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to donor.fundraising_event. Business justification: Pledges are commonly made at fundraising events (galas, benefit dinners, telethons). Linking pledge.fundraising_event_id → fundraising_event.fundraising_event_id enables event-level pledge tracking an',
-    `major_gift_opportunity_id` BIGINT COMMENT 'Foreign key linking to donor.major_gift_opportunity. Business justification: Pledges can result from major gift opportunities (e.g., major gift solicitation results in multi-year pledge commitment). Linking pipeline to commitment enables conversion tracking and forecasting. Nu',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Institutional donor pledge agreements impose compliance obligations (restricted-use reporting schedules, matching conditions). NGO compliance officers track which obligation governs each pledge to ens',
-    `regulatory_filing_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_filing. Business justification: Non-cash pledges and large pledge commitments trigger IRS and state regulatory filings (e.g., Form 8282, charitable solicitation filings). NGO compliance teams must link each pledge to its governing r',
+    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Pledges are committed to specific country programs managed by country offices. Country office budget planning and cash flow forecasting depends on knowing which pledges are allocated to their operatio',
+    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: A pledge commitment in NGO fundraising is almost always designated to a specific donor fund — the donor commits to funding a particular program or endowment. Without pledge.donor_fund_id, it is imposs',
+    `funding_source_id` BIGINT COMMENT 'Foreign key linking to grant.funding_source. Business justification: Pledges commit future revenue to specific finance funds. Finance uses this for cash flow forecasting, fund balance projections, and accounts receivable management. Essential for nonprofit liquidity pl',
+    `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to donor.fundraising_event. Business justification: Pledges are frequently made at fundraising events — gala pledge cards, benefit dinner commitments, and capital campaign kickoff events are common NGO scenarios where a pledge originates from a specifi',
+    `intervention_id` BIGINT COMMENT 'Foreign key linking to program.intervention. Business justification: NGO pledge pipeline management tracks which intervention each pledge supports for intervention-level fundraising forecasts and restricted fund allocation. Pledges are solicited for specific interventi',
     `acknowledgment_date` DATE COMMENT 'The date on which the pledge acknowledgment was sent to the donor.',
     `acknowledgment_sent` BOOLEAN COMMENT 'Indicates whether a pledge acknowledgment letter or receipt has been sent to the donor.',
     `amount_paid` DECIMAL(18,2) COMMENT 'The cumulative amount paid to date across all installments. Updated as installment payments are received.',
@@ -184,10 +186,10 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`pledge` (
     `next_installment_amount` DECIMAL(18,2) COMMENT 'The scheduled amount for the next unpaid installment.',
     `next_installment_due_date` DATE COMMENT 'The due date for the next unpaid installment. Used for reminder generation and overdue tracking.',
     `notes` STRING COMMENT 'Free-text notes or comments about the pledge, including special donor instructions, stewardship considerations, or internal processing notes.',
+    `number` STRING COMMENT 'Human-readable business identifier for the pledge commitment, often displayed on donor communications and receipts.',
     `number_of_installments` STRING COMMENT 'The total number of scheduled installment payments for this pledge. For one-time pledges, this is 1.',
-    `payment_method` DECIMAL(18,2) COMMENT 'The primary payment instrument or method the donor intends to use for installment payments.',
+    `payment_method` STRING COMMENT 'The primary payment instrument or method the donor intends to use for installment payments.. Valid values are `credit_card|bank_transfer|check|cash|stock|wire_transfer`',
     `pledge_date` DATE COMMENT 'The date on which the donor made the pledge commitment. This is the principal business event timestamp for the pledge.',
-    `pledge_number` STRING COMMENT 'Human-readable business identifier for the pledge commitment, often displayed on donor communications and receipts.',
     `pledge_status` STRING COMMENT 'Current lifecycle status of the pledge commitment. Active indicates ongoing installment schedule; fulfilled indicates all installments paid; lapsed indicates overdue with no recent payment; written-off indicates uncollectible; cancelled indicates donor withdrew commitment; pending indicates awaiting approval or activation.. Valid values are `active|fulfilled|lapsed|written_off|cancelled|pending`',
     `pledge_type` STRING COMMENT 'Classification of the pledge based on its purpose and structure. Standard for general multi-installment pledges; sustainer for recurring monthly giving; major gift for high-value commitments; planned giving for estate or deferred gifts; capital campaign for infrastructure projects; endowment for permanent fund contributions.. Valid values are `standard|sustainer|major_gift|planned_giving|capital_campaign|endowment`',
     `reminder_schedule` STRING COMMENT 'The timing for automated payment reminders sent to the donor before each installment due date.. Valid values are `none|7_days_before|14_days_before|30_days_before|custom`',
@@ -198,54 +200,18 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`pledge` (
     CONSTRAINT pk_pledge PRIMARY KEY(`pledge_id`)
 ) COMMENT 'Tracks multi-installment giving commitments, pledge agreements, and their individual installment schedules from donors, managed in Raisers Edge NXT and Salesforce Nonprofit Cloud. Captures pledge date, total pledge amount, installment schedule (monthly, quarterly, annual), number of installments, pledge balance outstanding, pledge status (active, fulfilled, lapsed, written-off), fund designation, campaign, appeal, reminder schedule, and write-off reason. Includes installment-level detail: individual due dates, scheduled amounts, actual payment dates, amounts paid, installment status (scheduled, paid, overdue, skipped, waived), payment method, and linked gift reference upon payment. Enables granular pledge fulfillment tracking, overdue installment identification, automated reminder generation, and BvA (Budget vs. Actual) reconciliation for pledged revenue. Distinct from gift — a pledge is a commitment to give, not a completed transaction.';
 
-CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` (
-    `major_gift_opportunity_id` BIGINT COMMENT 'Unique identifier for the major gift opportunity record. Primary key for this entity.',
-    `appeal_id` BIGINT COMMENT 'Foreign key linking to donor.appeal. Business justification: Major gift opportunities can be generated from specific appeals (e.g., direct mail appeal identifies a major gift prospect). Tracking appeal attribution enables ROI analysis and source channel reporti',
-    `campaign_id` BIGINT COMMENT 'Reference to the fundraising campaign this opportunity is associated with, if applicable.',
-    `constituent_id` BIGINT COMMENT 'Reference to the donor or prospect associated with this major gift opportunity. Links to the donor master record in the CRM system.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Major gift opportunities are solicited and managed by country offices. Country-level major gift pipeline reporting, proposal development ownership, and solicitation strategy are coordinated through co',
-    `donor_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.donor_requirement. Business justification: Major gift negotiations produce donor-specific requirements (naming rights conditions, restricted use terms, reporting schedules) before gift close. Linking the opportunity to donor_requirement enable',
-    `evaluation_id` BIGINT COMMENT 'Foreign key linking to mel.evaluation. Business justification: Major gift cultivation explicitly uses evaluation findings as evidence of program effectiveness to solicit large gifts. Major gift officers reference specific evaluations in proposals and cultivation ',
-    `fund_id` BIGINT COMMENT 'Foreign key linking to donor.donor_fund. Business justification: A major gift opportunity targets a specific fund designation. The major_gift_opportunity has gift_purpose and restriction_type as string fields but no formal FK to the authoritative donor_fund record.',
-    `proposal_id` BIGINT COMMENT 'Foreign key linking to grant.proposal. Business justification: A major gift opportunity results in a formal grant proposal. Linking major_gift_opportunity to proposal replaces the denormalized proposal_reference text field, enabling pipeline conversion tracking f',
-    `prospect_id` BIGINT COMMENT 'Foreign key linking to donor.prospect. Business justification: A major gift opportunity is the direct outcome of prospect cultivation. Linking major_gift_opportunity.prospect_id → prospect.prospect_id establishes the cultivation-to-solicitation pipeline traceabil',
-    `actual_close_date` DATE COMMENT 'Actual date when the opportunity was closed (won or lost). Populated when solicitation_stage reaches closed_won or closed_lost.',
-    `ask_amount` DECIMAL(18,2) COMMENT 'The specific dollar amount being requested from the donor in this solicitation. Represents the formal ask figure.',
-    `ask_strategy` STRING COMMENT 'Narrative description of the solicitation approach, cultivation plan, and key messaging tailored to this donors interests and capacity.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this major gift opportunity record was first created in the system.',
-    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the gift amounts (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
-    `donor_recognition_level` STRING COMMENT 'Anticipated recognition tier or giving society membership the donor will qualify for if the gift is secured (e.g., Leadership Circle, Legacy Society).',
-    `expected_close_date` DATE COMMENT 'Anticipated date when the donor is expected to make a commitment decision or when the gift will be secured.',
-    `expected_gift_amount` DECIMAL(18,2) COMMENT 'The anticipated or forecasted gift amount based on donor capacity, engagement level, and cultivation progress. May differ from ask amount.',
-    `fiscal_year` STRING COMMENT 'The organizations fiscal year in which this opportunity is expected to close, used for annual fundraising goal tracking and reporting.',
-    `gift_purpose` STRING COMMENT 'Detailed description of the intended use or program impact of the gift, aligned with donor interests and organizational priorities.',
-    `gift_type` STRING COMMENT 'Classification of the expected gift instrument or vehicle (e.g., outright cash, multi-year pledge, bequest, stock transfer).. Valid values are `cash|pledge|planned_giving|in_kind|stock|real_estate`',
-    `is_active` BOOLEAN COMMENT 'Flag indicating whether this opportunity is currently active in the pipeline. False for closed opportunities or those marked inactive.',
-    `is_anonymous` BOOLEAN COMMENT 'Flag indicating whether the donor has requested anonymity for this gift. True if donor wishes to remain anonymous in public recognition.',
-    `is_matching_gift_eligible` BOOLEAN COMMENT 'Flag indicating whether this gift is eligible for corporate matching gift programs through the donors employer.',
-    `last_contact_date` DATE COMMENT 'Date of the most recent substantive interaction or touchpoint with the donor regarding this opportunity.',
-    `last_modified_date` TIMESTAMP COMMENT 'Timestamp when this opportunity record was last updated or modified.',
-    `loss_reason` STRING COMMENT 'Explanation or categorization of why the opportunity was closed-lost, if applicable. Used for pipeline analysis and strategy refinement.',
-    `next_step_action` STRING COMMENT 'Description of the next planned cultivation or solicitation activity (e.g., site visit, proposal submission, follow-up meeting).',
-    `next_step_date` DATE COMMENT 'Scheduled date for the next cultivation or solicitation activity with this prospect.',
-    `notes` STRING COMMENT 'Confidential internal notes and observations about the opportunity, donor relationship dynamics, cultivation history, and strategic considerations.',
-    `opportunity_code` STRING COMMENT 'Unique business identifier or tracking code for this opportunity, used for external reporting and donor communications.',
-    `opportunity_name` STRING COMMENT 'Descriptive name or title for this major gift opportunity, typically including donor name and purpose (e.g., Smith Foundation - WASH Program Endowment).',
-    `probability_percentage` DECIMAL(18,2) COMMENT 'Estimated likelihood (0-100%) that this opportunity will close successfully, based on donor engagement, capacity, and stage progression.',
-    `restriction_type` STRING COMMENT 'Classification of donor-imposed restrictions on the gift per FASB ASC 958 standards for not-for-profit accounting.. Valid values are `unrestricted|temporarily_restricted|permanently_restricted`',
-    `solicitation_stage` STRING COMMENT 'Current stage in the major gift solicitation pipeline. Tracks progression from initial identification through cultivation, ask, and closure. [ENUM-REF-CANDIDATE: identification|qualification|cultivation|solicitation|negotiation|stewardship|closed_won|closed_lost — 8 candidates stripped; promote to reference product]',
-    `source_channel` STRING COMMENT 'The channel or method through which this major gift opportunity was originally identified or sourced. [ENUM-REF-CANDIDATE: direct_mail|event|peer_referral|board_introduction|prospect_research|planned_giving|online — 7 candidates stripped; promote to reference product]',
-    `stage_changed_date` TIMESTAMP COMMENT 'Timestamp when the solicitation_stage was last changed, used to track velocity through the pipeline.',
-    `weighted_value` DECIMAL(18,2) COMMENT 'Calculated forecast value (expected_gift_amount × probability_percentage) used for revenue forecasting and pipeline analysis.',
-    CONSTRAINT pk_major_gift_opportunity PRIMARY KEY(`major_gift_opportunity_id`)
-) COMMENT 'Pipeline management record for major gift solicitations tracked in Raisers Edge NXT and Salesforce Nonprofit Cloud. Represents a specific ask or solicitation opportunity with a named prospect or donor. Captures opportunity name, ask amount, expected gift amount, probability percentage, solicitation stage (identification, qualification, cultivation, solicitation, stewardship, closed-won, closed-lost), expected close date, assigned major gift officer, fund designation, campaign, proposal reference, and ask strategy. Enables major gift pipeline reporting and revenue forecasting.';
-
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`campaign` (
     `campaign_id` BIGINT COMMENT 'Unique identifier for the fundraising campaign. Primary key.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to partnership.partnership_agreement. Business justification: Joint campaign management: NGOs run co-funded campaigns governed by specific partnership agreements. Linking campaign to partnership_agreement enables compliance reporting on which formal agreement go',
+    `award_id` BIGINT COMMENT 'Reference to an institutional grant or award if this campaign is tied to a specific funders matching or challenge grant.',
+    `constituent_id` BIGINT COMMENT 'Foreign key linking to donor.constituent. Business justification: Donor-funded campaigns have specific compliance requirements from funding sources (reporting schedules, branding guidelines, impact metrics). Campaign managers track donor-imposed requirements to ensu',
     `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Campaigns are often country-specific (e.g., Yemen Crisis Appeal, Bangladesh Rohingya Response) for donor targeting, regulatory compliance, and financial reporting. Links campaign fundraising to operat',
-    `governance_policy_id` BIGINT COMMENT 'Foreign key linking to compliance.governance_policy. Business justification: Campaigns must comply with gift acceptance governance policies (which gift types are permissible, matching gift eligibility rules). NGO boards require campaigns to reference the applicable governance ',
+    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Emergency fundraising campaigns are directly tied to declared emergencies (e.g., Haiti Earthquake Appeal 2024). Campaign performance reporting against emergency funding requirements and flash appeal',
+    `funding_source_id` BIGINT COMMENT 'Foreign key linking to grant.funding_source. Business justification: Campaigns often have dedicated finance funds for revenue tracking, expense allocation, and donor reporting. Standard nonprofit practice for capital campaigns, annual funds, and restricted initiatives.',
+    `indicator_id` BIGINT COMMENT 'Foreign key linking to mel.indicator. Business justification: NGO fundraising campaigns are designed around specific impact indicators (e.g., # children vaccinated). Campaign goal-setting, impact messaging, and post-campaign reporting all reference the primary',
+    `intervention_id` BIGINT COMMENT 'Reference to the program or project that this campaign is raising funds for, enabling fund accounting and impact tracking.',
+    `mel_logframe_id` BIGINT COMMENT 'Foreign key linking to mel.mel_logframe. Business justification: NGO fundraising campaigns are structured around a program logframe to align donor messaging with the results chain. Campaign managers reference the logframe when crafting impact narratives and setting',
     `parent_campaign_id` BIGINT COMMENT 'Reference to a parent campaign if this campaign is part of a larger multi-phase or hierarchical campaign structure.',
-    `statutory_registration_id` BIGINT COMMENT 'Foreign key linking to compliance.statutory_registration. Business justification: Multi-state fundraising campaigns require charitable solicitation statutory registration in each solicitation jurisdiction. NGO compliance teams link each campaign to its governing statutory registrat',
     `acknowledgment_template` STRING COMMENT 'Name or identifier of the donor acknowledgment letter or email template used for gifts to this campaign.',
     `appeal_channel` STRING COMMENT 'Primary communication channel used to solicit donations for this campaign. [ENUM-REF-CANDIDATE: direct_mail|email|social_media|website|event|phone|peer_to_peer — 7 candidates stripped; promote to reference product]',
     `appeal_description` STRING COMMENT 'Detailed narrative describing the campaigns mission, beneficiaries, and impact story used in donor communications.',
@@ -278,11 +244,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`campaign` (
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`appeal` (
     `appeal_id` BIGINT COMMENT 'Unique identifier for the fundraising appeal. Primary key.',
     `campaign_id` BIGINT COMMENT 'Reference to the parent fundraising campaign under which this appeal is organized.',
-    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Emergency appeals are a primary NGO fundraising mechanism. Appeals are launched for specific declared emergencies. Direct link enables emergency-level appeal performance tracking, response rate analys',
     `fund_id` BIGINT COMMENT 'Foreign key linking to donor.fund. Business justification: Appeals direct donors to specific funds. Currently fund_designation is a STRING (likely fund name/code); replacing with FK to fund.fund_id provides referential integrity and enables JOIN to retrieve f',
-    `indicator_id` BIGINT COMMENT 'Foreign key linking to mel.indicator. Business justification: Fundraising appeals are designed around specific program indicators (e.g., Help us vaccinate 5,000 children). Linking appeal to indicator enables impact-based fundraising reporting, ROI analysis per',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Charitable solicitation obligations (state registration renewals, disclosure requirements) govern when and how appeals can be launched. Linking appeal to obligation enables compliance officers to bloc',
-    `regulatory_filing_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_filing. Business justification: Charitable solicitation appeals require state-level regulatory filings before launch in most US jurisdictions. NGO compliance teams must link each appeal to its governing regulatory filing to confirm ',
     `acknowledgment_template` STRING COMMENT 'Name or identifier of the gift acknowledgment letter template used for donors responding to this appeal.',
     `appeal_status` STRING COMMENT 'Current lifecycle status of the appeal.. Valid values are `draft|scheduled|active|completed|cancelled|on_hold`',
     `appeal_type` STRING COMMENT 'Classification of the appeal based on donor lifecycle stage and solicitation strategy.. Valid values are `acquisition|renewal|upgrade|lapsed_reactivation|major_gift|planned_giving`',
@@ -307,7 +269,7 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`appeal` (
     `premium_offered` STRING COMMENT 'Description of any premium or thank-you gift offered to donors responding to this appeal (e.g., tote bag, calendar, recognition pin).',
     `response_count` STRING COMMENT 'Total number of constituents who responded to the appeal with a gift or pledge.',
     `response_rate_percent` DECIMAL(18,2) COMMENT 'Percentage of constituents who responded to the appeal calculated as (response_count / pieces_sent) * 100.',
-    `revenue_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the total revenue amount (e.g., USD, EUR, GBP).',
+    `revenue_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the total revenue amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `roi_ratio` DECIMAL(18,2) COMMENT 'Return on investment ratio for the appeal calculated as total_revenue_amount / cost_amount. Values greater than 1.0 indicate positive ROI.',
     `solicitor_name` STRING COMMENT 'Name of the primary solicitor or fundraiser credited with this appeal (may be staff, volunteer, or board member).',
     `start_date` DATE COMMENT 'Date the appeal becomes active and begins accepting responses.',
@@ -319,29 +281,33 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`appeal` (
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`fund` (
     `fund_id` BIGINT COMMENT 'Unique identifier for the donor-designated fund record. Primary key.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to partnership.partnership_agreement. Business justification: Restricted fund compliance reporting: Donor funds are often governed by specific partnership agreements defining restrictions, reporting obligations, and co-financing terms. This link is required for ',
+    `award_id` BIGINT COMMENT 'Foreign key linking to grant.donor_requirement. Business justification: Restricted funds have donor-imposed compliance requirements (spending timelines, allowable expenses, reporting schedules). Fund managers track requirements for each restricted fund to ensure donor res',
+    `campaign_id` BIGINT COMMENT 'Foreign key linking to donor.campaign. Business justification: A donor-designated fund is often established or activated through a specific fundraising campaign — for example, a capital campaign creates a building fund, or an annual campaign drives contributions ',
     `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Restricted funds often have country-specific designations per donor agreements. Essential for compliance with donor restrictions, country-level financial reporting, registration requirements, and ensu',
-    `governance_policy_id` BIGINT COMMENT 'Foreign key linking to compliance.governance_policy. Business justification: Endowment and restricted donor funds are governed by specific governance policies (investment policy, spending policy, gift acceptance policy). NGO boards require this link to enforce policy complianc',
-    `meal_plan_id` BIGINT COMMENT 'Foreign key linking to mel.meal_plan. Business justification: Restricted donor funds require a MEAL plan specifying how monitoring, evaluation, accountability, and learning will be conducted. Fund compliance reporting and donor stewardship depend on knowing whic',
+    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Emergency response funds are directly tied to declared emergencies (e.g., Ukraine Emergency Fund 2022). Linking donor_fund to emergency enables emergency-specific financial tracking, OCHA financial ',
+    `funding_source_id` BIGINT COMMENT 'Foreign key linking to grant.funding_source. Business justification: Donor.fund (fundraising view) and finance.finance_fund (accounting view) represent the same entity from different departmental perspectives. This link enables reconciliation between development and fi',
+    `intervention_id` BIGINT COMMENT 'Reference to the program or project to which this fund is designated. Links donor intent to operational program delivery.',
+    `mel_logframe_id` BIGINT COMMENT 'Foreign key linking to mel.mel_logframe. Business justification: Restricted donor funds are governed by a specific logframe — the funds restriction terms map to a results chain level. Grants compliance and donor reporting require knowing which logframe governs a f',
     `constituent_id` BIGINT COMMENT 'Reference to the primary donor or institutional funder who established or designated this fund. Links fund to donor cultivation and stewardship records in Salesforce Nonprofit Cloud or Raisers Edge NXT.',
-    `psea_policy_id` BIGINT COMMENT 'Foreign key linking to safeguarding.psea_policy. Business justification: Institutional donor fund compliance: donor funds from bilateral/multilateral donors require documentation of the PSEA policy governing fund activities. This FK enables fund compliance reporting and au',
-    `regulatory_filing_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_filing. Business justification: Restricted funds, endowments, and donor-advised funds require specific regulatory disclosures (990 Schedule D, state attorney general reports). Finance teams track which funds must be reported in whic',
-    `statutory_registration_id` BIGINT COMMENT 'Foreign key linking to compliance.statutory_registration. Business justification: Donor funds operating in specific jurisdictions require statutory registration verification (foreign operations permitted, tax-exempt status). NGO finance teams link each fund to its statutory registr',
+    `reporting_period_id` BIGINT COMMENT 'Foreign key linking to mel.reporting_period. Business justification: Donor funds have specific reporting cycles that must align with MEL reporting periods for donor compliance. Linking donor_fund to reporting_period enables automated reporting calendar management and e',
     `audit_required` BOOLEAN COMMENT 'Indicates whether the fund is subject to separate audit requirements beyond organizational annual audit, such as single audit or donor-specific financial audit per OMB Uniform Guidance or grant terms.',
     `balance` DECIMAL(18,2) COMMENT 'Current available balance in the fund representing cumulative gifts received minus disbursements and allocations. Updated through integration with SAP S/4HANA or Unit4 ERP fund accounting modules.',
     `beneficiary_population` STRING COMMENT 'Description of the target beneficiary population or vulnerable group that this fund is designated to serve (e.g., IDPs, refugees, children under 5, women survivors of GBV).',
-    `fund_category` STRING COMMENT 'High-level classification of the funds purpose for portfolio management and strategic planning. Distinguishes operating funds from capital campaigns, emergency response funds, and endowments. [ENUM-REF-CANDIDATE: operating|capital|program|emergency_response|endowment|scholarship|research — 7 candidates stripped; promote to reference product]',
     `closure_date` DATE COMMENT 'Date when the fund was formally closed and ceased accepting new gifts. Nullable for active funds. Used for endowment spend-down tracking and restricted fund completion.',
-    `fund_code` STRING COMMENT 'Externally-known unique alphanumeric code identifying the fund in donor communications, grant agreements, and financial reports. Used as the business identifier for fund accounting and stewardship.. Valid values are `^[A-Z0-9]{3,15}$`',
     `compliance_notes` STRING COMMENT 'Free-text field capturing special compliance requirements, donor-specific terms and conditions, procurement restrictions, or regulatory obligations unique to this fund.',
     `cost_share_percentage` DECIMAL(18,2) COMMENT 'Required percentage of organizational cost-sharing or matching funds relative to total project budget. Nullable if cost share is not required.',
     `cost_share_required` BOOLEAN COMMENT 'Indicates whether the fund requires organizational cost-sharing or matching contributions per donor agreement terms. True if cost share is mandatory.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this fund record was first created in the system. Audit trail for data lineage and record lifecycle tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the funds financial transactions and reporting. Supports multi-currency fund accounting for international NGO operations.. Valid values are `^[A-Z]{3}$`',
     `dac_sector_code` STRING COMMENT 'Five-digit OECD DAC sector classification code indicating the primary sector focus of the fund (e.g., health, education, WASH, humanitarian aid). Required for DAC reporting by institutional donors.. Valid values are `^[0-9]{5}$`',
-    `fund_description` STRING COMMENT 'Detailed narrative describing the purpose, scope, and intended use of the fund. Captures donor intent and programmatic objectives for stewardship and compliance reporting.',
+    `donor_fund_category` STRING COMMENT 'High-level classification of the funds purpose for portfolio management and strategic planning. Distinguishes operating funds from capital campaigns, emergency response funds, and endowments. [ENUM-REF-CANDIDATE: operating|capital|program|emergency_response|endowment|scholarship|research — 7 candidates stripped; promote to reference product]',
+    `donor_fund_code` STRING COMMENT 'Externally-known unique alphanumeric code identifying the fund in donor communications, grant agreements, and financial reports. Used as the business identifier for fund accounting and stewardship.. Valid values are `^[A-Z0-9]{3,15}$`',
+    `donor_fund_description` STRING COMMENT 'Detailed narrative describing the purpose, scope, and intended use of the fund. Captures donor intent and programmatic objectives for stewardship and compliance reporting.',
+    `donor_fund_name` STRING COMMENT 'Full descriptive name of the fund as presented to donors and in financial statements. Human-readable identity label for the fund.',
+    `donor_fund_status` STRING COMMENT 'Current lifecycle state of the fund indicating whether it is actively accepting gifts and disbursing funds, or has been closed or temporarily suspended.. Valid values are `open|closed|suspended|pending_approval`',
+    `donor_fund_type` STRING COMMENT 'Classification of the fund based on donor restrictions and organizational policy. Determines accounting treatment per ASC 958 net asset classification requirements.. Valid values are `restricted|temporarily_restricted|unrestricted|endowment|quasi_endowment|board_designated`',
     `endowment_spending_policy` STRING COMMENT 'Description of the board-approved spending policy for endowment funds, including annual distribution rate, calculation methodology, and underwater endowment provisions per ASC 958.',
-    `fund_status` STRING COMMENT 'Current lifecycle state of the fund indicating whether it is actively accepting gifts and disbursing funds, or has been closed or temporarily suspended.. Valid values are `open|closed|suspended|pending_approval`',
-    `fund_type` STRING COMMENT 'Classification of the fund based on donor restrictions and organizational policy. Determines accounting treatment per ASC 958 net asset classification requirements.. Valid values are `restricted|temporarily_restricted|unrestricted|endowment|quasi_endowment|board_designated`',
     `geographic_scope` STRING COMMENT 'Geographic reach of the funds programmatic activities. Indicates whether the fund supports global operations, regional initiatives, or country-specific programs.. Valid values are `global|regional|country_specific|multi_country`',
     `gl_account_code` STRING COMMENT 'Chart of Accounts (CoA) code in SAP S/4HANA or Unit4 ERP to which this fund maps for financial accounting and fund accounting purposes. Enables reconciliation between donor-facing fund designations and GL postings.. Valid values are `^[0-9]{4,10}$`',
     `iati_identifier` STRING COMMENT 'Unique IATI activity identifier for this fund if reported under IATI transparency standards. Enables public disclosure and donor coordination.',
@@ -351,7 +317,6 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`fund` (
     `minimum_gift_amount` DECIMAL(18,2) COMMENT 'Minimum contribution threshold required to designate a gift to this fund. Used for major gift funds, endowments, and named funds with donor-established minimums.',
     `modified_by` STRING COMMENT 'Username or identifier of the system user who last modified this fund record. Supports change management and audit compliance.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this fund record was last updated. Supports change tracking and audit compliance.',
-    `fund_name` STRING COMMENT 'Full descriptive name of the fund as presented to donors and in financial statements. Human-readable identity label for the fund.',
     `reporting_frequency` STRING COMMENT 'Required frequency of stewardship and financial reporting to the donor or funding agency for this fund per grant agreement or donor stewardship plan.. Valid values are `monthly|quarterly|semi_annual|annual|upon_request`',
     `restriction_description` STRING COMMENT 'Detailed explanation of donor-imposed restrictions, including specific programmatic purposes, geographic limitations, beneficiary populations, or time-bound conditions that govern fund usage.',
     `restriction_expiration_date` DATE COMMENT 'Date when time-based donor restrictions expire and temporarily restricted funds are released to unrestricted net assets. Nullable for perpetual or purpose-only restrictions.',
@@ -360,42 +325,38 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`fund` (
     `target_countries` STRING COMMENT 'Comma-separated list of ISO 3166-1 alpha-3 country codes where the funds resources are designated to be used. Supports geographic restriction tracking and field operations planning.',
     `created_by` STRING COMMENT 'Username or identifier of the system user who created this fund record. Audit trail for accountability and data stewardship.',
     CONSTRAINT pk_fund PRIMARY KEY(`fund_id`)
-) COMMENT 'SSOT for donor-facing fund records representing restricted/unrestricted gift designations, stewardship tracking, and donor intent. Links to finance.finance_fund for GL-level fund accounting. Distinct from finance.finance_fund which is the SSOT for general ledger fund segments and financial reporting.';
+) COMMENT 'Donor-designated fund master record representing the specific programmatic or operational purpose to which a gift is directed. Captures fund code, fund name, fund type (restricted, temporarily restricted, unrestricted, endowment, quasi-endowment), fund description, associated program or project, GL account mapping, fund status (open, closed, suspended), minimum gift threshold, and fund stewardship contact. Serves as the bridge between donor intent (gift designation) and financial stewardship (fund accounting in SAP/Unit4). Distinct from GL account — fund is the donor-facing designation.';
 
 CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` (
     `stewardship_activity_id` BIGINT COMMENT 'Unique identifier for the stewardship activity record. Primary key.',
     `appeal_id` BIGINT COMMENT 'Foreign key linking to donor.appeal. Business justification: Stewardship activities can be triggered by specific appeals (e.g., thank-you call after appeal response, acknowledgment letter for appeal gift). Appeal attribution enables integrated donor journey tra',
-    `award_id` BIGINT COMMENT 'Foreign key linking to grant.award. Business justification: Stewardship activities (site visits, impact report sharing, donor meetings) are conducted against active awards. Linking stewardship_activity to award enables award-level donor relationship management',
+    `award_id` BIGINT COMMENT 'Foreign key linking to the safeguarding incident record associated with this stewardship activity',
     `campaign_id` BIGINT COMMENT 'Reference to the fundraising campaign context for this stewardship activity. Nullable if not campaign-specific.',
     `constituent_id` BIGINT COMMENT 'Reference to the donor or constituent involved in this stewardship activity. Links to the constituent master record in Salesforce Nonprofit Cloud or Raisers Edge NXT.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Stewardship activities (donor field visits, impact reports, site tours) are organized and executed by country offices. Country-level stewardship reporting and donor engagement tracking by country offi',
-    `donor_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.donor_requirement. Business justification: Stewardship activities (site visits, narrative reports, financial summaries) are executed to satisfy specific donor requirements. NGO relationship managers need this link to report which donor require',
+    `evaluation_finding_id` BIGINT COMMENT 'Foreign key linking to mel.evaluation_finding. Business justification: Stewardship activities frequently share specific evaluation findings with donors (key lessons, recommendations, impact ratings). stewardship_activity has evaluation_id but not the specific finding. Sh',
     `evaluation_id` BIGINT COMMENT 'Foreign key linking to mel.evaluation. Business justification: Stewardship meetings often discuss evaluation findings with donors to demonstrate accountability and learning. Linking stewardship activity to evaluation enables tracking which evaluations were shared',
     `fund_id` BIGINT COMMENT 'Foreign key linking to donor.fund. Business justification: Stewardship activities can be fund-specific (e.g., endowment impact report, scholarship recipient introduction, program site visit). Fund attribution enables fund-specific stewardship planning and imp',
-    `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to donor.fundraising_event. Business justification: Stewardship activities are frequently conducted in the context of fundraising events — e.g., post-event thank-you calls, event follow-up meetings, or stewardship touchpoints at galas. Linking stewards',
+    `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to donor.fundraising_event. Business justification: Stewardship activities are frequently conducted in the context of fundraising events — post-event follow-up calls, thank-you notes after galas, impact briefings at donor receptions. Linking stewardshi',
     `gift_id` BIGINT COMMENT 'Reference to the specific gift or donation that triggered or is associated with this stewardship activity. Nullable for activities not tied to a specific gift.',
-    `incident_id` BIGINT COMMENT 'Foreign key linking to safeguarding.safeguarding_incident. Business justification: Donor notification stewardship process: when a safeguarding incident requires donor notification (donor_notification_required_flag), a stewardship activity is created to document that communication. T',
     `indicator_id` BIGINT COMMENT 'Foreign key linking to mel.indicator. Business justification: Stewardship communications share impact stories tied to specific indicators the donor funded. This link enables personalized donor reporting, tracking which indicators were discussed in stewardship me',
-    `major_gift_opportunity_id` BIGINT COMMENT 'Foreign key linking to donor.major_gift_opportunity. Business justification: Stewardship activities can be tied to specific major gift opportunities (e.g., proposal presentation, site visit during solicitation). Linking stewardship to active opportunities enables pipeline mana',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Stewardship activities are scheduled to fulfill compliance obligations (annual donor reporting, IATI publication deadlines). Linking stewardship_activity to obligation enables compliance dashboards to',
+    `indicator_result_id` BIGINT COMMENT 'Foreign key linking to mel.indicator_result. Business justification: Stewardship activities share specific indicator results with donors (e.g., Q3 results: 5,000 beneficiaries reached). This is a core donor stewardship process — linking a specific verified result to ',
+    `intervention_id` BIGINT COMMENT 'Foreign key linking to program.intervention. Business justification: NGO donor stewardship activities (site visits, impact reports, field trips) are directly tied to specific interventions to demonstrate results. The Donor Stewardship Reporting process requires linki',
+    `mel_logframe_id` BIGINT COMMENT 'Foreign key linking to mel.mel_logframe. Business justification: Stewardship activities share the full results chain context with donors, not just individual indicators. Linking to the logframe enables relationship managers to present the complete theory of change ',
+    `partner_contact_id` BIGINT COMMENT 'Foreign key linking to partnership.partner_contact. Business justification: Partner relationship management: Stewardship activities (meetings, calls, site visits) are conducted with specific named partner contacts. Tracking which contact was engaged is required for relationsh',
     `pledge_id` BIGINT COMMENT 'Reference to the pledge commitment associated with this stewardship activity. Nullable for activities not related to a pledge.',
     `project_site_id` BIGINT COMMENT 'Foreign key linking to field.project_site. Business justification: Stewardship activities include donor field visits to project sites for relationship cultivation and impact demonstration. Critical for visit logistics, security coordination, beneficiary consent manag',
-    `proposal_id` BIGINT COMMENT 'Foreign key linking to grant.proposal. Business justification: Stewardship activities (cultivation meetings, follow-ups) are conducted in relation to pending proposals. Linking stewardship_activity to proposal enables proposal-level relationship management tracki',
-    `regulatory_filing_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_filing. Business justification: Stewardship activities such as impact disclosures and donor acknowledgment letters are often required by regulatory filings (990 public disclosure, IATI publication). NGOs must document which stewards',
+    `prospect_id` BIGINT COMMENT 'Foreign key linking to donor.prospect. Business justification: Stewardship activities are conducted as part of donor cultivation and prospect management. Linking stewardship_activity.prospect_id → prospect.prospect_id enables tracking of which cultivation pipelin',
+    `volunteer_deployment_id` BIGINT COMMENT 'Foreign key linking to volunteer.volunteer_deployment. Business justification: NGO stewardship activities conducted during field deployments (e.g., deployed volunteer hosts donor site visit) must be traceable to the specific deployment for grant reporting and donor impact docume',
+    `volunteer_id` BIGINT COMMENT 'Foreign key linking to volunteer.volunteer. Business justification: Stewardship activities in NGOs are frequently executed by volunteers (donor calls, impact report delivery, cultivation events). Stewardship managers need to report which volunteer conducted each donor',
     `acknowledgement_sent_date` DATE COMMENT 'The date on which the acknowledgement communication was sent to the donor. Nullable if no acknowledgement was sent.',
     `acknowledgement_sent_flag` BOOLEAN COMMENT 'Boolean indicator of whether a formal acknowledgement or thank-you communication was sent following this stewardship activity.',
-    `activity_date` DATE COMMENT 'The date on which the stewardship activity was conducted or scheduled. Principal business event timestamp for this transaction.',
-    `activity_description` STRING COMMENT 'Detailed narrative description of the stewardship activity, including context, discussion points, and any relevant details captured by the staff member.',
-    `activity_outcome` STRING COMMENT 'Summary of the outcome or result of the stewardship activity, including donor response, feedback received, and any commitments made.',
-    `activity_status` STRING COMMENT 'Current lifecycle status of the stewardship activity indicating whether it is planned, completed, cancelled, rescheduled, or pending.. Valid values are `planned|completed|cancelled|rescheduled|pending`',
-    `activity_subject` STRING COMMENT 'Brief subject line or title summarizing the purpose of the stewardship activity.',
-    `activity_type` STRING COMMENT 'Classification of the stewardship activity. [ENUM-REF-CANDIDATE: acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting|grant_report_delivery|thank_you_call|donor_briefing|recognition_event — promote to reference product]. Valid values are `acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting`',
     `attendee_count` STRING COMMENT 'Number of individuals who participated in the stewardship activity, including staff and constituents. Applicable for meetings, site visits, and events.',
     `communication_channel` STRING COMMENT 'The medium or channel through which the stewardship activity was conducted (in-person meeting, phone call, email, video conference, postal mail, or event).. Valid values are `in_person|phone|email|video_call|mail|event`',
     `completed_date` DATE COMMENT 'The actual date on which the stewardship activity was marked as completed. Nullable for activities that are planned or cancelled.',
     `cost_amount` DECIMAL(18,2) COMMENT 'The direct cost incurred for conducting this stewardship activity, including event costs, travel expenses, materials, or gifts. Nullable if no cost was tracked.',
     `cost_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the cost amount (e.g., USD, GBP, EUR).. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this stewardship activity record was first created in the system. Record audit trail.',
+    `stewardship_activity_description` STRING COMMENT 'Detailed narrative description of the stewardship activity, including context, discussion points, and any relevant details captured by the staff member.',
     `donor_response` STRING COMMENT 'The donors response to any solicitation or engagement request made during the stewardship activity.. Valid values are `committed|interested|considering|declined|no_response`',
     `donor_sentiment` STRING COMMENT 'Qualitative assessment of the donors sentiment or engagement level observed during the stewardship activity, used for relationship health tracking.. Valid values are `very_positive|positive|neutral|negative|very_negative`',
     `duration_minutes` STRING COMMENT 'The length of the stewardship activity in minutes, applicable for meetings, calls, and site visits. Nullable for activities without a defined duration.',
@@ -407,12 +368,17 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` (
     `modified_timestamp` TIMESTAMP COMMENT 'The timestamp when this stewardship activity record was last modified. Record audit trail.',
     `next_steps` STRING COMMENT 'Documented follow-up actions or next steps identified during or after the stewardship activity to continue donor cultivation.',
     `notes` STRING COMMENT 'Internal staff notes and observations about the stewardship activity, donor preferences, or relationship insights. Confidential business information.',
+    `outcome` STRING COMMENT 'Summary of the outcome or result of the stewardship activity, including donor response, feedback received, and any commitments made.',
     `priority_level` STRING COMMENT 'Priority classification of the stewardship activity indicating its importance in the overall donor cultivation strategy.. Valid values are `high|medium|low`',
     `scheduled_date` DATE COMMENT 'The originally scheduled date for the stewardship activity. May differ from activity_date if the activity was rescheduled or completed on a different date.',
     `solicitation_amount` DECIMAL(18,2) COMMENT 'The specific funding amount requested from the donor during the solicitation. Nullable if no solicitation was made.',
     `solicitation_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the solicitation amount (e.g., USD, GBP, EUR).. Valid values are `^[A-Z]{3}$`',
     `solicitation_made_flag` BOOLEAN COMMENT 'Boolean indicator of whether a funding solicitation or ask was made to the donor during this stewardship activity.',
+    `stewardship_activity_date` DATE COMMENT 'The date on which the stewardship activity was conducted or scheduled. Principal business event timestamp for this transaction.',
+    `stewardship_activity_status` STRING COMMENT 'Current lifecycle status of the stewardship activity indicating whether it is planned, completed, cancelled, rescheduled, or pending.. Valid values are `planned|completed|cancelled|rescheduled|pending`',
+    `stewardship_activity_type` STRING COMMENT 'Classification of the stewardship activity. [ENUM-REF-CANDIDATE: acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting|grant_report_delivery|thank_you_call|donor_briefing|recognition_event — promote to reference product]. Valid values are `acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting`',
     `stewardship_plan_stage` STRING COMMENT 'The stage in the donor cultivation and stewardship lifecycle that this activity supports, aligned with the organizations donor relationship management framework.. Valid values are `identification|cultivation|solicitation|stewardship|renewal`',
+    `subject` STRING COMMENT 'Brief subject line or title summarizing the purpose of the stewardship activity.',
     CONSTRAINT pk_stewardship_activity PRIMARY KEY(`stewardship_activity_id`)
 ) COMMENT 'Records all donor stewardship touchpoints and relationship management activities conducted by major gift officers and stewardship staff. Captures activity type (acknowledgement letter, impact report, site visit, phone call, event invitation, personal meeting, grant report delivery), activity date, staff member responsible, constituent involved, related gift or pledge, activity outcome, next steps, and stewardship plan stage. Supports the donor cultivation and stewardship lifecycle and enables relationship health tracking in Salesforce Nonprofit Cloud.';
 
@@ -420,40 +386,36 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` (
     `fundraising_event_id` BIGINT COMMENT 'Unique identifier for the fundraising event record. Primary key.',
     `appeal_id` BIGINT COMMENT 'Foreign key linking to donor.appeal. Business justification: Fundraising events are often promoted through specific appeals (direct mail invitation, email invitation). Linking event to appeal enables integrated campaign tracking and multi-channel attribution an',
     `campaign_id` BIGINT COMMENT 'Identifier linking this fundraising event to a broader fundraising campaign or appeal in the donor management system.',
-    `country_office_id` BIGINT COMMENT 'Foreign key linking to field.country_office. Business justification: Fundraising events (galas, donor briefings, virtual events) are organized by country offices. Country-level event revenue reporting and event management ownership require this link, especially for vir',
-    `emergency_id` BIGINT COMMENT 'Foreign key linking to field.emergency. Business justification: Emergency fundraising events (disaster relief galas, emergency appeal launches) are directly tied to declared emergencies. NGOs track emergency-specific event revenue for CERF reporting, flash appeal ',
     `fund_id` BIGINT COMMENT 'Foreign key linking to donor.fund. Business justification: Event proceeds typically go to ONE designated fund (e.g., gala for scholarship fund, benefit for disaster relief fund). This FK is essential for accounting, fund balance tracking, and donor stewardshi',
     `intervention_id` BIGINT COMMENT 'Identifier linking this fundraising event to a specific program or initiative that will benefit from the funds raised.',
-    `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Fundraising events trigger jurisdiction-specific compliance obligations (raffle permits, charitable gaming licenses, venue permits, alcohol licenses). NGO event managers must link each event to its go',
     `project_site_id` BIGINT COMMENT 'Foreign key linking to field.project_site. Business justification: Fundraising events (donor site visits, impact tours) are frequently held at project sites to demonstrate impact and cultivate major donors. Essential for event logistics planning, security clearance, ',
-    `statutory_registration_id` BIGINT COMMENT 'Foreign key linking to compliance.statutory_registration. Business justification: Fundraising events held in new jurisdictions require charitable solicitation statutory registration before ticket sales or solicitation. NGO compliance teams link each event to the applicable statutor',
     `acknowledgment_sent_date` DATE COMMENT 'The date when thank-you acknowledgments or tax receipts were sent to event participants and donors.',
-    `capacity_total` DECIMAL(18,2) COMMENT 'The maximum number of attendees the event can accommodate based on venue or platform constraints.',
+    `capacity_total` STRING COMMENT 'The maximum number of attendees the event can accommodate based on venue or platform constraints.',
+    `fundraising_event_code` STRING COMMENT 'Short alphanumeric code or identifier used for internal tracking and reporting of the event.',
     `created_by_user` STRING COMMENT 'The username or identifier of the system user who created this fundraising event record.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this fundraising event record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts associated with this event.. Valid values are `^[A-Z]{3}$`',
-    `event_code` STRING COMMENT 'Short alphanumeric code or identifier used for internal tracking and reporting of the event.',
-    `event_date` DATE COMMENT 'The scheduled date on which the fundraising event takes place.',
-    `event_description` STRING COMMENT 'Detailed narrative description of the fundraising event, including purpose, activities, and beneficiary impact.',
-    `event_end_time` TIMESTAMP COMMENT 'The precise date and time when the fundraising event is scheduled to conclude.',
-    `event_manager_email` STRING COMMENT 'The email address of the event manager for coordination and communication purposes.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `event_manager_name` STRING COMMENT 'The name of the staff member or volunteer responsible for managing and coordinating the fundraising event.',
-    `event_manager_phone` STRING COMMENT 'The phone number of the event manager for coordination and communication purposes.',
-    `event_name` STRING COMMENT 'The official name or title of the fundraising event (e.g., Annual Gala, Spring Golf Tournament, Virtual Benefit Concert).',
-    `event_start_time` TIMESTAMP COMMENT 'The precise date and time when the fundraising event is scheduled to begin.',
-    `event_status` STRING COMMENT 'Current lifecycle status of the fundraising event (planned, active, completed, cancelled, postponed).. Valid values are `planned|active|completed|cancelled|postponed`',
-    `event_type` STRING COMMENT 'Classification of the fundraising event by format and purpose (e.g., gala, benefit dinner, golf tournament, auction, virtual fundraiser, cultivation event).. Valid values are `gala|benefit_dinner|golf_tournament|auction|virtual_fundraiser|cultivation_event`',
+    `fundraising_event_description` STRING COMMENT 'Detailed narrative description of the fundraising event, including purpose, activities, and beneficiary impact.',
+    `end_time` TIMESTAMP COMMENT 'The precise date and time when the fundraising event is scheduled to conclude.',
+    `fundraising_event_date` DATE COMMENT 'The scheduled date on which the fundraising event takes place.',
+    `fundraising_event_status` STRING COMMENT 'Current lifecycle status of the fundraising event (planned, active, completed, cancelled, postponed).. Valid values are `planned|active|completed|cancelled|postponed`',
+    `fundraising_event_type` STRING COMMENT 'Classification of the fundraising event by format and purpose (e.g., gala, benefit dinner, golf tournament, auction, virtual fundraiser, cultivation event).. Valid values are `gala|benefit_dinner|golf_tournament|auction|virtual_fundraiser|cultivation_event`',
     `fundraising_goal_amount` DECIMAL(18,2) COMMENT 'The target revenue amount the organization aims to raise from this event.',
     `is_tax_deductible` BOOLEAN COMMENT 'Indicates whether contributions made to this event qualify for tax deduction under IRS 501(c)(3) regulations or equivalent.',
     `is_virtual_event` BOOLEAN COMMENT 'Indicates whether the fundraising event is conducted virtually (online) rather than at a physical venue.',
     `last_modified_by_user` STRING COMMENT 'The username or identifier of the system user who last modified this fundraising event record.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this fundraising event record was last updated or modified.',
+    `manager_email` STRING COMMENT 'The email address of the event manager for coordination and communication purposes.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
+    `manager_name` STRING COMMENT 'The name of the staff member or volunteer responsible for managing and coordinating the fundraising event.',
+    `manager_phone` STRING COMMENT 'The phone number of the event manager for coordination and communication purposes.',
+    `fundraising_event_name` STRING COMMENT 'The official name or title of the fundraising event (e.g., Annual Gala, Spring Golf Tournament, Virtual Benefit Concert).',
     `net_revenue` DECIMAL(18,2) COMMENT 'The net proceeds from the event, calculated as total revenue raised minus total event cost.',
     `registration_close_date` DATE COMMENT 'The date when registration for the event closes and no further registrations are accepted.',
     `registration_open_date` DATE COMMENT 'The date when registration for the event opens to constituents.',
     `sponsorship_levels_available` STRING COMMENT 'Comma-separated list or description of sponsorship tiers offered for the event (e.g., Platinum, Gold, Silver, Bronze).',
+    `start_time` TIMESTAMP COMMENT 'The precise date and time when the fundraising event is scheduled to begin.',
     `tax_deductible_percentage` DECIMAL(18,2) COMMENT 'The percentage of ticket price or contribution that qualifies as a tax-deductible charitable donation (e.g., 70% if 30% represents fair market value of goods/services received).',
-    `ticket_price_tiers` DECIMAL(18,2) COMMENT 'Description or list of ticket pricing options available for attendees (e.g., General Admission, VIP, Student, Early Bird).',
+    `ticket_price_tiers` STRING COMMENT 'Description or list of ticket pricing options available for attendees (e.g., General Admission, VIP, Student, Early Bird).',
     `total_attendance` STRING COMMENT 'The actual number of individuals who attended the fundraising event, confirmed via check-in or participation tracking.',
     `total_event_cost` DECIMAL(18,2) COMMENT 'The total expenses incurred to plan, organize, and execute the fundraising event (venue, catering, marketing, staff, etc.).',
     `total_registrations` STRING COMMENT 'The total number of individuals who registered for the fundraising event.',
@@ -469,14 +431,39 @@ CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` (
     CONSTRAINT pk_fundraising_event PRIMARY KEY(`fundraising_event_id`)
 ) COMMENT 'Master record for donor-facing fundraising events and attendee registrations including galas, benefit dinners, golf tournaments, virtual fundraisers, and cultivation events managed in Salesforce Nonprofit Cloud. Captures event name, event type, event date and venue, fundraising goal, ticket price tiers, sponsorship levels, total revenue raised, total attendance, event cost, net revenue, and event manager. Includes individual constituent registration records with registration date, registration type (attendee, table sponsor, individual sponsor, volunteer), ticket type and price paid, table assignment, meal preference, attendance confirmation status, check-in timestamp, and post-event follow-up status. Enables event capacity management, seating logistics, and post-event stewardship workflows. Distinct from field operations events — fundraising events are donor cultivation and revenue generation activities.';
 
+CREATE OR REPLACE TABLE `vibe_ngo_v1`.`donor`.`event_registration` (
+    `event_registration_id` BIGINT COMMENT 'Unique identifier for this event registration record. Primary key.',
+    `constituent_id` BIGINT COMMENT 'Foreign key linking to the constituent who registered for or attended the fundraising event',
+    `fundraising_event_id` BIGINT COMMENT 'Foreign key linking to the fundraising event for which the constituent registered',
+    `attendance_status` STRING COMMENT 'The current status of the constituents attendance (registered, confirmed, checked_in, no_show, cancelled). Tracks the registration lifecycle from initial signup through event day check-in. Explicitly identified in detection phase relationship data.',
+    `auction_paddle_number` STRING COMMENT 'The paddle or bidder number assigned to the constituent for auction participation at the event. Links to auction transaction tracking. Explicitly identified in detection phase relationship data.',
+    `check_in_timestamp` TIMESTAMP COMMENT 'The precise date and time when the constituent checked in at the event. Used to confirm actual attendance and trigger post-event stewardship workflows.',
+    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this registration record was created in the system.',
+    `dietary_restrictions` STRING COMMENT 'Any dietary restrictions or meal preferences specified by the constituent during registration (vegetarian, vegan, gluten-free, allergies). Used for catering planning. Explicitly identified in detection phase relationship data.',
+    `event_registration_date` DATE COMMENT 'The date on which the constituent registered for the fundraising event. Explicitly identified in detection phase relationship data.',
+    `event_registration_type` STRING COMMENT 'The type of registration or participation role for this constituent at the event (attendee, table sponsor, individual sponsor, volunteer). Determines engagement level and stewardship approach.',
+    `guest_count` STRING COMMENT 'The number of guests included in this registration (e.g., table sponsorships may include multiple seats). Explicitly identified in detection phase relationship data.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'The timestamp when this registration record was last updated.',
+    `payment_method` STRING COMMENT 'The method of payment used for the registration (credit card, check, cash, wire transfer, complimentary). Supports reconciliation and revenue tracking.',
+    `payment_status` STRING COMMENT 'The current payment status for this registration (paid, pending, refunded, waived). Tracks financial completion of the registration.',
+    `post_event_follow_up_status` STRING COMMENT 'The status of post-event stewardship and cultivation follow-up activities for this constituent (pending, thank_you_sent, survey_sent, completed). Tracks donor engagement workflow completion.',
+    `source` STRING COMMENT 'The channel through which the constituent registered for the event (online, phone, mail, in-person, staff entry). Used for marketing effectiveness analysis.',
+    `special_requests` STRING COMMENT 'Any special requests or accommodations requested by the constituent (accessibility needs, seating preferences, VIP treatment). Used for event logistics and donor stewardship.',
+    `table_number` STRING COMMENT 'The table number or seating assignment for the constituent at the event. Used for seating logistics and VIP placement. Explicitly identified in detection phase relationship data (table_assignment/table_number).',
+    `ticket_price_paid` DECIMAL(18,2) COMMENT 'The actual amount paid by the constituent for their ticket or registration. May differ from standard ticket price due to discounts, early bird pricing, or sponsorship levels. Corresponds to amount_paid in detection phase data.',
+    `ticket_type` STRING COMMENT 'The specific ticket tier or type purchased by the constituent (e.g., general admission, VIP, early bird). Explicitly identified in detection phase relationship data.',
+    CONSTRAINT pk_event_registration PRIMARY KEY(`event_registration_id`)
+) COMMENT 'This association product represents the registration and attendance relationship between constituents and fundraising events. It captures the complete lifecycle of constituent participation in donor cultivation and fundraising activities, from initial registration through post-event follow-up. Each record links one constituent to one fundraising event with transactional attributes including registration details, ticketing information, seating assignments, payment tracking, attendance confirmation, and stewardship workflow status. This is a core operational entity managed actively by development and events staff for capacity planning, revenue tracking, donor engagement measurement, and post-event cultivation workflows.. Existence Justification: In nonprofit fundraising operations, constituents register for and attend multiple fundraising events over their donor lifecycle (galas, golf tournaments, cultivation dinners), and each event hosts multiple constituent attendees. Event registration is an actively managed operational process with its own lifecycle: registration → payment → seating assignment → check-in → post-event follow-up. This is distinct from gift processing—not all attendees make gifts, and registration data (ticket type, table assignment, dietary restrictions, attendance confirmation) is managed separately from donation transactions.';
+
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ADD CONSTRAINT `fk_donor_prospect_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ADD CONSTRAINT `fk_donor_prospect_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ADD CONSTRAINT `fk_donor_prospect_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_appeal_id` FOREIGN KEY (`appeal_id`) REFERENCES `vibe_ngo_v1`.`donor`.`appeal`(`appeal_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_event_registration_id` FOREIGN KEY (`event_registration_id`) REFERENCES `vibe_ngo_v1`.`donor`.`event_registration`(`event_registration_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_fundraising_event_id` FOREIGN KEY (`fundraising_event_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fundraising_event`(`fundraising_event_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_major_gift_opportunity_id` FOREIGN KEY (`major_gift_opportunity_id`) REFERENCES `vibe_ngo_v1`.`donor`.`major_gift_opportunity`(`major_gift_opportunity_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_original_gift_id` FOREIGN KEY (`original_gift_id`) REFERENCES `vibe_ngo_v1`.`donor`.`gift`(`gift_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_pledge_id` FOREIGN KEY (`pledge_id`) REFERENCES `vibe_ngo_v1`.`donor`.`pledge`(`pledge_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ADD CONSTRAINT `fk_donor_gift_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
@@ -485,15 +472,11 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ADD CONSTRAINT `fk_donor_pledge_campa
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ADD CONSTRAINT `fk_donor_pledge_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ADD CONSTRAINT `fk_donor_pledge_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ADD CONSTRAINT `fk_donor_pledge_fundraising_event_id` FOREIGN KEY (`fundraising_event_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fundraising_event`(`fundraising_event_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ADD CONSTRAINT `fk_donor_pledge_major_gift_opportunity_id` FOREIGN KEY (`major_gift_opportunity_id`) REFERENCES `vibe_ngo_v1`.`donor`.`major_gift_opportunity`(`major_gift_opportunity_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ADD CONSTRAINT `fk_donor_major_gift_opportunity_appeal_id` FOREIGN KEY (`appeal_id`) REFERENCES `vibe_ngo_v1`.`donor`.`appeal`(`appeal_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ADD CONSTRAINT `fk_donor_major_gift_opportunity_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ADD CONSTRAINT `fk_donor_major_gift_opportunity_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ADD CONSTRAINT `fk_donor_major_gift_opportunity_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ADD CONSTRAINT `fk_donor_major_gift_opportunity_prospect_id` FOREIGN KEY (`prospect_id`) REFERENCES `vibe_ngo_v1`.`donor`.`prospect`(`prospect_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ADD CONSTRAINT `fk_donor_campaign_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ADD CONSTRAINT `fk_donor_campaign_parent_campaign_id` FOREIGN KEY (`parent_campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ADD CONSTRAINT `fk_donor_appeal_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ADD CONSTRAINT `fk_donor_appeal_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ADD CONSTRAINT `fk_donor_fund_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ADD CONSTRAINT `fk_donor_fund_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_appeal_id` FOREIGN KEY (`appeal_id`) REFERENCES `vibe_ngo_v1`.`donor`.`appeal`(`appeal_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
@@ -501,46 +484,42 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_dono
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_fundraising_event_id` FOREIGN KEY (`fundraising_event_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fundraising_event`(`fundraising_event_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_gift_id` FOREIGN KEY (`gift_id`) REFERENCES `vibe_ngo_v1`.`donor`.`gift`(`gift_id`);
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_major_gift_opportunity_id` FOREIGN KEY (`major_gift_opportunity_id`) REFERENCES `vibe_ngo_v1`.`donor`.`major_gift_opportunity`(`major_gift_opportunity_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_pledge_id` FOREIGN KEY (`pledge_id`) REFERENCES `vibe_ngo_v1`.`donor`.`pledge`(`pledge_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ADD CONSTRAINT `fk_donor_stewardship_activity_prospect_id` FOREIGN KEY (`prospect_id`) REFERENCES `vibe_ngo_v1`.`donor`.`prospect`(`prospect_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ADD CONSTRAINT `fk_donor_fundraising_event_appeal_id` FOREIGN KEY (`appeal_id`) REFERENCES `vibe_ngo_v1`.`donor`.`appeal`(`appeal_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ADD CONSTRAINT `fk_donor_fundraising_event_campaign_id` FOREIGN KEY (`campaign_id`) REFERENCES `vibe_ngo_v1`.`donor`.`campaign`(`campaign_id`);
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ADD CONSTRAINT `fk_donor_fundraising_event_fund_id` FOREIGN KEY (`fund_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fund`(`fund_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ADD CONSTRAINT `fk_donor_event_registration_constituent_id` FOREIGN KEY (`constituent_id`) REFERENCES `vibe_ngo_v1`.`donor`.`constituent`(`constituent_id`);
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ADD CONSTRAINT `fk_donor_event_registration_fundraising_event_id` FOREIGN KEY (`fundraising_event_id`) REFERENCES `vibe_ngo_v1`.`donor`.`fundraising_event`(`fundraising_event_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_ngo_v1`.`donor` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_ngo_v1`.`donor` SET TAGS ('dbx_domain' = 'donor');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` SET TAGS ('dbx_subdomain' = 'donor_relationships');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` SET TAGS ('dbx_subdomain' = 'constituent_management');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Constituent Identifier');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `country_id` SET TAGS ('dbx_business_glossary_term' = 'Country Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `communication_preference` SET TAGS ('dbx_business_glossary_term' = 'Communication Preference');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `communication_preference` SET TAGS ('dbx_value_regex' = 'email|phone|mail|sms|no_contact');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `constituent_type` SET TAGS ('dbx_business_glossary_term' = 'Constituent Type');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `crm_source_record_code` SET TAGS ('dbx_business_glossary_term' = 'Constituent Relationship Management (CRM) Source Record Identifier');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `crm_source_system` SET TAGS ('dbx_business_glossary_term' = 'Constituent Relationship Management (CRM) Source System');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `crm_source_system` SET TAGS ('dbx_value_regex' = 'salesforce_nonprofit_cloud|raisers_edge_nxt|other');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `dac_member_flag` SET TAGS ('dbx_business_glossary_term' = 'Development Assistance Committee (DAC) Member Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `deceased_date` SET TAGS ('dbx_business_glossary_term' = 'Deceased Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `deceased_date` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `deceased_date` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `deceased_flag` SET TAGS ('dbx_business_glossary_term' = 'Deceased Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `email_opt_in_flag` SET TAGS ('dbx_business_glossary_term' = 'Email Opt-In Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `email_opt_in_flag` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `email_opt_in_flag` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `email_opt_in_flag` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `email_opt_in_flag` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `estimated_giving_capacity` SET TAGS ('dbx_business_glossary_term' = 'Estimated Giving Capacity');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `estimated_giving_capacity` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `first_gift_date` SET TAGS ('dbx_business_glossary_term' = 'First Gift Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `funder_classification` SET TAGS ('dbx_business_glossary_term' = 'Funder Classification');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_date` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Consent Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_date` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_date` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_flag` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Consent Flag');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_flag` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `gdpr_consent_flag` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `iati_organization_identifier` SET TAGS ('dbx_business_glossary_term' = 'International Aid Transparency Initiative (IATI) Organization Identifier');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `iati_organization_identifier` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}-[A-Z]+-[0-9A-Z]+$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `indirect_cost_rate` SET TAGS ('dbx_business_glossary_term' = 'Indirect Cost Rate (ICR)');
@@ -549,53 +528,36 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `last_gift_date` SE
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `legal_name` SET TAGS ('dbx_business_glossary_term' = 'Legal Name');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `legal_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `legal_name` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `lifetime_giving_total` SET TAGS ('dbx_business_glossary_term' = 'Lifetime Giving Total');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Mailing Address Line 1');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line1` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line1` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line1` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Mailing Address Line 2');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line2` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line2` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_address_line2` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_city` SET TAGS ('dbx_business_glossary_term' = 'Mailing City');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_city` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_city` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_city` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Mailing Country Code');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Mailing Postal Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_postal_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_postal_code` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_postal_code` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_state_province` SET TAGS ('dbx_business_glossary_term' = 'Mailing State or Province');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_state_province` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_state_province` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_state_province` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `mailing_state_province` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `oda_eligibility_flag` SET TAGS ('dbx_business_glossary_term' = 'Official Development Assistance (ODA) Eligibility Flag');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `organization_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Organization Affiliation');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_grant_modality` SET TAGS ('dbx_business_glossary_term' = 'Preferred Grant Modality');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_name` SET TAGS ('dbx_business_glossary_term' = 'Preferred Name');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_name` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `preferred_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Email Address');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_email` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Phone Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_phone` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `primary_phone` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `prospect_research_rating` SET TAGS ('dbx_business_glossary_term' = 'Prospect Research Rating');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `prospect_research_rating` SET TAGS ('dbx_value_regex' = 'A|B|C|D|unrated');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -604,18 +566,17 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `record_status` SET
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `relationship_tier` SET TAGS ('dbx_business_glossary_term' = 'Relationship Tier');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `salutation` SET TAGS ('dbx_business_glossary_term' = 'Salutation');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `salutation` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`constituent` ALTER COLUMN `salutation` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` SET TAGS ('dbx_subdomain' = 'donor_relationships');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` SET TAGS ('dbx_subdomain' = 'constituent_management');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect Identifier');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Constituent Identifier');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Fund Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Org Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Proposal Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `ability_score` SET TAGS ('dbx_business_glossary_term' = 'Ability Score (LAI Assessment)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `board_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Board Affiliation');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `board_affiliation` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `communication_preference` SET TAGS ('dbx_business_glossary_term' = 'Communication Preference');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `communication_preference` SET TAGS ('dbx_value_regex' = 'email|phone|mail|in_person|no_preference');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `conversion_date` SET TAGS ('dbx_business_glossary_term' = 'Conversion Date');
@@ -629,8 +590,6 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TA
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `estimated_capacity` SET TAGS ('dbx_business_glossary_term' = 'Estimated Giving Capacity');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `estimated_capacity` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `estimated_gift_range_max` SET TAGS ('dbx_business_glossary_term' = 'Estimated Gift Range Maximum');
@@ -642,33 +601,25 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `geographic_interest` 
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `identification_date` SET TAGS ('dbx_business_glossary_term' = 'Identification Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `interest_score` SET TAGS ('dbx_business_glossary_term' = 'Interest Score (LAI Assessment)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_type` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_type` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `last_contact_type` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `linkage_score` SET TAGS ('dbx_business_glossary_term' = 'Linkage Score (LAI Assessment)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `linkage_score` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `mailing_address` SET TAGS ('dbx_business_glossary_term' = 'Mailing Address');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `mailing_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `mailing_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `mailing_address` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `mailing_address` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_business_glossary_term' = 'Prospect Full Name');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `next_action_date` SET TAGS ('dbx_business_glossary_term' = 'Next Action Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `next_action_description` SET TAGS ('dbx_business_glossary_term' = 'Next Action Description');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `previous_giving_history` SET TAGS ('dbx_business_glossary_term' = 'Previous Giving History');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `previous_giving_history` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `probability_percentage` SET TAGS ('dbx_business_glossary_term' = 'Probability Percentage');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `probability_percentage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `program_interest_area` SET TAGS ('dbx_business_glossary_term' = 'Program Interest Area');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_status` SET TAGS ('dbx_business_glossary_term' = 'Prospect Status');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `prospect_status` SET TAGS ('dbx_value_regex' = 'active|inactive|disqualified|converted|on_hold');
@@ -679,34 +630,34 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `rating` SET TAGS ('db
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `rating` SET TAGS ('dbx_value_regex' = 'A+|A|B+|B|C+|C|D');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `research_stage` SET TAGS ('dbx_business_glossary_term' = 'Research Stage');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `research_stage` SET TAGS ('dbx_value_regex' = 'not_started|preliminary|in_depth|completed|ongoing_monitoring');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `research_stage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `solicitation_amount` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `solicitation_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `solicitation_date` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `source_of_wealth` SET TAGS ('dbx_business_glossary_term' = 'Source of Wealth');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `source_of_wealth` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `source_of_wealth` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `stage` SET TAGS ('dbx_business_glossary_term' = 'Prospect Stage');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `stage` SET TAGS ('dbx_value_regex' = 'identification|qualification|cultivation|solicitation|negotiation|stewardship');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `stage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `wealth_screening_score` SET TAGS ('dbx_business_glossary_term' = 'Wealth Screening Score');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`prospect` ALTER COLUMN `wealth_screening_score` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` SET TAGS ('dbx_subdomain' = 'campaign_giving');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` SET TAGS ('dbx_subdomain' = 'fundraising_giving');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_id` SET TAGS ('dbx_business_glossary_term' = 'Gift Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Safeguarding Incident Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Identifier (ID)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Award Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `commodity_id` SET TAGS ('dbx_business_glossary_term' = 'Commodity Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `event_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Event Registration Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Fund Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `funding_source_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Fund Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `fundraising_event_id` SET TAGS ('dbx_business_glossary_term' = 'Fundraising Event Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `indicator_target_id` SET TAGS ('dbx_business_glossary_term' = 'Indicator Target Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `major_gift_opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Major Gift Opportunity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `original_gift_id` SET TAGS ('dbx_business_glossary_term' = 'Original Gift Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `partner_org_id` SET TAGS ('dbx_business_glossary_term' = 'Single Audit Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `pledge_id` SET TAGS ('dbx_business_glossary_term' = 'Pledge Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `acknowledgement_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `acknowledgement_type` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Type');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `amount` SET TAGS ('dbx_business_glossary_term' = 'Gift Amount');
@@ -716,7 +667,6 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `currency_code` SET TAGS (
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Processing Fee Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_date` SET TAGS ('dbx_business_glossary_term' = 'Gift Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_number` SET TAGS ('dbx_business_glossary_term' = 'Gift Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_status` SET TAGS ('dbx_business_glossary_term' = 'Gift Status');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_status` SET TAGS ('dbx_value_regex' = 'pending|received|processed|acknowledged|refunded|cancelled');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `gift_type` SET TAGS ('dbx_business_glossary_term' = 'Gift Type');
@@ -726,8 +676,6 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `goods_services_value` SET
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `honoree_name` SET TAGS ('dbx_business_glossary_term' = 'Honoree Name');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `honoree_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `honoree_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `honoree_name` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `honoree_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `irs_compliant_flag` SET TAGS ('dbx_business_glossary_term' = 'Internal Revenue Service (IRS) Compliant Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `match_approval_status` SET TAGS ('dbx_business_glossary_term' = 'Match Approval Status');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `match_approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|denied|paid');
@@ -738,14 +686,11 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `net_amount` SET TAGS ('db
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_address` SET TAGS ('dbx_business_glossary_term' = 'Notification Recipient Address');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_address` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_address` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_name` SET TAGS ('dbx_business_glossary_term' = 'Notification Recipient Name');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_name` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_recipient_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `notification_sent_flag` SET TAGS ('dbx_business_glossary_term' = 'Notification Sent Flag');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Gift Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `payment_channel` SET TAGS ('dbx_business_glossary_term' = 'Payment Channel');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `receipt_number` SET TAGS ('dbx_business_glossary_term' = 'Receipt Number');
@@ -760,21 +705,17 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `tribute_flag` SET TAGS ('
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `tribute_type` SET TAGS ('dbx_business_glossary_term' = 'Tribute Type');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`gift` ALTER COLUMN `tribute_type` SET TAGS ('dbx_value_regex' = 'in-honor-of|in-memory-of');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` SET TAGS ('dbx_subdomain' = 'campaign_giving');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` SET TAGS ('dbx_subdomain' = 'fundraising_giving');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_id` SET TAGS ('dbx_business_glossary_term' = 'Pledge Identifier');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Identifier');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Award Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Identifier');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `commodity_id` SET TAGS ('dbx_business_glossary_term' = 'Commodity Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Identifier');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Fund Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `funding_source_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Fund Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `fundraising_event_id` SET TAGS ('dbx_business_glossary_term' = 'Fundraising Event Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `major_gift_opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Major Gift Opportunity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Obligation Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Intervention Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `acknowledgment_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `acknowledgment_sent` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Sent');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `amount_paid` SET TAGS ('dbx_business_glossary_term' = 'Amount Paid');
@@ -800,10 +741,11 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `modified_timestamp` SET
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `next_installment_amount` SET TAGS ('dbx_business_glossary_term' = 'Next Installment Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `next_installment_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Installment Due Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Pledge Notes');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Pledge Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `number_of_installments` SET TAGS ('dbx_business_glossary_term' = 'Number of Installments');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'credit_card|bank_transfer|check|cash|stock|wire_transfer');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_date` SET TAGS ('dbx_business_glossary_term' = 'Pledge Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_number` SET TAGS ('dbx_business_glossary_term' = 'Pledge Number');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_status` SET TAGS ('dbx_business_glossary_term' = 'Pledge Status');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_status` SET TAGS ('dbx_value_regex' = 'active|fulfilled|lapsed|written_off|cancelled|pending');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `pledge_type` SET TAGS ('dbx_business_glossary_term' = 'Pledge Type');
@@ -814,64 +756,19 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `total_pledge_amount` SE
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `write_off_amount` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `write_off_date` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`pledge` ALTER COLUMN `write_off_reason` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Reason');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` SET TAGS ('dbx_subdomain' = 'campaign_giving');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `major_gift_opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Major Gift Opportunity ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Donor ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `evaluation_id` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Fund Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Proposal Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `actual_close_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Close Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `ask_amount` SET TAGS ('dbx_business_glossary_term' = 'Ask Amount');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `ask_strategy` SET TAGS ('dbx_business_glossary_term' = 'Ask Strategy');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Created Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `donor_recognition_level` SET TAGS ('dbx_business_glossary_term' = 'Donor Recognition Level');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `donor_recognition_level` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `donor_recognition_level` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `expected_close_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Close Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `expected_gift_amount` SET TAGS ('dbx_business_glossary_term' = 'Expected Gift Amount');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `gift_purpose` SET TAGS ('dbx_business_glossary_term' = 'Gift Purpose');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `gift_type` SET TAGS ('dbx_business_glossary_term' = 'Gift Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `gift_type` SET TAGS ('dbx_value_regex' = 'cash|pledge|planned_giving|in_kind|stock|real_estate');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `is_anonymous` SET TAGS ('dbx_business_glossary_term' = 'Is Anonymous');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `is_matching_gift_eligible` SET TAGS ('dbx_business_glossary_term' = 'Is Matching Gift Eligible');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_business_glossary_term' = 'Last Contact Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `last_contact_date` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `last_modified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `loss_reason` SET TAGS ('dbx_business_glossary_term' = 'Loss Reason');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `next_step_action` SET TAGS ('dbx_business_glossary_term' = 'Next Step Action');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `next_step_date` SET TAGS ('dbx_business_glossary_term' = 'Next Step Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Opportunity Notes');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `opportunity_code` SET TAGS ('dbx_business_glossary_term' = 'Opportunity Code');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `opportunity_name` SET TAGS ('dbx_business_glossary_term' = 'Opportunity Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `opportunity_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `opportunity_name` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `probability_percentage` SET TAGS ('dbx_business_glossary_term' = 'Probability Percentage');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `restriction_type` SET TAGS ('dbx_business_glossary_term' = 'Restriction Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `restriction_type` SET TAGS ('dbx_value_regex' = 'unrestricted|temporarily_restricted|permanently_restricted');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `solicitation_stage` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Stage');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `source_channel` SET TAGS ('dbx_business_glossary_term' = 'Source Channel');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `stage_changed_date` SET TAGS ('dbx_business_glossary_term' = 'Stage Changed Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`major_gift_opportunity` ALTER COLUMN `weighted_value` SET TAGS ('dbx_business_glossary_term' = 'Weighted Value');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` SET TAGS ('dbx_subdomain' = 'campaign_giving');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` SET TAGS ('dbx_subdomain' = 'fundraising_giving');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign ID');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Partnership Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Grant ID');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `governance_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Governance Policy Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `funding_source_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Fund Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `indicator_id` SET TAGS ('dbx_business_glossary_term' = 'Indicator Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `mel_logframe_id` SET TAGS ('dbx_business_glossary_term' = 'Mel Logframe Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `parent_campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Campaign ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `statutory_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Statutory Registration Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `acknowledgment_template` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Template');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `appeal_channel` SET TAGS ('dbx_business_glossary_term' = 'Appeal Channel');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `appeal_description` SET TAGS ('dbx_business_glossary_term' = 'Appeal Description');
@@ -894,9 +791,9 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `is_public` SET TAGS (
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `matching_gift_eligible` SET TAGS ('dbx_business_glossary_term' = 'Matching Gift Eligible Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `campaign_name` SET TAGS ('dbx_business_glossary_term' = 'Campaign Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `campaign_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `campaign_name` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `campaign_name` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `roi_percentage` SET TAGS ('dbx_business_glossary_term' = 'Return on Investment (ROI) Percentage');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `roi_percentage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `sdg_alignment` SET TAGS ('dbx_business_glossary_term' = 'Sustainable Development Goal (SDG) Alignment');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Campaign Start Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `stewardship_plan` SET TAGS ('dbx_business_glossary_term' = 'Stewardship Plan');
@@ -904,14 +801,10 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `target_audience_segme
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `tax_deductible` SET TAGS ('dbx_business_glossary_term' = 'Tax Deductible Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`campaign` ALTER COLUMN `total_raised_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Raised Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` SET TAGS ('dbx_subdomain' = 'campaign_giving');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` SET TAGS ('dbx_subdomain' = 'fundraising_giving');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Identifier (ID)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Fund Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `indicator_id` SET TAGS ('dbx_business_glossary_term' = 'Indicator Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Obligation Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `acknowledgment_template` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Template');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_status` SET TAGS ('dbx_business_glossary_term' = 'Appeal Status');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_status` SET TAGS ('dbx_value_regex' = 'draft|scheduled|active|completed|cancelled|on_hold');
@@ -920,6 +813,7 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_type` SET TAGS (
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `ask_amount` SET TAGS ('dbx_business_glossary_term' = 'Suggested Ask Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `ask_string` SET TAGS ('dbx_business_glossary_term' = 'Ask String');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `average_gift_amount` SET TAGS ('dbx_business_glossary_term' = 'Average Gift Amount');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `average_gift_amount` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `channel` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Channel');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_code` SET TAGS ('dbx_business_glossary_term' = 'Appeal Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,20}$');
@@ -931,62 +825,64 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `created_timestamp` SET 
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal End Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `mailing_date` SET TAGS ('dbx_business_glossary_term' = 'Mailing Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Appeal Manager Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `modified_by` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_name` SET TAGS ('dbx_business_glossary_term' = 'Appeal Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_name` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `appeal_name` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Appeal Notes');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `package_description` SET TAGS ('dbx_business_glossary_term' = 'Appeal Package Description');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `package_description` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `pieces_sent` SET TAGS ('dbx_business_glossary_term' = 'Number of Pieces Sent');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `premium_offered` SET TAGS ('dbx_business_glossary_term' = 'Premium Offered');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `response_count` SET TAGS ('dbx_business_glossary_term' = 'Response Count');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `response_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Response Rate Percentage');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `revenue_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Revenue Currency Code');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `revenue_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `roi_ratio` SET TAGS ('dbx_business_glossary_term' = 'Return on Investment (ROI) Ratio');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `solicitor_name` SET TAGS ('dbx_business_glossary_term' = 'Solicitor Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `solicitor_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `solicitor_name` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `solicitor_name` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal Start Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `test_segment_flag` SET TAGS ('dbx_business_glossary_term' = 'Test Segment Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `total_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Revenue Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`appeal` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` SET TAGS ('dbx_subdomain' = 'campaign_giving');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` SET TAGS ('dbx_subdomain' = 'fundraising_giving');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Fund Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Partnership Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Compliance Req Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `governance_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Governance Policy Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `meal_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Meal Plan Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `funding_source_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Fund Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program Identifier (ID)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `mel_logframe_id` SET TAGS ('dbx_business_glossary_term' = 'Mel Logframe Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Identifier (ID)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `psea_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Psea Policy Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `statutory_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Statutory Registration Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `reporting_period_id` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `audit_required` SET TAGS ('dbx_business_glossary_term' = 'Audit Required Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `balance` SET TAGS ('dbx_business_glossary_term' = 'Fund Balance');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `beneficiary_population` SET TAGS ('dbx_business_glossary_term' = 'Beneficiary Population');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_category` SET TAGS ('dbx_business_glossary_term' = 'Fund Category');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Fund Closure Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_code` SET TAGS ('dbx_business_glossary_term' = 'Fund Code');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,15}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `compliance_notes` SET TAGS ('dbx_business_glossary_term' = 'Compliance Notes');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `cost_share_percentage` SET TAGS ('dbx_business_glossary_term' = 'Cost Share Percentage');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `cost_share_percentage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `cost_share_required` SET TAGS ('dbx_business_glossary_term' = 'Cost Share Required Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `dac_sector_code` SET TAGS ('dbx_business_glossary_term' = 'Development Assistance Committee (DAC) Sector Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `dac_sector_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}$');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_description` SET TAGS ('dbx_business_glossary_term' = 'Fund Description');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_category` SET TAGS ('dbx_business_glossary_term' = 'Fund Category');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_code` SET TAGS ('dbx_business_glossary_term' = 'Fund Code');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,15}$');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_description` SET TAGS ('dbx_business_glossary_term' = 'Fund Description');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_name` SET TAGS ('dbx_business_glossary_term' = 'Fund Name');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_name` SET TAGS ('dbx_pii_personal' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_status` SET TAGS ('dbx_business_glossary_term' = 'Fund Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_status` SET TAGS ('dbx_value_regex' = 'open|closed|suspended|pending_approval');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_type` SET TAGS ('dbx_business_glossary_term' = 'Fund Type');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `donor_fund_type` SET TAGS ('dbx_value_regex' = 'restricted|temporarily_restricted|unrestricted|endowment|quasi_endowment|board_designated');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `endowment_spending_policy` SET TAGS ('dbx_business_glossary_term' = 'Endowment Spending Policy');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_status` SET TAGS ('dbx_business_glossary_term' = 'Fund Status');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_status` SET TAGS ('dbx_value_regex' = 'open|closed|suspended|pending_approval');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_type` SET TAGS ('dbx_business_glossary_term' = 'Fund Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_type` SET TAGS ('dbx_value_regex' = 'restricted|temporarily_restricted|unrestricted|endowment|quasi_endowment|board_designated');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_business_glossary_term' = 'Geographic Scope');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `geographic_scope` SET TAGS ('dbx_value_regex' = 'global|regional|country_specific|multi_country');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
@@ -997,11 +893,7 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `indirect_cost_rate` SET T
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `investment_policy` SET TAGS ('dbx_business_glossary_term' = 'Investment Policy');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `minimum_gift_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Gift Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Record Modified By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `modified_by` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_name` SET TAGS ('dbx_business_glossary_term' = 'Fund Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `fund_name` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Reporting Frequency');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi_annual|annual|upon_request');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `restriction_description` SET TAGS ('dbx_business_glossary_term' = 'Restriction Description');
@@ -1011,39 +903,30 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `restriction_type` SET TAG
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `sdg_alignment` SET TAGS ('dbx_business_glossary_term' = 'Sustainable Development Goal (SDG) Alignment');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `target_countries` SET TAGS ('dbx_business_glossary_term' = 'Target Countries');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Record Created By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fund` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` SET TAGS ('dbx_subdomain' = 'donor_relationships');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` SET TAGS ('dbx_subdomain' = 'constituent_management');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Stewardship Activity ID');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `award_id` SET TAGS ('dbx_business_glossary_term' = 'Award Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `award_id` SET TAGS ('dbx_description_cleaned' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign ID');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Constituent ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `constituent_id` SET TAGS ('dbx_pii_type' = 'personal');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Donor Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `evaluation_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Finding Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `evaluation_id` SET TAGS ('dbx_business_glossary_term' = 'Evaluation Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Fund Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `fundraising_event_id` SET TAGS ('dbx_business_glossary_term' = 'Fundraising Event Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `gift_id` SET TAGS ('dbx_business_glossary_term' = 'Gift ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Safeguarding Incident Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `indicator_id` SET TAGS ('dbx_business_glossary_term' = 'Indicator Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `major_gift_opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Major Gift Opportunity Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Obligation Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `indicator_result_id` SET TAGS ('dbx_business_glossary_term' = 'Indicator Result Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Intervention Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `mel_logframe_id` SET TAGS ('dbx_business_glossary_term' = 'Mel Logframe Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `partner_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Partner Contact Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `pledge_id` SET TAGS ('dbx_business_glossary_term' = 'Pledge ID');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Proposal Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `regulatory_filing_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Filing Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `prospect_id` SET TAGS ('dbx_business_glossary_term' = 'Prospect Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `volunteer_deployment_id` SET TAGS ('dbx_business_glossary_term' = 'Volunteer Deployment Id (Foreign Key)');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `volunteer_id` SET TAGS ('dbx_business_glossary_term' = 'Volunteer Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `acknowledgement_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Sent Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `acknowledgement_sent_flag` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Sent Flag');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_date` SET TAGS ('dbx_business_glossary_term' = 'Activity Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_description` SET TAGS ('dbx_business_glossary_term' = 'Activity Description');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_outcome` SET TAGS ('dbx_business_glossary_term' = 'Activity Outcome');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_status` SET TAGS ('dbx_business_glossary_term' = 'Activity Status');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_status` SET TAGS ('dbx_value_regex' = 'planned|completed|cancelled|rescheduled|pending');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_subject` SET TAGS ('dbx_business_glossary_term' = 'Activity Subject');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_type` SET TAGS ('dbx_business_glossary_term' = 'Activity Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `activity_type` SET TAGS ('dbx_value_regex' = 'acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `attendee_count` SET TAGS ('dbx_business_glossary_term' = 'Attendee Count');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `communication_channel` SET TAGS ('dbx_business_glossary_term' = 'Communication Channel');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `communication_channel` SET TAGS ('dbx_value_regex' = 'in_person|phone|email|video_call|mail|event');
@@ -1052,25 +935,23 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `cost_amou
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_description` SET TAGS ('dbx_business_glossary_term' = 'Activity Description');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_response` SET TAGS ('dbx_business_glossary_term' = 'Donor Response');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_response` SET TAGS ('dbx_value_regex' = 'committed|interested|considering|declined|no_response');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_response` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_response` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_sentiment` SET TAGS ('dbx_business_glossary_term' = 'Donor Sentiment');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_sentiment` SET TAGS ('dbx_value_regex' = 'very_positive|positive|neutral|negative|very_negative');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_sentiment` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `donor_sentiment` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Duration in Minutes');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `engagement_score` SET TAGS ('dbx_business_glossary_term' = 'Engagement Score');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `engagement_score` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `follow_up_due_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Due Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `follow_up_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Required Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `impact_story_shared_flag` SET TAGS ('dbx_business_glossary_term' = 'Impact Story Shared Flag');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `location` SET TAGS ('dbx_business_glossary_term' = 'Activity Location');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `location` SET TAGS ('dbx_pii_type' = 'location');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `next_steps` SET TAGS ('dbx_business_glossary_term' = 'Next Steps');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Internal Notes');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `outcome` SET TAGS ('dbx_business_glossary_term' = 'Activity Outcome');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Priority Level');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'high|medium|low');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Date');
@@ -1078,64 +959,60 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `solicitat
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `solicitation_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Currency Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `solicitation_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `solicitation_made_flag` SET TAGS ('dbx_business_glossary_term' = 'Solicitation Made Flag');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_date` SET TAGS ('dbx_business_glossary_term' = 'Activity Date');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_status` SET TAGS ('dbx_business_glossary_term' = 'Activity Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_status` SET TAGS ('dbx_value_regex' = 'planned|completed|cancelled|rescheduled|pending');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_type` SET TAGS ('dbx_business_glossary_term' = 'Activity Type');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_activity_type` SET TAGS ('dbx_value_regex' = 'acknowledgement_letter|impact_report|site_visit|phone_call|event_invitation|personal_meeting');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_plan_stage` SET TAGS ('dbx_business_glossary_term' = 'Stewardship Plan Stage');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_plan_stage` SET TAGS ('dbx_value_regex' = 'identification|cultivation|solicitation|stewardship|renewal');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `stewardship_plan_stage` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`stewardship_activity` ALTER COLUMN `subject` SET TAGS ('dbx_business_glossary_term' = 'Activity Subject');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` SET TAGS ('dbx_subdomain' = 'donor_relationships');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` SET TAGS ('dbx_subdomain' = 'event_engagement');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_id` SET TAGS ('dbx_business_glossary_term' = 'Fundraising Event ID');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `appeal_id` SET TAGS ('dbx_business_glossary_term' = 'Appeal Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Campaign ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `country_office_id` SET TAGS ('dbx_business_glossary_term' = 'Country Office Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `emergency_id` SET TAGS ('dbx_business_glossary_term' = 'Emergency Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fund_id` SET TAGS ('dbx_business_glossary_term' = 'Fund Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `intervention_id` SET TAGS ('dbx_business_glossary_term' = 'Program ID');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Site Id (Foreign Key)');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `statutory_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Statutory Registration Id (Foreign Key)');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `acknowledgment_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Sent Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `capacity_total` SET TAGS ('dbx_business_glossary_term' = 'Total Capacity');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_code` SET TAGS ('dbx_business_glossary_term' = 'Event Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `created_by_user` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_code` SET TAGS ('dbx_business_glossary_term' = 'Event Code');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_date` SET TAGS ('dbx_business_glossary_term' = 'Event Date');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_description` SET TAGS ('dbx_business_glossary_term' = 'Event Description');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_end_time` SET TAGS ('dbx_business_glossary_term' = 'Event End Time');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Email');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_email` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_name` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_name` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Phone');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_phone` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_manager_phone` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_name` SET TAGS ('dbx_business_glossary_term' = 'Event Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_name` SET TAGS ('dbx_pii_donor' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_start_time` SET TAGS ('dbx_business_glossary_term' = 'Event Start Time');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_status` SET TAGS ('dbx_business_glossary_term' = 'Event Status');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_status` SET TAGS ('dbx_value_regex' = 'planned|active|completed|cancelled|postponed');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_type` SET TAGS ('dbx_business_glossary_term' = 'Event Type');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `event_type` SET TAGS ('dbx_value_regex' = 'gala|benefit_dinner|golf_tournament|auction|virtual_fundraiser|cultivation_event');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_description` SET TAGS ('dbx_business_glossary_term' = 'Event Description');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `end_time` SET TAGS ('dbx_business_glossary_term' = 'Event End Time');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_date` SET TAGS ('dbx_business_glossary_term' = 'Event Date');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_status` SET TAGS ('dbx_business_glossary_term' = 'Event Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_status` SET TAGS ('dbx_value_regex' = 'planned|active|completed|cancelled|postponed');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_type` SET TAGS ('dbx_business_glossary_term' = 'Event Type');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_type` SET TAGS ('dbx_value_regex' = 'gala|benefit_dinner|golf_tournament|auction|virtual_fundraiser|cultivation_event');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_goal_amount` SET TAGS ('dbx_business_glossary_term' = 'Fundraising Goal Amount');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `is_tax_deductible` SET TAGS ('dbx_business_glossary_term' = 'Is Tax Deductible');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `is_virtual_event` SET TAGS ('dbx_business_glossary_term' = 'Is Virtual Event');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Email');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Name');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_demographic' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Event Manager Phone');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_name` SET TAGS ('dbx_business_glossary_term' = 'Event Name');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `fundraising_event_name` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `net_revenue` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `registration_close_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Close Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `registration_open_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Open Date');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `sponsorship_levels_available` SET TAGS ('dbx_business_glossary_term' = 'Sponsorship Levels Available');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Event Start Time');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `tax_deductible_percentage` SET TAGS ('dbx_business_glossary_term' = 'Tax Deductible Percentage');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `tax_deductible_percentage` SET TAGS ('dbx_pii_demographic' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `ticket_price_tiers` SET TAGS ('dbx_business_glossary_term' = 'Ticket Price Tiers');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `total_attendance` SET TAGS ('dbx_business_glossary_term' = 'Total Attendance');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `total_event_cost` SET TAGS ('dbx_business_glossary_term' = 'Total Event Cost');
@@ -1144,32 +1021,42 @@ ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `total_revenu
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Venue Address Line 1');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line1` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line1` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Venue Address Line 2');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line2` SET TAGS ('dbx_sensitivity' = 'pii_donor');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_address_line2` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_city` SET TAGS ('dbx_business_glossary_term' = 'Venue City');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_city` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_city` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_country_code` SET TAGS ('dbx_business_glossary_term' = 'Venue Country Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_country_code` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_name` SET TAGS ('dbx_business_glossary_term' = 'Venue Name');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_name` SET TAGS ('dbx_pii_donor' = 'true');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_name` SET TAGS ('dbx_pii_personal' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Venue Postal Code');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_postal_code` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_postal_code` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_state_province` SET TAGS ('dbx_business_glossary_term' = 'Venue State or Province');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_state_province` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_state_province` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_state_province` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `venue_state_province` SET TAGS ('dbx_pii_donor' = 'true');
 ALTER TABLE `vibe_ngo_v1`.`donor`.`fundraising_event` ALTER COLUMN `virtual_platform` SET TAGS ('dbx_business_glossary_term' = 'Virtual Platform');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` SET TAGS ('dbx_subdomain' = 'event_engagement');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `event_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Event Registration ID');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `constituent_id` SET TAGS ('dbx_business_glossary_term' = 'Event Registration - Constituent Id');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `fundraising_event_id` SET TAGS ('dbx_business_glossary_term' = 'Event Registration - Fundraising Event Id');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `attendance_status` SET TAGS ('dbx_business_glossary_term' = 'Attendance Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `auction_paddle_number` SET TAGS ('dbx_business_glossary_term' = 'Auction Paddle Number');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `check_in_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Check-In Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `dietary_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Dietary Restrictions');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `event_registration_date` SET TAGS ('dbx_business_glossary_term' = 'Registration Date');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `event_registration_type` SET TAGS ('dbx_business_glossary_term' = 'Registration Type');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `guest_count` SET TAGS ('dbx_business_glossary_term' = 'Guest Count');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `post_event_follow_up_status` SET TAGS ('dbx_business_glossary_term' = 'Post-Event Follow-Up Status');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `source` SET TAGS ('dbx_business_glossary_term' = 'Registration Source');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `special_requests` SET TAGS ('dbx_business_glossary_term' = 'Special Requests');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `table_number` SET TAGS ('dbx_business_glossary_term' = 'Table Assignment');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `ticket_price_paid` SET TAGS ('dbx_business_glossary_term' = 'Ticket Price Paid');
+ALTER TABLE `vibe_ngo_v1`.`donor`.`event_registration` ALTER COLUMN `ticket_type` SET TAGS ('dbx_business_glossary_term' = 'Ticket Type');

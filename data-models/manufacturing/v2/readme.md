@@ -1,6 +1,6 @@
 # Manufacturing Lakehouse Data Models
 
-**Version 2** | Generated on July 03, 2026 at 07:49 AM
+**Version 2** | Generated on July 10, 2026 at 02:44 PM
 
 **Industry:** 
 
@@ -86,11 +86,11 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | Metric | MVM (Minimum Viable Model) | ECM (Expanded Coverage Model) |
 |---|---|---|
 | Domains | 13 | 20 |
-| Subdomains | 35 | 80 |
-| Products (Tables) | 128 | 413 |
-| Attributes (Columns) | 5405 | 17597 |
-| Foreign Keys | 744 | 2446 |
-| Avg Attributes/Product | 42.2 | 42.6 |
+| Subdomains | 32 | 78 |
+| Products (Tables) | 114 | 414 |
+| Attributes (Columns) | 4766 | 15566 |
+| Foreign Keys | 860 | 2288 |
+| Avg Attributes/Product | 41.8 | 37.6 |
 
 ## Domain & Product Comparison
 
@@ -99,42 +99,45 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| condition_monitoring | calibration_record | ✅ | ✅ |  |
-| condition_monitoring | calibration_standard | ✅ | ❌ | Excluded from MVM |
-| condition_monitoring | condition_reading | ✅ | ✅ |  |
-| condition_monitoring | inspection_checklist | ✅ | ❌ | Excluded from MVM |
-| condition_monitoring | inspection_event | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | asset_certification | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | asset_plant | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | asset_warranty | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | capex_asset_record | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | equipment_allocation | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | asset_certification | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | asset_warranty | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | capex_asset_record | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | equipment_allocation | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | equipment_shipment | ✅ | ❌ | Excluded from MVM |
+| asset_lifecycle | spare_part | ✅ | ✅ |  |
+| equipment_registry | asset_plant | ✅ | ✅ |  |
 | equipment_registry | equipment_register | ✅ | ✅ |  |
-| equipment_registry | equipment_shipment | ✅ | ❌ | Excluded from MVM |
 | equipment_registry | location | ✅ | ✅ |  |
-| equipment_registry | reliability_record | ✅ | ❌ | Excluded from MVM |
-| equipment_registry | spare_part | ✅ | ✅ |  |
-| maintenance_operations | asset_downtime_event | ✅ | ✅ |  |
+| maintenance_operations | asset_downtime_event | ✅ | ❌ | Excluded from MVM |
 | maintenance_operations | asset_pm_schedule | ✅ | ❌ | Excluded from MVM |
 | maintenance_operations | asset_work_order | ✅ | ✅ |  |
 | maintenance_operations | craft_skill | ✅ | ❌ | Excluded from MVM |
 | maintenance_operations | failure_record | ✅ | ✅ |  |
 | maintenance_operations | job_plan | ✅ | ✅ |  |
+| maintenance_operations | job_plan_material_requirement | ❌ | ✅ | MVM only (stub or new) |
 | maintenance_operations | lubrication_route | ✅ | ❌ | Excluded from MVM |
 | maintenance_operations | maintenance_strategy | ✅ | ❌ | Excluded from MVM |
+| maintenance_operations | pm_parts_requirement | ❌ | ✅ | MVM only (stub or new) |
 | maintenance_operations | pm_schedule | ❌ | ✅ | MVM only (stub or new) |
 | maintenance_operations | work_order_type | ✅ | ❌ | Excluded from MVM |
 | regulatory_compliance | compliance_assessment | ✅ | ❌ | Excluded from MVM |
 | regulatory_compliance | regulatory_applicability | ✅ | ❌ | Excluded from MVM |
+| reliability_monitoring | calibration_record | ✅ | ✅ |  |
+| reliability_monitoring | calibration_standard | ✅ | ❌ | Excluded from MVM |
+| reliability_monitoring | condition_reading | ✅ | ❌ | Excluded from MVM |
+| reliability_monitoring | inspection_checklist | ✅ | ❌ | Excluded from MVM |
+| reliability_monitoring | inspection_event | ✅ | ❌ | Excluded from MVM |
+| reliability_monitoring | reliability_record | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-automation"></a>
 ### automation
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| batch_processing | batch_execution | ✅ | ❌ | Domain not in MVM |
-| batch_processing | batch_schedule | ✅ | ❌ | Domain not in MVM |
+| batch_production | batch_execution | ✅ | ❌ | Domain not in MVM |
+| batch_production | batch_schedule | ✅ | ❌ | Domain not in MVM |
 | control_programming | alarm_definition | ✅ | ❌ | Domain not in MVM |
+| control_programming | automation_script | ✅ | ❌ | Domain not in MVM |
 | control_programming | equipment_phase | ✅ | ❌ | Domain not in MVM |
 | control_programming | plc_program | ✅ | ❌ | Domain not in MVM |
 | control_programming | process_parameter | ✅ | ❌ | Domain not in MVM |
@@ -147,10 +150,6 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | device_infrastructure | io_mapping | ✅ | ❌ | Domain not in MVM |
 | device_infrastructure | network_segment | ✅ | ❌ | Domain not in MVM |
 | device_infrastructure | opc_server | ✅ | ❌ | Domain not in MVM |
-| engineering_validation | automation_project | ✅ | ❌ | Domain not in MVM |
-| engineering_validation | automation_script | ✅ | ❌ | Domain not in MVM |
-| engineering_validation | test_case | ✅ | ❌ | Domain not in MVM |
-| engineering_validation | test_procedure | ✅ | ❌ | Domain not in MVM |
 | operational_events | alarm_event | ✅ | ❌ | Domain not in MVM |
 | operational_events | control_mode_event | ✅ | ❌ | Domain not in MVM |
 | operational_events | device_config_snapshot | ✅ | ❌ | Domain not in MVM |
@@ -158,31 +157,34 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | operational_events | firmware_update | ✅ | ❌ | Domain not in MVM |
 | operational_events | scada_session | ✅ | ❌ | Domain not in MVM |
 | operational_events | setpoint_change | ✅ | ❌ | Domain not in MVM |
-| safety_assurance | automation_change_request | ✅ | ❌ | Domain not in MVM |
+| project_management | automation_change_request | ✅ | ❌ | Domain not in MVM |
+| project_management | automation_project | ✅ | ❌ | Domain not in MVM |
 | safety_assurance | fat_sat_record | ✅ | ❌ | Domain not in MVM |
 | safety_assurance | proof_test_record | ✅ | ❌ | Domain not in MVM |
 | safety_assurance | safety_function | ✅ | ❌ | Domain not in MVM |
+| safety_assurance | test_case | ✅ | ❌ | Domain not in MVM |
+| safety_assurance | test_procedure | ✅ | ❌ | Domain not in MVM |
 
 <a id="domain-billing"></a>
 ### billing
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| account_setup | billing_account | ✅ | ✅ |  |
-| account_setup | billing_cycle | ✅ | ❌ | Excluded from MVM |
-| account_setup | billing_schedule | ✅ | ✅ |  |
-| account_setup | credit_limit | ✅ | ✅ |  |
-| account_setup | payment_term | ✅ | ✅ |  |
+| account_scheduling | billing_account | ✅ | ✅ |  |
+| account_scheduling | billing_cycle | ✅ | ❌ | Excluded from MVM |
+| account_scheduling | billing_schedule | ✅ | ❌ | Excluded from MVM |
+| account_scheduling | credit_limit | ✅ | ✅ |  |
+| cash_application | payment_application | ❌ | ✅ | MVM only (stub or new) |
 | invoice_management | intercompany_invoice | ✅ | ❌ | Excluded from MVM |
 | invoice_management | invoice | ✅ | ✅ |  |
 | invoice_management | invoice_line | ✅ | ✅ |  |
-| invoice_management | tax_determination | ✅ | ❌ | Excluded from MVM |
+| invoice_management | tax_determination | ✅ | ✅ |  |
 | payment_collections | advance_payment | ✅ | ❌ | Excluded from MVM |
-| payment_collections | collections | ✅ | ✅ |  |
+| payment_collections | collections | ✅ | ❌ | Excluded from MVM |
 | payment_collections | payment | ✅ | ✅ |  |
 | payment_collections | write_off | ✅ | ❌ | Excluded from MVM |
-| revenue_recognition | dispute | ✅ | ✅ |  |
-| revenue_recognition | payment_allocation | ❌ | ✅ | MVM only (stub or new) |
+| revenue_recognition | dispute | ✅ | ❌ | Excluded from MVM |
+| revenue_recognition | payment_term | ✅ | ❌ | Excluded from MVM |
 | revenue_recognition | revenue_recognition_event | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-compliance"></a>
@@ -194,25 +196,25 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | audit_management | audit_plan | ✅ | ❌ | Domain not in MVM |
 | audit_management | compliance_audit_finding | ✅ | ❌ | Domain not in MVM |
 | audit_management | compliance_capa_record | ✅ | ❌ | Domain not in MVM |
-| cybersecurity_governance | cybersecurity_assessment | ✅ | ❌ | Domain not in MVM |
-| cybersecurity_governance | cybersecurity_control | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | emission_source | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | emissions_record | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | environmental_aspect | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | facility | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | hazardous_substance | ✅ | ❌ | Domain not in MVM |
-| environmental_stewardship | waste_record | ✅ | ❌ | Domain not in MVM |
-| regulatory_obligations | compliance_product_certification | ✅ | ❌ | Domain not in MVM |
-| regulatory_obligations | controlled_document | ✅ | ❌ | Domain not in MVM |
+| audit_management | controlled_document | ✅ | ❌ | Domain not in MVM |
+| cybersecurity_certification | compliance_product_certification | ✅ | ❌ | Domain not in MVM |
+| cybersecurity_certification | cybersecurity_assessment | ✅ | ❌ | Domain not in MVM |
+| cybersecurity_certification | cybersecurity_control | ✅ | ❌ | Domain not in MVM |
+| cybersecurity_certification | hazardous_substance | ✅ | ❌ | Domain not in MVM |
 | regulatory_obligations | obligation | ✅ | ❌ | Domain not in MVM |
 | regulatory_obligations | periodic_evaluation | ✅ | ❌ | Domain not in MVM |
 | regulatory_obligations | permit | ✅ | ❌ | Domain not in MVM |
 | regulatory_obligations | regulatory_filing | ✅ | ❌ | Domain not in MVM |
 | regulatory_obligations | regulatory_requirement | ✅ | ❌ | Domain not in MVM |
-| safety_health | process_hazard | ✅ | ❌ | Domain not in MVM |
-| safety_health | safety_checklist | ✅ | ❌ | Domain not in MVM |
-| safety_health | safety_incident | ✅ | ❌ | Domain not in MVM |
-| safety_health | safety_inspection | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | emission_source | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | emissions_record | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | environmental_aspect | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | facility | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | process_hazard | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | safety_checklist | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | safety_incident | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | safety_inspection | ✅ | ❌ | Domain not in MVM |
+| safety_environmental | waste_record | ✅ | ❌ | Domain not in MVM |
 
 <a id="domain-customer"></a>
 ### customer
@@ -228,62 +230,60 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | account_management | customer_account | ✅ | ✅ |  |
 | account_management | customer_contact | ✅ | ❌ | Excluded from MVM |
 | account_management | segment | ✅ | ✅ |  |
-| customer_engagement | credit_profile | ✅ | ✅ |  |
-| customer_engagement | customer_certification | ✅ | ❌ | Excluded from MVM |
-| customer_engagement | customer_document | ✅ | ❌ | Excluded from MVM |
-| customer_engagement | customer_entitlement | ✅ | ❌ | Excluded from MVM |
-| customer_engagement | customer_lead | ✅ | ❌ | Excluded from MVM |
-| customer_engagement | customer_onboarding | ✅ | ❌ | Excluded from MVM |
-| customer_engagement | interaction | ✅ | ✅ |  |
-| customer_engagement | sla_agreement | ✅ | ❌ | Excluded from MVM |
-| sales_engagement | lead | ❌ | ✅ | MVM only (stub or new) |
+| engagement_lifecycle | credit_profile | ✅ | ✅ |  |
+| engagement_lifecycle | customer_certification | ✅ | ❌ | Excluded from MVM |
+| engagement_lifecycle | customer_document | ✅ | ❌ | Excluded from MVM |
+| engagement_lifecycle | customer_entitlement | ✅ | ❌ | Excluded from MVM |
+| engagement_lifecycle | customer_lead | ✅ | ❌ | Excluded from MVM |
+| engagement_lifecycle | customer_onboarding | ✅ | ❌ | Excluded from MVM |
+| engagement_lifecycle | interaction | ✅ | ✅ |  |
+| engagement_lifecycle | sla_agreement | ✅ | ✅ |  |
 
 <a id="domain-engineering"></a>
 ### engineering
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| change_management | design_review | ✅ | ❌ | Excluded from MVM |
-| change_management | ecn | ✅ | ✅ |  |
-| change_management | eco | ✅ | ✅ |  |
-| change_management | engineering_project | ✅ | ❌ | Excluded from MVM |
-| design_documentation | cad_model | ✅ | ✅ |  |
-| design_documentation | dfm_analysis | ✅ | ❌ | Excluded from MVM |
-| design_documentation | dfmea | ✅ | ❌ | Excluded from MVM |
-| design_documentation | drawing | ✅ | ✅ |  |
-| product_definition | bom | ✅ | ✅ |  |
-| product_definition | component | ✅ | ✅ |  |
-| product_definition | configuration_baseline | ✅ | ❌ | Excluded from MVM |
-| product_definition | engineering_bom_line | ✅ | ❌ | Excluded from MVM |
-| product_definition | engineering_revision | ✅ | ❌ | Excluded from MVM |
-| product_definition | engineering_specification | ✅ | ✅ |  |
-| product_structure | bom_line | ❌ | ✅ | MVM only (stub or new) |
+| change_governance | certification_requirement | ✅ | ❌ | Excluded from MVM |
+| change_governance | design_review | ✅ | ❌ | Excluded from MVM |
+| change_governance | dfm_analysis | ✅ | ❌ | Excluded from MVM |
+| change_governance | dfmea | ✅ | ❌ | Excluded from MVM |
+| change_governance | ecn | ✅ | ❌ | Excluded from MVM |
+| change_governance | eco | ✅ | ✅ |  |
+| change_governance | engineering_project | ✅ | ❌ | Excluded from MVM |
+| change_governance | test_result | ✅ | ✅ |  |
+| change_management | eco_affected_item | ❌ | ✅ | MVM only (stub or new) |
+| development_initiatives | project | ❌ | ✅ | MVM only (stub or new) |
+| product_design | bom | ✅ | ✅ |  |
+| product_design | cad_model | ✅ | ✅ |  |
+| product_design | component | ✅ | ✅ |  |
+| product_design | component_installation | ✅ | ❌ | Excluded from MVM |
+| product_design | configuration_baseline | ✅ | ❌ | Excluded from MVM |
+| product_design | drawing | ✅ | ✅ |  |
+| product_design | engineering_bom_line | ✅ | ✅ |  |
+| product_design | engineering_revision | ✅ | ❌ | Excluded from MVM |
+| product_design | engineering_specification | ✅ | ✅ |  |
+| product_design | project_material_allocation | ✅ | ❌ | Excluded from MVM |
 | product_structure | revision | ❌ | ✅ | MVM only (stub or new) |
-| project_execution | project | ❌ | ✅ | MVM only (stub or new) |
-| project_execution | project_component_assignment | ❌ | ✅ | MVM only (stub or new) |
-| validation_testing | certification_requirement | ✅ | ❌ | Excluded from MVM |
-| validation_testing | component_installation | ✅ | ❌ | Excluded from MVM |
-| validation_testing | project_material_allocation | ✅ | ❌ | Excluded from MVM |
-| validation_testing | test_result | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-finance"></a>
 ### finance
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| capital_investment | capex_request | ✅ | ❌ | Domain not in MVM |
-| capital_investment | fixed_asset | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | allocation_cycle | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | allocation_rule | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | cost_allocation | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | cost_center | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | cost_element | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | cost_estimate | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | cost_object | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | internal_order | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | profit_center | ✅ | ❌ | Domain not in MVM |
-| controlling_structure | statistical_key_figure | ✅ | ❌ | Domain not in MVM |
-| ledger_accounting | business_partner | ✅ | ❌ | Domain not in MVM |
+| asset_treasury | bank_account | ✅ | ❌ | Domain not in MVM |
+| asset_treasury | business_partner | ✅ | ❌ | Domain not in MVM |
+| asset_treasury | fixed_asset | ✅ | ❌ | Domain not in MVM |
+| controlling_master | allocation_cycle | ✅ | ❌ | Domain not in MVM |
+| controlling_master | allocation_rule | ✅ | ❌ | Domain not in MVM |
+| controlling_master | cost_allocation | ✅ | ❌ | Domain not in MVM |
+| controlling_master | cost_center | ✅ | ❌ | Domain not in MVM |
+| controlling_master | cost_element | ✅ | ❌ | Domain not in MVM |
+| controlling_master | cost_estimate | ✅ | ❌ | Domain not in MVM |
+| controlling_master | cost_object | ✅ | ❌ | Domain not in MVM |
+| controlling_master | internal_order | ✅ | ❌ | Domain not in MVM |
+| controlling_master | profit_center | ✅ | ❌ | Domain not in MVM |
+| controlling_master | statistical_key_figure | ✅ | ❌ | Domain not in MVM |
 | ledger_accounting | chart_of_accounts | ✅ | ❌ | Domain not in MVM |
 | ledger_accounting | company_code | ✅ | ❌ | Domain not in MVM |
 | ledger_accounting | gl_account | ✅ | ❌ | Domain not in MVM |
@@ -292,30 +292,30 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | ledger_accounting | ledger | ✅ | ❌ | Domain not in MVM |
 | payables_receivables | ap_invoice | ✅ | ❌ | Domain not in MVM |
 | payables_receivables | ar_item | ✅ | ❌ | Domain not in MVM |
-| payables_receivables | bank_account | ✅ | ❌ | Domain not in MVM |
-| planning_forecasting | finance_budget | ✅ | ❌ | Domain not in MVM |
-| planning_forecasting | financial_plan | ✅ | ❌ | Domain not in MVM |
+| planning_budgeting | capex_request | ✅ | ❌ | Domain not in MVM |
+| planning_budgeting | finance_budget | ✅ | ❌ | Domain not in MVM |
+| planning_budgeting | financial_plan | ✅ | ❌ | Domain not in MVM |
 
 <a id="domain-inventory"></a>
 ### inventory
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
+| cycle_counting | cycle_count | ✅ | ✅ |  |
+| cycle_counting | cycle_count_line | ✅ | ❌ | Excluded from MVM |
 | material_control | lot_batch | ✅ | ✅ |  |
 | material_control | material_master | ✅ | ✅ |  |
 | material_control | quarantine_stock | ✅ | ❌ | Excluded from MVM |
-| material_control | serialized_unit | ✅ | ✅ |  |
+| material_control | serialized_unit | ✅ | ❌ | Excluded from MVM |
 | material_control | wip_stock | ✅ | ❌ | Excluded from MVM |
-| replenishment_planning | inventory_safety_stock_policy | ✅ | ❌ | Excluded from MVM |
-| replenishment_planning | kanban_card | ✅ | ❌ | Excluded from MVM |
-| replenishment_planning | replenishment_order | ✅ | ✅ |  |
-| stock_tracking | cycle_count | ✅ | ✅ |  |
-| stock_tracking | cycle_count_line | ✅ | ✅ |  |
-| stock_tracking | stock_balance | ✅ | ✅ |  |
-| stock_tracking | stock_movement | ✅ | ✅ |  |
-| stock_tracking | stock_valuation | ✅ | ❌ | Excluded from MVM |
+| movement_replenishment | kanban_card | ✅ | ❌ | Excluded from MVM |
+| movement_replenishment | replenishment_order | ✅ | ✅ |  |
+| movement_replenishment | stock_movement | ✅ | ✅ |  |
+| stock_valuation | inventory_safety_stock_policy | ✅ | ❌ | Excluded from MVM |
+| stock_valuation | stock_balance | ✅ | ✅ |  |
+| stock_valuation | stock_valuation | ✅ | ❌ | Excluded from MVM |
 | warehouse_management | control_cycle | ✅ | ❌ | Excluded from MVM |
-| warehouse_management | inventory_plant | ✅ | ❌ | Excluded from MVM |
+| warehouse_management | inventory_plant | ✅ | ✅ |  |
 | warehouse_management | stock_location | ✅ | ✅ |  |
 | warehouse_management | supply_area | ✅ | ❌ | Excluded from MVM |
 | warehouse_management | warehouse | ✅ | ✅ |  |
@@ -325,129 +325,131 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| carrier_management | carrier | ✅ | ✅ |  |
-| carrier_management | carrier_certification | ✅ | ❌ | Excluded from MVM |
-| carrier_management | carrier_contract | ✅ | ✅ |  |
-| carrier_management | freight_claim | ✅ | ❌ | Excluded from MVM |
-| carrier_management | freight_invoice | ✅ | ❌ | Excluded from MVM |
-| carrier_management | freight_rate | ✅ | ❌ | Excluded from MVM |
-| network_planning | lane | ✅ | ❌ | Excluded from MVM |
-| network_planning | node | ✅ | ❌ | Excluded from MVM |
-| network_planning | transport_route | ✅ | ✅ |  |
-| shipment_execution | bill_of_lading | ✅ | ✅ |  |
-| shipment_execution | delivery_appointment | ✅ | ❌ | Excluded from MVM |
-| shipment_execution | delivery_note | ✅ | ✅ |  |
-| shipment_execution | freight_order | ✅ | ✅ |  |
-| shipment_execution | inbound_delivery | ✅ | ✅ |  |
-| shipment_execution | load_plan | ✅ | ❌ | Excluded from MVM |
-| shipment_execution | shipment | ✅ | ✅ |  |
-| shipment_execution | shipment_leg | ✅ | ❌ | Excluded from MVM |
-| shipment_execution | shipment_tracking_event | ✅ | ❌ | Excluded from MVM |
-| trade_compliance | customs_broker | ✅ | ❌ | Excluded from MVM |
-| trade_compliance | customs_declaration | ✅ | ❌ | Excluded from MVM |
-| trade_compliance | dangerous_goods_declaration | ✅ | ❌ | Excluded from MVM |
-| trade_compliance | trade_compliance_record | ✅ | ❌ | Excluded from MVM |
+| carrier_network | carrier | ✅ | ❌ | Domain not in MVM |
+| carrier_network | carrier_certification | ✅ | ❌ | Domain not in MVM |
+| carrier_network | carrier_contract | ✅ | ❌ | Domain not in MVM |
+| carrier_network | lane | ✅ | ❌ | Domain not in MVM |
+| carrier_network | node | ✅ | ❌ | Domain not in MVM |
+| carrier_network | transport_route | ✅ | ❌ | Domain not in MVM |
+| freight_management | freight_claim | ✅ | ❌ | Domain not in MVM |
+| freight_management | freight_invoice | ✅ | ❌ | Domain not in MVM |
+| freight_management | freight_order | ✅ | ❌ | Domain not in MVM |
+| freight_management | freight_rate | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | bill_of_lading | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | delivery_appointment | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | delivery_note | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | inbound_delivery | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | load_plan | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | shipment | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | shipment_leg | ✅ | ❌ | Domain not in MVM |
+| shipment_execution | shipment_tracking_event | ✅ | ❌ | Domain not in MVM |
+| trade_compliance | customs_broker | ✅ | ❌ | Domain not in MVM |
+| trade_compliance | customs_declaration | ✅ | ❌ | Domain not in MVM |
+| trade_compliance | dangerous_goods_declaration | ✅ | ❌ | Domain not in MVM |
+| trade_compliance | trade_compliance_record | ✅ | ❌ | Domain not in MVM |
 
 <a id="domain-order"></a>
 ### order
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| fulfillment_execution | delivery | ✅ | ✅ |  |
-| fulfillment_execution | delivery_item | ✅ | ✅ |  |
-| fulfillment_execution | fulfillment_sla | ✅ | ✅ |  |
-| fulfillment_execution | goods_issue | ✅ | ✅ |  |
-| fulfillment_execution | proof_of_delivery | ✅ | ❌ | Excluded from MVM |
-| order_management | amendment | ✅ | ❌ | Excluded from MVM |
+| fulfillment_delivery | delivery | ✅ | ✅ |  |
+| fulfillment_delivery | delivery_item | ✅ | ✅ |  |
+| fulfillment_delivery | fulfillment_sla | ✅ | ❌ | Excluded from MVM |
+| fulfillment_delivery | goods_issue | ✅ | ✅ |  |
+| fulfillment_delivery | proof_of_delivery | ✅ | ❌ | Excluded from MVM |
+| fulfillment_execution | rma | ❌ | ✅ | MVM only (stub or new) |
+| lifecycle_planning | order_line | ✅ | ✅ |  |
 | order_management | blanket_order | ✅ | ❌ | Excluded from MVM |
 | order_management | blanket_order_release | ✅ | ❌ | Excluded from MVM |
-| order_management | condition_type | ✅ | ❌ | Excluded from MVM |
 | order_management | header | ❌ | ✅ | MVM only (stub or new) |
-| order_management | hold | ✅ | ❌ | Excluded from MVM |
-| order_management | line | ✅ | ✅ |  |
+| order_management | line | ✅ | ❌ | Excluded from MVM |
+| order_management | order_amendment | ✅ | ❌ | Excluded from MVM |
 | order_management | order_header | ✅ | ❌ | Excluded from MVM |
+| order_management | order_hold | ✅ | ❌ | Excluded from MVM |
 | order_management | order_status_event | ✅ | ❌ | Excluded from MVM |
-| order_management | pricing_condition | ✅ | ✅ |  |
 | order_management | schedule_line | ✅ | ✅ |  |
-| return_processing | rma | ❌ | ✅ | MVM only (stub or new) |
-| returns_processing | order_rma | ✅ | ❌ | Excluded from MVM |
-| returns_processing | rma_line | ✅ | ✅ |  |
+| returns_pricing | condition_type | ✅ | ❌ | Excluded from MVM |
+| returns_pricing | order_rma | ✅ | ❌ | Excluded from MVM |
+| returns_pricing | pricing_condition | ✅ | ✅ |  |
+| returns_pricing | rma_line | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-procurement"></a>
 ### procurement
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| invoice_management | invoice_line_item | ✅ | ❌ | Excluded from MVM |
-| invoice_management | spend_record | ✅ | ❌ | Excluded from MVM |
-| invoice_management | supplier_invoice | ✅ | ✅ |  |
-| purchase_execution | approval_workflow | ✅ | ❌ | Excluded from MVM |
-| purchase_execution | contract_release_order | ✅ | ✅ |  |
-| purchase_execution | po_line_item | ✅ | ✅ |  |
-| purchase_execution | procurement_goods_receipt | ✅ | ✅ |  |
-| purchase_execution | purchase_order | ✅ | ✅ |  |
-| purchase_execution | purchase_requisition | ✅ | ✅ |  |
-| purchase_execution | service_entry_sheet | ✅ | ❌ | Excluded from MVM |
-| sourcing_strategy | commodity_category | ✅ | ❌ | Excluded from MVM |
+| invoice_settlement | invoice_line_item | ✅ | ❌ | Excluded from MVM |
+| invoice_settlement | service_entry_sheet | ✅ | ❌ | Excluded from MVM |
+| invoice_settlement | spend_record | ✅ | ❌ | Excluded from MVM |
+| invoice_settlement | supplier_invoice | ✅ | ✅ |  |
+| order_fulfillment | goods_receipt | ❌ | ✅ | MVM only (stub or new) |
+| purchase_operations | approval_workflow | ✅ | ❌ | Excluded from MVM |
+| purchase_operations | contract_release_order | ✅ | ❌ | Excluded from MVM |
+| purchase_operations | po_line_item | ✅ | ✅ |  |
+| purchase_operations | procurement_goods_receipt | ✅ | ❌ | Excluded from MVM |
+| purchase_operations | purchase_order | ✅ | ✅ |  |
+| purchase_operations | purchase_requisition | ✅ | ✅ |  |
 | sourcing_strategy | procurement_contract | ✅ | ✅ |  |
-| sourcing_strategy | purchase_info_record | ✅ | ✅ |  |
 | sourcing_strategy | rfq | ✅ | ✅ |  |
-| sourcing_strategy | source_list | ✅ | ✅ |  |
 | sourcing_strategy | sourcing_event | ✅ | ❌ | Excluded from MVM |
 | sourcing_strategy | sourcing_strategy | ✅ | ❌ | Excluded from MVM |
 | sourcing_strategy | supplier_quotation | ✅ | ✅ |  |
+| supplier_master | commodity_category | ✅ | ❌ | Excluded from MVM |
+| supplier_master | purchase_info_record | ✅ | ❌ | Excluded from MVM |
+| supplier_master | source_list | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-product"></a>
 ### product
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| compliance_certification | order_line | ✅ | ✅ |  |
-| compliance_certification | product_certification | ✅ | ❌ | Excluded from MVM |
-| compliance_certification | supply_agreement | ✅ | ❌ | Excluded from MVM |
-| engineering_change | change_order | ✅ | ❌ | Excluded from MVM |
-| engineering_change | product_revision | ✅ | ❌ | Excluded from MVM |
-| engineering_change | product_specification | ✅ | ✅ |  |
-| product_master | catalog_entry | ✅ | ✅ |  |
-| product_master | classification | ✅ | ✅ |  |
-| product_master | family | ✅ | ✅ |  |
-| product_master | lifecycle_stage | ✅ | ✅ |  |
-| product_master | plant_data | ✅ | ✅ |  |
-| product_master | sku_master | ✅ | ✅ |  |
-| structure_configuration | bom_header | ✅ | ❌ | Excluded from MVM |
-| structure_configuration | bundle | ✅ | ❌ | Excluded from MVM |
-| structure_configuration | configuration | ✅ | ✅ |  |
-| structure_configuration | option_set | ✅ | ❌ | Excluded from MVM |
-| structure_configuration | product_bom_line | ✅ | ❌ | Excluded from MVM |
-| structure_configuration | substitution | ✅ | ❌ | Excluded from MVM |
+| assembly_structure | certification | ❌ | ✅ | MVM only (stub or new) |
+| catalog_management | bundle | ✅ | ❌ | Excluded from MVM |
+| catalog_management | catalog_entry | ✅ | ✅ |  |
+| catalog_management | classification | ✅ | ❌ | Excluded from MVM |
+| catalog_management | configuration | ✅ | ❌ | Excluded from MVM |
+| catalog_management | family | ✅ | ✅ |  |
+| catalog_management | option_set | ✅ | ❌ | Excluded from MVM |
+| catalog_management | sku_master | ✅ | ✅ |  |
+| catalog_management | substitution | ✅ | ❌ | Excluded from MVM |
+| engineering_structure | bom_header | ✅ | ✅ |  |
+| engineering_structure | change_order | ✅ | ❌ | Excluded from MVM |
+| engineering_structure | product_bom_line | ✅ | ✅ |  |
+| engineering_structure | product_certification | ✅ | ❌ | Excluded from MVM |
+| engineering_structure | product_revision | ✅ | ❌ | Excluded from MVM |
+| engineering_structure | product_specification | ✅ | ✅ |  |
+| lifecycle_planning | lifecycle_stage | ✅ | ✅ |  |
+| lifecycle_planning | plant_data | ✅ | ❌ | Excluded from MVM |
+| lifecycle_planning | supply_agreement | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-production"></a>
 ### production
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| resource_configuration | plant | ❌ | ✅ | MVM only (stub or new) |
-| resource_configuration | routing_tool_assignment | ❌ | ✅ | MVM only (stub or new) |
+| capacity_planning | calendar | ✅ | ❌ | Excluded from MVM |
+| capacity_planning | production_schedule | ✅ | ❌ | Excluded from MVM |
+| capacity_planning | shift | ✅ | ❌ | Excluded from MVM |
+| capacity_planning | shift_report | ✅ | ❌ | Excluded from MVM |
+| capacity_planning | shift_sequence | ✅ | ❌ | Excluded from MVM |
+| order_execution | run | ❌ | ✅ | MVM only (stub or new) |
+| planning_resources | schedule | ❌ | ✅ | MVM only (stub or new) |
 | resource_master | production_line | ✅ | ✅ |  |
-| resource_master | resource_tool | ✅ | ✅ |  |
+| resource_master | production_plant | ✅ | ✅ |  |
+| resource_master | resource_tool | ✅ | ❌ | Excluded from MVM |
 | resource_master | routing | ✅ | ✅ |  |
 | resource_master | version | ✅ | ❌ | Excluded from MVM |
 | resource_master | work_center | ✅ | ✅ |  |
 | resource_master | work_center_group | ✅ | ❌ | Excluded from MVM |
-| shift_planning | calendar | ✅ | ❌ | Excluded from MVM |
-| shift_planning | production_downtime_event | ✅ | ✅ |  |
-| shift_planning | production_schedule | ✅ | ✅ |  |
-| shift_planning | shift | ✅ | ✅ |  |
-| shift_planning | shift_report | ✅ | ❌ | Excluded from MVM |
-| shift_planning | shift_sequence | ✅ | ❌ | Excluded from MVM |
-| work_execution | bom_consumption | ✅ | ✅ |  |
-| work_execution | order_confirmation | ✅ | ❌ | Excluded from MVM |
-| work_execution | production_goods_receipt | ✅ | ✅ |  |
-| work_execution | production_plant | ✅ | ❌ | Excluded from MVM |
-| work_execution | production_work_order | ✅ | ✅ |  |
-| work_execution | run | ✅ | ❌ | Excluded from MVM |
-| work_execution | wip_lot | ✅ | ✅ |  |
-| work_execution | work_order_allocation | ✅ | ❌ | Excluded from MVM |
+| shop_execution | bom_consumption | ✅ | ✅ |  |
+| shop_execution | order_confirmation | ✅ | ✅ |  |
+| shop_execution | production_downtime_event | ✅ | ❌ | Excluded from MVM |
+| shop_execution | production_goods_receipt | ✅ | ❌ | Excluded from MVM |
+| shop_execution | production_run | ✅ | ❌ | Excluded from MVM |
+| shop_execution | production_work_order | ✅ | ✅ |  |
+| shop_execution | wip_lot | ✅ | ✅ |  |
+| shop_execution | work_order_allocation | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-project"></a>
 ### project
@@ -461,64 +463,70 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | cost_control | procurement_item | ✅ | ❌ | Domain not in MVM |
 | cost_control | project_budget | ✅ | ❌ | Domain not in MVM |
 | cost_control | settlement | ✅ | ❌ | Domain not in MVM |
-| delivery_closeout | commissioning_checklist | ✅ | ❌ | Domain not in MVM |
-| delivery_closeout | handover | ✅ | ❌ | Domain not in MVM |
-| delivery_closeout | project_contract | ✅ | ❌ | Domain not in MVM |
-| delivery_closeout | project_document | ✅ | ❌ | Domain not in MVM |
-| delivery_closeout | punch_list_item | ✅ | ❌ | Domain not in MVM |
+| cost_control | timesheet | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | commissioning_checklist | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | handover | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | progress_report | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | project_document | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | project_issue | ✅ | ❌ | Domain not in MVM |
+| delivery_execution | punch_list_item | ✅ | ❌ | Domain not in MVM |
 | project_governance | gate_review | ✅ | ❌ | Domain not in MVM |
-| project_governance | issue | ✅ | ❌ | Domain not in MVM |
-| project_governance | phase | ✅ | ❌ | Domain not in MVM |
-| project_governance | plan_version | ✅ | ❌ | Domain not in MVM |
 | project_governance | project_change_request | ✅ | ❌ | Domain not in MVM |
+| project_governance | project_contract | ✅ | ❌ | Domain not in MVM |
 | project_governance | project_header | ✅ | ❌ | Domain not in MVM |
+| project_governance | project_phase | ✅ | ❌ | Domain not in MVM |
 | project_governance | project_status_event | ✅ | ❌ | Domain not in MVM |
-| project_governance | wbs_element | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | activity | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | milestone | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | progress_report | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | resource_assignment | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | team_member | ✅ | ❌ | Domain not in MVM |
-| schedule_execution | timesheet | ✅ | ❌ | Domain not in MVM |
+| project_governance | team_member | ✅ | ❌ | Domain not in MVM |
+| schedule_planning | activity | ✅ | ❌ | Domain not in MVM |
+| schedule_planning | milestone | ✅ | ❌ | Domain not in MVM |
+| schedule_planning | plan_version | ✅ | ❌ | Domain not in MVM |
+| schedule_planning | resource_assignment | ✅ | ❌ | Domain not in MVM |
+| schedule_planning | wbs_element | ✅ | ❌ | Domain not in MVM |
 
 <a id="domain-quality"></a>
 ### quality
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| audit_assurance | audit_checklist | ✅ | ❌ | Excluded from MVM |
-| audit_assurance | audit_program | ✅ | ❌ | Excluded from MVM |
-| audit_assurance | quality_audit | ✅ | ❌ | Excluded from MVM |
-| audit_assurance | supplier_quality_audit | ✅ | ❌ | Excluded from MVM |
-| inspection_control | control_plan | ✅ | ✅ |  |
-| inspection_control | inspection_characteristic | ✅ | ✅ |  |
+| audit_management | audit_checklist | ✅ | ❌ | Excluded from MVM |
+| audit_management | audit_program | ✅ | ❌ | Excluded from MVM |
+| audit_management | quality_audit | ✅ | ❌ | Excluded from MVM |
+| audit_management | supplier_quality_audit | ✅ | ❌ | Excluded from MVM |
+| certification_compliance | certificate_of_conformance | ✅ | ✅ |  |
+| certification_compliance | compliance_test | ✅ | ✅ |  |
+| certification_compliance | measurement_system | ✅ | ❌ | Excluded from MVM |
+| inspection_control | inspection_characteristic | ✅ | ❌ | Excluded from MVM |
 | inspection_control | inspection_lot | ✅ | ✅ |  |
 | inspection_control | inspection_plan | ✅ | ✅ |  |
 | inspection_control | inspection_result | ✅ | ✅ |  |
-| inspection_control | measurement_system | ✅ | ❌ | Excluded from MVM |
-| inspection_control | spc | ✅ | ❌ | Excluded from MVM |
-| nonconformance_management | capa | ✅ | ✅ |  |
-| nonconformance_management | customer_complaint | ✅ | ✅ |  |
-| nonconformance_management | ncr | ✅ | ✅ |  |
-| nonconformance_management | notification | ✅ | ❌ | Excluded from MVM |
-| nonconformance_management | rma_disposition | ✅ | ✅ |  |
-| risk_planning | apqp_project | ✅ | ❌ | Excluded from MVM |
-| risk_planning | certificate_of_conformance | ✅ | ✅ |  |
-| risk_planning | compliance_test | ✅ | ❌ | Excluded from MVM |
-| risk_planning | fmea | ✅ | ✅ |  |
-| risk_planning | ppap_submission | ✅ | ✅ |  |
+| nonconformance_resolution | capa | ✅ | ✅ |  |
+| nonconformance_resolution | customer_complaint | ✅ | ✅ |  |
+| nonconformance_resolution | ncr | ✅ | ✅ |  |
+| nonconformance_resolution | notification | ✅ | ❌ | Excluded from MVM |
+| nonconformance_resolution | rma_disposition | ✅ | ❌ | Excluded from MVM |
+| process_assurance | apqp_project | ✅ | ❌ | Excluded from MVM |
+| process_assurance | control_plan | ✅ | ✅ |  |
+| process_assurance | fmea | ✅ | ❌ | Excluded from MVM |
+| process_assurance | ppap_submission | ✅ | ❌ | Excluded from MVM |
+| process_assurance | spc | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-sales"></a>
 ### sales
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
+| channel_performance | channel_partner | ✅ | ❌ | Excluded from MVM |
+| channel_performance | project_rep_assignment | ✅ | ❌ | Excluded from MVM |
+| channel_performance | quota | ✅ | ❌ | Excluded from MVM |
+| channel_performance | rep | ✅ | ✅ |  |
+| channel_performance | sales_team | ✅ | ❌ | Excluded from MVM |
+| channel_performance | territory | ✅ | ❌ | Excluded from MVM |
+| channel_performance | territory_assignment | ✅ | ❌ | Excluded from MVM |
 | contract_revenue | device_contract_assignment | ✅ | ❌ | Excluded from MVM |
 | contract_revenue | forecast | ✅ | ❌ | Excluded from MVM |
 | contract_revenue | order_intake | ✅ | ✅ |  |
 | contract_revenue | sales_contract | ✅ | ✅ |  |
-| partner_channels | campaign | ✅ | ❌ | Excluded from MVM |
-| partner_channels | channel_partner | ✅ | ❌ | Excluded from MVM |
+| pipeline_management | campaign | ✅ | ❌ | Excluded from MVM |
 | pipeline_management | opportunity | ✅ | ✅ |  |
 | pipeline_management | opportunity_component | ✅ | ❌ | Excluded from MVM |
 | pipeline_management | proposal | ✅ | ❌ | Excluded from MVM |
@@ -529,56 +537,52 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | quote_pricing | quote | ✅ | ✅ |  |
 | quote_pricing | quote_line | ✅ | ✅ |  |
 | quote_pricing | quote_template | ✅ | ❌ | Excluded from MVM |
-| territory_coverage | project_rep_assignment | ✅ | ❌ | Excluded from MVM |
-| territory_coverage | quota | ✅ | ❌ | Excluded from MVM |
-| territory_coverage | rep | ✅ | ✅ |  |
-| territory_coverage | sales_team | ✅ | ❌ | Excluded from MVM |
-| territory_coverage | territory | ✅ | ❌ | Excluded from MVM |
-| territory_coverage | territory_assignment | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-service"></a>
 ### service
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| asset_entitlement | installed_base | ✅ | ❌ | Domain not in MVM |
-| asset_entitlement | service_entitlement | ✅ | ❌ | Domain not in MVM |
-| asset_entitlement | service_pm_schedule | ✅ | ❌ | Domain not in MVM |
-| contract_coverage | contract_line | ✅ | ❌ | Domain not in MVM |
-| contract_coverage | service_contract | ✅ | ❌ | Domain not in MVM |
-| contract_coverage | service_contract_line | ✅ | ❌ | Domain not in MVM |
-| contract_coverage | service_warranty | ✅ | ❌ | Domain not in MVM |
-| field_operations | engineer | ✅ | ❌ | Domain not in MVM |
-| field_operations | engineer_assignment | ✅ | ❌ | Domain not in MVM |
-| field_operations | field_service_order | ✅ | ❌ | Domain not in MVM |
-| field_operations | part_consumption | ✅ | ❌ | Domain not in MVM |
-| field_operations | task_checklist | ✅ | ❌ | Domain not in MVM |
-| field_operations | zone | ✅ | ❌ | Domain not in MVM |
-| quality_improvement | satisfaction_survey | ✅ | ❌ | Domain not in MVM |
-| quality_improvement | service_capa_record | ✅ | ❌ | Domain not in MVM |
-| request_management | holiday_calendar | ✅ | ❌ | Domain not in MVM |
-| request_management | request | ✅ | ❌ | Domain not in MVM |
-| request_management | service_rma | ✅ | ❌ | Domain not in MVM |
-| request_management | sla_milestone | ✅ | ❌ | Domain not in MVM |
-| technical_support | bulletin | ✅ | ❌ | Domain not in MVM |
-| technical_support | knowledge_article | ✅ | ❌ | Domain not in MVM |
-| technical_support | remote_diagnostic_session | ✅ | ❌ | Domain not in MVM |
-| technical_support | service_center | ✅ | ❌ | Domain not in MVM |
+| agreement_management | entitlement | ❌ | ✅ | MVM only (stub or new) |
+| agreement_management | warranty | ❌ | ✅ | MVM only (stub or new) |
+| contract_entitlement | contract_line | ✅ | ❌ | Excluded from MVM |
+| contract_entitlement | service_contract | ✅ | ✅ |  |
+| contract_entitlement | service_contract_line | ✅ | ❌ | Excluded from MVM |
+| contract_entitlement | service_entitlement | ✅ | ❌ | Excluded from MVM |
+| contract_entitlement | service_pm_schedule | ✅ | ❌ | Excluded from MVM |
+| field_operations | engineer | ✅ | ✅ |  |
+| field_operations | engineer_assignment | ✅ | ❌ | Excluded from MVM |
+| field_operations | field_service_order | ✅ | ✅ |  |
+| field_operations | part_consumption | ✅ | ✅ |  |
+| field_operations | task_checklist | ✅ | ❌ | Excluded from MVM |
+| field_operations | zone | ✅ | ❌ | Excluded from MVM |
+| knowledge_support | bulletin | ✅ | ❌ | Excluded from MVM |
+| knowledge_support | holiday_calendar | ✅ | ❌ | Excluded from MVM |
+| knowledge_support | knowledge_article | ✅ | ❌ | Excluded from MVM |
+| knowledge_support | service_center | ✅ | ❌ | Excluded from MVM |
+| request_management | remote_diagnostic_session | ✅ | ❌ | Excluded from MVM |
+| request_management | request | ✅ | ✅ |  |
+| request_management | satisfaction_survey | ✅ | ❌ | Excluded from MVM |
+| request_management | service_capa_record | ✅ | ❌ | Excluded from MVM |
+| request_management | sla_milestone | ✅ | ❌ | Excluded from MVM |
+| warranty_coverage | installed_base | ✅ | ✅ |  |
+| warranty_coverage | service_rma | ✅ | ❌ | Excluded from MVM |
+| warranty_coverage | service_warranty | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-supplier"></a>
 ### supplier
 
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
-| audit_findings | supplier_audit | ✅ | ❌ | Domain not in MVM |
-| audit_findings | supplier_audit_finding | ✅ | ❌ | Domain not in MVM |
-| performance_risk | risk_rating | ✅ | ❌ | Domain not in MVM |
-| performance_risk | scorecard | ✅ | ❌ | Domain not in MVM |
-| qualification_development | change_notification | ✅ | ❌ | Domain not in MVM |
-| qualification_development | corrective_action | ✅ | ❌ | Domain not in MVM |
-| qualification_development | development_plan | ✅ | ❌ | Domain not in MVM |
-| qualification_development | qualification | ✅ | ❌ | Domain not in MVM |
-| qualification_development | supplier_onboarding | ✅ | ❌ | Domain not in MVM |
+| corrective_development | change_notification | ✅ | ❌ | Domain not in MVM |
+| corrective_development | corrective_action | ✅ | ❌ | Domain not in MVM |
+| corrective_development | development_plan | ✅ | ❌ | Domain not in MVM |
+| corrective_development | supplier_onboarding | ✅ | ❌ | Domain not in MVM |
+| performance_quality | qualification | ✅ | ❌ | Domain not in MVM |
+| performance_quality | risk_rating | ✅ | ❌ | Domain not in MVM |
+| performance_quality | scorecard | ✅ | ❌ | Domain not in MVM |
+| performance_quality | supplier_audit | ✅ | ❌ | Domain not in MVM |
+| performance_quality | supplier_audit_finding | ✅ | ❌ | Domain not in MVM |
 | vendor_master | agreement | ✅ | ❌ | Domain not in MVM |
 | vendor_master | approved_vendor_list | ✅ | ❌ | Domain not in MVM |
 | vendor_master | site | ✅ | ❌ | Domain not in MVM |
@@ -593,28 +597,29 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | Subdomain | Product | ECM | MVM | Notes |
 |---|---|:---:|:---:|---|
 | demand_planning | demand_forecast | ✅ | ✅ |  |
-| demand_planning | demand_plan_version | ✅ | ✅ |  |
+| demand_planning | demand_plan_version | ✅ | ❌ | Excluded from MVM |
+| demand_planning | material_requirement | ✅ | ✅ |  |
 | demand_planning | mrp_run | ✅ | ✅ |  |
-| demand_planning | plan | ✅ | ✅ |  |
+| demand_planning | planned_order | ✅ | ✅ |  |
 | demand_planning | sop_cycle | ✅ | ❌ | Excluded from MVM |
-| inventory_positioning | allocation | ✅ | ❌ | Excluded from MVM |
-| inventory_positioning | inventory_position | ✅ | ❌ | Excluded from MVM |
-| inventory_positioning | replenishment_proposal | ✅ | ❌ | Excluded from MVM |
-| inventory_positioning | supply_safety_stock_policy | ✅ | ❌ | Excluded from MVM |
+| inventory_replenishment | allocation | ✅ | ❌ | Excluded from MVM |
+| inventory_replenishment | inventory_position | ✅ | ❌ | Excluded from MVM |
+| inventory_replenishment | replenishment_proposal | ✅ | ❌ | Excluded from MVM |
+| inventory_replenishment | supply_safety_stock_policy | ✅ | ❌ | Excluded from MVM |
 | network_configuration | moq_constraint | ✅ | ❌ | Excluded from MVM |
 | network_configuration | network_node | ✅ | ❌ | Excluded from MVM |
-| network_configuration | planning_calendar | ✅ | ❌ | Excluded from MVM |
-| network_configuration | planning_parameter | ✅ | ❌ | Excluded from MVM |
 | network_configuration | sourcing_rule | ✅ | ✅ |  |
-| sourcing_policy | safety_stock_policy | ❌ | ✅ | MVM only (stub or new) |
-| supply_execution | aps_scenario | ✅ | ❌ | Excluded from MVM |
-| supply_execution | aps_schedule | ✅ | ❌ | Excluded from MVM |
-| supply_execution | capacity_plan | ✅ | ❌ | Excluded from MVM |
-| supply_execution | material_requirement | ✅ | ✅ |  |
-| supply_execution | planned_order | ✅ | ✅ |  |
-| supply_execution | planning_exception | ✅ | ❌ | Excluded from MVM |
-| supply_execution | risk_register | ✅ | ❌ | Excluded from MVM |
-| supply_execution | supply_plant | ✅ | ❌ | Excluded from MVM |
+| network_configuration | supply_plant | ✅ | ✅ |  |
+| planning_execution | order_pegging | ❌ | ✅ | MVM only (stub or new) |
+| sourcing_configuration | plan | ❌ | ✅ | MVM only (stub or new) |
+| supply_scheduling | aps_scenario | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | aps_schedule | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | capacity_plan | ✅ | ✅ |  |
+| supply_scheduling | planning_calendar | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | planning_exception | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | planning_parameter | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | risk_register | ✅ | ❌ | Excluded from MVM |
+| supply_scheduling | supply_plan | ✅ | ❌ | Excluded from MVM |
 
 <a id="domain-workforce"></a>
 ### workforce
@@ -627,11 +632,7 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | employee_records | labor_agreement | ✅ | ❌ | Domain not in MVM |
 | employee_records | org_unit | ✅ | ❌ | Domain not in MVM |
 | employee_records | position | ✅ | ❌ | Domain not in MVM |
-| employee_records | requisition | ✅ | ❌ | Domain not in MVM |
-| learning_development | certification_type | ✅ | ❌ | Domain not in MVM |
-| learning_development | performance_review | ✅ | ❌ | Domain not in MVM |
-| learning_development | training_course | ✅ | ❌ | Domain not in MVM |
-| learning_development | workforce_certification | ✅ | ❌ | Domain not in MVM |
+| employee_records | workforce_certification | ✅ | ❌ | Domain not in MVM |
 | payroll_benefits | benefit_plan | ✅ | ❌ | Domain not in MVM |
 | payroll_benefits | payroll_period | ✅ | ❌ | Domain not in MVM |
 | payroll_benefits | payroll_result | ✅ | ❌ | Domain not in MVM |
@@ -639,3 +640,7 @@ The ECM includes all domains from the MVM plus additional **Corporate/Supporting
 | shift_planning | shift_pattern | ✅ | ❌ | Domain not in MVM |
 | shift_planning | shift_schedule | ✅ | ❌ | Domain not in MVM |
 | shift_planning | time_entry | ✅ | ❌ | Domain not in MVM |
+| talent_acquisition | certification_type | ✅ | ❌ | Domain not in MVM |
+| talent_acquisition | performance_review | ✅ | ❌ | Domain not in MVM |
+| talent_acquisition | requisition | ✅ | ❌ | Domain not in MVM |
+| talent_acquisition | training_course | ✅ | ❌ | Domain not in MVM |

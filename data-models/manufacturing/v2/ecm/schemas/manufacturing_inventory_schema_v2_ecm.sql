@@ -1,5 +1,5 @@
--- Schema for Domain: inventory | Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:32
+-- Schema for Domain: inventory | Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:59:01
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`inventory` COMMENT 'Inventory and warehouse management domain governing raw materials, WIP, finished goods, SKUs, lot/batch tracking, bin locations, cycle counts, stock movements, JIT inventory control, safety stock optimization, and material handling across all facilities. Integrates SAP WM and Microsoft Dynamics 365 SCM for real-time stock visibility and MRP-driven replenishment.';
@@ -22,13 +22,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` (
     `capacity_pallet_positions` STRING COMMENT 'Number of standard pallet positions that can be stored in this location. Used for pallet storage locations to calculate available capacity and optimize warehouse space utilization. Assumes standard pallet dimensions (e.g., 1200mm x 1000mm EUR pallet or 1219mm x 1016mm North American pallet).',
     `capacity_volume_m3` DECIMAL(18,2) COMMENT 'Maximum volumetric capacity of the storage location measured in cubic meters. Used for space utilization analysis, slotting optimization, and warehouse capacity planning. Constrains the physical size of materials that can be stored in this location.',
     `capacity_weight_kg` DECIMAL(18,2) COMMENT 'Maximum weight capacity of the storage location measured in kilograms. Enforces structural load limits for racks and shelves. Critical for safety compliance and preventing equipment damage. Used in slotting algorithms to match heavy materials with appropriate locations.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_date` DATE COMMENT 'Date when this storage location record was initially created in the warehouse management system. Used for master data audit trails, location lifecycle tracking, and warehouse expansion analysis.',
     `cycle_count_frequency` STRING COMMENT 'Frequency at which this storage location is scheduled for cycle counting inventory verification. High-value or high-velocity locations typically have higher cycle count frequencies. Used to generate cycle count schedules and ensure inventory accuracy per ISO 9001 quality management requirements.. Valid values are `daily|weekly|monthly|quarterly|annual|on_demand`',
     `deactivation_date` DATE COMMENT 'Date when this storage location was deactivated or retired from operational use. Deactivated locations are no longer available for material placement but may retain historical inventory transaction data. Used for warehouse reconfiguration tracking and capacity planning analysis.',
     `fifo_enforced` BOOLEAN COMMENT 'Boolean flag indicating whether this location enforces First In First Out (FIFO) inventory rotation. FIFO ensures older materials are consumed before newer materials, critical for perishable goods, time-sensitive components, and materials with shelf-life constraints. Used by warehouse management systems (WMS) to generate FIFO-compliant pick instructions.',
     `fire_zone` STRING COMMENT 'Fire safety zone identifier for this storage location. Fire zones group locations by fire suppression system coverage and emergency response protocols. Critical for safety compliance, emergency planning, and hazardous material segregation per OSHA and NFPA standards.. Valid values are `^[A-Z0-9]{1,10}$`',
-    `hazmat_approved` BOOLEAN COMMENT '',
     `humidity_controlled` BOOLEAN COMMENT 'Boolean flag indicating whether this location maintains controlled humidity levels. Humidity control is critical for materials susceptible to moisture damage, corrosion, or degradation such as electronics, metal components, and hygroscopic materials.',
     `humidity_max_percent` DECIMAL(18,2) COMMENT 'Maximum allowable relative humidity percentage for this storage location. Enforces upper humidity boundary to prevent condensation, corrosion, or mold growth. Typically ranges from 50% to 70% for general storage, lower for electronics.',
     `humidity_min_percent` DECIMAL(18,2) COMMENT 'Minimum allowable relative humidity percentage for this storage location. Enforces lower humidity boundary to prevent static electricity buildup or material desiccation. Typically ranges from 20% to 40% for electronics and sensitive components.',
@@ -42,7 +40,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` (
     `location_type` STRING COMMENT 'Classification of the storage location based on its operational purpose within the warehouse. Bulk locations store large quantities, pick locations support order fulfillment, reserve locations hold overflow inventory, staging areas facilitate material movement, quarantine zones isolate non-conforming materials, and cross-dock areas enable direct transfer without storage. [ENUM-REF-CANDIDATE: bulk|pick|reserve|staging|receiving|shipping|quarantine|rework|scrap|kitting|cross_dock — 11 candidates stripped; promote to reference product]',
     `lot_control_required` BOOLEAN COMMENT 'Boolean flag indicating whether materials stored in this location must be tracked by lot or batch number. Lot control is mandatory for materials subject to traceability requirements, expiration date management, or quality recall procedures per ISO 9001 and industry-specific regulations.',
     `mixed_sku_allowed` BOOLEAN COMMENT 'Boolean flag indicating whether this location can store multiple different SKUs simultaneously. Single-SKU locations simplify picking and inventory accuracy but reduce space utilization. Mixed-SKU locations increase storage density but require more sophisticated inventory tracking and picking processes.',
-    `modified_at` TIMESTAMP COMMENT '',
     `modified_date` DATE COMMENT 'Date when this storage location record was last modified. Tracks changes to location attributes such as capacity, status, or environmental requirements. Used for change management, audit compliance, and data quality monitoring.',
     `notes` STRING COMMENT 'Free-text field for additional notes, special instructions, or operational comments about this storage location. May include information about structural issues, access restrictions, special handling requirements, or temporary operational changes not captured in structured fields.',
     `pick_sequence` STRING COMMENT 'Numeric sequence number used to optimize picking routes within the warehouse. Lower numbers indicate locations that should be visited earlier in the pick path. Used by warehouse management systems (WMS) to generate efficient pick lists and minimize travel distance for order fulfillment.',
@@ -64,6 +61,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` (
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Warehouse Operations process requires a designated manager for each warehouse; manager appears on safety and performance reports, making the link essential.',
     `node_id` BIGINT COMMENT 'Foreign key linking to logistics.logistics_node. Business justification: Warehouse is a physical node in the supply‑chain network; linking supports route optimization and carrier‑selection decision models.',
     `inventory_plant_id` BIGINT COMMENT 'Foreign key linking to inventory.plant. Business justification: Warehouse belongs to a plant; adding plant_id enables hierarchy without creating a cycle.',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Warehouse operations must comply with permits and safety standards; linking warehouses to regulatory requirements enables compliance tracking per facility.',
     `network_node_id` BIGINT COMMENT 'Foreign key linking to supply.network_node. Business justification: REGIONAL CAPACITY PLANNING: ties warehouses to supply‑chain nodes to allocate inventory across the network.',
     `active_from_date` DATE COMMENT 'Date when the warehouse facility became operational and available for inventory storage. Marks the start of the facility lifecycle.',
     `active_to_date` DATE COMMENT 'Date when the warehouse facility ceased operations or was decommissioned. Null for currently active facilities. Used for historical reporting and capacity planning.',
@@ -76,7 +74,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` (
     `contact_email` STRING COMMENT 'Primary email address for warehouse operational communication. Used for shipment notifications, inventory alerts, and administrative correspondence.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `contact_phone` STRING COMMENT 'Primary contact phone number for the warehouse facility. Used for carrier coordination, emergency contact, and operational communication.',
     `country_code` STRING COMMENT 'Three-letter ISO country code identifying the country where the warehouse is located. Used for customs, tax, and regulatory compliance.. Valid values are `^[A-Z]{3}$`',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the warehouse master record was first created in the system. Used for data lineage and audit trail.',
     `customs_bonded_flag` BOOLEAN COMMENT 'Indicates whether the warehouse is a customs-bonded facility authorized to store imported goods before duty payment. Critical for international supply chain and duty deferral strategies.',
     `erp_plant_code` STRING COMMENT 'ERP system plant code associated with this warehouse. Links warehouse to manufacturing plant in SAP S/4HANA for MRP and production planning integration.',
@@ -90,12 +87,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` (
     `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate of the warehouse facility. Used for logistics optimization, route planning, and TMS integration.',
     `lease_expiration_date` DATE COMMENT 'Date when the warehouse lease agreement expires. Null for owned facilities. Used for facility planning and contract renewal management.',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the warehouse facility. Used for logistics optimization, route planning, and TMS integration.',
-    `modified_at` TIMESTAMP COMMENT '',
     `warehouse_name` STRING COMMENT 'Full business name of the warehouse facility. Human-readable identifier used in operational documentation and reporting.',
     `number_of_loading_docks` STRING COMMENT 'Total count of loading and unloading dock positions. Determines receiving and shipping throughput capacity.',
     `number_of_storage_bins` STRING COMMENT 'Total count of discrete storage bin locations within the warehouse. Used for bin location management and inventory tracking granularity in SAP WM.',
     `operating_hours_description` STRING COMMENT 'Textual description of standard operating hours and shift patterns (e.g., 24/7, Monday-Friday 8am-5pm, Three-shift operation). Used for carrier scheduling and labor planning.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current operational state of the warehouse facility. Determines availability for inventory allocation and order fulfillment operations.',
+    `operational_status` STRING COMMENT 'Current operational state of the warehouse facility. Determines availability for inventory allocation and order fulfillment operations.. Valid values are `active|inactive|under_construction|decommissioned|seasonal|maintenance`',
     `ownership_type` STRING COMMENT 'Classification of warehouse ownership model. Determines financial accounting treatment, CapEx vs OpEx allocation, and operational control level.. Valid values are `owned|leased|third_party_logistics|contract_warehouse`',
     `postal_code` STRING COMMENT 'Postal or ZIP code for the warehouse facility address. Used for logistics routing and carrier integration.',
     `record_source_system` STRING COMMENT 'Identifier of the source system that created or owns this warehouse master record (e.g., SAP_S4HANA, DYNAMICS_365_SCM, MDM). Used for data lineage and system-of-record identification.',
@@ -121,7 +117,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` (
     `abc_indicator` STRING COMMENT 'ABC classification for inventory management prioritization. A items are high-value requiring tight control, B items are moderate-value, C items are low-value with relaxed controls. Used for cycle counting frequency and safety stock strategies.. Valid values are `A|B|C`',
     `base_unit_of_measure` STRING COMMENT 'Primary unit in which the material is managed in inventory and production. Examples: EA (each), KG (kilogram), L (liter), M (meter). All stock quantities are maintained in this unit.. Valid values are `^[A-Z]{2,3}$`',
     `batch_management_indicator` BOOLEAN COMMENT 'Flag indicating whether the material requires batch or lot tracking. When active, all inventory transactions must reference a batch number for full traceability and quality control.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_date` DATE COMMENT 'Date when the material master record was first created in the system. Used for audit trail and material lifecycle tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO currency code for material valuation. Examples: USD, EUR, GBP. All prices and values are maintained in this currency.. Valid values are `^[A-Z]{3}$`',
     `dimension_unit` STRING COMMENT 'Unit of measure for length, width, and height dimensions. Examples: MM (millimeter), CM (centimeter), M (meter), IN (inch).. Valid values are `^[A-Z]{2,3}$`',
@@ -145,19 +140,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` (
     `maximum_lot_size` DECIMAL(18,2) COMMENT 'Maximum quantity that can be ordered or produced in a single transaction. Constrained by storage capacity, shelf life, or supplier limitations.',
     `minimum_lot_size` DECIMAL(18,2) COMMENT 'Minimum quantity that must be ordered or produced in a single transaction. Driven by supplier MOQ (Minimum Order Quantity) or production setup constraints.',
     `minimum_remaining_shelf_life_days` STRING COMMENT 'Minimum remaining shelf life required at goods receipt. Materials with less remaining shelf life are rejected. Ensures adequate usable life for production and customer delivery.',
-    `modified_at` TIMESTAMP COMMENT '',
     `moving_average_price` DECIMAL(18,2) COMMENT 'Weighted average cost per base unit of measure, recalculated with each goods receipt. Used when price control is set to moving average price.',
     `mrp_type` STRING COMMENT 'MRP procedure code controlling how the material is planned. Determines reorder point planning, forecast-based planning, or time-phased planning methods.. Valid values are `^[A-Z0-9]{2,4}$`',
     `net_weight` DECIMAL(18,2) COMMENT 'Weight of the material itself excluding packaging. Used for production planning, yield calculations, and material consumption tracking.',
     `planned_delivery_time_days` STRING COMMENT 'Expected lead time in days from order placement to goods receipt. Used by MRP to calculate order release dates. Includes supplier lead time and internal processing time.',
-    `price_control_indicator` DECIMAL(18,2) COMMENT 'Defines material valuation method. S = standard price (fixed cost), V = moving average price (recalculated with each goods receipt). Determines inventory valuation approach.',
-    `price_unit` DECIMAL(18,2) COMMENT 'Quantity unit for which the price is maintained. Example: if price is $100 per 1000 units, price unit is 1000. Allows fractional pricing for low-cost materials.',
+    `price_control_indicator` STRING COMMENT 'Defines material valuation method. S = standard price (fixed cost), V = moving average price (recalculated with each goods receipt). Determines inventory valuation approach.. Valid values are `S|V`',
+    `price_unit` STRING COMMENT 'Quantity unit for which the price is maintained. Example: if price is $100 per 1000 units, price unit is 1000. Allows fractional pricing for low-cost materials.',
     `procurement_type` STRING COMMENT 'Defines whether the material is manufactured internally, purchased externally, or both. Controls MRP (Material Requirements Planning) logic and sourcing decisions.. Valid values are `in_house_production|external_procurement|both`',
     `product_hierarchy` STRING COMMENT 'Multi-level classification structure organizing materials into product families and categories. Used for sales reporting, forecasting, and product portfolio management.. Valid values are `^[A-Z0-9]{5,18}$`',
     `reorder_point` DECIMAL(18,2) COMMENT 'Inventory level that triggers automatic replenishment. When stock falls below this level, MRP generates procurement proposals. Critical for JIT (Just In Time) inventory control.',
     `safety_stock` DECIMAL(18,2) COMMENT 'Minimum inventory buffer maintained to protect against demand variability and supply disruptions. Never falls below this level under normal planning. Used in safety stock optimization algorithms.',
     `serial_number_profile` STRING COMMENT 'Configuration code defining serial number management requirements. Determines whether material requires unique serial number tracking for traceability, warranty, and asset management.. Valid values are `^[A-Z0-9]{4}$`',
-    `shelf_life_expiration_days` DECIMAL(18,2) COMMENT 'Total shelf life of the material from production or goods receipt date. After this period, material expires and cannot be used. Critical for perishable materials and chemicals.',
+    `shelf_life_expiration_days` STRING COMMENT 'Total shelf life of the material from production or goods receipt date. After this period, material expires and cannot be used. Critical for perishable materials and chemicals.',
     `standard_price` DECIMAL(18,2) COMMENT 'Fixed valuation price per base unit of measure. Used when price control is set to standard price. Updated periodically through cost accounting processes.',
     `storage_conditions` STRING COMMENT 'Required environmental conditions for material storage. Examples: temperature range, humidity control, light protection, hazardous material segregation. Used for warehouse bin assignment and handling instructions.',
     `temperature_conditions` STRING COMMENT 'Specific temperature range requirements for storage and transportation. Examples: ambient, refrigerated (2-8°C), frozen (-20°C), controlled room temperature (15-25°C).',
@@ -186,7 +180,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` (
     `batch_number` STRING COMMENT 'Batch or lot number for batch-managed materials. Used for traceability and quality control. Null for non-batch-managed materials.',
     `blocked_reason_code` STRING COMMENT 'Code indicating the reason why stock is blocked from use. Examples include quality hold, pending investigation, customer return, damaged goods, regulatory hold. Null if stock is not blocked.',
     `consignment_indicator` BOOLEAN COMMENT 'Flag indicating whether this stock is consignment stock owned by the supplier but held at the customer location. True for consignment stock; false for own stock.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this stock balance record was first created in the system. Used for audit trail and data lineage tracking.',
     `expiration_date` DATE COMMENT 'Date after which the material should not be used due to shelf life limitations. Applicable for perishable materials, chemicals, and time-sensitive components. Null for non-expiring materials.',
     `inventory_turnover_days` STRING COMMENT 'Average number of days this material remains in stock before being consumed or sold. Calculated as (quantity on hand / average daily usage). Used for inventory performance KPI tracking.',
@@ -194,7 +187,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` (
     `last_goods_issue_date` DATE COMMENT 'Date of the most recent goods issue transaction that decreased stock for this material at this location. Used for inventory turnover analysis.',
     `last_goods_receipt_date` DATE COMMENT 'Date of the most recent goods receipt transaction that increased stock for this material at this location. Used for inventory aging analysis.',
     `last_physical_count_date` DATE COMMENT 'Date of the most recent physical inventory count or cycle count performed for this material at this location. Used to track count frequency and compliance.',
-    `last_updated_at` TIMESTAMP COMMENT '',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Date and time when this stock balance record was last modified. Updated with each stock movement transaction. Used for change tracking and data freshness monitoring.',
     `manufacture_date` DATE COMMENT 'Date when the material or batch was manufactured or produced. Used for traceability and shelf life calculations. Applicable for batch-managed materials.',
     `maximum_stock_level` DECIMAL(18,2) COMMENT 'Upper limit for stock quantity to prevent overstocking and excess inventory carrying costs. Used in inventory optimization and replenishment planning.',
@@ -237,7 +229,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`lot_batch` (
     `batch_number` STRING COMMENT 'The unique alphanumeric identifier assigned to this specific lot or batch. This is the externally-known business identifier used across procurement, production, quality, and shipment processes.. Valid values are `^[A-Z0-9]{6,20}$`',
     `batch_status` STRING COMMENT 'Current lifecycle status of the batch indicating its usability. Unrestricted: available for use; Quality Inspection: under QA review; Restricted: limited use with approval; Blocked: not available for use due to quality or compliance issues.. Valid values are `unrestricted|quality_inspection|restricted|blocked`',
     `blocked_quantity` DECIMAL(18,2) COMMENT 'The quantity of this batch that is blocked and not available for any use. Set when batch fails quality inspection or is subject to hold for investigation per CAPA or NCR processes.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_by_user` STRING COMMENT 'The user ID or username of the person who created this batch record. Audit field for accountability and data governance.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this batch record was first created in the system. Audit field for data lineage and record lifecycle tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the batch cost amount. Typically the company code currency for manufactured batches or purchase order currency for procured batches.. Valid values are `^[A-Z]{3}$`',
@@ -249,7 +240,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`lot_batch` (
     `last_modified_by_user` STRING COMMENT 'The user ID or username of the person who last modified this batch record. Audit field for accountability and change management.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this batch record was last updated. Audit field for change tracking and data quality monitoring.',
     `manufacturing_date` DATE COMMENT 'The date on which this batch was produced or manufactured. Critical for shelf life calculation, expiry determination, and lot traceability per ISO 9001 and PPAP requirements.',
-    `modified_at` TIMESTAMP COMMENT '',
     `origin_country_code` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code indicating the country of origin for this batch. Required for customs, trade compliance, and country-of-origin labeling.. Valid values are `^[A-Z]{3}$`',
     `quality_certificate_number` STRING COMMENT 'The certificate number or document identifier for the quality certificate issued for this batch. Required for customer shipments and regulatory compliance documentation.',
     `quality_decision` STRING COMMENT 'The final quality decision for this batch based on inspection results. Accepted: meets all specifications; Rejected: fails quality criteria; Conditional: accepted with restrictions; Pending: awaiting inspection completion.. Valid values are `accepted|rejected|conditional|pending`',
@@ -281,7 +271,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` (
     `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: Link stock movement to its source location for traceability; replace free‑text code with FK.',
     `supplier_id` BIGINT COMMENT 'Foreign key reference to the supplier when this movement is a goods receipt from external procurement.',
     `batch_number` STRING COMMENT 'Lot or batch number for batch-managed materials, enabling traceability for quality control, expiration management, and recall scenarios.. Valid values are `^[A-Z0-9]{10}$`',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this stock movement record was first created in the system.',
     `destination_bin_location` STRING COMMENT 'Specific bin, shelf, or warehouse location identifier to which the material was placed or moved.',
     `destination_storage_location_code` STRING COMMENT 'For transfer movements, the receiving storage location to which the material was moved.. Valid values are `^[A-Z0-9]{4}$`',
@@ -337,13 +326,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` (
     `count_type` STRING COMMENT 'Classification of the cycle count event. Defines the counting methodology and business purpose (ABC-based frequency, annual compliance, variance investigation, or continuous counting program).. Valid values are `ABC Cycle|Annual Physical|Ad-Hoc Recount|Spot Count|Blind Count|Perpetual Inventory`',
     `count_zone` STRING COMMENT 'Physical zone or area within the warehouse designated for this count. Used to organize counting activities by geographic sections or material groupings.',
     `counter_name` STRING COMMENT 'Full name of the employee who performed the physical count. Used for operational visibility and audit trail.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the cycle count record was first created in the system. Audit field for record lifecycle tracking.',
     `fiscal_year` STRING COMMENT 'Fiscal year in which the cycle count was performed. Used for annual physical inventory compliance and year-over-year accuracy trending.',
     `freeze_book_inventory_flag` BOOLEAN COMMENT 'Indicates whether book inventory was frozen (locked from transactions) during the count to ensure data integrity. True=frozen, False=not frozen.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when the cycle count record was last updated. Audit field for tracking record changes and data currency.',
     `material_document_number` STRING COMMENT 'SAP Material Management (MM) document number generated when inventory adjustments are posted. Links cycle count to inventory movement transactions.. Valid values are `^[0-9]{10}$`',
-    `modified_at` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free-text notes or comments about the cycle count event. Used to document unusual conditions, issues encountered, or explanations for variances.',
     `planned_count_date` DATE COMMENT 'The originally scheduled date for the cycle count. Used to track adherence to ABC cycle count schedules and annual physical inventory calendars.',
     `posting_date` DATE COMMENT 'Accounting date when inventory adjustments from this count were posted to the financial ledger. May differ from count_date for period-end controls.',
@@ -352,7 +339,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` (
     `recount_reason` STRING COMMENT 'Business reason or justification for requiring a recount. Populated when recount_required_flag is True.',
     `recount_required_flag` BOOLEAN COMMENT 'Indicates whether a recount is required due to significant variances exceeding tolerance thresholds. True=recount needed, False=count accepted.',
     `tolerance_percentage` DECIMAL(18,2) COMMENT 'Acceptable variance threshold as a percentage of book quantity. Variances within tolerance may auto-approve; exceeding tolerance triggers recount or management review.',
-    `total_items_counted` DECIMAL(18,2) COMMENT 'Total number of distinct Stock Keeping Units (SKUs) or material numbers included in this cycle count event.',
+    `total_items_counted` STRING COMMENT 'Total number of distinct Stock Keeping Units (SKUs) or material numbers included in this cycle count event.',
     `total_variance_quantity` DECIMAL(18,2) COMMENT 'Aggregate quantity variance across all materials in this count (sum of absolute differences between book and physical quantities). Measured in base unit of measure.',
     `total_variance_value` DECIMAL(18,2) COMMENT 'Aggregate financial value of inventory variances in this count. Calculated as sum of (variance quantity × standard cost) across all materials. Used for materiality assessment and financial impact analysis.',
     `variance_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the total variance value. Typically plant or company code default currency.. Valid values are `^[A-Z]{3}$`',
@@ -364,6 +351,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` (
     `cycle_count_line_id` BIGINT COMMENT 'Unique identifier for the cycle count line item. Primary key for the cycle count line entity.',
     `cycle_count_id` BIGINT COMMENT 'Foreign key reference to the parent cycle count document header. Links this line item to its containing cycle count execution.',
     `material_master_id` BIGINT COMMENT 'Foreign key reference to the material master record being counted. Identifies the specific Stock Keeping Unit (SKU) or raw material subject to physical verification.',
+    `plant_data_id` BIGINT COMMENT 'Foreign key reference to the manufacturing plant or facility where the cycle count is being performed. Supports multi-site inventory management and consolidation.',
     `employee_id` BIGINT COMMENT 'Foreign key reference to the warehouse employee who performed the physical count. Enables accountability and audit trail per ISO 9001 quality management requirements.',
     `stock_location_id` BIGINT COMMENT 'Foreign key reference to the storage location where the material is physically located. Represents the warehouse or plant-level storage area.',
     `accounting_document_number` STRING COMMENT 'Reference number of the financial accounting document generated when the variance was posted. Links the physical inventory adjustment to General Ledger (GL) entries in SAP Financial Accounting (FI).',
@@ -373,7 +361,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` (
     `count_status` STRING COMMENT 'Current lifecycle status of this cycle count line item. Tracks progression from initiation through counting, verification, and posting stages.. Valid values are `not_started|in_progress|counted|recounted|posted|cancelled`',
     `counted_quantity` DECIMAL(18,2) COMMENT 'Actual physical quantity counted by warehouse personnel during the cycle count execution. This is the verified on-hand quantity observed in the storage bin.',
     `counted_timestamp` TIMESTAMP COMMENT 'Date and time when the physical count was completed by warehouse personnel. Represents the actual business event time of inventory verification.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this cycle count line record was first created in the system. Audit trail field for record lifecycle tracking.',
     `difference_quantity` DECIMAL(18,2) COMMENT 'Variance between book quantity and counted quantity. Calculated as counted_quantity minus book_quantity. Positive values indicate surplus, negative values indicate shortage. Critical for inventory accuracy Key Performance Indicator (KPI) measurement.',
     `freeze_book_inventory_indicator` BOOLEAN COMMENT 'Flag indicating whether the book inventory quantity was frozen at the time of count initiation to prevent changes during the count period. True if frozen, false if dynamic.',
@@ -413,7 +400,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order
     `batch_number` STRING COMMENT 'Specific batch or lot number assigned to the replenished material for traceability and quality control purposes.. Valid values are `^[A-Z0-9]{6,20}$`',
     `closed_timestamp` TIMESTAMP COMMENT 'Date and time when this replenishment order was closed after complete fulfillment or cancellation.',
     `confirmed_delivery_date` DATE COMMENT 'Actual confirmed delivery date provided by the supplier or internal source, may differ from requested date based on availability and lead time.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this replenishment order record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the estimated cost and financial transactions related to this replenishment order.. Valid values are `^[A-Z]{3}$`',
     `estimated_cost` DECIMAL(18,2) COMMENT 'Estimated total cost for fulfilling this replenishment order, including material cost, freight, and handling charges.',
@@ -423,7 +409,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order
     `kanban_card_number` STRING COMMENT 'Unique identifier of the kanban card that triggered this replenishment, applicable when replenishment type is kanban-based pull system.. Valid values are `^[A-Z0-9]{6,15}$`',
     `lead_time_days` STRING COMMENT 'Expected number of calendar days from order placement to material availability at the storage location, used for planning and scheduling.',
     `lot_size_quantity` DECIMAL(18,2) COMMENT 'Standard or economic order quantity used for replenishment, may be based on MOQ (Minimum Order Quantity), EOQ (Economic Order Quantity), or fixed lot size rules.',
-    `modified_at` TIMESTAMP COMMENT '',
     `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this replenishment order record was last modified or updated.',
     `notes` STRING COMMENT 'Free-text field for additional comments, special instructions, or contextual information related to this replenishment order.',
     `order_number` STRING COMMENT 'Business-facing unique identifier for the replenishment order, used for tracking and reference across systems and documents.. Valid values are `^[A-Z0-9]{8,20}$`',
@@ -458,7 +443,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` (
     `actual_completion_timestamp` TIMESTAMP COMMENT 'Actual timestamp when this WIP stock completed all production operations. Null if production is still in progress. Used for lead time analysis and schedule adherence tracking.',
     `bin_location` STRING COMMENT 'Specific bin, rack, or staging position within the storage location where the WIP stock is placed. Provides granular physical location tracking for material handling and retrieval.. Valid values are `^[A-Z0-9-]{4,20}$`',
     `bom_version` STRING COMMENT 'Version number of the bill of materials used for producing this WIP stock. Tracks which BOM configuration was applied, important for engineering change management and traceability.. Valid values are `^[A-Z0-9.]{1,10}$`',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this WIP stock record was first created in the system. Used for audit trail and data lineage tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the WIP valuation amount. Standard codes include USD, EUR, GBP, JPY, CNY.. Valid values are `^[A-Z]{3}$`',
     `customer_order_number` STRING COMMENT 'Customer sales order number for which this WIP stock is being produced, if applicable. Used for make-to-order production tracking and customer-specific inventory management. Null for make-to-stock production.. Valid values are `^[A-Z0-9-]{6,20}$`',
@@ -469,7 +453,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` (
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this WIP stock record was last modified in the system. Used for audit trail and change tracking.',
     `material_cost` DECIMAL(18,2) COMMENT 'Accumulated cost of raw materials and components consumed in producing this WIP stock up to the current operation. Component of total WIP valuation.',
     `notes` STRING COMMENT 'Free-text notes or comments related to this WIP stock record. May include special handling instructions, quality observations, or production issues. Used for operational communication and documentation.',
-    `operation_sequence_number` DECIMAL(18,2) COMMENT 'Current operation step or routing sequence number in the production process where this WIP stock is located. Indicates the specific manufacturing stage within the overall production routing.',
+    `operation_sequence_number` STRING COMMENT 'Current operation step or routing sequence number in the production process where this WIP stock is located. Indicates the specific manufacturing stage within the overall production routing.',
     `operation_start_timestamp` TIMESTAMP COMMENT 'Timestamp when processing began at the current operation step. Used for cycle time tracking and operation-level performance analysis.',
     `overhead_cost` DECIMAL(18,2) COMMENT 'Accumulated manufacturing overhead cost allocated to this WIP stock up to the current operation. Includes indirect costs such as utilities, depreciation, and facility expenses.',
     `priority_code` STRING COMMENT 'Production priority level assigned to this WIP stock. Values: urgent (expedited processing required), high (priority customer order), normal (standard production), low (fill-in work). Used for shop floor scheduling and resource allocation.. Valid values are `urgent|high|normal|low`',
@@ -478,7 +462,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` (
     `quantity_completed` DECIMAL(18,2) COMMENT 'Quantity of the material or assembly that has completed processing at the current operation step and is ready to move to the next stage. Used for tracking operation-level progress and yield.',
     `quantity_in_process` DECIMAL(18,2) COMMENT 'Current quantity of the material or assembly in work-in-progress status, measured in the base unit of measure. Represents the number of units currently being manufactured at this operation step.',
     `quantity_scrapped` DECIMAL(18,2) COMMENT 'Quantity of the material or assembly that was scrapped or rejected during processing at the current operation. Used for scrap rate calculation and quality analysis.',
-    `rework_operation_sequence` DECIMAL(18,2) COMMENT 'Operation sequence number to which this WIP stock must be returned for rework, if rework is required. Null if no rework is needed. Used for routing rework items back through the production process.',
+    `rework_operation_sequence` STRING COMMENT 'Operation sequence number to which this WIP stock must be returned for rework, if rework is required. Null if no rework is needed. Used for routing rework items back through the production process.',
     `rework_required` BOOLEAN COMMENT 'Boolean flag indicating whether this WIP stock requires rework or reprocessing due to quality issues. True if rework is needed, false otherwise. Used for quality management and cost tracking.',
     `routing_version` STRING COMMENT 'Version number of the production routing or process plan used for manufacturing this WIP stock. Tracks which manufacturing process was followed, important for process control and traceability.. Valid values are `^[A-Z0-9.]{1,10}$`',
     `serial_number_range_end` STRING COMMENT 'Ending serial number in the range assigned to this WIP stock batch, if serialized tracking is required. Used for individual unit traceability in high-value or regulated products. Null if not serialized.. Valid values are `^[A-Z0-9-]{6,30}$`',
@@ -506,7 +490,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_st
     `approved_timestamp` TIMESTAMP COMMENT 'The date and time when this safety stock policy was formally approved for use in planning systems.',
     `calculation_method` STRING COMMENT 'The methodology used to determine the safety stock quantity: fixed quantity, fixed days of supply, statistical (using demand variability), forecast error-based, or hybrid approach.. Valid values are `fixed_quantity|fixed_days_supply|statistical|forecast_error|hybrid`',
     `coverage_profile` STRING COMMENT 'The time horizon unit used to express inventory coverage targets (days of supply, weeks of supply, or months of supply).. Valid values are `days|weeks|months`',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this safety stock policy record was first created in the system.',
     `demand_variability_factor` DECIMAL(18,2) COMMENT 'Statistical measure of demand fluctuation expressed as coefficient of variation or standard deviation factor, used to calculate safety stock buffer size.',
     `effective_end_date` DATE COMMENT 'The date on which this safety stock policy expires or is superseded by a new policy version. Null indicates an open-ended policy.',
@@ -520,7 +503,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_st
     `minimum_order_quantity` DECIMAL(18,2) COMMENT 'The smallest replenishment order quantity allowed by supplier constraints or economic order quantity calculations.',
     `modified_timestamp` TIMESTAMP COMMENT 'The date and time when this safety stock policy record was last updated or modified.',
     `next_review_date` DATE COMMENT 'The scheduled date for the next periodic review and potential adjustment of this safety stock policy.',
-    `planning_strategy` DECIMAL(18,2) COMMENT 'The inventory planning methodology applied: Material Requirements Planning (MRP), Manufacturing Resource Planning (MRP II), Distribution Requirements Planning (DRP), Kanban pull system, or manual planning.',
+    `planning_strategy` STRING COMMENT 'The inventory planning methodology applied: Material Requirements Planning (MRP), Manufacturing Resource Planning (MRP II), Distribution Requirements Planning (DRP), Kanban pull system, or manual planning.. Valid values are `mrp|mrp_ii|drp|kanban|manual`',
     `policy_code` STRING COMMENT 'Business identifier code for the safety stock policy, typically combining material, plant, and policy version identifiers.. Valid values are `^[A-Z0-9]{6,20}$`',
     `policy_notes` STRING COMMENT 'Free-text field for planners to document special considerations, exceptions, business rationale, or historical context for this safety stock policy.',
     `policy_status` STRING COMMENT 'Current lifecycle status of the safety stock policy indicating whether it is actively used in Material Requirements Planning (MRP) calculations.. Valid values are `active|inactive|pending|superseded|expired|draft`',
@@ -557,7 +540,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` (
     `consumption_area_code` BIGINT COMMENT 'Reference to the consumption area or work center where material is used.',
     `container_quantity` DECIMAL(18,2) COMMENT 'Standard quantity of material held in one container for this kanban card. Represents the pull signal quantity.',
     `container_type` STRING COMMENT 'Type of physical container used to hold the material quantity for this kanban card.. Valid values are `pallet|bin|tote|rack|cart|container`',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this kanban card record was first created in the system.',
     `effective_end_date` DATE COMMENT 'Date when this kanban card is retired or deactivated from the control cycle. Null indicates no planned end date.',
     `effective_start_date` DATE COMMENT 'Date when this kanban card becomes effective and active in the control cycle.',
@@ -575,7 +557,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` (
     `number_of_containers` STRING COMMENT 'Total number of containers in the kanban control cycle for this card. Determines the total inventory in the loop.',
     `priority` STRING COMMENT 'Priority level for replenishment processing. Critical materials are replenished first to prevent production stoppage.. Valid values are `critical|high|normal|low`',
     `production_version` STRING COMMENT 'Production version or routing variant associated with this kanban card for manufactured materials.. Valid values are `^[A-Z0-9]{1,4}$`',
-    `replenishment_strategy` DECIMAL(18,2) COMMENT 'Strategy for material replenishment. Pull is pure JIT demand-driven, push is forecast-driven, hybrid combines both.',
+    `replenishment_strategy` STRING COMMENT 'Strategy for material replenishment. Pull is pure JIT demand-driven, push is forecast-driven, hybrid combines both.. Valid values are `pull|push|hybrid`',
     `rfid_tag` STRING COMMENT 'RFID tag identifier for automated tracking and real-time location monitoring of the kanban card.. Valid values are `^[A-F0-9]{24}$`',
     `safety_stock_quantity` DECIMAL(18,2) COMMENT 'Minimum safety stock quantity maintained in the kanban loop to buffer against demand variability and supply disruptions.',
     `signal_type` STRING COMMENT 'Type of signal mechanism used for this kanban card. Electronic signals integrate with MES, physical cards are manual, barcode and RFID enable automated scanning.. Valid values are `electronic|physical|barcode|rfid|manual`',
@@ -590,9 +572,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` (
     `asset_plant_id` BIGINT COMMENT 'Reference to the manufacturing plant or facility where the stock is held. Links to the plant master data.',
     `base_unit_of_measure` STRING COMMENT 'Base unit in which the material quantity is managed (e.g., EA for each, KG for kilogram, L for liter, M for meter).. Valid values are `^[A-Z]{2,3}$`',
     `company_code` STRING COMMENT 'Legal entity code for which the inventory is valued. Represents the smallest organizational unit for which a complete self-contained set of accounts can be drawn up.. Valid values are `^[A-Z0-9]{4}$`',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Code identifying the cost center associated with inventory holding costs. Used for internal cost allocation and management reporting.',
+    `cost_center_code` STRING COMMENT 'Code identifying the cost center associated with inventory holding costs. Used for internal cost allocation and management reporting.. Valid values are `^[A-Z0-9]{4,10}$`',
     `cost_of_goods_sold_amount` DECIMAL(18,2) COMMENT 'Total cost of goods sold for this material during the fiscal period. Calculated based on goods issues valued at standard or moving average price.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_by_user` STRING COMMENT 'User ID of the person or system process that created this valuation record. Used for audit trail and accountability.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this stock valuation record was first created in the system. Used for audit trail and data lineage tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code in which the material is valued (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
@@ -606,7 +587,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` (
     `last_goods_receipt_date` DATE COMMENT 'Date of the most recent goods receipt transaction for this material at this valuation area. Used for inventory aging and obsolescence analysis.',
     `last_modified_by_user` STRING COMMENT 'User ID of the person or system process that last modified this valuation record. Used for change tracking and audit purposes.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this stock valuation record was last updated. Used for change tracking and audit purposes.',
-    `last_price_change_date` TIMESTAMP COMMENT 'Date when the standard price or moving average price was last changed. Used for price history tracking and audit purposes.',
+    `last_price_change_date` DATE COMMENT 'Date when the standard price or moving average price was last changed. Used for price history tracking and audit purposes.',
     `material_overhead_amount` DECIMAL(18,2) COMMENT 'Total material overhead amount included in the stock valuation. Calculated by applying the material overhead rate to the base material cost.',
     `material_overhead_rate` DECIMAL(18,2) COMMENT 'Percentage rate applied to material cost to account for procurement overhead, handling, and storage costs. Used in full costing calculations.',
     `moving_average_price` DECIMAL(18,2) COMMENT 'Weighted average price per unit that is recalculated automatically with each goods receipt. Used when price control method is set to moving average.',
@@ -614,8 +595,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` (
     `previous_period_price` DECIMAL(18,2) COMMENT 'Price per unit from the previous fiscal period. Used for period-over-period variance analysis and price trend tracking.',
     `price_change_amount` DECIMAL(18,2) COMMENT 'Absolute change in price per unit compared to the previous period. Calculated as current price minus previous period price.',
     `price_change_percentage` DECIMAL(18,2) COMMENT 'Percentage change in price compared to the previous period. Used for inflation tracking and cost variance analysis.',
-    `price_control_method` DECIMAL(18,2) COMMENT 'Indicator determining whether material is valued using standard price (S) or moving average price (V). Standard price remains fixed until manually changed; moving average price recalculates with each goods receipt.',
-    `price_unit` DECIMAL(18,2) COMMENT 'Number of units to which the price refers. For example, if price unit is 100, the standard price or moving average price applies to 100 units of the material.',
+    `price_control_method` STRING COMMENT 'Indicator determining whether material is valued using standard price (S) or moving average price (V). Standard price remains fixed until manually changed; moving average price recalculates with each goods receipt.. Valid values are `S|V`',
+    `price_unit` STRING COMMENT 'Number of units to which the price refers. For example, if price unit is 100, the standard price or moving average price applies to 100 units of the material.',
     `price_variance_amount` DECIMAL(18,2) COMMENT 'Total price variance amount for the period, representing the difference between standard price and actual purchase price multiplied by quantity received. Used in standard costing variance analysis.',
     `profit_center_code` STRING COMMENT 'Code identifying the profit center responsible for this inventory. Used for segment reporting and profitability analysis.. Valid values are `^[A-Z0-9]{4,10}$`',
     `provision_for_obsolescence` DECIMAL(18,2) COMMENT 'Reserve amount set aside for slow-moving, obsolete, or excess inventory. Reduces the carrying value of inventory on the balance sheet.',
@@ -645,7 +626,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`quarantine_stock` (
     `warehouse_id` BIGINT COMMENT 'Reference to the warehouse or facility where the quarantined stock is physically located.',
     `actual_release_date` DATE COMMENT 'Actual date when the quarantine was lifted and the material was released, reworked, returned, or scrapped.',
     `batch_number` STRING COMMENT 'Batch or lot number of the quarantined material, enabling traceability to production run, supplier shipment, or manufacturing date.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the quarantine stock record was first created in the system, supporting audit trail and lifecycle tracking.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the estimated financial impact amount. [ENUM-REF-CANDIDATE: USD|EUR|GBP|JPY|CNY|INR|CAD|AUD — 8 candidates stripped; promote to reference product]',
     `disposition_approval_date` DATE COMMENT 'Date when the disposition decision was formally approved by the authorized quality or management personnel.',
@@ -694,7 +674,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`serialized_unit` (
     `warehouse_id` BIGINT COMMENT 'Reference to the warehouse master record where this serialized unit is currently stored. Provides detailed warehouse attributes and operational parameters.',
     `bin_location` STRING COMMENT 'Specific bin, rack, or storage position identifier within the warehouse where this serialized unit is physically located. Enables precise picking and putaway operations.',
     `country_of_origin` STRING COMMENT 'Three-letter ISO country code indicating where this serialized unit was manufactured or assembled. Required for customs declarations and trade compliance.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_by_user` STRING COMMENT 'User ID or username of the person who created this serialized unit record. Supports audit trail and data governance requirements.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this serialized unit record was first created in the system. Provides audit trail for record creation and data lineage.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the valuation amount (e.g., USD, EUR, CNY). Enables multi-currency inventory valuation and financial consolidation.',
@@ -706,7 +685,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`serialized_unit` (
     `height_cm` DECIMAL(18,2) COMMENT 'Height dimension of the serialized unit or handling unit in centimeters. Used for warehouse space planning and transportation optimization.',
     `last_modified_by_user` STRING COMMENT 'User ID or username of the person who last modified this serialized unit record. Supports audit trail and data governance requirements.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this serialized unit record was last updated. Enables change tracking and data synchronization across systems.',
-    `last_movement_at` TIMESTAMP COMMENT '',
     `last_movement_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent inventory movement transaction for this serialized unit. Used for inventory aging analysis and cycle count prioritization.',
     `last_movement_type` STRING COMMENT 'Type of the most recent inventory movement transaction for this serialized unit (e.g., goods receipt, goods issue, transfer posting, physical inventory). Provides audit trail context.',
     `length_cm` DECIMAL(18,2) COMMENT 'Length dimension of the serialized unit or handling unit in centimeters. Used for warehouse space planning and transportation optimization.',
@@ -733,8 +711,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`serialized_unit` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` (
     `inventory_plant_id` BIGINT COMMENT 'Primary key for plant',
-    `company_code_id` BIGINT COMMENT 'Connect finance.plant by adding column finance_company_code_id (BIGINT) with an FK to finance.company_code.company_code_id. P20: connect_table: finance.plant** - add column finance_company_code_id (BIGINT) with FK to finance.company_cod',
-    `asset_plant_id` BIGINT COMMENT '',
+    `company_code_id` BIGINT COMMENT 'add column finance_company_code_id (BIGINT) with FK to finance.company_code.company_code_id - inventory plants need legal entity assignment for valuation and reporting',
+    `asset_plant_id` BIGINT COMMENT 'add column asset_plant_id (BIGINT) with FK to asset.plant.plant_id - inventory plants should reference the canonical plant definition in asset domain',
     `address_line1` STRING COMMENT 'Primary street address of the plant.',
     `address_line2` STRING COMMENT 'Secondary address information (suite, building, etc.).',
     `annual_carbon_emission_tons` DECIMAL(18,2) COMMENT 'Estimated CO₂ emissions produced by the plant each year.',
@@ -743,7 +721,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` (
     `city` STRING COMMENT 'City where the plant is located.',
     `compliance_status` STRING COMMENT 'Current compliance standing with industry regulations.',
     `country_code` STRING COMMENT 'Three‑letter ISO country code of the plant location.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the plant record was first created in the master system.',
     `data_classification` STRING COMMENT 'Classification level for data governance purposes.',
     `energy_source` STRING COMMENT 'Main energy source powering the plant.',
@@ -782,10 +759,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` (
     `parent_control_cycle_id` BIGINT COMMENT 'Self-referencing FK on control_cycle (parent_control_cycle_id)',
     `associated_process` STRING COMMENT 'Primary business process that utilizes this control cycle.',
     `compliance_standard` STRING COMMENT 'Regulatory or industry standard that the control cycle must satisfy.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the control cycle record was first created.',
     `cycle_code` STRING COMMENT 'Short alphanumeric code representing the control cycle.',
-    `cycle_duration_minutes` DECIMAL(18,2) COMMENT 'Typical duration of the control cycle expressed in minutes.',
+    `cycle_duration_minutes` STRING COMMENT 'Typical duration of the control cycle expressed in minutes.',
     `cycle_name` STRING COMMENT 'Human‑readable name of the control cycle.',
     `cycle_status` STRING COMMENT 'Current lifecycle status of the control cycle.',
     `cycle_type` STRING COMMENT 'Category of the control cycle (e.g., setup, run, maintenance, shutdown).',
@@ -814,7 +790,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` (
     `capacity_quantity` DECIMAL(18,2) COMMENT 'Maximum amount of material the area can hold.',
     `capacity_uom` STRING COMMENT 'Unit of measure for the capacity quantity.',
     `supply_area_code` STRING COMMENT 'External code used in ERP systems to reference the supply area.',
-    `created_at` TIMESTAMP COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the supply area record was first created.',
     `current_occupancy` DECIMAL(18,2) COMMENT 'Current amount of material stored in the area.',
     `effective_from` DATE COMMENT 'Date when the supply area became operational.',
@@ -823,7 +798,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` (
     `fire_suppression_type` STRING COMMENT 'Type of fire suppression system installed in the area.',
     `floor_number` STRING COMMENT 'Floor on which the supply area is located.',
     `humidity_controlled` BOOLEAN COMMENT 'Indicates whether humidity is regulated in the area.',
-    `humidity_range_percent` DECIMAL(18,2) COMMENT 'Allowed humidity range for the area, expressed as min‑max percentage.',
+    `humidity_range_percent` STRING COMMENT 'Allowed humidity range for the area, expressed as min‑max percentage.',
     `inspection_status` STRING COMMENT 'Result of the last inspection.',
     `is_temperature_controlled` BOOLEAN COMMENT 'Indicates whether the area has temperature control.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent safety/quality inspection.',
@@ -921,8 +896,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_code` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_name` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_status` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Status');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_status` SET TAGS ('dbx_value_regex' = 'active|inactive|blocked|maintenance|reserved|full');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_location` ALTER COLUMN `location_type` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Type');
@@ -953,17 +926,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `employ
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Logistics Node Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `network_node_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Network Node Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `active_from_date` SET TAGS ('dbx_business_glossary_term' = 'Active From Date');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `active_to_date` SET TAGS ('dbx_business_glossary_term' = 'Active To Date');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `automated_storage_flag` SET TAGS ('dbx_business_glossary_term' = 'Automated Storage Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
@@ -975,13 +947,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contac
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1004,12 +972,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `longit
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `warehouse_name` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `warehouse_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `warehouse_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `number_of_loading_docks` SET TAGS ('dbx_business_glossary_term' = 'Number of Loading Docks');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `number_of_storage_bins` SET TAGS ('dbx_business_glossary_term' = 'Number of Storage Bins');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `operating_hours_description` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Description');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|inactive|under_construction|decommissioned|seasonal|maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Ownership Type');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'owned|leased|third_party_logistics|contract_warehouse');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`warehouse` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
@@ -1058,8 +1025,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `lot_size` SET TAGS ('dbx_business_glossary_term' = 'Lot Sizing Procedure');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `lot_size` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `manufacturer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Part Number (MPN)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `material_description` SET TAGS ('dbx_business_glossary_term' = 'Material Description');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `material_group` SET TAGS ('dbx_business_glossary_term' = 'Material Group');
@@ -1079,6 +1044,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `net_weight` SET TAGS ('dbx_business_glossary_term' = 'Net Weight');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `planned_delivery_time_days` SET TAGS ('dbx_business_glossary_term' = 'Planned Delivery Time in Days');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `price_control_indicator` SET TAGS ('dbx_business_glossary_term' = 'Price Control Indicator');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `price_control_indicator` SET TAGS ('dbx_value_regex' = 'S|V');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `price_unit` SET TAGS ('dbx_business_glossary_term' = 'Price Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'in_house_production|external_procurement|both');
@@ -1103,7 +1069,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `width` SET TAGS ('dbx_business_glossary_term' = 'Material Width');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`material_master` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Material Master Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` SET TAGS ('dbx_subdomain' = 'stock_tracking');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` SET TAGS ('dbx_subdomain' = 'stock_valuation');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` ALTER COLUMN `stock_balance_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Balance Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_balance` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
@@ -1203,7 +1169,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`lot_batch` ALTER COLUMN `unit_o
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`lot_batch` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`lot_batch` ALTER COLUMN `valuation_type` SET TAGS ('dbx_business_glossary_term' = 'Valuation Type');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` SET TAGS ('dbx_subdomain' = 'stock_tracking');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` SET TAGS ('dbx_subdomain' = 'movement_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `stock_movement_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Movement Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Identifier (ID)');
@@ -1266,7 +1232,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `u
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_movement` ALTER COLUMN `valuation_type` SET TAGS ('dbx_business_glossary_term' = 'Valuation Type');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` SET TAGS ('dbx_subdomain' = 'stock_tracking');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` SET TAGS ('dbx_subdomain' = 'cycle_counting');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `cycle_count_id` SET TAGS ('dbx_business_glossary_term' = 'Cycle Count ID');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Counter ID');
@@ -1301,8 +1267,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `coun
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `counter_name` SET TAGS ('dbx_business_glossary_term' = 'Counter Name');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `counter_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `counter_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `counter_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `counter_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `freeze_book_inventory_flag` SET TAGS ('dbx_business_glossary_term' = 'Freeze Book Inventory Flag');
@@ -1328,10 +1292,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `vari
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `warehouse_number` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Number');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count` ALTER COLUMN `warehouse_number` SET TAGS ('dbx_value_regex' = '^WH[0-9]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` SET TAGS ('dbx_subdomain' = 'stock_tracking');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` SET TAGS ('dbx_subdomain' = 'cycle_counting');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `cycle_count_line_id` SET TAGS ('dbx_business_glossary_term' = 'Cycle Count Line Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `cycle_count_id` SET TAGS ('dbx_business_glossary_term' = 'Cycle Count Header Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `plant_data_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Counted By User Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1368,7 +1333,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `variance_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Variance Reason Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`cycle_count_line` ALTER COLUMN `verified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Verified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` SET TAGS ('dbx_subdomain' = 'replenishment_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` SET TAGS ('dbx_subdomain' = 'movement_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `replenishment_order_id` SET TAGS ('dbx_business_glossary_term' = 'Replenishment Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
@@ -1402,8 +1367,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,15}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `lot_size_quantity` SET TAGS ('dbx_business_glossary_term' = 'Lot Size Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`replenishment_order` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
@@ -1499,10 +1462,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` ALTER COLUMN `wip_va
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` ALTER COLUMN `wip_valuation_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`wip_stock` ALTER COLUMN `yield_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` SET TAGS ('dbx_subdomain' = 'replenishment_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` SET TAGS ('dbx_subdomain' = 'stock_valuation');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `inventory_safety_stock_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Policy ID');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `inventory_safety_stock_policy_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `inventory_safety_stock_policy_id` SET TAGS ('dbx_ssot_master' = 'supply.supply_safety_stock_policy');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Planner ID');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1536,6 +1497,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` 
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_business_glossary_term' = 'Planning Strategy');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_value_regex' = 'mrp|mrp_ii|drp|kanban|manual');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `policy_code` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Policy Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `policy_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `policy_notes` SET TAGS ('dbx_business_glossary_term' = 'Policy Notes');
@@ -1558,9 +1520,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` 
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `xyz_classification` SET TAGS ('dbx_business_glossary_term' = 'XYZ Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_safety_stock_policy` ALTER COLUMN `xyz_classification` SET TAGS ('dbx_value_regex' = 'X|Y|Z');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` SET TAGS ('dbx_subdomain' = 'replenishment_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` SET TAGS ('dbx_subdomain' = 'movement_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_id` SET TAGS ('dbx_business_glossary_term' = 'Kanban Card Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_id` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `control_cycle_id` SET TAGS ('dbx_business_glossary_term' = 'Control Cycle Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person Identifier (ID)');
@@ -1588,12 +1549,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanb
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_status` SET TAGS ('dbx_business_glossary_term' = 'Kanban Card Status');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_status` SET TAGS ('dbx_value_regex' = 'empty|in_transit|full|in_use|locked|blocked');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_status` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_card_status` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `kanban_loop_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Kanban Loop Time (Minutes)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `last_consumption_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Consumption Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `last_replenishment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Replenishment Timestamp');
@@ -1609,6 +1566,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `prio
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `production_version` SET TAGS ('dbx_business_glossary_term' = 'Production Version');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `production_version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `replenishment_strategy` SET TAGS ('dbx_business_glossary_term' = 'Replenishment Strategy');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `replenishment_strategy` SET TAGS ('dbx_value_regex' = 'pull|push|hybrid');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `rfid_tag` SET TAGS ('dbx_business_glossary_term' = 'Radio Frequency Identification (RFID) Tag');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `rfid_tag` SET TAGS ('dbx_value_regex' = '^[A-F0-9]{24}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `safety_stock_quantity` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Quantity');
@@ -1617,7 +1575,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `sign
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`kanban_card` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` SET TAGS ('dbx_subdomain' = 'stock_tracking');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` SET TAGS ('dbx_subdomain' = 'stock_valuation');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `stock_valuation_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Valuation ID');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
@@ -1627,6 +1585,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `company_code` SET TAGS ('dbx_business_glossary_term' = 'Company Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `company_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `cost_of_goods_sold_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost of Goods Sold (COGS) Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1652,6 +1611,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_change_amount` SET TAGS ('dbx_business_glossary_term' = 'Price Change Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_change_percentage` SET TAGS ('dbx_business_glossary_term' = 'Price Change Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_control_method` SET TAGS ('dbx_business_glossary_term' = 'Price Control Method');
+ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_control_method` SET TAGS ('dbx_value_regex' = 'S|V');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_unit` SET TAGS ('dbx_business_glossary_term' = 'Price Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `price_variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Price Variance Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`stock_valuation` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Code');
@@ -1780,25 +1740,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`serialized_unit` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`serialized_unit` ALTER COLUMN `width_cm` SET TAGS ('dbx_business_glossary_term' = 'Width (Centimeters)');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_subdomain' = 'warehouse_management');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot' = 'reference');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot_group' = 'plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot_master' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot_of' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot_canonical' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` SET TAGS ('dbx_ssot_role' = 'duplicate');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_ssot_ref' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_ssot_master' = 'asset.asset_plant');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `annual_carbon_emission_tons` SET TAGS ('dbx_business_glossary_term' = 'Annual Carbon Emission Tons');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `annual_energy_consumption_mwh` SET TAGS ('dbx_business_glossary_term' = 'Annual Energy Consumption Mwh');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `capacity_unit` SET TAGS ('dbx_business_glossary_term' = 'Capacity Unit');
@@ -1825,21 +1773,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Manager Email');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Manager Name');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Manager Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `inventory_plant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `number_of_shifts` SET TAGS ('dbx_business_glossary_term' = 'Number Of Shifts');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`inventory_plant` ALTER COLUMN `operating_hours_per_day` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Per Day');
@@ -1872,8 +1812,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cr
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_code` SET TAGS ('dbx_business_glossary_term' = 'Cycle Code');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Cycle Duration Minutes');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_business_glossary_term' = 'Cycle Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_status` SET TAGS ('dbx_business_glossary_term' = 'Cycle Status');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `cycle_type` SET TAGS ('dbx_business_glossary_term' = 'Cycle Type');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`control_cycle` ALTER COLUMN `control_cycle_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
@@ -1901,8 +1839,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supp
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supply_responsible_manager_employee_id` SET TAGS ('dbx_internal' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `area_sq_meters` SET TAGS ('dbx_business_glossary_term' = 'Area Sq Meters');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `building_name` SET TAGS ('dbx_business_glossary_term' = 'Building Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `building_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `building_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `capacity_quantity` SET TAGS ('dbx_business_glossary_term' = 'Capacity Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `capacity_uom` SET TAGS ('dbx_business_glossary_term' = 'Capacity Uom');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supply_area_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
@@ -1920,8 +1856,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `is_t
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `max_load_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Max Load Weight Kg');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supply_area_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supply_area_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `supply_area_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `occupancy_uom` SET TAGS ('dbx_business_glossary_term' = 'Occupancy Uom');
 ALTER TABLE `vibe_manufacturing_v1`.`inventory`.`supply_area` ALTER COLUMN `safety_classification` SET TAGS ('dbx_business_glossary_term' = 'Safety Classification');
