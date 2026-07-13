@@ -1,0 +1,2 @@
+-- Metric views for domain: linkage | Business: Retail | Version: 2 | Generated on: 2026-07-12 14:06:09
+-- All metric views in this domain failed validation and were removed.
