@@ -26,6 +26,13 @@
 - **Iterate in natural language:** every "vibe" produces a new versioned model, validated against enforceable rules, reviewed by two architect personas, repaired by a closed agentic loop, and redeployed to Unity Catalog. No version is ever overwritten.
 - **One logical model, many physical layouts:** render the same model as one catalog, a catalog per division, or a catalog per domain. No rebuild required.
 
+### Learn more
+
+This is the Vibe Modeling Agent (see [`agent/dbx_vibe_modelling_agent.ipynb`](agent/dbx_vibe_modelling_agent.ipynb)): the same agent that generated every one of the published [40 Lakehouse Industry Data Models](https://github.com/amralieg/lakehouse-business-data-models). Background reading:
+
+- [Reimagining Data Modeling on the Lakehouse: Introducing Vibe Data Modeling](https://www.databricks.com/blog/reimagining-data-modeling-lakehouse-introducing-vibe-data-modeling)
+- [Jumpstart your Data Modeling with Databricks Industry Data Models](https://www.databricks.com/blog/jumpstart-your-data-modeling-databricks-industry-data-models)
+
 ---
 
 ## How to run it
@@ -390,6 +397,7 @@ The notebook exposes fine-grained widgets for naming conventions, tag prefixes, 
 | 07 | **Included Org Divisions** | Yes | Operations / Operations and Business / all three |
 | 08 | **Model Vibes** | Conditional | Natural-language instructions — inline text or a path to a `.txt` on a UC Volume |
 | 09 | **Installation Catalog** | Conditional | Unity Catalog target for physical deployment |
+| 09a | **Cataloging Style** | No | Physical catalog layout: `One Catalog` (whole model in one), `Catalog per Division`, or `Catalog per Domain` |
 | 10 | **Sample Records** | No | Synthetic records per table (0 = none) |
 | 11 | **Model JSON File** | Conditional | Path to a previously generated `model.json` for re-install or continuation |
 
