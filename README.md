@@ -281,7 +281,7 @@ Click an industry name to jump to its folder.
 | [Manufacturing](./data-models/manufacturing/) | 20 | [414](./data-models/manufacturing/v2/ecm/) | 13 | [114](./data-models/manufacturing/v2/mvm/) |
 | [Chemical Manufacturing](./data-models/chemical_mfg/) | 19 | [405](./data-models/chemical_mfg/v1/ecm/) | 14 | [202](./data-models/chemical_mfg/v1/mvm/) |
 | [Semiconductors](./data-models/semiconductors/) | 19 | [386](./data-models/semiconductors/v2/ecm/) | 12 | [113](./data-models/semiconductors/v2/mvm/) |
-| [Automotive](./data-models/automotive/) | 19 | [548](./data-models/automotive/v1/ecm/) | 14 | [209](./data-models/automotive/v1/mvm/) |
+| [Automotive](./data-models/automotive/) | 20 | [590](./data-models/automotive/v2/ecm/) | 11 | [114](./data-models/automotive/v2/mvm/) |
 | [Construction](./data-models/construction/) | 18 | [365](./data-models/construction/v2/ecm/) | 13 | [143](./data-models/construction/v2/mvm/) |
 | [Agriculture](./data-models/agriculture/) | 18 | [408](./data-models/agriculture/v1/ecm/) | 14 | [177](./data-models/agriculture/v1/mvm/) |
 
