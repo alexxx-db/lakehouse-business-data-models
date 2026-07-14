@@ -1,0 +1,86 @@
+**Model Quality Score: 82.44/100**
+
+**Static Analysis Findings (1 actionable):**
+  - [SA:denormalized_natural_key] Product 'supplier.rtv_request' has both FK 'rma_id' and natural key 'rma_number' for entity 'rma'. The natural key is redundant — use the FK join instead.
+
+**PRIORITY 1 — rename_attribute: inventory.adjustment** — rename column reversal_of_adjustment_id to reversed_adjustment_id because self-referential FK should follow consistent naming pattern with other reversal columns in the model
+**PRIORITY 2 — rename_attribute: inventory.stock_ledger** — rename column reversed_transaction_stock_ledger_id to reversed_stock_ledger_id because overly verbose self-referential FK name should be simplified while maintaining business meaning
+**PRIORITY 3 — rename_attribute: order.gift_card_transaction** — rename column primary_original_transaction_gift_card_transaction_id to original_gift_card_transaction_id because excessively verbose self-referential FK name reduces readability
+**PRIORITY 4 — rename_attribute: order.gift_card** — rename column replacement_for_gift_card_id to replaced_gift_card_id because naming should indicate the replaced entity not the replacement relationship
+**PRIORITY 5 — connect_table: fulfillment.carrier** — add column carrier_id as PK is referenced but carrier has no outbound FKs to supplier.vendor_address for carrier headquarters address — carriers need physical address for logistics coordination
+**PRIORITY 6 — connect_table: merchandising.season** — add column parent_season_id (BIGINT) with FK to merchandising.season.season_id — seasons often have hierarchical relationships (e.g., Fall 2024 under Fall, or Q4 under H2) for planning rollups
+**PRIORITY 7 — connect_table: pricing.price_zone** — add column region_id (BIGINT) with FK to store.region.region_id — price zones are typically aligned with geographic regions for market-based pricing strategies
+**PRIORITY 8 — connect_table: product.item_variant** — add column uom_id (BIGINT) with FK to product.uom.uom_id — variants often have different units of measure (e.g., size variants sold in different pack quantities)
+**PRIORITY 9 — connect_table: product.attribute** — add column category_id (BIGINT) with FK to merchandising.category.category_id — product attributes are typically category-specific for faceted navigation and filtering
+**PRIORITY 10 — connect_table: product.compliance** — add column category_id (BIGINT) with FK to merchandising.category.category_id — compliance requirements vary by product category (food safety, electronics certifications)
+**PRIORITY 11 — connect_table: product.image** — add column category_id (BIGINT) with FK to merchandising.category.category_id — image standards and requirements often vary by merchandise category
+**PRIORITY 12 — connect_table: product.item_bundle** — add column category_id (BIGINT) with FK to merchandising.category.category_id — bundles belong to categories for merchandising and reporting purposes
+**PRIORITY 13 — connect_table: product.gtin_registry** — add column vendor_id (BIGINT) with FK to supplier.vendor.vendor_id — GTINs are assigned by brand owners/vendors and tracking this relationship supports data quality
+**PRIORITY 14 — connect_table: fulfillment.carrier_service** — add column fulfillment_node_id (BIGINT) with FK to fulfillment.fulfillment_node.fulfillment_node_id — carrier services have different availability by fulfillment node for service level planning
+**PRIORITY 15 — connect_table: store.format** — add column region_id (BIGINT) with FK to store.region.region_id — store formats often have regional variations and rollout strategies
+**PRIORITY 16 — connect_table: store.traffic_count** — add column pos_terminal_id (BIGINT) with FK to store.pos_terminal.pos_terminal_id — traffic counts can be correlated with specific entry points near POS terminals
+**PRIORITY 17 — connect_table: store.shrinkage_event** — add column category_id (BIGINT) with FK to merchandising.category.category_id — shrinkage analysis requires category-level reporting for loss prevention strategies
+**PRIORITY 18 — connect_table: store.shrinkage_event** — add column sku_id (BIGINT) with FK to product.sku.sku_id — shrinkage events should track specific SKUs for item-level loss analysis
+**PRIORITY 19 — connect_table: supplychain.warehouse_zone** — add column category_id (BIGINT) with FK to merchandising.category.category_id — warehouse zones are often organized by product category for efficient picking
+**PRIORITY 20 — connect_table: supplychain.wave** — add column fulfillment_order_id (BIGINT) with FK to fulfillment.fulfillment_order.fulfillment_order_id — waves are created to batch fulfillment orders for efficient processing
+**PRIORITY 21 — connect_table: returns.store_credit** — add column refund_id (BIGINT) with FK to returns.refund.refund_id — store credits are often issued as part of a refund transaction
+**PRIORITY 22 — connect_table: returns.exchange_order** — add column rma_line_id (BIGINT) with FK to returns.rma_line.rma_line_id — exchanges are initiated from specific RMA lines for item-level tracking
+**PRIORITY 23 — connect_table: promotion.promo_calendar** — add column category_id (BIGINT) with FK to merchandising.category.category_id — promotional calendars are often planned at category level for merchandise coordination
+**PRIORITY 24 — connect_table: promotion.vendor_promo_agreement** — add column category_id (BIGINT) with FK to merchandising.category.category_id — vendor promotional agreements typically cover specific product categories
+**PRIORITY 25 — connect_table: ecommerce.storefront** — add column season_id (BIGINT) with FK to merchandising.season.season_id — storefronts have seasonal themes and configurations for merchandising alignment
+**PRIORITY 26 — connect_table: ecommerce.storefront_assortment** — add column season_id (BIGINT) with FK to merchandising.season.season_id — storefront assortments are seasonal for digital merchandising planning
+**PRIORITY 27 — connect_table: customer.profile** — add column account_id (BIGINT) with FK to customer.account.account_id — profiles should link to accounts for B2B customer hierarchy management
+**PRIORITY 28 — connect_table: inventory.cycle_count** — add column lot_id (BIGINT) with FK to inventory.lot.lot_id — cycle counts often target specific lots for expiration and traceability verification
+**PRIORITY 29 — connect_table: inventory.stock_transfer** — add column lot_id (BIGINT) with FK to inventory.lot.lot_id — stock transfers must track lot information for traceability compliance
+**PRIORITY 30 — connect_table: order.cancellation** — add column refund_id (BIGINT) with FK to returns.refund.refund_id — cancellations typically trigger refunds that should be linked
+**PRIORITY 31 — connect_table: order.payment** — add column currency_uom_id (BIGINT) with FK to product.uom.uom_id — payments need currency tracking for multi-currency retail operations
+**PRIORITY 32 — connect_table: ecommerce.digital_payment** — add column currency_uom_id (BIGINT) with FK to product.uom.uom_id — digital payments require currency specification for international e-commerce
+**PRIORITY 33 — connect_table: pricing.competitive_price** — add column vendor_id (BIGINT) with FK to supplier.vendor.vendor_id — competitive prices from vendor catalogs need source tracking
+**PRIORITY 34 — connect_table: supplychain.demand_forecast** — add column season_id (BIGINT) with FK to merchandising.season.season_id — demand forecasts are heavily influenced by seasonal patterns
+**PRIORITY 35 — connect_table: supplychain.replenishment_plan** — add column season_id (BIGINT) with FK to merchandising.season.season_id — replenishment planning must account for seasonal demand variations
+**PRIORITY 36 — connect_table: fulfillment.bopis_appointment** — add column carrier_service_id (BIGINT) with FK to fulfillment.carrier_service.carrier_service_id — BOPIS appointments may involve curbside delivery requiring carrier service selection
+**PRIORITY 37 — connect_table: fulfillment.fulfillment_node** — add column region_id (BIGINT) with FK to store.region.region_id — fulfillment nodes operate within geographic regions for network planning
+**PRIORITY 38 — connect_table: fulfillment.fulfillment_node** — add column location_id (BIGINT) with FK to store.location.location_id — fulfillment nodes that are stores need location linkage
+**PRIORITY 39 — remove_fk: ecommerce.cart_item** — remove FK on column supplychain.replenishment_plan because cart items should not directly reference replenishment plans which are supply-side planning entities
+**PRIORITY 40 — remove_fk: inventory.adjustment** — remove FK on column fulfillment.fulfillment_order because inventory adjustments are triggered by operational events not fulfillment orders directly; use stock_ledger for this linkage
+**PRIORITY 41 — rename_attribute: order.subscription** — rename column renewed_from_subscription_id to prior_subscription_id because clearer business terminology for subscription renewal chains
+**PRIORITY 42 — rename_attribute: promotion.promo_campaign** — rename column parent_promo_campaign_id to umbrella_campaign_id because retail terminology typically uses umbrella for parent campaigns
+**PRIORITY 43 — connect_table: supplier.vendor** — add column parent_vendor_id (BIGINT) with FK to supplier.vendor.vendor_id — vendors have corporate hierarchies (subsidiaries, divisions) requiring self-referential relationship
+**PRIORITY 44 — connect_table: product.brand** — add column parent_brand_id (BIGINT) with FK to product.brand.brand_id — brands have hierarchies (sub-brands, brand families) for portfolio management
+**PRIORITY 45 — connect_table: store.department** — add column parent_department_id (BIGINT) with FK to store.department.department_id — departments have hierarchical structures for organizational reporting
+**PRIORITY 46 — connect_table: supplychain.dc_facility** — add column parent_dc_facility_id (BIGINT) with FK to supplychain.dc_facility.dc_facility_id — DC networks have hub-spoke hierarchies for distribution planning
+**PRIORITY 47 — connect_table: fulfillment.shipment_package** — add column parent_package_id (BIGINT) with FK to fulfillment.shipment_package.shipment_package_id — packages can contain other packages for master carton tracking
+**PRIORITY 48 — connect_table: inventory.inventory_node** — add column parent_inventory_node_id (BIGINT) with FK to inventory.inventory_node.inventory_node_id — inventory nodes have hierarchies for aggregated inventory visibility
+**PRIORITY 49 — connect_table: order.header** — add column original_order_id (BIGINT) with FK to order.header.header_id — orders can be reorders or replacements requiring linkage to original orders
+**PRIORITY 50 — connect_table: ecommerce.web_session** — add column prior_session_id (BIGINT) with FK to ecommerce.web_session.web_session_id — sessions can be continuations of prior sessions for journey analysis
+**PRIORITY 51 — connect_table: pricing.markdown** — add column prior_markdown_id (BIGINT) with FK to pricing.markdown.markdown_id — markdowns often occur in sequences requiring chain tracking
+**PRIORITY 52 — connect_table: supplychain.inbound_shipment** — add column vendor_contract_id (BIGINT) with FK to supplier.vendor_contract.vendor_contract_id — inbound shipments are governed by vendor contracts for compliance tracking
+**PRIORITY 53 — connect_table: supplychain.outbound_order** — add column fulfillment_order_id (BIGINT) with FK to fulfillment.fulfillment_order.fulfillment_order_id — outbound orders from DC should link to fulfillment orders for end-to-end tracking
+**PRIORITY 54 — connect_table: supplychain.receiving_event** — add column lot_id (BIGINT) with FK to inventory.lot.lot_id — receiving events create lots that should be linked for traceability
+**PRIORITY 55 — connect_table: supplychain.wave** — add column pick_task_id (BIGINT) with FK to fulfillment.pick_task.pick_task_id — waves generate pick tasks that should be linked for execution tracking
+**PRIORITY 56 — connect_table: returns.disposition** — add column return_policy_id (BIGINT) with FK to returns.return_policy.return_policy_id — disposition decisions are governed by return policies
+**PRIORITY 57 — connect_table: returns.rma** — add column carrier_id (BIGINT) with FK to fulfillment.carrier.carrier_id — RMAs specify return shipping carrier for logistics coordination
+**PRIORITY 58 — connect_table: customer.contact** — add column address_id (BIGINT) with FK to customer.address.address_id — contacts often have associated addresses for correspondence
+**PRIORITY 59 — connect_table: ecommerce.product_review** — add column category_id (BIGINT) with FK to merchandising.category.category_id — reviews are analyzed at category level for sentiment trends
+**PRIORITY 60 — connect_table: ecommerce.marketplace_listing** — add column vendor_contract_id (BIGINT) with FK to supplier.vendor_contract.vendor_contract_id — marketplace listings from vendors are governed by contracts
+**PRIORITY 61 — connect_table: inventory.reorder_policy** — add column category_id (BIGINT) with FK to merchandising.category.category_id — reorder policies are often set at category level for inventory management
+**PRIORITY 62 — connect_table: inventory.reservation** — add column order_line_id (BIGINT) with FK to order.order_line.order_line_id — reservations are made against specific order lines for allocation
+**PRIORITY 63 — connect_table: merchandising.assortment_item** — add column category_id (BIGINT) with FK to merchandising.category.category_id — assortment items belong to categories for merchandise planning
+**PRIORITY 64 — connect_table: pricing.rule** — add column brand_id (BIGINT) with FK to product.brand.brand_id — pricing rules often apply to specific brands for brand-level pricing strategies
+**PRIORITY 65 — connect_table: pricing.price_list** — add column vendor_id (BIGINT) with FK to supplier.vendor.vendor_id — price lists may be vendor-specific for cost-plus pricing models
+
+Other known issues from static analysis (12):
+  - Table inventory.replenishment_order has 2 FK columns pointing to inventory.inventory_node (inventory_node_id, primary_replenishment_inventory_node_id) (generic/unlabeled: inventory_node_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table inventory.stock_transfer has 2 FK columns pointing to inventory.inventory_node (inventory_node_id, primary_stock_inventory_node_id) (generic/unlabeled: inventory_node_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table customer.account has 2 FK columns pointing to customer.address (address_id, shipping_address_id) (generic/unlabeled: address_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table product.item_variant has 2 FK columns pointing to product.sku (sku_id, target_item_sku_id) (generic/unlabeled: sku_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supplier.rtv_request has 2 FK columns pointing to store.location (location_id, origin_location_id) (generic/unlabeled: location_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table returns.disposition has 2 FK columns pointing to supplier.vendor (vendor_id, disposition_vendor_id) (generic/unlabeled: vendor_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supplychain.inbound_shipment has 2 FK columns pointing to supplychain.dc_facility (dc_facility_id, primary_inbound_dc_facility_id) (generic/unlabeled: dc_facility_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supplychain.outbound_order has 2 FK columns pointing to supplychain.dc_facility (dc_facility_id, primary_outbound_dc_facility_id) (generic/unlabeled: dc_facility_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supplychain.outbound_order_line has 2 FK columns pointing to store.location (location_id, source_location_id) (generic/unlabeled: location_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Subdomain 'network_configuration' appears in 2 domains: fulfillment, inventory. Consider renaming to qualified form.
+  - 4 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 100 attribute(s) match person-data patterns but lack pii_ tags
+
+Deterministic score: 82.44/100 (LLM assessment: 72/100)

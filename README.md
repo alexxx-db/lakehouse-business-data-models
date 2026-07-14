@@ -230,7 +230,7 @@ Click an industry name to jump to its folder.
 | [Airlines](./data-models/airlines/) | 19 | [424](./data-models/airlines/v1/ecm/) | 15 | [205](./data-models/airlines/v1/mvm/) |
 | [Travel & Hospitality](./data-models/travel_hospitality/) | 17 | [353](./data-models/travel_hospitality/v2/ecm/) | 9 | [87](./data-models/travel_hospitality/v2/mvm/) |
 | [Transport & Shipping](./data-models/transport_shipping/) | 19 | [514](./data-models/transport_shipping/v1/ecm/) | 14 | [210](./data-models/transport_shipping/v1/mvm/) |
-| [Shipping Ports](./data-models/shipping_ports/) | 19 | [395](./data-models/shipping_ports/v1/ecm/) | 14 | [186](./data-models/shipping_ports/v1/mvm/) |
+| [Shipping Ports](./data-models/shipping_ports/) | 20 | [420](./data-models/shipping_ports/v2/ecm/) | 12 | [117](./data-models/shipping_ports/v2/mvm/) |
 
 ### Energy & Resources
 
@@ -266,7 +266,7 @@ Click an industry name to jump to its folder.
 
 | Industry | ECM Domains | ECM Products | MVM Domains | MVM Products |
 |---|---:|---:|---:|---:|
-| [Retail](./data-models/retail/) | 19 | [401](./data-models/retail/v1/ecm/) | 15 | [154](./data-models/retail/v1/mvm/) |
+| [Retail](./data-models/retail/) | 20 | [405](./data-models/retail/v2/ecm/) | 13 | [125](./data-models/retail/v2/mvm/) |
 | [Grocery](./data-models/grocery/) | 19 | [374](./data-models/grocery/v1/ecm/) | 14 | [175](./data-models/grocery/v1/mvm/) |
 | [Ecommerce](./data-models/ecommerce/) | 18 | [369](./data-models/ecommerce/v1/ecm/) | 14 | [148](./data-models/ecommerce/v1/mvm/) |
 | [Consumer Goods](./data-models/consumer_goods/) | 18 | [405](./data-models/consumer_goods/v2/ecm/) | 10 | [116](./data-models/consumer_goods/v2/mvm/) |
@@ -281,7 +281,7 @@ Click an industry name to jump to its folder.
 | [Manufacturing](./data-models/manufacturing/) | 20 | [414](./data-models/manufacturing/v2/ecm/) | 13 | [114](./data-models/manufacturing/v2/mvm/) |
 | [Chemical Manufacturing](./data-models/chemical_mfg/) | 19 | [405](./data-models/chemical_mfg/v1/ecm/) | 14 | [202](./data-models/chemical_mfg/v1/mvm/) |
 | [Semiconductors](./data-models/semiconductors/) | 19 | [386](./data-models/semiconductors/v2/ecm/) | 12 | [113](./data-models/semiconductors/v2/mvm/) |
-| [Automotive](./data-models/automotive/) | 19 | [548](./data-models/automotive/v1/ecm/) | 14 | [209](./data-models/automotive/v1/mvm/) |
+| [Automotive](./data-models/automotive/) | 20 | [590](./data-models/automotive/v2/ecm/) | 11 | [114](./data-models/automotive/v2/mvm/) |
 | [Construction](./data-models/construction/) | 18 | [365](./data-models/construction/v2/ecm/) | 13 | [143](./data-models/construction/v2/mvm/) |
 | [Agriculture](./data-models/agriculture/) | 18 | [408](./data-models/agriculture/v1/ecm/) | 14 | [177](./data-models/agriculture/v1/mvm/) |
 
