@@ -70,9 +70,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of commission transactions processed. Used as a volume baseline for per-transaction cost and throughput analysis."
     - name: "distinct_producer_count"
-      expr: COUNT(DISTINCT primary_commission_producer_id)
+      expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers receiving commission in the period. Measures active distribution footprint and compensation reach."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_payment`
 WITH METRICS
@@ -141,6 +142,7 @@ AS $$
       expr: COUNT(DISTINCT payee_id)
       comment: "Number of distinct payees receiving commission payments. Measures active compensation reach and supports payee master data governance."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_chargeback`
 WITH METRICS
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers with active chargebacks. Identifies concentration of chargeback risk within the distribution force."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_statement`
 WITH METRICS
@@ -299,6 +302,7 @@ AS $$
       comment: "Number of distinct producers receiving statements. Measures active compensation reach and supports producer master data governance."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_run`
 WITH METRICS
 LANGUAGE YAML
@@ -370,6 +374,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of commission runs executed. Volume baseline for operations throughput and run frequency governance."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_adjustment`
 WITH METRICS
@@ -445,6 +450,7 @@ AS $$
       comment: "Number of adjustments that are reversals of prior transactions. Measures reversal frequency as an indicator of commission processing quality and error rates."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_bonus_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -473,6 +479,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of bonus payments issued. Volume baseline for incentive program reach and payment operations throughput."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_bonus_qualification`
 WITH METRICS
@@ -538,6 +545,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN qualification_status = 'QUALIFIED' THEN producer_id END)
       comment: "Number of distinct producers who achieved full qualification. Measures incentive program reach and the breadth of the qualified distribution force."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_override`
 WITH METRICS
@@ -606,9 +614,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of override commission records. Volume baseline for override program activity and hierarchy engagement analysis."
     - name: "distinct_override_producer_count"
-      expr: COUNT(DISTINCT primary_override_producer_id)
+      expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers receiving override commissions. Measures the breadth of the override-eligible distribution hierarchy."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_compensation_contract`
 WITH METRICS

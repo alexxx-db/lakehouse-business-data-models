@@ -77,6 +77,7 @@ AS $$
       comment: "Percentage of invoices that are credit memos. Benchmark for billing accuracy — industry best practice is below 2%."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_line`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs appearing on invoice lines. Measures product breadth in billing and identifies revenue concentration risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_payment_receipt`
 WITH METRICS
@@ -222,6 +224,7 @@ AS $$
       comment: "Total residual open amount remaining after payment application. Measures unapplied cash and partial payment exposure in AR."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dispute`
 WITH METRICS
 LANGUAGE YAML
@@ -281,6 +284,7 @@ AS $$
       comment: "Number of distinct customer accounts with disputes. Identifies breadth of dispute exposure across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_credit_hold`
 WITH METRICS
 LANGUAGE YAML
@@ -330,9 +334,10 @@ AS $$
       expr: SUM(CASE WHEN credit_hold_status = 'Active' THEN hold_amount ELSE 0 END)
       comment: "Total revenue blocked by active credit holds. Measures current revenue impact of credit restrictions — reported to VP Sales and CFO."
     - name: "distinct_customers_on_hold"
-      expr: COUNT(DISTINCT primary_credit_customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct customer accounts currently on credit hold. Measures breadth of credit risk exposure across the customer portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_customer_credit_limit`
 WITH METRICS
@@ -392,6 +397,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(credit_utilization_amount AS DOUBLE)) / NULLIF(SUM(CAST(credit_limit_amount AS DOUBLE)), 0), 2)
       comment: "Portfolio-level credit utilization rate. Measures how much of the total credit granted is being used — high rates signal elevated credit risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_dunning_notice`
 WITH METRICS
@@ -455,6 +461,7 @@ AS $$
       comment: "Number of distinct customers with active dunning notices. Measures breadth of delinquency across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_adjustment_memo`
 WITH METRICS
 LANGUAGE YAML
@@ -516,6 +523,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of adjustment memos that received approval. Measures authorization compliance — low rates signal approval bottlenecks."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_revenue_recognition_event`
 WITH METRICS
@@ -579,6 +587,7 @@ AS $$
       comment: "Number of reversed revenue recognition events. Elevated reversals signal accounting errors or contract modifications requiring investigation."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_performance_obligation`
 WITH METRICS
 LANGUAGE YAML
@@ -634,6 +643,7 @@ AS $$
       expr: AVG(CAST(total_amount AS DOUBLE))
       comment: "Average transaction price per performance obligation. Tracks contract size trends and revenue concentration."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_royalty_billing`
 WITH METRICS
@@ -703,6 +713,7 @@ AS $$
       comment: "Royalty adjustments as a percentage of gross royalty billed. Measures royalty reporting accuracy — high rates indicate systemic licensee under/over-reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_write_off`
 WITH METRICS
 LANGUAGE YAML
@@ -768,6 +779,7 @@ AS $$
       comment: "Number of distinct customers with write-offs. Measures breadth of bad debt exposure across the customer portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_pricing_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -830,6 +842,7 @@ AS $$
       comment: "Number of distinct customers with pricing agreements. Measures pricing agreement coverage across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_nre_billing_milestone`
 WITH METRICS
 LANGUAGE YAML
@@ -879,6 +892,7 @@ AS $$
       expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct customers with NRE billing milestones. Measures NRE customer base breadth and revenue concentration."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`invoice_tax_determination`
 WITH METRICS

@@ -44,6 +44,7 @@ AS $$
       comment: "Number of unique credit rating categories"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`customer_credit_profile`
 WITH METRICS
 LANGUAGE YAML
@@ -82,6 +83,7 @@ AS $$
       comment: "Number of unique accounts with a credit profile"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`customer_account_relationship`
 WITH METRICS
 LANGUAGE YAML
@@ -107,12 +109,13 @@ AS $$
       expr: AVG(CAST(credit_exposure_limit AS DOUBLE))
       comment: "Average credit exposure limit per relationship"
     - name: "distinct_source_accounts"
-      expr: COUNT(DISTINCT source_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique source accounts in relationships"
     - name: "distinct_target_accounts"
       expr: COUNT(DISTINCT target_account_id)
       comment: "Number of unique target accounts in relationships"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`customer_bundle_enrollment`
 WITH METRICS

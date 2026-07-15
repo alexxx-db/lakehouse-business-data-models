@@ -68,6 +68,7 @@ AS $$
       comment: "Number of distinct risk pools - tracks portfolio segmentation and complexity"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_member_risk_score`
 WITH METRICS
 LANGUAGE YAML
@@ -129,7 +130,7 @@ AS $$
       expr: COUNT(DISTINCT member_risk_score_id)
       comment: "Total number of member risk score records - tracks scoring coverage and completeness"
     - name: "unique_members_scored"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with risk scores - measures population coverage"
     - name: "plan_cms_score_gap"
       expr: ROUND(AVG(CAST(plan_calculated_score AS DOUBLE)) - AVG(CAST(cms_published_score AS DOUBLE)), 4)
@@ -138,6 +139,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN is_manual_override = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of risk scores requiring manual override - data quality and process efficiency indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_adjustment_payment`
 WITH METRICS
@@ -197,12 +199,13 @@ AS $$
       expr: COUNT(DISTINCT adjustment_payment_id)
       comment: "Total number of adjustment payment records - tracks reconciliation volume"
     - name: "unique_members_adjusted"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of members with payment adjustments - measures adjustment breadth"
     - name: "net_adjustment_rate"
       expr: ROUND(100.0 * SUM(CAST(adjustment_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_amount AS DOUBLE)), 0), 2)
       comment: "Net adjustment as percentage of gross payment - key variance metric for budget accuracy"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_rate_development`
 WITH METRICS
@@ -271,6 +274,7 @@ AS $$
       expr: ROUND(100.0 * (AVG(CAST(final_approved_rate AS DOUBLE)) - AVG(CAST(base_rate AS DOUBLE))) / NULLIF(AVG(CAST(base_rate AS DOUBLE)), 0), 2)
       comment: "Average percentage increase from base to final approved rate - key market competitiveness metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_ibnr_reserve`
 WITH METRICS
@@ -346,6 +350,7 @@ AS $$
       comment: "Percentage of reserves meeting adequacy standards - key solvency risk indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_reinsurance_arrangement`
 WITH METRICS
 LANGUAGE YAML
@@ -411,6 +416,7 @@ AS $$
       comment: "Average leverage ratio of coverage to premium - efficiency of reinsurance spend"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_rbc_calculation`
 WITH METRICS
 LANGUAGE YAML
@@ -473,6 +479,7 @@ AS $$
       comment: "Average capital cushion above company action level - measures solvency buffer"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_radv_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -522,7 +529,7 @@ AS $$
       expr: COUNT(DISTINCT radv_audit_id)
       comment: "Total number of RADV audits - tracks audit volume and exposure"
     - name: "unique_members_audited"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of members included in RADV audits"
     - name: "audit_error_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN audit_error_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)

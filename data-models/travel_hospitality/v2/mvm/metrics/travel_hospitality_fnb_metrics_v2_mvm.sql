@@ -77,15 +77,16 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(service_charge_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
       comment: "Service charge as a percentage of subtotal revenue. Validates service charge policy compliance."
     - name: "unique_guests_served"
-      expr: COUNT(DISTINCT guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Count of unique guests served. Measures guest reach and repeat visitation potential."
     - name: "loyalty_member_checks"
-      expr: COUNT(DISTINCT loyalty_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Number of distinct loyalty members transacting. Tracks loyalty program engagement in F&B."
     - name: "total_tender_amount"
       expr: SUM(CAST(tender_amount AS DOUBLE))
       comment: "Total amount tendered by guests. Reconciliation metric for cash and payment management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_pos_check_line`
 WITH METRICS
@@ -159,6 +160,7 @@ AS $$
       comment: "Number of distinct menu items sold. Measures menu breadth utilization and identifies dead menu items."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_room_service_order`
 WITH METRICS
 LANGUAGE YAML
@@ -230,12 +232,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
       comment: "Discount as a percentage of net room service revenue. Monitors promotional intensity and revenue dilution."
     - name: "unique_guests_ordering"
-      expr: COUNT(DISTINCT guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique guests placing room service orders. Measures in-room dining adoption across the guest base."
     - name: "avg_service_charge_per_order"
       expr: AVG(CAST(service_charge AS DOUBLE))
       comment: "Average service charge per room service order. Validates service charge policy and identifies anomalies."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_stock_transaction`
 WITH METRICS
@@ -305,6 +308,7 @@ AS $$
       expr: COUNT(DISTINCT inventory_item_id)
       comment: "Number of distinct inventory items with stock movements. Measures inventory breadth and active SKU utilization."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_inventory_item`
 WITH METRICS
@@ -377,6 +381,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN allergen_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of inventory items containing allergens. Food safety compliance metric for allergen management programs."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_menu_item`
 WITH METRICS
@@ -458,6 +463,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(cost_price AS DOUBLE)) / NULLIF(SUM(CAST(standard_price AS DOUBLE)), 0), 2)
       comment: "Aggregate cost-to-price ratio across menu items. Validates menu pricing strategy against cost structure targets."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`fnb_revenue_center`
 WITH METRICS

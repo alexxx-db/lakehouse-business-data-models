@@ -59,6 +59,7 @@ AS $$
       comment: "Number of distinct materials tracked in inventory. Indicates portfolio breadth and complexity of inventory management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_goods_issue`
 WITH METRICS
 LANGUAGE YAML
@@ -126,6 +127,7 @@ AS $$
       expr: COUNT(CASE WHEN inspection_required = TRUE THEN 1 END)
       comment: "Number of goods issues requiring inspection (typically hazardous or regulated materials). Tracks compliance burden and inspection resource demand."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_wastage`
 WITH METRICS
@@ -195,6 +197,7 @@ AS $$
       comment: "Number of distinct materials generating wastage. High diversity indicates systemic over-ordering or poor material planning across the project."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -263,6 +266,7 @@ AS $$
       comment: "Average gross value per stock movement. Benchmarks transaction size and identifies anomalous high-value receipts requiring additional scrutiny."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_requisition`
 WITH METRICS
 LANGUAGE YAML
@@ -321,12 +325,13 @@ AS $$
       expr: AVG(CAST(cost_estimate_gross AS DOUBLE))
       comment: "Average gross cost estimate per requisition. Benchmarks typical procurement transaction size and identifies outliers requiring additional approval scrutiny."
     - name: "distinct_materials_requested"
-      expr: COUNT(DISTINCT material_master_id)
+      expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct materials being requisitioned. Indicates procurement complexity and potential for consolidation to achieve volume discounts."
     - name: "stock_available_requisition_count"
       expr: COUNT(CASE WHEN is_stock_available = TRUE THEN 1 END)
       comment: "Number of requisitions where stock is already available in warehouse. High ratio indicates over-requisitioning and poor inventory visibility."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_physical_inventory`
 WITH METRICS
@@ -383,6 +388,7 @@ AS $$
       expr: COUNT(CASE WHEN variance_quantity = 0 THEN 1 END)
       comment: "Number of count records with zero variance (perfect accuracy). Used to compute inventory accuracy rate — target is typically 95%+ for construction materials."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_mto_line`
 WITH METRICS
@@ -446,6 +452,7 @@ AS $$
       comment: "Average estimated unit price across MTO lines. Used for cost benchmarking and identifying lines where actual prices deviate significantly from estimates."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_conformance_certificate`
 WITH METRICS
 LANGUAGE YAML
@@ -498,9 +505,10 @@ AS $$
       expr: AVG(CAST(humidity_recorded AS DOUBLE))
       comment: "Average humidity recorded during testing. Tracks environmental test conditions for quality process compliance."
     - name: "distinct_materials_tested"
-      expr: COUNT(DISTINCT material_master_id)
+      expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct materials with conformance certificates. Indicates breadth of quality testing coverage across the material portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_hazmat_register`
 WITH METRICS
@@ -563,6 +571,7 @@ AS $$
       expr: COUNT(CASE WHEN is_environmentally_hazardous = TRUE THEN 1 END)
       comment: "Number of environmentally hazardous material entries. Drives environmental risk management and spill response planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_stock_transfer`
 WITH METRICS

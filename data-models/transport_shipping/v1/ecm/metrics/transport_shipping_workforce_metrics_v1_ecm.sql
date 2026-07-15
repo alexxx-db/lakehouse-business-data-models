@@ -71,6 +71,7 @@ AS $$
       comment: "Count of payroll records processed — operational volume baseline"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_absence_record`
 WITH METRICS
 LANGUAGE YAML
@@ -126,6 +127,7 @@ AS $$
       expr: COUNT(DISTINCT primary_absence_employee_id)
       comment: "Number of unique employees with absences — breadth of absenteeism"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_hours_of_service_log`
 WITH METRICS
@@ -188,12 +190,13 @@ AS $$
       expr: SUM(CASE WHEN violation_flag = true THEN 1 ELSE 0 END)
       comment: "Count of HOS violations — primary DOT compliance risk metric"
     - name: "distinct_drivers_logged"
-      expr: COUNT(DISTINCT primary_hours_driver_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique drivers with HOS logs — active driver fleet size"
     - name: "log_entry_count"
       expr: COUNT(1)
       comment: "Total HOS log entries — operational volume baseline"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_shift_assignment`
 WITH METRICS
@@ -250,9 +253,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total shift assignments — scheduling volume"
     - name: "distinct_employees_scheduled"
-      expr: COUNT(DISTINCT primary_shift_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Unique employees with shift assignments — active workforce deployment breadth"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_recruitment_requisition`
 WITH METRICS
@@ -309,6 +313,7 @@ AS $$
       expr: AVG(CAST(offer_acceptance_rate AS DOUBLE))
       comment: "Average offer acceptance rate — employer brand and compensation competitiveness indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_performance_review`
 WITH METRICS
@@ -372,6 +377,7 @@ AS $$
       comment: "Count of bonus-eligible employees — variable compensation exposure"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_driver_qualification`
 WITH METRICS
 LANGUAGE YAML
@@ -427,6 +433,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total driver qualification records — fleet size baseline"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_labor_cost_allocation`
 WITH METRICS
@@ -496,6 +503,7 @@ AS $$
       comment: "Count of labor cost allocation records — transaction volume"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_compensation_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -555,6 +563,7 @@ AS $$
       comment: "Count of active compensation plans — workforce size proxy"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_training_record`
 WITH METRICS
 LANGUAGE YAML
@@ -613,12 +622,13 @@ AS $$
       expr: COUNT(1)
       comment: "Total training records — training activity volume"
     - name: "distinct_employees_trained"
-      expr: COUNT(DISTINCT primary_training_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Unique employees with training records — training reach metric"
     - name: "compliance_training_count"
       expr: SUM(CASE WHEN compliance_requirement_flag = true THEN 1 ELSE 0 END)
       comment: "Count of compliance-required training records — regulatory training volume"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`workforce_fte_plan`
 WITH METRICS

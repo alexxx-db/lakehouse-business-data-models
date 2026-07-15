@@ -71,6 +71,7 @@ AS $$
       comment: "Number of unique requisitions being filled"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_candidate`
 WITH METRICS
 LANGUAGE YAML
@@ -130,6 +131,7 @@ AS $$
       comment: "Number of candidates willing to relocate"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_capacity_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -188,6 +190,7 @@ AS $$
       expr: AVG(CAST(utilization_target_pct AS DOUBLE))
       comment: "Average utilization target percentage"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_payroll_record`
 WITH METRICS
@@ -269,6 +272,7 @@ AS $$
       comment: "Average hours worked per payroll record"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_performance_review`
 WITH METRICS
 LANGUAGE YAML
@@ -306,7 +310,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN completion_date IS NOT NULL THEN performance_review_id END)
       comment: "Number of completed performance reviews"
     - name: "unique_employees_reviewed"
-      expr: COUNT(DISTINCT primary_performance_worker_id)
+      expr: COUNT(DISTINCT worker_id)
       comment: "Number of unique employees who received reviews"
     - name: "avg_overall_rating_score"
       expr: AVG(CAST(overall_rating_score AS DOUBLE))
@@ -327,15 +331,16 @@ AS $$
       expr: AVG(CAST(merit_increase_pct AS DOUBLE))
       comment: "Average merit increase percentage recommended"
     - name: "employees_recommended_for_promotion"
-      expr: COUNT(DISTINCT CASE WHEN promotion_recommended = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN promotion_recommended = TRUE THEN worker_id END)
       comment: "Number of employees recommended for promotion"
     - name: "employees_on_pip"
-      expr: COUNT(DISTINCT CASE WHEN pip_required = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN pip_required = TRUE THEN worker_id END)
       comment: "Number of employees requiring performance improvement plan"
     - name: "succession_candidates"
-      expr: COUNT(DISTINCT CASE WHEN succession_candidate = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN succession_candidate = TRUE THEN worker_id END)
       comment: "Number of employees identified as succession candidates"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_resource_allocation`
 WITH METRICS
@@ -395,6 +400,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN billable_flag = FALSE THEN resource_allocation_id END)
       comment: "Number of non-billable resource allocations"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_timesheet`
 WITH METRICS
@@ -457,6 +463,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_amended = TRUE THEN timesheet_id END)
       comment: "Number of timesheets that were amended"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_engagement`
 WITH METRICS
@@ -522,6 +529,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN usage_rights_included = TRUE THEN talent_engagement_id END)
       comment: "Number of engagements including usage rights"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_worker`
 WITH METRICS

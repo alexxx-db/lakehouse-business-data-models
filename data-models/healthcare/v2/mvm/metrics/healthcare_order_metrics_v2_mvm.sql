@@ -82,9 +82,10 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with orders"
     - name: "unique_ordering_providers"
-      expr: COUNT(DISTINCT primary_clinical_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers placing orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_fulfillment`
 WITH METRICS
@@ -171,9 +172,10 @@ AS $$
       expr: COUNT(DISTINCT demographics_id)
       comment: "Number of unique patients served through fulfillments"
     - name: "unique_performing_providers"
-      expr: COUNT(DISTINCT performing_org_provider_id)
+      expr: COUNT(DISTINCT org_provider_id)
       comment: "Number of unique provider organizations performing fulfillments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_referral_order`
 WITH METRICS
@@ -248,15 +250,16 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with referral orders"
     - name: "unique_referring_providers"
-      expr: COUNT(DISTINCT primary_referral_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers placing referrals"
     - name: "unique_receiving_providers"
       expr: COUNT(DISTINCT receiving_provider_clinician_id)
       comment: "Number of unique providers receiving referrals"
     - name: "unique_receiving_organizations"
-      expr: COUNT(DISTINCT receiving_org_provider_id)
+      expr: COUNT(DISTINCT org_provider_id)
       comment: "Number of unique organizations receiving referrals"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_set`
 WITH METRICS
@@ -338,6 +341,7 @@ AS $$
       comment: "Number of unique organizations with order sets"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_standing_order`
 WITH METRICS
 LANGUAGE YAML
@@ -402,6 +406,7 @@ AS $$
       expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique clinicians associated with standing orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_therapy_order`
 WITH METRICS
@@ -470,12 +475,13 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with therapy orders"
     - name: "unique_therapy_providers"
-      expr: COUNT(DISTINCT primary_therapy_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique therapy providers"
     - name: "unique_performing_organizations"
-      expr: COUNT(DISTINCT performing_org_provider_id)
+      expr: COUNT(DISTINCT org_provider_id)
       comment: "Number of unique organizations performing therapy services"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`order_diet_order`
 WITH METRICS
@@ -550,6 +556,6 @@ AS $$
       expr: COUNT(DISTINCT demographics_id)
       comment: "Number of unique patients with diet orders"
     - name: "unique_diet_providers"
-      expr: COUNT(DISTINCT primary_diet_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers placing diet orders"
 $$;

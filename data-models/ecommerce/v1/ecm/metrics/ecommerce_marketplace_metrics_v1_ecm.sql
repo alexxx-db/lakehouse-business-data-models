@@ -47,6 +47,7 @@ AS $$
       comment: "Average fraud risk score."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`marketplace_ad_event`
 WITH METRICS
 LANGUAGE YAML
@@ -58,8 +59,8 @@ AS $$
     - name: "event_date"
       expr: DATE_TRUNC('day', event_timestamp)
       comment: "Date of the ad event."
-    - name: "ad_campaign_id"
-      expr: ad_campaign_id
+    - name: "campaign_id"
+      expr: campaign_id
       comment: "Campaign identifier."
     - name: "ad_placement_id"
       expr: ad_placement_id
@@ -90,6 +91,7 @@ AS $$
       expr: SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END)
       comment: "Number of ad conversions."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`marketplace_gmv_snapshot`
 WITH METRICS
@@ -129,6 +131,7 @@ AS $$
       comment: "Average take rate percentage."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`marketplace_seller_settlement`
 WITH METRICS
 LANGUAGE YAML
@@ -166,6 +169,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of settlement records."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`marketplace_listing_offer`
 WITH METRICS

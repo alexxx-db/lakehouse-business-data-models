@@ -88,7 +88,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(selling_price AS DOUBLE)) / NULLIF(SUM(CAST(msrp AS DOUBLE)), 0), 2)
       comment: "Percentage of MSRP realized in selling price"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT primary_vehicle_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers placing orders"
     - name: "distinct_dealerships"
       expr: COUNT(DISTINCT dealership_id)
@@ -100,6 +100,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN trade_in_value > 0 THEN vehicle_order_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of orders that included a trade-in"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
@@ -195,7 +196,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN quote_generated = TRUE AND is_won = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN quote_generated = TRUE THEN 1 END), 0), 2)
       comment: "Percentage of quoted opportunities that were won"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT opportunity_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers with opportunities"
     - name: "distinct_dealerships"
       expr: COUNT(DISTINCT dealership_id)
@@ -207,6 +208,7 @@ AS $$
       expr: AVG(CAST(trade_in_value AS DOUBLE))
       comment: "Average trade-in value per opportunity"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_delivery_appointment`
 WITH METRICS
@@ -308,9 +310,10 @@ AS $$
       expr: COUNT(DISTINCT dealership_id)
       comment: "Number of unique dealerships performing deliveries"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT primary_delivery_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers receiving deliveries"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_fleet_contract`
 WITH METRICS
@@ -406,6 +409,7 @@ AS $$
       expr: COUNT(DISTINCT dealership_id)
       comment: "Number of unique dealerships managing fleet contracts"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_trade_in`
 WITH METRICS
@@ -516,9 +520,10 @@ AS $$
       expr: COUNT(DISTINCT dealership_id)
       comment: "Number of unique dealerships processing trade-ins"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT primary_trade_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers trading in vehicles"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_quote`
 WITH METRICS
@@ -632,7 +637,7 @@ AS $$
       expr: AVG(CAST(down_payment AS DOUBLE))
       comment: "Average down payment in quotes"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT quote_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers receiving quotes"
     - name: "distinct_dealerships"
       expr: COUNT(DISTINCT quote_dealership_id)

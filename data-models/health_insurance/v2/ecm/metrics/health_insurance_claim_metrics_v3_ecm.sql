@@ -77,6 +77,7 @@ AS $$
       comment: "Average inpatient length of stay in days. Clinical efficiency KPI used in utilization management and DRG analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_adjudication`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Total adjustment amounts applied during adjudication. Measures payment correction volume and financial accuracy."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_denial`
 WITH METRICS
 LANGUAGE YAML
@@ -209,6 +211,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN override_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of denials overridden. High override rates signal inconsistent denial criteria or staff training gaps."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_payment`
 WITH METRICS
@@ -277,6 +280,7 @@ AS $$
       expr: AVG(CAST(net_amount AS DOUBLE))
       comment: "Average net payment amount per transaction. Tracks unit payment size trends for cash flow forecasting."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_adjustment`
 WITH METRICS
@@ -349,6 +353,7 @@ AS $$
       comment: "Average net adjustment amount per record. Tracks unit recovery size for prioritizing high-value cases."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_accumulator`
 WITH METRICS
 LANGUAGE YAML
@@ -404,9 +409,10 @@ AS $$
       expr: COUNT(CASE WHEN is_reversal = TRUE THEN 1 END)
       comment: "Count of accumulator reversals. Tracks data quality and correction volume in benefit tracking systems."
     - name: "distinct_members_with_accumulators"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members with active accumulators. Measures benefit program reach and member engagement."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_ibnr`
 WITH METRICS
@@ -467,6 +473,7 @@ AS $$
       comment: "Ratio of estimated IBNR to paid-to-date claims. Reserve adequacy KPI — ratios outside expected range trigger actuarial review."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_cob`
 WITH METRICS
 LANGUAGE YAML
@@ -525,6 +532,7 @@ AS $$
       expr: AVG(CAST(primary_payer_allowed_amount AS DOUBLE))
       comment: "Average primary payer allowed amount. Benchmarks primary payer generosity and informs secondary liability estimates."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_subrogation`
 WITH METRICS
@@ -590,6 +598,7 @@ AS $$
       expr: COUNT(CASE WHEN is_lien_applied = TRUE THEN 1 END)
       comment: "Count of cases with liens applied. Tracks lien strategy utilization for maximizing recovery leverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_line`
 WITH METRICS

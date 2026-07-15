@@ -83,6 +83,7 @@ AS $$
       comment: "Count of distinct fixed assets that have had work orders — measures maintenance coverage breadth across the asset fleet."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_downtime_event`
 WITH METRICS
 LANGUAGE YAML
@@ -160,6 +161,7 @@ AS $$
       comment: "Average estimated revenue lost per downtime event — used to prioritize high-impact asset classes for reliability investment."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_repair_history`
 WITH METRICS
 LANGUAGE YAML
@@ -234,6 +236,7 @@ AS $$
       comment: "Average downtime hours per repair event — proxy for MTTR at the repair record level; lower values indicate faster resolution."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_pm_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -301,6 +304,7 @@ AS $$
       expr: AVG(CAST(estimated_parts_cost AS DOUBLE))
       comment: "Average estimated parts cost per PM schedule — used to benchmark PM material intensity and identify high-cost maintenance plans."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_technician_assignment`
 WITH METRICS
@@ -379,6 +383,7 @@ AS $$
       comment: "Count of distinct work orders receiving technician assignments — measures active maintenance workload breadth across the organization."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_parts_usage`
 WITH METRICS
 LANGUAGE YAML
@@ -450,6 +455,7 @@ AS $$
       comment: "Net quantity consumed (issued minus returned) — true consumption metric used for demand forecasting and inventory optimization."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_parts_inventory`
 WITH METRICS
 LANGUAGE YAML
@@ -511,9 +517,10 @@ AS $$
       expr: SUM(CAST(annual_usage_quantity AS DOUBLE))
       comment: "Total annual usage quantity across all inventory items — demand volume metric used for reorder point optimization and safety stock calculations."
     - name: "distinct_parts_stocked"
-      expr: COUNT(DISTINCT primary_parts_catalog_id)
+      expr: COUNT(DISTINCT parts_catalog_id)
       comment: "Count of distinct parts catalog items stocked in inventory — measures inventory breadth and informs rationalization decisions to reduce SKU complexity."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_failure_mode`
 WITH METRICS

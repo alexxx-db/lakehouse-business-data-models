@@ -83,6 +83,7 @@ AS $$
       comment: "Total number of stock balance records - granularity baseline"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -153,7 +154,7 @@ AS $$
       expr: COUNT(DISTINCT material_master_id)
       comment: "Number of unique materials moved - SKU activity breadth"
     - name: "distinct_location_activity_count"
-      expr: COUNT(DISTINCT source_stock_location_id)
+      expr: COUNT(DISTINCT stock_location_id)
       comment: "Number of unique source locations with movement activity - location utilization"
     - name: "reversal_rate_pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
@@ -162,6 +163,7 @@ AS $$
       expr: AVG(CAST(quantity AS DOUBLE))
       comment: "Average quantity per movement transaction - transaction size metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
@@ -240,6 +242,7 @@ AS $$
       comment: "Average variance value per count event - variance magnitude metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -316,6 +319,7 @@ AS $$
       expr: COUNT(DISTINCT stock_location_id)
       comment: "Number of unique locations receiving replenishment - distribution footprint"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_material_master`
 WITH METRICS
@@ -402,6 +406,7 @@ AS $$
       expr: COUNT(CASE WHEN inspection_setup_indicator = TRUE THEN 1 END)
       comment: "Number of materials requiring quality inspection - QC workload indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_warehouse`
 WITH METRICS

@@ -80,6 +80,7 @@ AS $$
       comment: "Percentage of invoices disputed - customer satisfaction and billing quality indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -144,9 +145,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN return_reason_code IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of payments returned - credit quality and process risk indicator"
     - name: "Unique Payers"
-      expr: COUNT(DISTINCT payment_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Count of distinct parties making payments - customer base breadth"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_receivable`
 WITH METRICS
@@ -222,6 +224,7 @@ AS $$
       comment: "Count of distinct accounts with outstanding receivables"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_credit_memo`
 WITH METRICS
 LANGUAGE YAML
@@ -292,6 +295,7 @@ AS $$
       expr: COUNT(CASE WHEN recall_campaign_id IS NOT NULL THEN 1 END)
       comment: "Count of credits related to recall campaigns - safety and compliance cost"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_dispute`
 WITH METRICS
@@ -366,9 +370,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(credited_amount AS DOUBLE)) / NULLIF(SUM(CAST(disputed_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of disputed amount ultimately credited - dispute validity indicator"
     - name: "Unique Disputing Parties"
-      expr: COUNT(DISTINCT disputing_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Count of distinct parties raising disputes - breadth of dissatisfaction"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_rebate_accrual`
 WITH METRICS
@@ -443,6 +448,7 @@ AS $$
       expr: COUNT(DISTINCT rebate_agreement_id)
       comment: "Count of distinct rebate agreements active"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`billing_dealer_statement`
 WITH METRICS

@@ -65,6 +65,7 @@ AS $$
       comment: "Number of distinct storage locations holding inventory"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_goods_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -120,7 +121,7 @@ AS $$
       expr: COUNT(DISTINCT part_master_id)
       comment: "Number of distinct parts involved in goods movements"
     - name: "distinct_source_locations"
-      expr: COUNT(DISTINCT source_storage_location_id)
+      expr: COUNT(DISTINCT storage_location_id)
       comment: "Number of distinct source storage locations"
     - name: "automated_movement_rate"
       expr: ROUND(100.0 * SUM(CAST(CASE WHEN is_automated = TRUE THEN 1 ELSE 0 END AS INT)) / NULLIF(COUNT(1), 0), 2)
@@ -132,6 +133,7 @@ AS $$
       expr: AVG(CAST(amount_usd AS DOUBLE))
       comment: "Average value per goods movement transaction in USD"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
@@ -195,6 +197,7 @@ AS $$
       comment: "Number of distinct storage locations cycle counted"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_valuation`
 WITH METRICS
 LANGUAGE YAML
@@ -256,6 +259,7 @@ AS $$
       expr: COUNT(DISTINCT gl_account_id)
       comment: "Number of distinct GL accounts used for inventory valuation"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_finished_vehicle_stock`
 WITH METRICS
@@ -325,6 +329,7 @@ AS $$
       comment: "Percentage of finished vehicles that are allocated (sales pipeline indicator)"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -383,9 +388,10 @@ AS $$
       expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs being replenished"
     - name: "distinct_destination_locations"
-      expr: COUNT(DISTINCT destination_location_storage_location_id)
+      expr: COUNT(DISTINCT storage_location_id)
       comment: "Number of distinct destination locations receiving replenishment"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_hold`
 WITH METRICS
@@ -440,6 +446,7 @@ AS $$
       comment: "Number of distinct supplier nonconformances causing holds"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_abc_xyz_classification`
 WITH METRICS
 LANGUAGE YAML
@@ -489,6 +496,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(CASE WHEN is_obsolete = TRUE THEN 1 ELSE 0 END AS INT)) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of classified SKUs marked as obsolete (portfolio health indicator)"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`inventory_serialized_unit`
 WITH METRICS

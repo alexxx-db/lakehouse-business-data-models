@@ -59,6 +59,7 @@ AS $$
       comment: "Number of distinct treatment, storage, disposal facilities receiving waste"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_disposal_record`
 WITH METRICS
 LANGUAGE YAML
@@ -114,6 +115,7 @@ AS $$
       expr: COUNT(DISTINCT tsdf_facility_id)
       comment: "Number of distinct TSDF facilities used for disposal"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_waste_shipment`
 WITH METRICS
@@ -180,6 +182,7 @@ AS $$
       comment: "Number of distinct registered transporters used"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_emergency_response_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -241,9 +244,10 @@ AS $$
       expr: SUM(CASE WHEN root_cause_analysis_completed = TRUE THEN 1 ELSE 0 END)
       comment: "Count of incidents with completed root cause analysis"
     - name: "unique_incident_facilities"
-      expr: COUNT(DISTINCT incident_facility_id)
+      expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities where incidents occurred"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_treatment_record`
 WITH METRICS
@@ -303,9 +307,10 @@ AS $$
       expr: SUM(CASE WHEN tclp_test_performed = TRUE THEN 1 ELSE 0 END)
       comment: "Count of treatments where TCLP testing was performed"
     - name: "unique_treatment_facilities"
-      expr: COUNT(DISTINCT treatment_facility_id)
+      expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities performing waste treatment"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_waste_profile`
 WITH METRICS
@@ -378,6 +383,7 @@ AS $$
       comment: "Number of distinct hazardous waste generators with profiles"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_transporter_registration`
 WITH METRICS
 LANGUAGE YAML
@@ -430,6 +436,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors providing transportation services"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_rcra_biennial_report`
 WITH METRICS
@@ -486,9 +493,10 @@ AS $$
       expr: SUM(CASE WHEN onsite_treatment_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of reports with onsite waste treatment"
     - name: "unique_reporting_facilities"
-      expr: COUNT(DISTINCT reporting_facility_id)
+      expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities submitting biennial reports"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_hazwoper_training`
 WITH METRICS
@@ -542,9 +550,10 @@ AS $$
       expr: AVG(CAST(training_cost AS DOUBLE))
       comment: "Average training cost per employee"
     - name: "unique_employees_trained"
-      expr: COUNT(DISTINCT primary_hazwoper_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees who received HAZWOPER training"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`hazmat_storage_unit`
 WITH METRICS

@@ -38,6 +38,7 @@ AS $$
       comment: "Number of actual cost transactions"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_budget`
 WITH METRICS
 LANGUAGE YAML
@@ -78,6 +79,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of budget records"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_project`
 WITH METRICS
@@ -120,6 +122,7 @@ AS $$
       comment: "Number of projects"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_project_economics`
 WITH METRICS
 LANGUAGE YAML
@@ -158,6 +161,7 @@ AS $$
       comment: "Number of project economics records"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_intercompany_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -175,8 +179,8 @@ AS $$
     - name: "sending_company_code_id"
       expr: sending_company_code_id
       comment: "Company code sending the transaction"
-    - name: "receiving_company_code_id"
-      expr: receiving_company_code_id
+    - name: "company_code_id"
+      expr: company_code_id
       comment: "Company code receiving the transaction"
     - name: "transaction_type"
       expr: transaction_type
@@ -195,6 +199,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of intercompany transaction records"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_fixed_asset`
 WITH METRICS
@@ -234,6 +239,7 @@ AS $$
       comment: "Number of fixed asset records"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_impairment_assessment`
 WITH METRICS
 LANGUAGE YAML
@@ -265,6 +271,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of impairment assessments"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`finance_tax_provision`
 WITH METRICS

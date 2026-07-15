@@ -98,6 +98,7 @@ AS $$
       comment: "Count of distinct loyalty member guests with stays. Proxy for repeat/loyal guest volume — key retention KPI."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_profile`
 WITH METRICS
 LANGUAGE YAML
@@ -130,8 +131,8 @@ AS $$
     - name: "gender"
       expr: gender
       comment: "Guest gender — used for demographic segmentation in marketing and service personalization."
-    - name: "creation_property_id"
-      expr: creation_property_id
+    - name: "property_id"
+      expr: property_id
       comment: "Property where the guest profile was first created — identifies acquisition source property."
     - name: "loyalty_enrollment_month"
       expr: DATE_TRUNC('MONTH', loyalty_enrollment_date)
@@ -150,10 +151,10 @@ AS $$
       expr: SUM(CASE WHEN profile_status = 'ACTIVE' THEN 1 ELSE 0 END)
       comment: "Total number of active guest profiles. Baseline CRM size metric — tracks guest base growth and churn."
     - name: "total_loyalty_enrolled_profiles"
-      expr: SUM(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 ELSE 0 END)
+      expr: SUM(CASE WHEN member_id IS NOT NULL THEN 1 ELSE 0 END)
       comment: "Number of profiles enrolled in the loyalty program. Measures loyalty program penetration across the guest base."
     - name: "loyalty_enrollment_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      expr: ROUND(100.0 * SUM(CASE WHEN member_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of guest profiles enrolled in the loyalty program. Key loyalty acquisition KPI — low rates indicate enrollment conversion gaps."
     - name: "email_opt_in_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN email_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
@@ -180,6 +181,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total guest profile count including all statuses. Baseline denominator for profile health and consent rate calculations."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_communication_consent`
 WITH METRICS
@@ -251,6 +253,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total consent records across all statuses. Baseline denominator for consent rate calculations and audit completeness checks."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_corporate_account`
 WITH METRICS
@@ -332,6 +335,7 @@ AS $$
       comment: "Number of corporate accounts eligible for loyalty program benefits. Tracks loyalty program penetration in the corporate segment — low rates indicate enrollment opportunity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_vip_designation`
 WITH METRICS
 LANGUAGE YAML
@@ -403,6 +407,7 @@ AS $$
       comment: "Number of active VIP designations expiring within 30 days. Enables proactive renewal outreach — prevents inadvertent downgrade of high-value guests due to expired designations."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_preference`
 WITH METRICS
 LANGUAGE YAML
@@ -473,6 +478,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN consent_given = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of preference records with explicit guest consent. Measures GDPR-compliant preference data coverage — preferences without consent cannot be used for personalization."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_segment`
 WITH METRICS

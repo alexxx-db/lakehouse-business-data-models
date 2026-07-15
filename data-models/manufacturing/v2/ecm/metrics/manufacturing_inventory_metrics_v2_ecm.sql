@@ -8,8 +8,8 @@ AS $$
   comment: "Core inventory health metrics derived from stock balance snapshots. Tracks on-hand quantities, stock values, safety stock coverage, and variance from cycle counts to support inventory optimization and financial reporting decisions."
   source: "`vibe_manufacturing_v1`.`inventory`.`stock_balance`"
   dimensions:
-    - name: "plant_id"
-      expr: plant_id
+    - name: "asset_plant_id"
+      expr: asset_plant_id
       comment: "Plant identifier for cross-plant inventory comparison and regional analysis."
     - name: "stock_type"
       expr: stock_type
@@ -74,6 +74,7 @@ AS $$
       comment: "Number of distinct materials with active stock balances. Measures portfolio breadth and complexity of inventory management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -82,8 +83,8 @@ AS $$
   comment: "Inventory flow and transaction metrics derived from stock movement events. Tracks goods receipts, goods issues, transfer quantities, and movement values to support throughput analysis, shrinkage detection, and supply chain performance management."
   source: "`vibe_manufacturing_v1`.`inventory`.`stock_movement`"
   dimensions:
-    - name: "plant_id"
-      expr: plant_id
+    - name: "inventory_plant_id"
+      expr: inventory_plant_id
       comment: "Plant where the stock movement occurred for location-based throughput analysis."
     - name: "movement_type_code"
       expr: movement_type_code
@@ -129,9 +130,10 @@ AS $$
       expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials with movement activity. Measures breadth of active inventory churn."
     - name: "distinct_plants_active"
-      expr: COUNT(DISTINCT plant_id)
+      expr: COUNT(DISTINCT inventory_plant_id)
       comment: "Number of distinct plants with movement activity in the period. Indicates operational footprint activity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_stock_valuation`
 WITH METRICS
@@ -141,8 +143,8 @@ AS $$
   comment: "Financial valuation metrics for inventory. Tracks standard vs. moving average prices, price variances, write-downs, and obsolescence provisions to support cost accounting, financial close, and inventory optimization decisions."
   source: "`vibe_manufacturing_v1`.`inventory`.`stock_valuation`"
   dimensions:
-    - name: "plant_id"
-      expr: plant_id
+    - name: "asset_plant_id"
+      expr: asset_plant_id
       comment: "Plant for which valuation is recorded, enabling cross-plant cost comparison."
     - name: "valuation_class"
       expr: valuation_class
@@ -204,6 +206,7 @@ AS $$
       comment: "Total material overhead absorbed into inventory value. Tracks overhead absorption performance against budget."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
 LANGUAGE YAML
@@ -212,8 +215,8 @@ AS $$
   comment: "Inventory accuracy and cycle count performance metrics. Tracks count completion, variance rates, and tolerance compliance to support inventory accuracy programs and audit readiness."
   source: "`vibe_manufacturing_v1`.`inventory`.`cycle_count`"
   dimensions:
-    - name: "plant_id"
-      expr: plant_id
+    - name: "inventory_plant_id"
+      expr: inventory_plant_id
       comment: "Plant where the cycle count was performed for location-based accuracy benchmarking."
     - name: "count_type"
       expr: count_type
@@ -265,6 +268,7 @@ AS $$
       expr: AVG(CAST(total_variance_value AS DOUBLE))
       comment: "Average financial variance per cycle count event. Normalizes variance impact for cross-plant and cross-period comparison."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_cycle_count_line`
 WITH METRICS
@@ -321,6 +325,7 @@ AS $$
       expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials counted. Measures coverage breadth of the cycle count program."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_safety_stock_policy`
 WITH METRICS
@@ -387,6 +392,7 @@ AS $$
       comment: "Number of distinct materials covered by safety stock policies. Measures policy coverage breadth across the material portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -413,8 +419,8 @@ AS $$
     - name: "requested_delivery_date_month"
       expr: DATE_TRUNC('month', requested_delivery_date)
       comment: "Month of requested delivery date for demand timing and seasonal replenishment analysis."
-    - name: "plant_id"
-      expr: plant_id
+    - name: "asset_plant_id"
+      expr: asset_plant_id
       comment: "Destination plant for the replenishment order for location-based supply performance analysis."
   measures:
     - name: "total_replenishment_orders"
@@ -446,6 +452,7 @@ AS $$
       comment: "Number of distinct suppliers fulfilling replenishment orders. Measures supplier base breadth and single-source risk exposure."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_lot_batch`
 WITH METRICS
 LANGUAGE YAML
@@ -466,8 +473,8 @@ AS $$
     - name: "hazardous_material_flag"
       expr: hazardous_material_flag
       comment: "Flag indicating hazardous material batches for compliance and handling risk analysis."
-    - name: "plant_id"
-      expr: plant_id
+    - name: "inventory_plant_id"
+      expr: inventory_plant_id
       comment: "Plant where the batch is stored for location-based batch management analysis."
     - name: "goods_receipt_date_month"
       expr: DATE_TRUNC('month', goods_receipt_date)
@@ -508,6 +515,7 @@ AS $$
       comment: "Average cost per batch. Benchmarks batch production cost for standard cost validation and cost trend analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_quarantine_stock`
 WITH METRICS
 LANGUAGE YAML
@@ -528,8 +536,8 @@ AS $$
     - name: "regulatory_hold_flag"
       expr: regulatory_hold_flag
       comment: "Flag indicating regulatory-mandated holds for compliance risk segmentation."
-    - name: "plant_id"
-      expr: plant_id
+    - name: "inventory_plant_id"
+      expr: inventory_plant_id
       comment: "Plant where quarantine stock is held for location-based quality risk analysis."
     - name: "quarantine_start_date_month"
       expr: DATE_TRUNC('month', quarantine_start_date)
@@ -564,6 +572,7 @@ AS $$
       comment: "Number of distinct suppliers with quarantine events. Identifies suppliers with systemic quality issues requiring corrective action."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_wip_stock`
 WITH METRICS
 LANGUAGE YAML
@@ -575,8 +584,8 @@ AS $$
     - name: "wip_status"
       expr: wip_status
       comment: "Current status of the WIP record (in-process, completed, scrapped, on-hold) for production pipeline monitoring."
-    - name: "plant_id"
-      expr: plant_id
+    - name: "inventory_plant_id"
+      expr: inventory_plant_id
       comment: "Plant where WIP is located for cross-plant production cost comparison."
     - name: "rework_required"
       expr: rework_required
@@ -625,6 +634,7 @@ AS $$
       expr: AVG(CAST(wip_valuation_amount AS DOUBLE))
       comment: "Average WIP valuation amount per record. Benchmarks production cost per work order for standard cost validation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_warehouse`
 WITH METRICS
@@ -682,6 +692,7 @@ AS $$
       comment: "Number of hazmat-certified warehouse facilities. Measures specialized storage network capacity for hazardous materials compliance."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`inventory_kanban_card`
 WITH METRICS
 LANGUAGE YAML
@@ -705,8 +716,8 @@ AS $$
     - name: "priority"
       expr: priority
       comment: "Priority level of the kanban card for urgency-based replenishment analysis."
-    - name: "plant_id"
-      expr: plant_id
+    - name: "asset_plant_id"
+      expr: asset_plant_id
       comment: "Plant where the kanban card operates for location-based lean performance analysis."
   measures:
     - name: "total_kanban_cards"

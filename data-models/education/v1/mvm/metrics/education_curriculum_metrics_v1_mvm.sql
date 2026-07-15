@@ -77,6 +77,7 @@ AS $$
       comment: "Percentage of programs eligible for Title IV aid — financial aid revenue coverage ratio for CFO reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_course`
 WITH METRICS
 LANGUAGE YAML
@@ -157,6 +158,7 @@ AS $$
       comment: "Number of writing-intensive courses — tracks gen-ed writing requirement coverage across the curriculum."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_section`
 WITH METRICS
 LANGUAGE YAML
@@ -191,6 +193,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN delivery_modality = 'Online' THEN section_id END) / NULLIF(COUNT(section_id), 0), 2)
       comment: "Percentage of sections delivered online — strategic KPI for digital transformation progress reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_teaching_assignment`
 WITH METRICS
@@ -232,6 +235,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN primary_instructor_flag = TRUE THEN teaching_assignment_id END) / NULLIF(COUNT(teaching_assignment_id), 0), 2)
       comment: "Percentage of sections with a designated primary instructor — operational quality metric for the Registrar."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_plo`
 WITH METRICS
@@ -295,6 +299,7 @@ AS $$
       comment: "Percentage of active PLOs that are accreditation-mandated — used to size compliance workload for accreditation prep."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_program_accreditation`
 WITH METRICS
 LANGUAGE YAML
@@ -356,6 +361,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN accreditation_status = 'Accredited' THEN program_accreditation_id END) / NULLIF(COUNT(program_accreditation_id), 0), 2)
       comment: "Percentage of accreditations in good standing — headline compliance health ratio for board and accreditor reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_concentration`
 WITH METRICS
@@ -422,6 +428,7 @@ AS $$
       comment: "Active concentrations past their scheduled curriculum review date — compliance and quality assurance risk indicator."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_articulation_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -474,12 +481,13 @@ AS $$
       expr: COUNT(CASE WHEN guaranteed_admission_flag = TRUE THEN articulation_agreement_id END)
       comment: "Number of agreements guaranteeing admission — measures strength of committed transfer pipeline."
     - name: "distinct_partner_institutions"
-      expr: COUNT(DISTINCT partner_institution_id)
+      expr: COUNT(DISTINCT institution_id)
       comment: "Number of unique partner institutions with active articulation agreements — measures transfer network breadth."
     - name: "avg_residency_requirement_credit_hours"
       expr: ROUND(AVG(CAST(residency_requirement_credit_hours AS DOUBLE)), 2)
       comment: "Average residency credit hour requirement per agreement — informs transfer student degree completion planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_transfer_equivalency`
 WITH METRICS
@@ -542,6 +550,7 @@ AS $$
       expr: COUNT(CASE WHEN evaluation_status = 'Pending' THEN transfer_equivalency_id END)
       comment: "Number of transfer equivalencies pending evaluation — operational backlog metric for Registrar staffing decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`curriculum_degree_requirement`
 WITH METRICS

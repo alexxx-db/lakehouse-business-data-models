@@ -74,6 +74,7 @@ AS $$
       comment: "Count of distinct managers in the organization. Used to compute span of control."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_compensation`
 WITH METRICS
 LANGUAGE YAML
@@ -151,6 +152,7 @@ AS $$
       comment: "Total compensation records. Used to validate completeness of compensation data for audit purposes."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_employment_event`
 WITH METRICS
 LANGUAGE YAML
@@ -206,6 +208,7 @@ AS $$
       expr: COUNT(CASE WHEN event_status = 'Approved' THEN 1 END)
       comment: "Count of approved employment events. Measures HR workflow throughput and approval cycle efficiency."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_time_entry`
 WITH METRICS
@@ -281,6 +284,7 @@ AS $$
       comment: "Total billable regular hours. Tracks NRE and customer project labor cost recovery."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_training`
 WITH METRICS
 LANGUAGE YAML
@@ -339,9 +343,10 @@ AS $$
       expr: COUNT(CASE WHEN pass_fail_status = 'Fail' THEN 1 END)
       comment: "Count of failed training assessments. Triggers retraining and competency gap analysis."
     - name: "distinct_trained_employees"
-      expr: COUNT(DISTINCT primary_training_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Count of distinct employees who have training records. Measures training program reach."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_fab_operator_qualification`
 WITH METRICS
@@ -398,6 +403,7 @@ AS $$
       expr: COUNT(CASE WHEN requalification_due_date <= DATE_ADD(CURRENT_DATE(), 30) AND qualification_status = 'Qualified' THEN 1 END)
       comment: "Qualifications expiring within 30 days. Proactive risk metric for fab line continuity planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_safety_event`
 WITH METRICS
@@ -457,9 +463,10 @@ AS $$
       expr: COUNT(CASE WHEN investigation_status != 'Closed' THEN 1 END)
       comment: "Count of safety events with open investigations. Tracks corrective action backlog and closure velocity."
     - name: "distinct_affected_employees"
-      expr: COUNT(DISTINCT affected_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Count of distinct employees affected by safety events. Measures breadth of safety impact on workforce."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_competency`
 WITH METRICS
@@ -519,6 +526,7 @@ AS $$
       expr: COUNT(DISTINCT employee_id)
       comment: "Count of distinct employees with competency records. Measures skill assessment program coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_contractor_engagement`
 WITH METRICS
@@ -585,6 +593,7 @@ AS $$
       comment: "Total contractor engagement records. Baseline for contingent workforce program scope."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_shift_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -631,9 +640,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total shift schedule records. Baseline for fab staffing coverage analysis."
     - name: "distinct_employees_scheduled"
-      expr: COUNT(DISTINCT primary_shift_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Count of distinct employees scheduled. Measures workforce utilization breadth across shifts."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_talent_acquisition`
 WITH METRICS
@@ -684,9 +694,10 @@ AS $$
       expr: COUNT(CASE WHEN talent_acquisition_status = 'Open' AND priority = 'Critical' THEN 1 END)
       comment: "Count of critical open requisitions. Drives immediate recruiting resource prioritization."
     - name: "distinct_org_units_hiring"
-      expr: COUNT(DISTINCT primary_talent_org_unit_id)
+      expr: COUNT(DISTINCT org_unit_id)
       comment: "Count of distinct org units with active requisitions. Measures breadth of hiring demand across the organization."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_qualification`
 WITH METRICS
@@ -744,6 +755,7 @@ AS $$
       comment: "Count of qualifications expiring within 90 days where expiration notice has not been sent. Drives notification workflow actions."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_org_unit`
 WITH METRICS
 LANGUAGE YAML
@@ -796,6 +808,7 @@ AS $$
       expr: COUNT(CASE WHEN org_unit_status = 'Active' THEN 1 END)
       comment: "Count of active org units. Measures current organizational footprint."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`workforce_export_control`
 WITH METRICS

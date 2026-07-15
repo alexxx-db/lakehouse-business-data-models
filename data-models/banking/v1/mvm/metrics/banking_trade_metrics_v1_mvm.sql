@@ -62,6 +62,7 @@ AS $$
       comment: "Number of distinct brokers involved"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`trade_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -80,7 +81,7 @@ AS $$
       expr: side
       comment: "Buy or sell side of the allocation"
     - name: "clearing_broker_id"
-      expr: allocation_clearing_broker_id
+      expr: broker_id
       comment: "Clearing broker involved in the allocation"
   measures:
     - name: "allocation_count"

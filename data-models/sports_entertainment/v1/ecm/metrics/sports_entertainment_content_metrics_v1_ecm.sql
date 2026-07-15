@@ -56,6 +56,7 @@ AS $$
       comment: "Average frame rate across video assets"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_asset_usage`
 WITH METRICS
 LANGUAGE YAML
@@ -115,6 +116,7 @@ AS $$
       comment: "Number of unique territories where content was used"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_approval`
 WITH METRICS
 LANGUAGE YAML
@@ -161,12 +163,13 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of approval requests"
     - name: "distinct_content_assets"
-      expr: COUNT(DISTINCT content_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique content assets under review"
     - name: "distinct_reviewers"
       expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique employees performing reviews"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_license`
 WITH METRICS
@@ -236,6 +239,7 @@ AS $$
       comment: "Number of unique licensee entities"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_syndication_deal`
 WITH METRICS
 LANGUAGE YAML
@@ -297,12 +301,13 @@ AS $$
       expr: AVG(CAST(revenue_share_percent AS DOUBLE))
       comment: "Average revenue share percentage across syndication deals"
     - name: "distinct_syndication_partners"
-      expr: COUNT(DISTINCT primary_syndication_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique syndication partners"
     - name: "distinct_territories"
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories covered by syndication deals"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_rights_clearance`
 WITH METRICS
@@ -362,12 +367,13 @@ AS $$
       expr: AVG(CAST(royalty_rate_percent AS DOUBLE))
       comment: "Average royalty rate percentage across clearances"
     - name: "distinct_content_assets"
-      expr: COUNT(DISTINCT content_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique content assets with rights clearance"
     - name: "distinct_territories"
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories with rights clearance"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_rights_conflict`
 WITH METRICS
@@ -434,6 +440,7 @@ AS $$
       comment: "Number of unique licenses involved in conflicts"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_publish_event`
 WITH METRICS
 LANGUAGE YAML
@@ -499,6 +506,7 @@ AS $$
       comment: "Number of unique employees publishing content"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_ugc_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -563,6 +571,7 @@ AS $$
       expr: COUNT(DISTINCT creator_profile_id)
       comment: "Number of unique creator profiles submitting content"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_creator_profile`
 WITH METRICS
@@ -631,6 +640,7 @@ AS $$
       expr: AVG(CAST(revenue_share_pct AS DOUBLE))
       comment: "Average revenue share percentage with creators"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`content_ingest_job`
 WITH METRICS

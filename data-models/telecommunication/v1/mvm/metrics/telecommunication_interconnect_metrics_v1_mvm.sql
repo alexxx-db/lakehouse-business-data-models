@@ -83,6 +83,7 @@ AS $$
       comment: "Average revenue per megabyte of data, key data pricing metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_tap_file`
 WITH METRICS
 LANGUAGE YAML
@@ -150,9 +151,10 @@ AS $$
       expr: ROUND(AVG(CAST((UNIX_TIMESTAMP(acknowledgement_timestamp) - UNIX_TIMESTAMP(receipt_timestamp)) AS DOUBLE)) / 3600.0, 2)
       comment: "Average time in hours from receipt to acknowledgement, measuring processing efficiency"
     - name: "distinct_sender_carriers"
-      expr: COUNT(DISTINCT sender_carrier_id)
+      expr: COUNT(DISTINCT carrier_id)
       comment: "Number of unique carrier partners sending TAP files"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_settlement_dispute`
 WITH METRICS
@@ -231,6 +233,7 @@ AS $$
       comment: "Number of unique carriers involved in disputes"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_mnp_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -304,12 +307,13 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN hlr_hss_update_status = 'success' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of successful HLR/HSS updates, measuring technical execution quality"
     - name: "distinct_donor_carriers"
-      expr: COUNT(DISTINCT donor_carrier_id)
+      expr: COUNT(DISTINCT carrier_id)
       comment: "Number of unique donor carriers involved in porting"
     - name: "distinct_subscribers"
       expr: COUNT(DISTINCT subscriber_id)
       comment: "Number of unique subscribers who ported"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_carrier`
 WITH METRICS
@@ -403,6 +407,7 @@ AS $$
       comment: "Number of unique regions covered by carrier partnerships"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_carrier_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -476,9 +481,10 @@ AS $$
       expr: ROUND(AVG(CAST(DATEDIFF(effective_until_date, effective_from_date) AS DOUBLE)) / 30.0, 1)
       comment: "Average agreement duration in months"
     - name: "distinct_counterparty_carriers"
-      expr: COUNT(DISTINCT counterparty_carrier_id)
+      expr: COUNT(DISTINCT carrier_id)
       comment: "Number of unique counterparty carriers under agreement"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_rate`
 WITH METRICS

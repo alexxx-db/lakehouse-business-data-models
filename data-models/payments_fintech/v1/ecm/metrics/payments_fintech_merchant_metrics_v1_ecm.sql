@@ -23,8 +23,8 @@ AS $$
     - name: "mcc_id"
       expr: mcc_id
       comment: "Merchant Category Code identifier."
-    - name: "processing_currency_id"
-      expr: processing_currency_id
+    - name: "currency_id"
+      expr: currency_id
       comment: "Currency used for processing."
     - name: "activation_year"
       expr: YEAR(activation_date)
@@ -53,6 +53,7 @@ AS $$
       comment: "Percentage of merchants linked to a regulatory obligation (indicative of compliance)."
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`merchant_fee_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -73,8 +74,8 @@ AS $$
     - name: "applicable_transaction_type"
       expr: applicable_transaction_type
       comment: "Transaction type the fee applies to."
-    - name: "fee_currency_id"
-      expr: fee_currency_id
+    - name: "currency_id"
+      expr: currency_id
       comment: "Currency of the fee amount."
     - name: "effective_year"
       expr: YEAR(effective_from)
@@ -93,6 +94,7 @@ AS $$
       expr: AVG(CASE WHEN fee_exempt_flag THEN 1.0 ELSE 0.0 END) * 100
       comment: "Percentage of fee schedules that are exempt."
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`merchant_processing_limit`
 WITH METRICS
@@ -141,6 +143,7 @@ AS $$
       comment: "Percentage of limits marked as compliant."
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`merchant_chargeback_threshold`
 WITH METRICS
 LANGUAGE YAML
@@ -178,6 +181,7 @@ AS $$
       expr: AVG(CASE WHEN chargeback_threshold_status = 'Active' THEN 1.0 ELSE 0.0 END) * 100
       comment: "Percentage of active chargeback thresholds."
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`merchant_risk_profile`
 WITH METRICS

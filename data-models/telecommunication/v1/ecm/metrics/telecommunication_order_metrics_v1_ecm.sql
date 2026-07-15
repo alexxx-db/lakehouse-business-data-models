@@ -29,6 +29,7 @@ AS $$
       comment: "Average number of days from order creation to actual completion"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -64,6 +65,7 @@ AS $$
       comment: "Total discount amount applied across lines"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_sla`
 WITH METRICS
 LANGUAGE YAML
@@ -96,6 +98,7 @@ AS $$
       comment: "Average breach threshold hours defined in SLA"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_provisioning_request`
 WITH METRICS
 LANGUAGE YAML
@@ -110,8 +113,8 @@ AS $$
     - name: "service_type"
       expr: service_type
       comment: "Service type being provisioned"
-    - name: "network_element_id"
-      expr: network_element_id
+    - name: "element_id"
+      expr: element_id
       comment: "Identifier of the network element involved"
     - name: "request_created_date"
       expr: DATE_TRUNC('day', created_timestamp)
@@ -127,6 +130,7 @@ AS $$
       expr: AVG(DATEDIFF(completion_timestamp, created_timestamp))
       comment: "Average days from request creation to completion"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_fallout`
 WITH METRICS

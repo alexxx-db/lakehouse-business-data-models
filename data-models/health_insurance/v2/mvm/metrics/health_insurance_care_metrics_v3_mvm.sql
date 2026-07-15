@@ -62,6 +62,7 @@ AS $$
       comment: "Count of enrollments with high risk scores (>=2.0), requiring intensive care management"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -102,6 +103,7 @@ AS $$
       expr: COUNT(CASE WHEN privacy_consent_flag = TRUE THEN 1 END)
       comment: "Count of care plans with member privacy consent (numerator for consent rate calculation)"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_condition_registry`
 WITH METRICS
@@ -149,7 +151,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of conditions registered in the condition registry"
     - name: "unique_members_with_conditions"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with registered conditions, representing disease burden"
     - name: "chronic_condition_count"
       expr: COUNT(CASE WHEN is_chronic = TRUE THEN 1 END)
@@ -161,6 +163,7 @@ AS $$
       expr: COUNT(CASE WHEN active_flag = TRUE THEN 1 END)
       comment: "Count of currently active conditions requiring clinical attention and resources"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_coordinator`
 WITH METRICS
@@ -202,6 +205,7 @@ AS $$
       expr: SUM(CAST(caseload_weight AS DOUBLE))
       comment: "Sum of all coordinator caseload weights, representing total care management capacity demand"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_gap`
 WITH METRICS
@@ -249,7 +253,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of care gaps identified across the member population"
     - name: "unique_members_with_gaps"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with one or more care gaps, representing quality improvement opportunity"
     - name: "open_gap_count"
       expr: COUNT(CASE WHEN gap_status = 'open' THEN 1 END)
@@ -267,6 +271,7 @@ AS $$
       expr: AVG(CAST(measure_target_value AS DOUBLE))
       comment: "Average target value for quality measures associated with gaps, representing performance benchmarks"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_hedis_measure`
 WITH METRICS
@@ -321,6 +326,7 @@ AS $$
       comment: "Average target value across all measures, representing organizational quality performance goals"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_hedis_result`
 WITH METRICS
 LANGUAGE YAML
@@ -370,7 +376,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of HEDIS measure results recorded"
     - name: "unique_members_measured"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with HEDIS measure results, representing quality measurement coverage"
     - name: "denominator_eligible_count"
       expr: COUNT(CASE WHEN denominator_criteria_met = TRUE THEN 1 END)
@@ -385,6 +391,7 @@ AS $$
       expr: AVG(CAST(measure_score AS DOUBLE))
       comment: "Average measure score across all results, representing overall quality performance level"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_member_risk_tier`
 WITH METRICS
@@ -441,7 +448,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of risk tier assignments across all members and time periods"
     - name: "unique_members_stratified"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with risk tier assignments, representing stratified population coverage"
     - name: "current_tier_assignment_count"
       expr: COUNT(CASE WHEN is_current = TRUE THEN 1 END)
@@ -456,6 +463,7 @@ AS $$
       expr: SUM(CAST(risk_factor_weight AS DOUBLE))
       comment: "Sum of all risk factor weights, representing total population risk burden for resource planning"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_plan_goal`
 WITH METRICS
@@ -500,7 +508,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of care plan goals set across all members and plans"
     - name: "unique_plans_with_goals"
-      expr: COUNT(DISTINCT plan_id)
+      expr: COUNT(DISTINCT care_plan_id)
       comment: "Distinct count of care plans with defined goals, representing care planning completeness"
     - name: "compliant_goal_count"
       expr: COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END)
@@ -515,6 +523,7 @@ AS $$
       expr: AVG(CAST(risk_score AS DOUBLE))
       comment: "Average risk score associated with goals, indicating complexity of goal achievement"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_program`
 WITH METRICS

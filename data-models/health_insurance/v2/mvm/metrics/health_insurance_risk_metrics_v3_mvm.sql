@@ -37,7 +37,7 @@ AS $$
       comment: "Year when the risk score became effective"
   measures:
     - name: "member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with risk scores - key population denominator for risk adjustment analytics"
     - name: "avg_plan_calculated_score"
       expr: AVG(CAST(plan_calculated_score AS DOUBLE))
@@ -61,6 +61,7 @@ AS $$
       expr: SUM(CASE WHEN is_manual_override = TRUE THEN 1 ELSE 0 END)
       comment: "Count of risk scores manually overridden - audit trail for compliance and quality control"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_ibnr_reserve`
 WITH METRICS
@@ -127,6 +128,7 @@ AS $$
       comment: "Count of IBNR reserve records - tracks granularity of reserve segmentation for actuarial analysis"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_radv_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -164,7 +166,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total count of RADV audit records - tracks audit volume and compliance burden"
     - name: "member_audit_count"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of members audited - denominator for error rate calculations"
     - name: "total_extrapolated_payment_error"
       expr: SUM(CAST(extrapolated_payment_error AS DOUBLE))
@@ -185,6 +187,7 @@ AS $$
       expr: AVG(CAST(risk_adjustment_factor AS DOUBLE))
       comment: "Average risk adjustment factor for audited members - indicates acuity of audited population"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_rate_development`
 WITH METRICS
@@ -251,6 +254,7 @@ AS $$
       comment: "Average group size adjustment factor - economies of scale in large group pricing"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_raps_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -300,6 +304,7 @@ AS $$
       expr: AVG(CAST(risk_adjustment_factor AS DOUBLE))
       comment: "Average risk adjustment factor applied - reflects population acuity and payment multiplier"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`risk_hcc_mapping`
 WITH METRICS

@@ -68,6 +68,7 @@ AS $$
       comment: "Count of guests consented to SMS for SMS campaign audience sizing."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_visit`
 WITH METRICS
 LANGUAGE YAML
@@ -90,6 +91,7 @@ AS $$
       expr: ROUND(CAST(COUNT(1) AS DOUBLE) / NULLIF(COUNT(DISTINCT profile_id), 0), 2)
       comment: "Average visit frequency per guest for loyalty and retention assessment."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_complaint`
 WITH METRICS
@@ -144,6 +146,7 @@ AS $$
       comment: "Average complaints per complaining guest for repeat-issue identification and service recovery effectiveness."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_satisfaction_survey`
 WITH METRICS
 LANGUAGE YAML
@@ -184,7 +187,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total survey volume for feedback program scale and engagement tracking."
     - name: "unique_surveyed_guests"
-      expr: COUNT(DISTINCT primary_satisfaction_guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Unique guests providing feedback for voice-of-customer reach measurement."
     - name: "completed_surveys"
       expr: SUM(CASE WHEN completion_status = 'completed' THEN 1 ELSE 0 END)
@@ -196,6 +199,7 @@ AS $$
       expr: SUM(CASE WHEN consent_given = TRUE THEN 1 ELSE 0 END)
       comment: "Count of surveys with consent for follow-up for actionable feedback pool sizing."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_preference`
 WITH METRICS
@@ -286,6 +290,7 @@ AS $$
       comment: "Count of active preferences for data currency and personalization effectiveness."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_consent_record`
 WITH METRICS
 LANGUAGE YAML
@@ -365,6 +370,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN marketing_consent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of records with marketing consent for consent program effectiveness and regulatory compliance assessment."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_interaction`
 WITH METRICS

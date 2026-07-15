@@ -92,6 +92,7 @@ AS $$
       comment: "Count of pickup (BOPIS/curbside) orders. Measures pickup channel adoption and slot utilization demand."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -197,6 +198,7 @@ AS $$
       comment: "Count of distinct orders containing at least one line. Used to validate order-to-line relationship integrity."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_item_cost`
 WITH METRICS
 LANGUAGE YAML
@@ -272,6 +274,7 @@ AS $$
       comment: "Count of distinct suppliers with active cost records. Measures vendor portfolio breadth in cost management."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_order_refund`
 WITH METRICS
 LANGUAGE YAML
@@ -346,6 +349,7 @@ AS $$
       comment: "Count of distinct shoppers who received refunds. Identifies repeat refund customers for fraud and policy review."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_order_fulfillment`
 WITH METRICS
 LANGUAGE YAML
@@ -395,12 +399,13 @@ AS $$
       expr: SUM(CASE WHEN quality_check_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of fulfillments that received a quality check. Numerator for quality check coverage rate."
     - name: "distinct_fulfillment_nodes"
-      expr: COUNT(DISTINCT fulfillment_node_id)
+      expr: COUNT(DISTINCT node_id)
       comment: "Count of distinct fulfillment nodes active in the period. Measures fulfillment network utilization."
     - name: "distinct_orders_fulfilled"
       expr: COUNT(DISTINCT order_header_id)
       comment: "Count of distinct orders fulfilled. Validates fulfillment-to-order ratio and detects multi-shipment patterns."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_order_discount`
 WITH METRICS
@@ -476,6 +481,7 @@ AS $$
       expr: COUNT(DISTINCT order_header_id)
       comment: "Count of distinct orders receiving at least one discount. Numerator for order-level promotional penetration rate."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_item`
 WITH METRICS
@@ -557,9 +563,10 @@ AS $$
       expr: COUNT(DISTINCT brand_id)
       comment: "Count of distinct brands in the active assortment. Measures brand portfolio breadth for category management."
     - name: "distinct_suppliers"
-      expr: COUNT(DISTINCT primary_supplier_id)
+      expr: COUNT(DISTINCT supplier_id)
       comment: "Count of distinct primary suppliers. Measures supplier diversification and single-source risk exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_order_substitution`
 WITH METRICS
@@ -629,6 +636,7 @@ AS $$
       comment: "Count of distinct original SKUs that were substituted. Identifies breadth of OOS exposure across the assortment."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_delivery_order`
 WITH METRICS
 LANGUAGE YAML
@@ -693,6 +701,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Count of distinct carriers used. Measures carrier diversification and single-carrier dependency risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_item_hierarchy`
 WITH METRICS
@@ -765,6 +774,7 @@ AS $$
       expr: SUM(CASE WHEN promotional_category_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of promotional categories. Measures promotional assortment scope for marketing planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`product_rx_order`
 WITH METRICS

@@ -74,6 +74,7 @@ AS $$
       comment: "Number of distinct governing bodies to which filings have been made — measures regulatory relationship breadth and compliance programme scope."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_audit_engagement`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Percentage of engagements receiving an Unsatisfactory overall opinion — a rising rate signals systemic control failures requiring executive intervention."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_audit_finding`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(DISTINCT audit_engagement_id)
       comment: "Number of distinct audit engagements that have generated at least one finding — measures breadth of control weakness across the audit portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_investigation`
 WITH METRICS
@@ -284,6 +287,7 @@ AS $$
       comment: "Number of distinct franchises involved in investigations — measures breadth of conduct risk exposure across the league portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_doping_test`
 WITH METRICS
 LANGUAGE YAML
@@ -345,9 +349,10 @@ AS $$
       expr: SUM(CASE WHEN sanction_status = 'Sanctioned' THEN 1 ELSE 0 END)
       comment: "Count of tests that resulted in a formal sanction — measures enforcement output of the anti-doping programme."
     - name: "distinct_athletes_tested"
-      expr: COUNT(DISTINCT primary_doping_athlete_athlete_profile_id)
+      expr: COUNT(DISTINCT athlete_profile_id)
       comment: "Number of distinct athletes tested — measures breadth of anti-doping programme coverage across the registered athlete population."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_doping_violation`
 WITH METRICS
@@ -407,9 +412,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN in_competition_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of violations that occurred in-competition — in-competition violations have the highest competitive integrity impact and trigger automatic results disqualification."
     - name: "distinct_athletes_with_violations"
-      expr: COUNT(DISTINCT primary_doping_athlete_athlete_profile_id)
+      expr: COUNT(DISTINCT athlete_profile_id)
       comment: "Number of distinct athletes with confirmed violations — measures the breadth of the doping problem across the athlete population."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_privacy_request`
 WITH METRICS
@@ -475,9 +481,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN legal_hold_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of privacy requests subject to a legal hold — these requests cannot be erased and require special handling to avoid compliance conflicts."
     - name: "distinct_data_subjects"
-      expr: COUNT(DISTINCT primary_privacy_fan_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Number of distinct data subjects who have submitted privacy requests — measures the breadth of privacy rights exercise across the fan base."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_obligation`
 WITH METRICS
@@ -540,9 +547,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN is_recurring = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of obligations that are recurring — recurring obligations require sustained operational capacity and cannot be treated as one-off projects."
     - name: "distinct_governing_bodies"
-      expr: COUNT(DISTINCT obligation_governing_body_id)
+      expr: COUNT(DISTINCT governing_body_id)
       comment: "Number of distinct governing bodies imposing obligations — measures regulatory relationship breadth and compliance programme complexity."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_arbitration_case`
 WITH METRICS
@@ -615,6 +623,7 @@ AS $$
       comment: "Percentage of cases resolved through settlement — a higher settlement rate may indicate effective early dispute resolution, reducing full arbitration costs."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`compliance_whereabouts_filing`
 WITH METRICS
 LANGUAGE YAML
@@ -670,12 +679,12 @@ AS $$
       expr: SUM(CASE WHEN violation_threshold_reached = TRUE THEN 1 ELSE 0 END)
       comment: "Count of filings where the athlete has reached the violation threshold — each breach triggers formal anti-doping rule violation proceedings; a critical enforcement metric."
     - name: "violation_threshold_breach_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN violation_threshold_reached = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT primary_whereabouts_athlete_athlete_profile_id), 0), 2)
+      expr: ROUND(100.0 * SUM(CASE WHEN violation_threshold_reached = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(DISTINCT athlete_profile_id), 0), 2)
       comment: "Percentage of distinct athletes who have reached the violation threshold — measures the proportion of the registered testing pool at risk of formal proceedings."
     - name: "notification_fulfilment_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN notification_sent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of whereabouts filings where the required notification was sent to the athlete — failure to notify is a procedural compliance gap that can invalidate subsequent enforcement actions."
     - name: "distinct_athletes_in_programme"
-      expr: COUNT(DISTINCT primary_whereabouts_athlete_athlete_profile_id)
+      expr: COUNT(DISTINCT athlete_profile_id)
       comment: "Number of distinct athletes in the whereabouts programme — measures programme coverage breadth and is a key WADA reporting metric."
 $$;

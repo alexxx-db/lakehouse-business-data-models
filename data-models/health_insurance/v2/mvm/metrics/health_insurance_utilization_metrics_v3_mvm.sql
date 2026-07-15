@@ -62,6 +62,7 @@ AS $$
       comment: "Distinct count of plan elections (member coverage periods) with PA requests"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_pa_decision`
 WITH METRICS
 LANGUAGE YAML
@@ -126,12 +127,13 @@ AS $$
       expr: SUM(CASE WHEN is_urgent = TRUE THEN 1 ELSE 0 END)
       comment: "Count of decisions for urgent authorization requests"
     - name: "unique_members_with_decisions"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members receiving authorization decisions"
     - name: "unique_providers_with_decisions"
       expr: COUNT(DISTINCT provider_id)
       comment: "Distinct count of providers associated with authorization decisions"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_auth_service_line`
 WITH METRICS
@@ -206,15 +208,16 @@ AS $$
       expr: SUM(CASE WHEN is_partial_approval = TRUE THEN 1 ELSE 0 END)
       comment: "Count of service lines with partial approval"
     - name: "unique_members_authorized"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with authorized service lines"
     - name: "unique_providers_authorized"
       expr: COUNT(DISTINCT provider_id)
       comment: "Distinct count of providers associated with authorized service lines"
     - name: "unique_facilities_authorized"
-      expr: COUNT(DISTINCT authorized_facility_id)
+      expr: COUNT(DISTINCT facility_id)
       comment: "Distinct count of facilities where authorized services will be delivered"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_inpatient_admission`
 WITH METRICS
@@ -320,6 +323,7 @@ AS $$
       comment: "Distinct count of attending providers for admissions"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_concurrent_review`
 WITH METRICS
 LANGUAGE YAML
@@ -393,7 +397,7 @@ AS $$
       expr: SUM(CASE WHEN social_work_involved = TRUE THEN 1 ELSE 0 END)
       comment: "Count of reviews involving social work services"
     - name: "unique_members_reviewed"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of member subscribers undergoing concurrent review"
     - name: "unique_providers_reviewed"
       expr: COUNT(DISTINCT provider_id)
@@ -402,6 +406,7 @@ AS $$
       expr: COUNT(DISTINCT inpatient_admission_id)
       comment: "Distinct count of inpatient admissions undergoing concurrent review"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_um_case`
 WITH METRICS
@@ -476,10 +481,10 @@ AS $$
       expr: SUM(CASE WHEN compliance_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of cases meeting compliance requirements"
     - name: "unique_members_with_cases"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with utilization management cases"
     - name: "unique_providers_with_cases"
-      expr: COUNT(DISTINCT primary_provider_id)
+      expr: COUNT(DISTINCT provider_id)
       comment: "Distinct count of primary providers associated with UM cases"
     - name: "unique_coordinators"
       expr: COUNT(DISTINCT coordinator_id)

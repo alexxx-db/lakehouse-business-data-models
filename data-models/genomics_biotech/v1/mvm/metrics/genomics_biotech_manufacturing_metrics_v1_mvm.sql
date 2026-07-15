@@ -61,12 +61,13 @@ AS $$
       expr: SUM(CAST(qc_fail_count AS DOUBLE))
       comment: "Total number of QC checkpoints failed, key quality risk indicator"
     - name: "distinct_products_manufactured"
-      expr: COUNT(DISTINCT produced_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs manufactured, indicating product portfolio breadth"
     - name: "distinct_sites"
       expr: COUNT(DISTINCT site_id)
       comment: "Number of distinct manufacturing sites producing batches"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_work_order`
 WITH METRICS
@@ -120,7 +121,7 @@ AS $$
       expr: SUM(CAST(deviation_count AS DOUBLE))
       comment: "Total number of deviations across all work orders, quality risk indicator"
     - name: "distinct_products"
-      expr: COUNT(DISTINCT produced_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct products being manufactured"
     - name: "distinct_sites"
       expr: COUNT(DISTINCT site_id)
@@ -129,6 +130,7 @@ AS $$
       expr: SUM(CASE WHEN qc_hold_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of work orders currently on QC hold, operational bottleneck indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_production_operation`
 WITH METRICS
@@ -197,6 +199,7 @@ AS $$
       expr: COUNT(DISTINCT equipment_id)
       comment: "Number of distinct equipment assets utilized"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_equipment`
 WITH METRICS
@@ -272,6 +275,7 @@ AS $$
       comment: "Number of distinct work centers containing equipment"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_batch_record`
 WITH METRICS
 LANGUAGE YAML
@@ -336,6 +340,7 @@ AS $$
       expr: COUNT(DISTINCT production_batch_id)
       comment: "Number of distinct production batches documented"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_finished_goods_release`
 WITH METRICS
@@ -402,6 +407,7 @@ AS $$
       comment: "Number of distinct manufacturing sites releasing finished goods"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_inprocess_qc_result`
 WITH METRICS
 LANGUAGE YAML
@@ -463,6 +469,7 @@ AS $$
       expr: COUNT(DISTINCT work_center_id)
       comment: "Number of distinct work centers performing QC inspections"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_site`
 WITH METRICS
@@ -528,6 +535,7 @@ AS $$
       expr: COUNT(DISTINCT region)
       comment: "Number of distinct regions with manufacturing presence"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`manufacturing_work_center`
 WITH METRICS

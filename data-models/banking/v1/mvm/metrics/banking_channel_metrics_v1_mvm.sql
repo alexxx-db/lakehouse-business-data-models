@@ -15,7 +15,7 @@ AS $$
       expr: transaction_type
       comment: "Type/category of the ATM transaction"
     - name: "currency_id"
-      expr: transaction_currency_id
+      expr: currency_id
       comment: "Currency used for the transaction"
     - name: "atm_id"
       expr: atm_id
@@ -40,6 +40,7 @@ AS $$
       expr: SUM(CAST(interchange_fee_amount AS DOUBLE))
       comment: "Total interchange fees incurred"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`channel_atm`
 WITH METRICS
@@ -79,6 +80,7 @@ AS $$
       comment: "Average maximum withdrawal limit configured on ATMs"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`channel_interaction`
 WITH METRICS
 LANGUAGE YAML
@@ -113,6 +115,7 @@ AS $$
       expr: SUM(CAST(atm_surcharge_amount AS DOUBLE))
       comment: "Total ATM surcharge fees recorded in interactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`channel_session`
 WITH METRICS

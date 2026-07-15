@@ -65,6 +65,7 @@ AS $$
       comment: "Number of passenger profiles linked to a frequent flyer programme membership. Indicates loyalty programme penetration and data enrichment coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_accessibility`
 WITH METRICS
 LANGUAGE YAML
@@ -80,6 +81,7 @@ AS $$
     - name: "Row Count"
       expr: COUNT(1)
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_apis_submission`
 WITH METRICS
@@ -133,12 +135,13 @@ AS $$
       expr: COUNT(CASE WHEN resubmission_flag = TRUE THEN apis_submission_id END)
       comment: "Number of corrective resubmissions. High resubmission volumes indicate data quality issues in the originating booking or document capture process."
     - name: "distinct_passengers_submitted"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers for whom APIS data has been submitted. Used to measure APIS coverage against total boarded passengers."
     - name: "distinct_flights_with_apis"
       expr: COUNT(DISTINCT flight_leg_id)
       comment: "Number of distinct flight legs for which at least one APIS submission exists. Measures APIS coverage across the operated schedule."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_consent`
 WITH METRICS
@@ -198,9 +201,10 @@ AS $$
       expr: COUNT(CASE WHEN minor_consent_flag = TRUE THEN consent_id END)
       comment: "Number of consent records for minor passengers. Requires heightened compliance scrutiny and parental verification, tracked separately for regulatory audit purposes."
     - name: "distinct_passengers_with_consent"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers with at least one consent record. Measures consent programme coverage across the passenger base."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_loyalty_linkage`
 WITH METRICS
@@ -242,7 +246,7 @@ AS $$
       expr: COUNT(CASE WHEN linkage_status = 'ACTIVE' THEN loyalty_linkage_id END)
       comment: "Total number of active loyalty programme linkages. Measures the breadth of loyalty programme engagement across the passenger base."
     - name: "distinct_linked_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers with at least one loyalty linkage. Tracks loyalty programme penetration as a strategic retention KPI."
     - name: "reciprocal_benefit_eligible_count"
       expr: COUNT(CASE WHEN reciprocal_benefit_eligible_flag = TRUE AND linkage_status = 'ACTIVE' THEN loyalty_linkage_id END)
@@ -257,6 +261,7 @@ AS $$
       expr: COUNT(CASE WHEN linkage_status = 'UNLINKED' THEN loyalty_linkage_id END)
       comment: "Number of loyalty linkages that have been unlinked. Rising unlink rates signal loyalty programme churn and require retention intervention."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_ssr_record`
 WITH METRICS
@@ -316,12 +321,13 @@ AS $$
       expr: COUNT(CASE WHEN requires_medical_clearance = TRUE AND medical_clearance_status = 'PENDING' THEN ssr_record_id END)
       comment: "Number of SSRs awaiting medical clearance. Unresolved medical clearances are an operational risk — passengers cannot board without clearance, creating potential flight delay exposure."
     - name: "distinct_passengers_with_ssr"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers with at least one SSR. Measures the breadth of special service demand across the passenger base for capacity planning."
     - name: "interline_ssr_count"
       expr: COUNT(CASE WHEN is_interline = TRUE THEN ssr_record_id END)
       comment: "Number of SSRs applicable to interline segments. Interline SSRs require partner airline coordination and are a key metric for alliance and codeshare service quality management."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_travel_identity_document`
 WITH METRICS
@@ -378,9 +384,10 @@ AS $$
       expr: COUNT(CASE WHEN visa_required_flag = TRUE THEN travel_identity_document_id END)
       comment: "Number of document records flagged as requiring a visa. Drives TIMATIC compliance checks and check-in agent workload planning for visa-sensitive routes."
     - name: "distinct_passengers_with_documents"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers with at least one travel document on file. Measures document capture coverage across the passenger base — gaps indicate check-in compliance risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_traveller_segment`
 WITH METRICS
@@ -428,7 +435,7 @@ AS $$
       expr: COUNT(CASE WHEN segment_status = 'ACTIVE' THEN traveller_segment_id END)
       comment: "Total number of active traveller segment assignments. Measures the coverage and currency of the segmentation model across the passenger base."
     - name: "distinct_segmented_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers with an active segment assignment. Measures segmentation model coverage — unsegmented passengers cannot be targeted for revenue optimisation."
     - name: "avg_churn_risk_score"
       expr: AVG(CAST(churn_risk_score AS DOUBLE))
@@ -449,6 +456,7 @@ AS $$
       expr: COUNT(CASE WHEN corporate_affiliation_flag = TRUE THEN traveller_segment_id END)
       comment: "Number of passengers with a corporate travel affiliation. Tracks the size of the B2B revenue base and informs corporate account management resource allocation."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`passenger_watchlist_check`
 WITH METRICS
@@ -508,6 +516,6 @@ AS $$
       expr: COUNT(CASE WHEN match_status IN ('CONFIRMED_MATCH', 'POTENTIAL_MATCH') AND resolution_action IS NULL THEN watchlist_check_id END)
       comment: "Number of watchlist matches without a recorded resolution action. Unresolved matches represent open security risks and regulatory non-compliance — requires immediate operational escalation."
     - name: "distinct_passengers_screened"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers who have undergone a watchlist check. Measures screening coverage against the total boarded passenger population for compliance gap analysis."
 $$;

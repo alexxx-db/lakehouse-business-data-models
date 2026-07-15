@@ -113,6 +113,7 @@ AS $$
       comment: "Number of unique client accounts with timesheet activity"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`timesheet_approval_workflow`
 WITH METRICS
 LANGUAGE YAML
@@ -198,7 +199,7 @@ AS $$
       expr: AVG(CAST(resubmission_count AS DOUBLE))
       comment: "Average number of resubmissions per timesheet approval workflow"
     - name: "unique_approvers"
-      expr: COUNT(DISTINCT primary_timesheet_staff_profile_id)
+      expr: COUNT(DISTINCT staff_profile_id)
       comment: "Number of unique staff members who approved timesheets"
     - name: "unique_workers_in_workflow"
       expr: COUNT(DISTINCT profile_id)
@@ -207,6 +208,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN final_approved_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of workflows that resulted in final approval"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`timesheet_adjustment`
 WITH METRICS
@@ -312,6 +314,7 @@ AS $$
       comment: "Number of unique client accounts with timesheet adjustments"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`timesheet_absence_record`
 WITH METRICS
 LANGUAGE YAML
@@ -412,12 +415,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN unexcused_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of absences that are unexcused"
     - name: "unique_workers_with_absences"
-      expr: COUNT(DISTINCT primary_absence_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique workers with absence records"
     - name: "unique_assignments_with_absences"
       expr: COUNT(DISTINCT assignment_id)
       comment: "Number of unique assignments with absence records"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`timesheet_dispute`
 WITH METRICS
@@ -519,6 +523,7 @@ AS $$
       expr: COUNT(DISTINCT client_account_id)
       comment: "Number of unique client accounts with timesheet disputes"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`timesheet_approved_hours_summary`
 WITH METRICS

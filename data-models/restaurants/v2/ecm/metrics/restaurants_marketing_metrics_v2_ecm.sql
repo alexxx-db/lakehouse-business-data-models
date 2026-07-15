@@ -77,6 +77,7 @@ AS $$
       comment: "Count of LTO-supporting campaigns. Tracks LTO pipeline volume, a key driver of traffic and news in QSR marketing strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_campaign_roi`
 WITH METRICS
 LANGUAGE YAML
@@ -135,6 +136,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of campaign ROI measurement records. Used to assess measurement coverage and completeness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_campaign_spend`
 WITH METRICS
@@ -203,6 +205,7 @@ AS $$
       expr: AVG(CAST(tax_rate AS DOUBLE))
       comment: "Average effective tax rate on marketing spend. Used for tax planning and cross-market tax rate comparison."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_digital_campaign_performance`
 WITH METRICS
@@ -296,6 +299,7 @@ AS $$
       comment: "Digital revenue generated per dollar of spend. The most actionable digital efficiency ratio for channel budget allocation."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_campaign_execution`
 WITH METRICS
 LANGUAGE YAML
@@ -364,6 +368,7 @@ AS $$
       comment: "Execution-level comp sales lift vs. plan. Identifies executions that over- or under-delivered on revenue goals."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_promotion_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -431,6 +436,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN loyalty_member_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of redemptions made by loyalty members. Tracks loyalty program penetration of promotional activity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_media_buy`
 WITH METRICS
@@ -506,6 +512,7 @@ AS $$
       comment: "Total number of media buy records. Used for media plan fragmentation and vendor concentration analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_fund_contribution`
 WITH METRICS
 LANGUAGE YAML
@@ -546,12 +553,13 @@ AS $$
       expr: ROUND(SUM(CAST(contribution_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_sales_amount AS DOUBLE)), 0), 4)
       comment: "Actual effective contribution rate (contributions / gross sales). Compared against contracted rate to identify under-contribution — a key franchise compliance metric."
     - name: "contributing_unit_count"
-      expr: COUNT(DISTINCT fund_restaurant_unit_id)
+      expr: COUNT(DISTINCT unit_id)
       comment: "Number of distinct restaurant units contributing to the fund. Measures fund participation breadth and identifies non-contributing units."
     - name: "contribution_record_count"
       expr: COUNT(1)
       comment: "Total number of contribution records. Used for contribution frequency and completeness analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_influencer_activation`
 WITH METRICS
@@ -620,6 +628,7 @@ AS $$
       expr: ROUND(1000.0 * SUM(CAST(payment_amount AS DOUBLE)) / NULLIF(SUM(CAST(actual_impressions AS DOUBLE)), 0), 4)
       comment: "Effective CPM for influencer content. Enables apples-to-apples comparison of influencer vs. paid media efficiency."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`marketing_local_store_marketing`
 WITH METRICS

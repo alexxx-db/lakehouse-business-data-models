@@ -44,6 +44,7 @@ AS $$
       comment: "Average gap between actual and target fill rates (positive indicates under‑performance)"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`supply_demand_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -85,6 +86,7 @@ AS $$
       comment: "Average confidence score assigned by the forecasting model"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`supply_purchase_order`
 WITH METRICS
 LANGUAGE YAML
@@ -97,7 +99,7 @@ AS $$
       expr: supplier_id
       comment: "Supplier identifier"
     - name: "store_location_id"
-      expr: primary_purchase_store_location_id
+      expr: store_location_id
       comment: "Store location where the purchase order is destined"
     - name: "po_status"
       expr: po_status
@@ -128,6 +130,7 @@ AS $$
       expr: AVG(CAST(freight_amount AS DOUBLE))
       comment: "Average freight cost per purchase order"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`supply_inbound_shipment`
 WITH METRICS
@@ -170,6 +173,7 @@ AS $$
       comment: "Number of inbound shipments"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`supply_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -179,7 +183,7 @@ AS $$
   source: "`grocery_ecm`.`supply`.`replenishment_order`"
   dimensions:
     - name: "destination_store_location_id"
-      expr: destination_location_store_location_id
+      expr: store_location_id
       comment: "Destination store location identifier"
     - name: "priority_level"
       expr: priority_level
@@ -207,6 +211,7 @@ AS $$
       expr: AVG(CAST(total_weight AS DOUBLE))
       comment: "Average total weight (lbs) per replenishment order"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`supply_transport_route`
 WITH METRICS

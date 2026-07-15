@@ -110,6 +110,7 @@ AS $$
       comment: "Number of distinct policies with reserves"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_cash_flow_projection`
 WITH METRICS
 LANGUAGE YAML
@@ -229,6 +230,7 @@ AS $$
       comment: "Number of distinct valuation runs"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_experience_study`
 WITH METRICS
 LANGUAGE YAML
@@ -320,12 +322,13 @@ AS $$
       expr: COUNT(1)
       comment: "Number of experience studies"
     - name: "distinct_actuaries"
-      expr: COUNT(DISTINCT actuary_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct actuaries conducting studies"
     - name: "distinct_plans"
       expr: COUNT(DISTINCT plan_id)
       comment: "Number of distinct plans analyzed"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_ifrs17_csm`
 WITH METRICS
@@ -452,6 +455,7 @@ AS $$
       comment: "Number of distinct valuation runs"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_valuation_run`
 WITH METRICS
 LANGUAGE YAML
@@ -543,9 +547,10 @@ AS $$
       expr: COUNT(DISTINCT assumption_set_id)
       comment: "Number of distinct assumption sets used"
     - name: "distinct_actuaries"
-      expr: COUNT(DISTINCT primary_valuation_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct primary actuaries"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_assumption_set`
 WITH METRICS
@@ -635,12 +640,13 @@ AS $$
       expr: COUNT(1)
       comment: "Number of assumption sets"
     - name: "distinct_actuaries"
-      expr: COUNT(DISTINCT primary_assumption_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct primary actuaries"
     - name: "distinct_experience_studies"
       expr: COUNT(DISTINCT experience_study_id)
       comment: "Number of distinct experience studies referenced"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`actuarial_alm_position`
 WITH METRICS

@@ -56,6 +56,7 @@ AS $$
       comment: "Average workforce tenure in years. Declining tenure signals attrition pressure; used in workforce stability and succession planning discussions."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_pairing`
 WITH METRICS
 LANGUAGE YAML
@@ -127,6 +128,7 @@ AS $$
       comment: "Count of pairings with a non-compliant legality status. Any non-zero value represents a regulatory breach requiring immediate corrective action."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_duty_period`
 WITH METRICS
 LANGUAGE YAML
@@ -188,6 +190,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN legality_status != 'Compliant' THEN duty_period_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of duty periods with legality violations. Normalised compliance rate used in regulatory scorecards and safety management system (SMS) reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_ftl_legality_check`
 WITH METRICS
@@ -251,6 +254,7 @@ AS $$
       comment: "Percentage of legality checks where a fatigue mitigation was applied. High rates indicate the schedule is structurally non-compliant and relying on mitigations as a crutch."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_absence`
 WITH METRICS
 LANGUAGE YAML
@@ -303,9 +307,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN replacement_required_flag = TRUE THEN absence_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of absences requiring crew replacement. High rates indicate insufficient reserve pool depth and drive up irregular operations costs."
     - name: "distinct_absent_crew_members"
-      expr: COUNT(DISTINCT absence_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct crew members with at least one absence. Measures breadth of absence impact across the workforce; used to compute absence prevalence rate."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_training_event`
 WITH METRICS
@@ -365,9 +370,10 @@ AS $$
       expr: COUNT(CASE WHEN is_regulatory_required = TRUE AND training_result_code = 'Fail' THEN training_event_id END)
       comment: "Count of failed regulatory-mandatory training events. Each failure represents a compliance breach requiring immediate remedial action and authority notification."
     - name: "distinct_crew_trained"
-      expr: COUNT(DISTINCT primary_training_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct crew members who received training. Measures training programme reach; used to compute training coverage rate against total active headcount."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_qualification`
 WITH METRICS
@@ -424,6 +430,7 @@ AS $$
       expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct crew members holding at least one qualification record. Used to compute qualification coverage across the active crew base."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_roster`
 WITH METRICS
@@ -483,6 +490,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN legality_check_status = 'Compliant' THEN roster_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of rosters passing the legality check. Headline scheduling compliance KPI reported to the VP Operations and regulatory authority."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`crew_medical_certificate`
 WITH METRICS

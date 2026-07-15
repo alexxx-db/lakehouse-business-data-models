@@ -20,8 +20,8 @@ AS $$
     - name: "handling_carrier_code"
       expr: handling_carrier_code
       comment: "IATA code of the carrier that physically handled the bag at the point of irregularity. Used to distinguish operational vs. contractual responsibility."
-    - name: "report_station_id"
-      expr: report_station_id
+    - name: "station_id"
+      expr: station_id
       comment: "Station where the irregularity was reported. Enables geographic hotspot analysis of baggage mishandling."
     - name: "destination_station_code"
       expr: destination_station_code
@@ -70,6 +70,7 @@ AS $$
       expr: AVG(CAST(declared_value_amount AS DOUBLE))
       comment: "Average declared value of bags involved in irregularities. Informs risk exposure per incident and guides insurance and liability policy decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_baggage_item`
 WITH METRICS
@@ -133,6 +134,7 @@ AS $$
       comment: "Average declared value per bag. Informs liability exposure per bag and guides insurance policy adequacy reviews."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_baggage_scan`
 WITH METRICS
 LANGUAGE YAML
@@ -194,6 +196,7 @@ AS $$
       expr: COUNT(DISTINCT baggage_item_id)
       comment: "Number of unique bags tracked via scan events. Measures end-to-end traceability coverage — a core IATA 753 compliance KPI."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_boarding_event`
 WITH METRICS
@@ -263,6 +266,7 @@ AS $$
       comment: "Number of distinct flight legs with boarding activity. Supports gate utilization and boarding process coverage analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_checkin_session`
 WITH METRICS
 LANGUAGE YAML
@@ -327,9 +331,10 @@ AS $$
       expr: COUNT(CASE WHEN advance_checkin_flag = TRUE THEN 1 END)
       comment: "Number of advance (pre-airport) check-in sessions. Digital adoption KPI — higher advance check-in rates reduce airport counter costs."
     - name: "distinct_passengers_checked_in"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique passengers who completed check-in. Supports passenger flow planning and check-in resource allocation."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_deicing_event`
 WITH METRICS
@@ -405,6 +410,7 @@ AS $$
       comment: "Number of de-icing events subject to environmental reporting. Regulatory compliance KPI for environmental obligation tracking."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_gate_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -463,6 +469,7 @@ AS $$
       expr: COUNT(DISTINCT flight_leg_id)
       comment: "Number of distinct flight legs with gate assignments. Measures gate planning coverage across the operation."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_ground_handler`
 WITH METRICS
@@ -526,6 +533,7 @@ AS $$
       comment: "Number of handlers without current ISAGO safety certification. Safety compliance KPI — non-certified handlers must be remediated or replaced to maintain safety standards."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_slot_utilization`
 WITH METRICS
 LANGUAGE YAML
@@ -575,6 +583,7 @@ AS $$
       expr: COUNT(DISTINCT station_id)
       comment: "Number of distinct coordinated airports with slot utilization activity. Supports slot portfolio geographic coverage analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_turnaround`
 WITH METRICS
@@ -634,6 +643,7 @@ AS $$
       expr: COUNT(DISTINCT aircraft_id)
       comment: "Number of distinct aircraft processed through turnarounds. Fleet utilization breadth KPI for maintenance and ground operations planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_turnaround_task`
 WITH METRICS

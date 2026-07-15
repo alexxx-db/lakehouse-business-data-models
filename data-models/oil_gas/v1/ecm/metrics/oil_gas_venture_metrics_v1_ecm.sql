@@ -23,8 +23,8 @@ AS $$
     - name: "currency_code"
       expr: currency_code
       comment: "Currency of the cash call amounts"
-    - name: "venture_partner_id"
-      expr: venture_partner_id
+    - name: "partner_id"
+      expr: partner_id
       comment: "Partner associated with the cash call"
   measures:
     - name: "total_call_amount"
@@ -43,6 +43,7 @@ AS $$
       expr: AVG(CAST(total_call_amount AS DOUBLE))
       comment: "Average cash call amount per record"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_cash_call_payment`
 WITH METRICS
@@ -82,6 +83,7 @@ AS $$
       comment: "Average payment amount per record"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_lifting_entitlement`
 WITH METRICS
 LANGUAGE YAML
@@ -119,6 +121,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of lifting entitlement records"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_partner`
 WITH METRICS
@@ -158,6 +161,7 @@ AS $$
       comment: "Average credit limit across partners"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_joint_venture`
 WITH METRICS
 LANGUAGE YAML
@@ -193,6 +197,7 @@ AS $$
       comment: "Average equity percentage held by partners"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_afe`
 WITH METRICS
 LANGUAGE YAML
@@ -213,8 +218,8 @@ AS $$
     - name: "currency_code"
       expr: currency_code
       comment: "Currency used for AFE amounts"
-    - name: "venture_partner_id"
-      expr: venture_partner_id
+    - name: "partner_id"
+      expr: partner_id
       comment: "Partner associated with the AFE"
   measures:
     - name: "total_approved_amount"
@@ -230,6 +235,7 @@ AS $$
       expr: AVG(CAST(approval_threshold_amount AS DOUBLE))
       comment: "Average approval threshold amount across AFEs"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_cost_recovery`
 WITH METRICS
@@ -271,6 +277,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of cost recovery records"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_royalty_obligation`
 WITH METRICS

@@ -103,12 +103,13 @@ AS $$
       expr: COUNT(DISTINCT client_account_id)
       comment: "Number of distinct client accounts with orders"
     - name: "distinct_client_locations"
-      expr: COUNT(DISTINCT client_location_id)
+      expr: COUNT(DISTINCT location_id)
       comment: "Number of distinct client work locations"
     - name: "distinct_suppliers"
       expr: COUNT(DISTINCT supplier_id)
       comment: "Number of distinct suppliers engaged on orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_fte_actuals`
 WITH METRICS
@@ -241,6 +242,7 @@ AS $$
       comment: "Number of distinct managed programs"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_headcount_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -350,6 +352,7 @@ AS $$
       expr: COUNT(DISTINCT managed_program_id)
       comment: "Number of distinct managed programs"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_demand_forecast`
 WITH METRICS
@@ -461,6 +464,7 @@ AS $$
       comment: "Number of distinct managed programs"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_capacity_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -571,6 +575,7 @@ AS $$
       comment: "Number of distinct managed programs"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_order_status_history`
 WITH METRICS
 LANGUAGE YAML
@@ -647,6 +652,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct candidates involved in status events"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`joborder_sla_commitment`
 WITH METRICS

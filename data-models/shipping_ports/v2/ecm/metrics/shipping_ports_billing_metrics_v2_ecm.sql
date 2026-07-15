@@ -80,6 +80,7 @@ AS $$
       comment: "Number of tax-exempt invoices. Monitors the volume of exemptions granted for compliance audit and revenue leakage review."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_charge_event`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +173,7 @@ AS $$
       comment: "Average excess days beyond free time per charge event. Directly drives demurrage/detention revenue; high averages indicate port congestion or customer dwell issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -240,6 +242,7 @@ AS $$
       comment: "Average FX exchange rate applied to payments. Used to monitor FX rate application consistency and treasury hedging effectiveness."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_dispute`
 WITH METRICS
 LANGUAGE YAML
@@ -305,6 +308,7 @@ AS $$
       comment: "Number of distinct customers with active or historical disputes. Identifies customers with recurring billing issues for targeted account management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_cycle`
 WITH METRICS
 LANGUAGE YAML
@@ -366,6 +370,7 @@ AS $$
       expr: AVG(CAST(total_billed_amount AS DOUBLE))
       comment: "Average billed amount per billing cycle. Tracks billing yield per cycle; declining averages may indicate volume or rate erosion."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_receivable_account`
 WITH METRICS
@@ -438,6 +443,7 @@ AS $$
       comment: "Average outstanding balance per account. Used to profile account-level receivables exposure and identify high-balance outliers."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_revenue_event`
 WITH METRICS
 LANGUAGE YAML
@@ -500,6 +506,7 @@ AS $$
       comment: "Number of distinct customers generating revenue events. Measures revenue breadth across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -561,6 +568,7 @@ AS $$
       expr: AVG(CAST(credit_amount AS DOUBLE))
       comment: "Average credit amount per adjustment. Used to profile adjustment severity and prioritise high-value correction reviews."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_dunning_notice`
 WITH METRICS
@@ -627,6 +635,7 @@ AS $$
       comment: "Average overdue amount per dunning notice. Used to profile overdue account severity and prioritise high-value collections efforts."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`billing_performance_obligation`
 WITH METRICS
 LANGUAGE YAML
@@ -682,6 +691,6 @@ AS $$
       expr: AVG(CAST(standalone_selling_price AS DOUBLE))
       comment: "Average standalone selling price per obligation. Used to benchmark SSP consistency across similar service obligations."
     - name: "distinct_customer_count"
-      expr: COUNT(DISTINCT customer_participant_account_id)
+      expr: COUNT(DISTINCT participant_account_id)
       comment: "Number of distinct customers with active performance obligations. Measures the breadth of contractual service commitments across the customer base."
 $$;

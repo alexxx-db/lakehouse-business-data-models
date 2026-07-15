@@ -86,6 +86,7 @@ AS $$
       comment: "Number of assignments triggering P&I club notification. Liability exposure indicator tracked by the port legal and insurance team."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_towage_order`
 WITH METRICS
 LANGUAGE YAML
@@ -153,6 +154,7 @@ AS $$
       expr: AVG(CAST(current_speed_knots AS DOUBLE))
       comment: "Average current speed at time of towage. Environmental context metric used to correlate difficult conditions with abort rates and safety observations."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_mooring_operation`
 WITH METRICS
@@ -228,6 +230,7 @@ AS $$
       comment: "Number of distinct vessels moored in the period. Measures port throughput and berth utilisation breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -302,6 +305,7 @@ AS $$
       comment: "Number of incidents with ISPS security implications. Security risk KPI reported to the Port Facility Security Officer."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_marpol_operation`
 WITH METRICS
 LANGUAGE YAML
@@ -370,6 +374,7 @@ AS $$
       comment: "Number of distinct vessels receiving MARPOL waste reception services. Market coverage and environmental service reach KPI."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_pilotage_exemption`
 WITH METRICS
 LANGUAGE YAML
@@ -419,6 +424,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total exemption records (proxy for exemption portfolio breadth). Used alongside active count for portfolio trend analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_tug_assignment`
 WITH METRICS
@@ -487,6 +493,7 @@ AS $$
       expr: AVG(CAST(tow_line_length_m AS DOUBLE))
       comment: "Average tow line length used. Operational safety metric; unusually long tow lines in confined waters indicate non-standard conditions."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_survey_appointment`
 WITH METRICS
@@ -558,6 +565,7 @@ AS $$
       expr: AVG(CAST(draught_aft_m AS DOUBLE))
       comment: "Average aft draught recorded during surveys. Used to validate vessel draught declarations and under-keel clearance compliance."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_weather_tide_window`
 WITH METRICS
@@ -633,6 +641,7 @@ AS $$
       comment: "Average maximum vessel draft permitted across all observation windows. Port access capacity metric used in vessel scheduling and berth allocation."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_pilot_duty_roster`
 WITH METRICS
 LANGUAGE YAML
@@ -691,9 +700,10 @@ AS $$
       expr: AVG(CAST(fatigue_risk_score AS DOUBLE))
       comment: "Average fatigue risk score across all roster slots. Predictive safety KPI used to proactively adjust rosters before fatigue-related incidents occur."
     - name: "distinct_pilots_rostered"
-      expr: COUNT(DISTINCT primary_pilot_id)
+      expr: COUNT(DISTINCT pilot_id)
       comment: "Number of distinct pilots rostered in the period. Workforce breadth KPI for succession planning and licence renewal tracking."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_pni_club_notification`
 WITH METRICS
@@ -762,6 +772,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(CASE WHEN surveyor_appointed_flag = TRUE THEN 1 ELSE 0 END AS INT)) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of P&I notifications where a surveyor was appointed. Claims management process quality KPI."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_launch_dispatch`
 WITH METRICS

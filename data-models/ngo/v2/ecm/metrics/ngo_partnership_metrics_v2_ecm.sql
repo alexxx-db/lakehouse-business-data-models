@@ -71,6 +71,7 @@ AS $$
       comment: "Total funding ceiling for high/critical risk agreements — quantifies financial exposure from risky partnerships for risk committee review."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_partner_org`
 WITH METRICS
 LANGUAGE YAML
@@ -129,6 +130,7 @@ AS $$
       expr: COUNT(CASE WHEN due_diligence_expiry_date < CURRENT_DATE() AND partnership_status = 'Active' THEN 1 END)
       comment: "Number of active partners with expired due diligence — critical compliance risk indicator requiring immediate action."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_capacity_assessment`
 WITH METRICS
@@ -197,6 +199,7 @@ AS $$
       expr: AVG(CAST(overall_score AS DOUBLE)) - AVG(CAST(partner_self_assessment_score AS DOUBLE))
       comment: "Difference between assessor-assigned and partner self-assessment scores — measures alignment and identifies over/under-confident partners."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_capacity_building_activity`
 WITH METRICS
@@ -269,6 +272,7 @@ AS $$
       comment: "Number of unique partner organizations that received capacity building — measures breadth of program reach."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_capacity_building_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -330,6 +334,7 @@ AS $$
       expr: COUNT(DISTINCT partner_org_id)
       comment: "Number of unique partner organizations with active capacity building plans — measures breadth of structured capacity investment."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_due_diligence_record`
 WITH METRICS
@@ -393,6 +398,7 @@ AS $$
       comment: "Number of partners with reviewed financial audits — fiduciary compliance metric for donor accountability."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_partner_performance_review`
 WITH METRICS
 LANGUAGE YAML
@@ -455,6 +461,7 @@ AS $$
       comment: "Number of unique partner organizations reviewed — measures coverage of the performance review program."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_partner_report_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -514,6 +521,7 @@ AS $$
       comment: "Average approved budget per report submission — benchmarks financial scale of reporting obligations."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_field_monitoring_visit`
 WITH METRICS
 LANGUAGE YAML
@@ -572,6 +580,7 @@ AS $$
       expr: COUNT(DISTINCT award_id)
       comment: "Number of unique awards covered by monitoring visits — tracks monitoring coverage relative to the active award portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_partner_risk_register`
 WITH METRICS
@@ -641,6 +650,7 @@ AS $$
       comment: "Number of unique partner organizations with open risks — measures breadth of active risk exposure across the partner portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_consortium`
 WITH METRICS
 LANGUAGE YAML
@@ -690,9 +700,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN grand_bargain_localization = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of consortia aligned to Grand Bargain localization — executive KPI for humanitarian accountability reporting."
     - name: "distinct_lead_partners"
-      expr: COUNT(DISTINCT lead_partner_org_id)
+      expr: COUNT(DISTINCT partner_org_id)
       comment: "Number of unique lead partner organizations across consortia — measures diversity of consortium leadership."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`partnership_agreement_amendment`
 WITH METRICS

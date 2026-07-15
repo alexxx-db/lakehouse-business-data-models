@@ -61,15 +61,16 @@ AS $$
       expr: AVG(CAST(turnaround_time_days AS DOUBLE))
       comment: "Average turnaround time in days from request submission to decision"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT primary_pa_member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with prior authorization requests"
     - name: "distinct_providers"
-      expr: COUNT(DISTINCT primary_pa_provider_id)
+      expr: COUNT(DISTINCT provider_id)
       comment: "Count of unique providers submitting prior authorization requests"
     - name: "distinct_health_plans"
       expr: COUNT(DISTINCT health_plan_id)
       comment: "Count of unique health plans associated with PA requests"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_pa_decision`
 WITH METRICS
@@ -129,7 +130,7 @@ AS $$
       expr: COUNT(DISTINCT pa_request_id)
       comment: "Count of unique PA requests with decisions"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members with PA decisions"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -138,6 +139,7 @@ AS $$
       expr: AVG(CAST(authorization_quantity AS DOUBLE))
       comment: "Average authorized quantity per decision"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_um_case`
 WITH METRICS
@@ -194,10 +196,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of utilization management cases"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members with UM cases"
     - name: "distinct_providers"
-      expr: COUNT(DISTINCT primary_provider_id)
+      expr: COUNT(DISTINCT provider_id)
       comment: "Count of unique primary providers associated with UM cases"
     - name: "distinct_health_plans"
       expr: COUNT(DISTINCT health_plan_id)
@@ -212,6 +214,7 @@ AS $$
       expr: AVG(CAST(length_of_stay_target AS DOUBLE))
       comment: "Average target length of stay in days across UM cases"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_inpatient_admission`
 WITH METRICS
@@ -274,7 +277,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of inpatient admissions"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with inpatient admissions"
     - name: "distinct_health_plans"
       expr: COUNT(DISTINCT health_plan_id)
@@ -301,6 +304,7 @@ AS $$
       expr: AVG(CAST(los_target_days AS DOUBLE))
       comment: "Average target length of stay in days"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_concurrent_review`
 WITH METRICS
@@ -351,7 +355,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of concurrent reviews performed"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with concurrent reviews"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -375,6 +379,7 @@ AS $$
       expr: AVG(CAST(readmission_risk_score AS DOUBLE))
       comment: "Average readmission risk score across concurrent reviews"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_retrospective_review`
 WITH METRICS
@@ -428,10 +433,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of retrospective reviews performed"
     - name: "distinct_claims"
-      expr: COUNT(DISTINCT claim_header_id)
+      expr: COUNT(DISTINCT header_id)
       comment: "Count of unique claims subject to retrospective review"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members with retrospective reviews"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -446,6 +451,7 @@ AS $$
       expr: AVG(CAST(adjusted_amount AS DOUBLE))
       comment: "Average dollar amount of adjustment per retrospective review"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_tat_compliance_event`
 WITH METRICS
@@ -502,7 +508,7 @@ AS $$
       expr: COUNT(DISTINCT pa_request_id)
       comment: "Count of unique PA requests associated with compliance events"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members associated with compliance events"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -520,6 +526,7 @@ AS $$
       expr: AVG(CAST(tat_standard_hours AS DOUBLE))
       comment: "Average turnaround time standard in hours"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_auth_service_line`
 WITH METRICS
@@ -588,7 +595,7 @@ AS $$
       expr: COUNT(DISTINCT pa_request_id)
       comment: "Count of unique PA requests with service lines"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Count of unique members with authorized service lines"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -609,6 +616,7 @@ AS $$
       expr: AVG(CAST(authorized_price AS DOUBLE))
       comment: "Average authorized price per service line"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`utilization_um_program`
 WITH METRICS
@@ -662,6 +670,6 @@ AS $$
       expr: COUNT(DISTINCT health_plan_id)
       comment: "Count of unique health plans with UM programs"
     - name: "distinct_risk_pools"
-      expr: COUNT(DISTINCT risk_pool_id)
+      expr: COUNT(DISTINCT pool_id)
       comment: "Count of unique risk pools associated with UM programs"
 $$;

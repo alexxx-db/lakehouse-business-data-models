@@ -95,6 +95,7 @@ AS $$
       comment: "Average baseline value across indicators. Provides context for interpreting achievement magnitude relative to starting conditions."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_indicator`
 WITH METRICS
 LANGUAGE YAML
@@ -178,6 +179,7 @@ AS $$
       comment: "Number of distinct interventions with indicators. Ensures all program interventions have measurable indicators — gaps signal results framework weaknesses."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_indicator_target`
 WITH METRICS
 LANGUAGE YAML
@@ -251,6 +253,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN indicator_target_status = 'approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of targets that are approved. Low approval rates delay donor reporting and signal governance bottlenecks."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_evaluation`
 WITH METRICS
@@ -329,6 +332,7 @@ AS $$
       comment: "Number of distinct grant awards with evaluations. Measures evaluation coverage across the grant portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_evaluation_finding`
 WITH METRICS
 LANGUAGE YAML
@@ -399,6 +403,7 @@ AS $$
       expr: COUNT(DISTINCT evaluation_id)
       comment: "Number of distinct evaluations that have generated findings. Measures evaluation output quality — evaluations without findings may indicate quality issues."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_data_quality_assessment`
 WITH METRICS
@@ -477,6 +482,7 @@ AS $$
       comment: "Number of distinct partner organizations whose data quality has been assessed. Measures DQA coverage across the partner portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_logframe`
 WITH METRICS
 LANGUAGE YAML
@@ -488,8 +494,8 @@ AS $$
     - name: "mel_logframe_id"
       expr: mel_logframe_id
       comment: "Primary key — enables drill-down to individual logframe entries."
-    - name: "grant_award_id"
-      expr: grant_award_id
+    - name: "award_id"
+      expr: award_id
       comment: "Grant award the logframe belongs to — enables award-level results framework analysis."
     - name: "intervention_id"
       expr: intervention_id
@@ -547,9 +553,10 @@ AS $$
       expr: COUNT(CASE WHEN mel_logframe_status = 'active' THEN 1 END)
       comment: "Count of currently active logframe entries. Tracks live results framework scope and MEL workload."
     - name: "distinct_awards_in_logframe"
-      expr: COUNT(DISTINCT grant_award_id)
+      expr: COUNT(DISTINCT award_id)
       comment: "Number of distinct grant awards with logframe entries. Measures results framework coverage across the grant portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_meal_plan`
 WITH METRICS
@@ -606,6 +613,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN mel_logframe_id IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of MEAL plans linked to a logframe. Low coverage rates indicate results framework gaps requiring remediation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_reporting_period`
 WITH METRICS
@@ -690,6 +698,7 @@ AS $$
       comment: "Percentage of reporting periods that have been closed. Low closure rates indicate reporting backlogs requiring management intervention."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_data_collection_tool`
 WITH METRICS
 LANGUAGE YAML
@@ -760,6 +769,7 @@ AS $$
       expr: COUNT(DISTINCT intervention_id)
       comment: "Number of distinct interventions with data collection tools. Interventions without tools cannot generate primary evidence — a results framework risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_geographic_scope`
 WITH METRICS
@@ -832,6 +842,7 @@ AS $$
       comment: "Number of distinct countries in the program geographic portfolio. Measures organizational geographic reach — used in annual reports and donor communications."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_learning_agenda`
 WITH METRICS
 LANGUAGE YAML
@@ -903,6 +914,7 @@ AS $$
       comment: "Number of distinct grant awards with learning agenda items. Awards without learning agendas lack structured organizational learning — a quality and accountability gap."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_needs_assessment`
 WITH METRICS
 LANGUAGE YAML
@@ -970,6 +982,7 @@ AS $$
       expr: COUNT(DISTINCT award_id)
       comment: "Number of distinct grant awards with needs assessments. Awards without needs assessments lack evidence-based program design — a quality and accountability risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`mel_dhis2_aggregate_report`
 WITH METRICS

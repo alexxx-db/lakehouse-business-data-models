@@ -95,6 +95,7 @@ AS $$
       comment: "Count of lots failing Good Distribution Practice standards"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_shipment`
 WITH METRICS
 LANGUAGE YAML
@@ -193,6 +194,7 @@ AS $$
       comment: "Count of shipments containing hazardous materials"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_product_recall`
 WITH METRICS
 LANGUAGE YAML
@@ -282,6 +284,7 @@ AS $$
       comment: "Count of recalls executed following Good Distribution Practice guidelines"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_cold_chain_record`
 WITH METRICS
 LANGUAGE YAML
@@ -362,6 +365,7 @@ AS $$
       comment: "Number of unique locations with cold chain monitoring"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_demand_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -438,6 +442,7 @@ AS $$
       expr: COUNT(CASE WHEN plan_status = 'approved' THEN 1 END)
       comment: "Count of demand plans approved for execution"
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_clinical_supply_order`
 WITH METRICS
@@ -528,6 +533,7 @@ AS $$
       comment: "Number of unique destination countries for clinical supply"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`supply_serialization_record`
 WITH METRICS
 LANGUAGE YAML
@@ -616,6 +622,6 @@ AS $$
       expr: COUNT(DISTINCT market_country_code)
       comment: "Number of unique country markets served"
     - name: "distinct_commissioning_sites"
-      expr: COUNT(DISTINCT commissioning_plant_id)
+      expr: COUNT(DISTINCT plant_id)
       comment: "Number of unique sites commissioning serial numbers"
 $$;

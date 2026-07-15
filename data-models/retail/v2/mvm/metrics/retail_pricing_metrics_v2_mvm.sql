@@ -74,6 +74,7 @@ AS $$
       comment: "Number of SKUs with dynamic pricing enabled for automation adoption tracking"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`pricing_price_change`
 WITH METRICS
 LANGUAGE YAML
@@ -120,7 +121,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of price change events for pricing volatility and activity tracking"
     - name: "distinct_sku_changed"
-      expr: COUNT(DISTINCT price_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs with price changes for pricing churn assessment"
     - name: "avg_retail_price_change_pct"
       expr: AVG(CAST(retail_price_change_pct AS DOUBLE))
@@ -150,6 +151,7 @@ AS $$
       expr: COUNT(CASE WHEN competitor_name IS NOT NULL THEN 1 END)
       comment: "Number of price changes made in response to competitor actions for competitive agility tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`pricing_markdown`
 WITH METRICS
@@ -222,6 +224,7 @@ AS $$
       comment: "Number of markdowns made as competitive response for competitive pressure quantification"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`pricing_competitive_price`
 WITH METRICS
 LANGUAGE YAML
@@ -271,7 +274,7 @@ AS $$
       expr: COUNT(DISTINCT competitor_name)
       comment: "Number of unique competitors tracked for competitive landscape breadth"
     - name: "distinct_sku_tracked"
-      expr: COUNT(DISTINCT competitive_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs with competitive price tracking for coverage assessment"
     - name: "avg_competitor_price"
       expr: AVG(CAST(competitor_price AS DOUBLE))
@@ -298,6 +301,7 @@ AS $$
       expr: COUNT(CASE WHEN response_status = 'implemented' THEN 1 END)
       comment: "Number of competitive gaps where pricing response was implemented for action rate tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`pricing_cost_price`
 WITH METRICS
@@ -339,7 +343,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of cost records for cost data coverage and maintenance tracking"
     - name: "distinct_sku_costed"
-      expr: COUNT(DISTINCT cost_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs with cost records for cost coverage assessment"
     - name: "avg_base_cost"
       expr: AVG(CAST(base_cost AS DOUBLE))
@@ -372,6 +376,7 @@ AS $$
       expr: AVG(CAST(handling_cost AS DOUBLE))
       comment: "Average handling cost per SKU for warehouse and logistics efficiency assessment"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`pricing_price_approval`
 WITH METRICS

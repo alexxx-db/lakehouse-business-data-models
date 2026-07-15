@@ -38,6 +38,7 @@ AS $$
       comment: "Average gross value per purchase order"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_supplier_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -70,6 +71,7 @@ AS $$
       comment: "Average contract value"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_emergency_stock_event`
 WITH METRICS
 LANGUAGE YAML
@@ -87,11 +89,11 @@ AS $$
     - name: "declared_emergency_date"
       expr: declared_emergency_date
       comment: "Date the emergency was declared"
-    - name: "primary_vendor_id"
-      expr: primary_vendor_id
+    - name: "vendor_id"
+      expr: vendor_id
       comment: "Vendor providing emergency stock"
-    - name: "primary_warehouse_id"
-      expr: primary_warehouse_id
+    - name: "warehouse_id"
+      expr: warehouse_id
       comment: "Warehouse from which emergency stock was dispatched"
   measures:
     - name: "event_count"
@@ -107,6 +109,7 @@ AS $$
       expr: AVG(CAST(lead_time_achieved_hours AS DOUBLE))
       comment: "Average lead time actually achieved (hours)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_inventory_count`
 WITH METRICS
@@ -146,6 +149,7 @@ AS $$
       comment: "Average allowed variance tolerance percent"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_vendor_evaluation`
 WITH METRICS
 LANGUAGE YAML
@@ -179,39 +183,4 @@ AS $$
     - name: "total_purchase_value"
       expr: SUM(CAST(total_purchase_value AS DOUBLE))
       comment: "Total purchase value evaluated"
-$$;
-
-CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_stock_transfer`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Logistics and internal movement efficiency metrics"
-  source: "`energy_utilities_ecm`.`supply`.`stock_transfer`"
-  dimensions:
-    - name: "transfer_status"
-      expr: transfer_status
-      comment: "Current status of the stock transfer"
-    - name: "transfer_type"
-      expr: transfer_type
-      comment: "Type of transfer (e.g., internal, external)"
-    - name: "sending_plant_id"
-      expr: sending_plant_id
-      comment: "Plant sending the stock"
-    - name: "receiving_plant_id"
-      expr: receiving_plant_id
-      comment: "Plant receiving the stock"
-    - name: "actual_arrival_date"
-      expr: actual_arrival_date
-      comment: "Date the transferred stock actually arrived"
-  measures:
-    - name: "transfer_count"
-      expr: COUNT(1)
-      comment: "Number of stock transfer transactions"
-    - name: "total_transfer_quantity"
-      expr: SUM(CAST(transfer_quantity AS DOUBLE))
-      comment: "Aggregate quantity transferred"
-    - name: "total_transfer_cost"
-      expr: SUM(CAST(transfer_cost_amount AS DOUBLE))
-      comment: "Total cost associated with stock transfers"
 $$;

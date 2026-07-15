@@ -38,6 +38,7 @@ AS $$
       comment: "Average quantity per trade"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`trading_position`
 WITH METRICS
 LANGUAGE YAML
@@ -82,6 +83,7 @@ AS $$
       comment: "Average credit exposure per position"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`trading_market_settlement`
 WITH METRICS
 LANGUAGE YAML
@@ -117,6 +119,7 @@ AS $$
       comment: "Total netting adjustment amount"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`trading_credit_exposure`
 WITH METRICS
 LANGUAGE YAML
@@ -128,8 +131,8 @@ AS $$
     - name: "exposure_as_of_date"
       expr: exposure_as_of_date
       comment: "Date of exposure measurement"
-    - name: "credit_counterparty_id"
-      expr: credit_counterparty_id
+    - name: "counterparty_id"
+      expr: counterparty_id
       comment: "Counterparty ID for the credit exposure"
     - name: "primary_credit_counterparty_id"
       expr: primary_credit_counterparty_id
@@ -157,6 +160,7 @@ AS $$
       expr: SUM(CASE WHEN margin_call_issued_flag THEN 1 ELSE 0 END)
       comment: "Count of margin calls issued"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`trading_lmp_price`
 WITH METRICS

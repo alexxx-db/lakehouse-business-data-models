@@ -49,7 +49,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Distinct count of candidates submitted"
     - name: "unique_orders_submitted_to"
-      expr: COUNT(DISTINCT submittal_order_header_id)
+      expr: COUNT(DISTINCT order_header_id)
       comment: "Distinct count of job orders receiving submittals"
     - name: "placement_conversion_count"
       expr: SUM(CASE WHEN converted_to_placement = TRUE THEN 1 ELSE 0 END)
@@ -88,6 +88,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN rtr_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(submittal_id), 0), 2)
       comment: "Percentage of submittals with right-to-represent obtained"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_interview`
 WITH METRICS
@@ -174,6 +175,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN feedback_submitted_timestamp IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN actual_start_timestamp IS NOT NULL THEN 1 ELSE 0 END), 0), 2)
       comment: "Percentage of completed interviews with feedback submitted"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_hiring_decision`
 WITH METRICS
@@ -273,6 +275,7 @@ AS $$
       comment: "Count of backfill hires"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_recruiter_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -361,6 +364,7 @@ AS $$
       expr: SUM(CASE WHEN fall_off_risk_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of assignments with fall-off risk"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_sla_breach`
 WITH METRICS
@@ -454,6 +458,7 @@ AS $$
       comment: "Average SLA threshold value"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_sourcing_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -542,6 +547,7 @@ AS $$
       expr: SUM(CASE WHEN is_security_clearance_required = TRUE THEN 1 ELSE 0 END)
       comment: "Count of campaigns requiring security clearance"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_job_posting`
 WITH METRICS
@@ -637,6 +643,7 @@ AS $$
       expr: SUM(CASE WHEN rpo_program_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of postings under RPO programs"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`recruitment_candidate_screening`
 WITH METRICS

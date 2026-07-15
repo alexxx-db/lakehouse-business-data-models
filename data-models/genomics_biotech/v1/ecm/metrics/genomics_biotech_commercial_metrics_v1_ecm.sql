@@ -38,6 +38,7 @@ AS $$
       comment: "Total budget actually spent by campaigns"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`commercial_opportunity_pipeline`
 WITH METRICS
 LANGUAGE YAML
@@ -79,6 +80,7 @@ AS $$
       comment: "Aggregate discount percentage applied across opportunities"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`commercial_lead_generation`
 WITH METRICS
 LANGUAGE YAML
@@ -114,6 +116,7 @@ AS $$
       comment: "Sum of projected annual revenue associated with leads"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`commercial_sales_quota`
 WITH METRICS
 LANGUAGE YAML
@@ -146,6 +149,7 @@ AS $$
       comment: "Sum of stretch quota amounts"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`commercial_contract_value`
 WITH METRICS
 LANGUAGE YAML
@@ -163,8 +167,8 @@ AS $$
     - name: "contract_month"
       expr: DATE_TRUNC('month', effective_date)
       comment: "Month the contract became effective"
-    - name: "sales_territory_id"
-      expr: sales_territory_id
+    - name: "territory_id"
+      expr: territory_id
       comment: "Territory responsible for the contract"
     - name: "currency_code"
       expr: currency_code

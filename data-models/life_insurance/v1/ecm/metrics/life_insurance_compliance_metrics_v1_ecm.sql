@@ -76,9 +76,10 @@ AS $$
       expr: COUNT(DISTINCT party_id)
       comment: "Number of unique parties involved in alerts"
     - name: "unique_policies"
-      expr: COUNT(DISTINCT policy_id)
+      expr: COUNT(DISTINCT in_force_policy_id)
       comment: "Number of unique policies flagged in alerts"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_regulatory_filing`
 WITH METRICS
@@ -144,6 +145,7 @@ AS $$
       expr: COUNT(DISTINCT legal_entity_id)
       comment: "Number of unique legal entities filing"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_exam_finding`
 WITH METRICS
@@ -219,6 +221,7 @@ AS $$
       comment: "Number of unique market conduct examinations"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_training_completion`
 WITH METRICS
 LANGUAGE YAML
@@ -289,12 +292,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN pass_fail_status = 'Pass' AND attempt_number = '1' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN attempt_number = '1' THEN 1 ELSE 0 END), 0), 2)
       comment: "Percentage passing on first attempt - training quality metric"
     - name: "unique_trainees"
-      expr: COUNT(DISTINCT primary_compliance_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique employees completing training"
     - name: "unique_courses"
       expr: COUNT(DISTINCT training_course_id)
       comment: "Number of unique training courses completed"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_privacy_incident`
 WITH METRICS
@@ -363,9 +367,10 @@ AS $$
       expr: COUNT(DISTINCT party_id)
       comment: "Number of unique parties affected by incidents"
     - name: "unique_involved_vendors"
-      expr: COUNT(DISTINCT involved_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors involved in incidents"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_sox_control`
 WITH METRICS
@@ -450,6 +455,7 @@ AS $$
       comment: "Number of unique legal entities with SOX controls"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_policy_form_approval`
 WITH METRICS
 LANGUAGE YAML
@@ -520,6 +526,7 @@ AS $$
       expr: COUNT(DISTINCT legal_entity_id)
       comment: "Number of unique legal entities filing forms"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`compliance_suitability_review`
 WITH METRICS

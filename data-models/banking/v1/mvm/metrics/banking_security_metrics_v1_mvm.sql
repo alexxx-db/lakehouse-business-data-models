@@ -38,6 +38,7 @@ AS $$
       comment: "Baseline count of fixed income records."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_equity`
 WITH METRICS
 LANGUAGE YAML
@@ -73,6 +74,7 @@ AS $$
       comment: "Baseline count of equity records."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_derivative`
 WITH METRICS
 LANGUAGE YAML
@@ -81,8 +83,8 @@ AS $$
   comment: "Derivative exposure and maturity metrics."
   source: "`banking_ecm`.`security`.`derivative`"
   dimensions:
-    - name: "underlying_instrument_id"
-      expr: underlying_instrument_id
+    - name: "instrument_id"
+      expr: instrument_id
       comment: "Underlying instrument for the derivative."
     - name: "asset_class"
       expr: asset_class
@@ -107,6 +109,7 @@ AS $$
       expr: COUNT(1)
       comment: "Baseline count of derivative records."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_price`
 WITH METRICS
@@ -142,6 +145,7 @@ AS $$
       expr: COUNT(1)
       comment: "Baseline count of price records."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_credit_rating`
 WITH METRICS

@@ -73,12 +73,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN run_status = 'Completed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of sequencing runs successfully completed"
     - name: "distinct_instruments"
-      expr: COUNT(DISTINCT primary_sequencing_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique sequencing instruments utilized"
     - name: "distinct_protocols"
       expr: COUNT(DISTINCT sequencing_protocol_id)
       comment: "Number of unique sequencing protocols executed"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`sequencing_coverage_stat`
 WITH METRICS
@@ -160,6 +161,7 @@ AS $$
       comment: "Percentage of samples approved for downstream analysis"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`sequencing_library`
 WITH METRICS
 LANGUAGE YAML
@@ -233,6 +235,7 @@ AS $$
       expr: COUNT(DISTINCT project_id)
       comment: "Number of unique projects associated with libraries"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`sequencing_run_lane`
 WITH METRICS
@@ -316,6 +319,7 @@ AS $$
       expr: COUNT(DISTINCT flow_cell_id)
       comment: "Number of unique flow cells utilized"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`sequencing_demux_result`
 WITH METRICS
@@ -406,6 +410,7 @@ AS $$
       comment: "Number of unique sequencing runs demultiplexed"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`sequencing_library_prep_run`
 WITH METRICS
 LANGUAGE YAML
@@ -476,7 +481,7 @@ AS $$
       expr: COUNT(DISTINCT research_protocol_id)
       comment: "Number of unique research protocols used"
     - name: "distinct_kit_lots"
-      expr: COUNT(DISTINCT kit_lot_id)
+      expr: COUNT(DISTINCT lot_id)
       comment: "Number of unique kit lots utilized"
     - name: "distinct_projects"
       expr: COUNT(DISTINCT project_id)

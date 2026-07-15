@@ -23,8 +23,8 @@ AS $$
     - name: "period_start_date"
       expr: DATE_TRUNC('month', period_start_date)
       comment: "Month bucket of period start date for trend analysis of food cost over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit identifier for location-level food cost benchmarking."
     - name: "franchisee_id"
       expr: franchisee_id
@@ -71,6 +71,7 @@ AS $$
       comment: "Number of food cost periods recorded. Used to validate completeness of period-end close process across all units."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -103,8 +104,8 @@ AS $$
     - name: "adjustment_date"
       expr: DATE_TRUNC('month', adjustment_date)
       comment: "Month bucket of adjustment date for trend analysis of adjustment frequency and value over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit where the adjustment occurred, for location-level loss analysis."
     - name: "unit_of_measure"
       expr: unit_of_measure
@@ -133,6 +134,7 @@ AS $$
       comment: "Number of shrinkage events recorded. Frequency trend used by loss prevention to assess theft or unexplained loss risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_physical_count`
 WITH METRICS
 LANGUAGE YAML
@@ -159,8 +161,8 @@ AS $$
     - name: "count_date"
       expr: DATE_TRUNC('month', count_date)
       comment: "Month bucket of count date for trend analysis of count frequency and variance over time."
-    - name: "physical_restaurant_unit_id"
-      expr: physical_restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit where the physical count was conducted, for location-level accuracy benchmarking."
     - name: "variance_reason_code"
       expr: variance_reason_code
@@ -189,6 +191,7 @@ AS $$
       comment: "Number of period-end counts completed. Validates that all units completed mandatory period-end inventory counts for financial close."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_waste_log`
 WITH METRICS
 LANGUAGE YAML
@@ -215,8 +218,8 @@ AS $$
     - name: "waste_date"
       expr: DATE_TRUNC('month', waste_date)
       comment: "Month bucket of waste date for trend analysis of waste volume and cost over time."
-    - name: "waste_restaurant_unit_id"
-      expr: waste_restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit where waste was recorded, for location-level waste benchmarking."
     - name: "unit_of_measure"
       expr: unit_of_measure
@@ -245,6 +248,7 @@ AS $$
       comment: "Number of waste events approved by a manager. Approval rate indicates compliance with waste authorization controls."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_on_hand_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -271,8 +275,8 @@ AS $$
     - name: "snapshot_timestamp"
       expr: DATE_TRUNC('day', snapshot_timestamp)
       comment: "Day bucket of inventory snapshot for daily on-hand balance trend analysis."
-    - name: "on_restaurant_unit_id"
-      expr: on_restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit for location-level inventory balance monitoring."
     - name: "cycle_count_frequency"
       expr: cycle_count_frequency
@@ -300,9 +304,10 @@ AS $$
       expr: COUNT(CASE WHEN quantity_on_hand < reorder_point THEN 1 END)
       comment: "Number of stock items below their reorder point. Critical supply chain alert metric — high count signals imminent stockout risk requiring procurement action."
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT on_sku_stock_item_id)
+      expr: COUNT(DISTINCT stock_item_id)
       comment: "Number of distinct SKUs with on-hand inventory. Breadth of active inventory portfolio for assortment management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_receiving_order`
 WITH METRICS
@@ -330,8 +335,8 @@ AS $$
     - name: "delivery_date"
       expr: DATE_TRUNC('month', delivery_date)
       comment: "Month bucket of delivery date for trend analysis of receiving volume and supplier performance over time."
-    - name: "receiving_restaurant_unit_id"
-      expr: receiving_restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit receiving the delivery, for location-level receiving performance analysis."
     - name: "receiving_shift"
       expr: receiving_shift
@@ -360,6 +365,7 @@ AS $$
       comment: "Average number of days variance between expected and actual delivery date. Supplier reliability metric used in vendor scorecards."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_yield_record`
 WITH METRICS
 LANGUAGE YAML
@@ -383,8 +389,8 @@ AS $$
     - name: "prep_date"
       expr: DATE_TRUNC('month', prep_date)
       comment: "Month bucket of prep date for trend analysis of yield performance over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit where prep was performed, for location-level yield benchmarking."
     - name: "prep_station_code"
       expr: prep_station_code
@@ -416,6 +422,7 @@ AS $$
       comment: "Total number of yield records. Used to validate prep documentation compliance across units and stations."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_prep_usage`
 WITH METRICS
 LANGUAGE YAML
@@ -439,8 +446,8 @@ AS $$
     - name: "prep_date"
       expr: DATE_TRUNC('month', prep_date)
       comment: "Month bucket of prep date for trend analysis of prep usage and cost variance over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit for location-level prep usage benchmarking."
     - name: "prep_station_code"
       expr: prep_station_code
@@ -474,6 +481,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of prep usage records. Used to validate prep documentation compliance across units."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_stock_item`
 WITH METRICS
@@ -531,6 +539,7 @@ AS $$
       comment: "Total number of stock items in the catalog. Used to monitor catalog growth and complexity for procurement and operations management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -560,8 +569,8 @@ AS $$
     - name: "order_date"
       expr: DATE_TRUNC('month', order_date)
       comment: "Month bucket of order date for trend analysis of replenishment volume and spend over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit placing the replenishment order, for location-level ordering pattern analysis."
     - name: "shipping_method"
       expr: shipping_method
@@ -589,6 +598,7 @@ AS $$
       expr: COUNT(CASE WHEN priority_level = 'critical' OR order_type = 'emergency' THEN 1 END)
       comment: "Number of emergency or critical priority replenishment orders. High frequency indicates poor demand forecasting or supply chain fragility."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_lot_tracking`
 WITH METRICS
@@ -619,8 +629,8 @@ AS $$
     - name: "received_date"
       expr: DATE_TRUNC('month', received_date)
       comment: "Month bucket of lot receipt date for trend analysis of receiving volume and quality over time."
-    - name: "restaurant_unit_id"
-      expr: restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Restaurant unit that received the lot, for location-level traceability and recall response."
   measures:
     - name: "total_quantity_received"
@@ -648,6 +658,7 @@ AS $$
       expr: COUNT(CASE WHEN quarantine_flag = TRUE THEN 1 END)
       comment: "Number of lots currently under quarantine. Food safety risk indicator monitored by quality assurance leadership."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_stock_transfer`
 WITH METRICS
@@ -681,8 +692,8 @@ AS $$
     - name: "origin_restaurant_unit_id"
       expr: origin_restaurant_unit_id
       comment: "Origin restaurant unit for transfer flow analysis and surplus identification."
-    - name: "destination_restaurant_unit_id"
-      expr: destination_restaurant_unit_id
+    - name: "unit_id"
+      expr: unit_id
       comment: "Destination restaurant unit for transfer flow analysis and demand pattern identification."
   measures:
     - name: "total_transfer_value"
@@ -701,6 +712,7 @@ AS $$
       expr: COUNT(CASE WHEN temperature_controlled_flag = TRUE THEN 1 END)
       comment: "Number of transfers requiring temperature control. Cold chain compliance volume metric for food safety monitoring."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`inventory_vendor_item`
 WITH METRICS
@@ -728,8 +740,8 @@ AS $$
     - name: "activation_date"
       expr: DATE_TRUNC('year', activation_date)
       comment: "Year bucket of vendor item activation date for portfolio age analysis."
-    - name: "primary_vendor_procurement_supplier_id"
-      expr: primary_vendor_procurement_supplier_id
+    - name: "procurement_supplier_id"
+      expr: procurement_supplier_id
       comment: "Primary vendor supplier identifier for vendor-level performance aggregation."
   measures:
     - name: "avg_unit_cost"

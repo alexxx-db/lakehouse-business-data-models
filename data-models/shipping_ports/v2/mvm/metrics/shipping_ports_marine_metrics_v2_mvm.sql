@@ -98,6 +98,7 @@ AS $$
       comment: "Number of unique vessel calls serviced by pilotage operations"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_towage_order`
 WITH METRICS
 LANGUAGE YAML
@@ -190,6 +191,7 @@ AS $$
       comment: "Number of unique pilots involved in towage operations"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_tug_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -281,6 +283,7 @@ AS $$
       expr: COUNT(DISTINCT call_id)
       comment: "Number of unique vessel calls assisted by tug assignments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_mooring_operation`
 WITH METRICS
@@ -385,9 +388,10 @@ AS $$
       expr: COUNT(DISTINCT berth_id)
       comment: "Number of unique berths used for mooring operations"
     - name: "distinct_vessels"
-      expr: COUNT(DISTINCT vessel_call_id)
+      expr: COUNT(DISTINCT call_id)
       comment: "Number of unique vessel calls serviced by mooring operations"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_service_order`
 WITH METRICS
@@ -468,7 +472,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(CASE WHEN order_status = 'completed' THEN 1 ELSE 0 END AS INT)) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of service orders completed (fulfillment KPI)"
     - name: "distinct_vessels"
-      expr: COUNT(DISTINCT vessel_call_id)
+      expr: COUNT(DISTINCT call_id)
       comment: "Number of unique vessel calls serviced by marine service orders"
     - name: "distinct_berths"
       expr: COUNT(DISTINCT berth_id)
@@ -477,6 +481,7 @@ AS $$
       expr: COUNT(DISTINCT participant_account_id)
       comment: "Number of unique customer accounts placing service orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_pilot`
 WITH METRICS
@@ -557,9 +562,10 @@ AS $$
       expr: COUNT(DISTINCT port_id)
       comment: "Number of unique ports where pilots are assigned"
     - name: "distinct_nationalities"
-      expr: COUNT(DISTINCT nationality_country_id)
+      expr: COUNT(DISTINCT country_id)
       comment: "Number of unique nationalities represented in the pilot workforce"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`marine_tug`
 WITH METRICS

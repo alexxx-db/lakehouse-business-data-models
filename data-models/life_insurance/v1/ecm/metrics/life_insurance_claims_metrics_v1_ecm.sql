@@ -94,9 +94,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN reopened_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of claims that were reopened"
     - name: "distinct_policies"
-      expr: COUNT(DISTINCT claim_in_force_policy_id)
+      expr: COUNT(DISTINCT in_force_policy_id)
       comment: "Number of distinct policies with claims"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_claim_payment`
 WITH METRICS
@@ -181,6 +182,7 @@ AS $$
       comment: "Number of distinct claimants receiving payments"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_claim_reserve`
 WITH METRICS
 LANGUAGE YAML
@@ -260,6 +262,7 @@ AS $$
       expr: COUNT(DISTINCT claim_id)
       comment: "Number of distinct claims with reserves"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_adjudication`
 WITH METRICS
@@ -349,9 +352,10 @@ AS $$
       expr: COUNT(DISTINCT claim_id)
       comment: "Number of distinct claims adjudicated"
     - name: "distinct_adjudicators"
-      expr: COUNT(DISTINCT adjudication_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees performing adjudications"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_appeal`
 WITH METRICS
@@ -439,6 +443,7 @@ AS $$
       comment: "Number of distinct claimants filing appeals"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_claim_investigation`
 WITH METRICS
 LANGUAGE YAML
@@ -525,6 +530,7 @@ AS $$
       comment: "Number of distinct claims under investigation"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_contestability_review`
 WITH METRICS
 LANGUAGE YAML
@@ -608,6 +614,7 @@ AS $$
       comment: "Number of distinct claims under contestability review"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_fnol`
 WITH METRICS
 LANGUAGE YAML
@@ -669,6 +676,7 @@ AS $$
       expr: COUNT(DISTINCT reporter_name)
       comment: "Number of distinct individuals reporting losses"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`claims_siu_referral`
 WITH METRICS

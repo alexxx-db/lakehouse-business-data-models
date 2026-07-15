@@ -77,12 +77,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(refund_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_fare_amount AS DOUBLE)), 0), 2)
       comment: "Refund amount as a percentage of total fare revenue. Measures revenue leakage risk from cancellations and refund policy exposure."
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Count of unique passengers who purchased tickets. Used for customer reach and revenue-per-passenger analysis."
     - name: "ffp_ticket_count"
       expr: COUNT(DISTINCT CASE WHEN ffp_member_id IS NOT NULL THEN ticket_id END)
       comment: "Number of tickets issued to frequent flyer program members. Measures loyalty program contribution to ticket revenue."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_recognition`
 WITH METRICS
@@ -165,6 +166,7 @@ AS $$
       comment: "Prorate revenue as a percentage of total recognized fare. Measures interline revenue dependency and partner revenue sharing exposure."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_bsp_settlement`
 WITH METRICS
 LANGUAGE YAML
@@ -243,6 +245,7 @@ AS $$
       comment: "Total Passenger Facility Charges collected. Required for regulatory remittance compliance reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_refund`
 WITH METRICS
 LANGUAGE YAML
@@ -317,6 +320,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN refund_method = 'VOUCHER' THEN refund_id END)
       comment: "Count of refunds issued as travel vouchers. Measures deferred revenue liability from voucher issuance."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_interline_prorate`
 WITH METRICS
@@ -395,6 +399,7 @@ AS $$
       expr: COUNT(DISTINCT partner_carrier_code)
       comment: "Number of distinct interline partner carriers. Measures breadth of interline network and partner revenue diversification."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_pricing_record`
 WITH METRICS
@@ -480,6 +485,7 @@ AS $$
       comment: "Count of pricing records generated via NDC channel. Measures NDC adoption and its contribution to the pricing pipeline."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_emd`
 WITH METRICS
 LANGUAGE YAML
@@ -557,6 +563,7 @@ AS $$
       expr: COUNT(DISTINCT ffp_member_id)
       comment: "Count of distinct FFP members who purchased ancillary services via EMD. Measures loyalty member ancillary engagement."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_yield_parameter`
 WITH METRICS
@@ -642,6 +649,7 @@ AS $$
       comment: "Count of active yield parameters. Measures RM configuration coverage across routes and fare classes."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_ticket_exchange`
 WITH METRICS
 LANGUAGE YAML
@@ -716,6 +724,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN fare_difference_amount > 0 THEN ticket_exchange_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of exchanges where additional fare was collected. Measures the proportion of exchanges that generate incremental revenue vs. cost."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`revenue_corporate_account`
 WITH METRICS

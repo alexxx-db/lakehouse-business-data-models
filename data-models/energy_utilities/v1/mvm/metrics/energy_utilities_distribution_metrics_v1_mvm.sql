@@ -44,6 +44,7 @@ AS $$
       comment: "Number of substations"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_feeder`
 WITH METRICS
 LANGUAGE YAML
@@ -78,6 +79,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of feeder records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_transformer`
 WITH METRICS
@@ -117,6 +119,7 @@ AS $$
       comment: "Number of transformer records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_capacitor_bank`
 WITH METRICS
 LANGUAGE YAML
@@ -152,6 +155,7 @@ AS $$
       comment: "Total number of capacitor bank records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_der_interconnection_point`
 WITH METRICS
 LANGUAGE YAML
@@ -172,8 +176,8 @@ AS $$
     - name: "ownership_type"
       expr: ownership_type
       comment: "Ownership model of the DER"
-    - name: "primary_feeder_id"
-      expr: primary_feeder_id
+    - name: "feeder_id"
+      expr: feeder_id
       comment: "Feeder that primarily serves the DER"
   measures:
     - name: "total_export_capacity_kw"
@@ -186,6 +190,7 @@ AS $$
       expr: AVG(CAST(nameplate_capacity_kw AS DOUBLE))
       comment: "Average nameplate capacity of DERs (kW)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_reliability_event`
 WITH METRICS
@@ -219,6 +224,7 @@ AS $$
       comment: "Number of reliability events recorded"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_feeder_load_reading`
 WITH METRICS
 LANGUAGE YAML
@@ -248,6 +254,7 @@ AS $$
       comment: "Number of feeder load reading records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`distribution_volt_var_action`
 WITH METRICS
 LANGUAGE YAML
@@ -262,8 +269,8 @@ AS $$
     - name: "action_status"
       expr: action_status
       comment: "Current status of the action"
-    - name: "primary_volt_load_zone_id"
-      expr: primary_volt_load_zone_id
+    - name: "volt_load_zone_id"
+      expr: volt_load_zone_id
       comment: "Load zone where the action was applied"
   measures:
     - name: "total_demand_reduction_kw"

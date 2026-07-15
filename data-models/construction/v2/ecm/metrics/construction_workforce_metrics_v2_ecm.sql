@@ -80,6 +80,7 @@ AS $$
       comment: "Count of distinct craft workers with timesheet entries. Measures active workforce size on the project for headcount reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_timesheet_line`
 WITH METRICS
 LANGUAGE YAML
@@ -153,6 +154,7 @@ AS $$
       expr: COUNT(DISTINCT activity_id)
       comment: "Number of distinct schedule activities with labor charges. Measures breadth of active work fronts on the project."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_production_rate`
 WITH METRICS
@@ -231,6 +233,7 @@ AS $$
       comment: "Number of distinct crews with production records. Measures breadth of active production fronts on the project."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_crew_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -299,6 +302,7 @@ AS $$
       comment: "Number of billable crew assignments. Used to compute billable utilization rate and support client invoicing."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_mobilization`
 WITH METRICS
 LANGUAGE YAML
@@ -307,8 +311,8 @@ AS $$
   comment: "Labor mobilization cost and logistics metrics. Enables mobilization budget control, travel cost management, and workforce deployment efficiency analysis."
   source: "`vibe_construction_v1`.`workforce`.`labor_mobilization`"
   dimensions:
-    - name: "destination_construction_project_id"
-      expr: destination_construction_project_id
+    - name: "construction_project_id"
+      expr: construction_project_id
       comment: "Destination project for the mobilization — primary dimension for project-level mobilization cost reporting."
     - name: "mobilization_status"
       expr: mobilization_status
@@ -363,6 +367,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of mobilization records. Baseline volume metric for mobilization activity tracking."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_staffing_plan`
 WITH METRICS
@@ -422,6 +427,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of staffing plan records. Baseline volume metric for planning activity tracking."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_craft_certification`
 WITH METRICS
@@ -485,6 +491,7 @@ AS $$
       comment: "Average training hours required per certification. Used to plan training schedules and estimate training cost for workforce development."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_apprenticeship_progression`
 WITH METRICS
 LANGUAGE YAML
@@ -546,6 +553,7 @@ AS $$
       expr: COUNT(DISTINCT craft_worker_id)
       comment: "Count of distinct craft workers in apprenticeship programs. Measures the breadth of the workforce development pipeline."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_rate`
 WITH METRICS
@@ -612,6 +620,7 @@ AS $$
       comment: "Number of distinct projects with labor rate records. Measures rate governance coverage across the project portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_site_access_record`
 WITH METRICS
 LANGUAGE YAML
@@ -661,7 +670,7 @@ AS $$
       expr: COUNT(CASE WHEN induction_status != 'Completed' THEN 1 END)
       comment: "Number of site entries where induction is not completed. Workers on site without induction represent a regulatory and safety risk."
     - name: "distinct_workers_on_site"
-      expr: COUNT(DISTINCT primary_site_craft_worker_id)
+      expr: COUNT(DISTINCT craft_worker_id)
       comment: "Count of distinct craft workers with site access records. Measures unique workforce presence for headcount verification and muster reporting."
     - name: "avg_duration_on_site_minutes"
       expr: AVG(CAST(temperature_reading AS DOUBLE))
@@ -670,6 +679,7 @@ AS $$
       expr: COUNT(CASE WHEN escort_required_flag = TRUE THEN 1 END)
       comment: "Number of access events requiring escort. Measures visitor and restricted-access management workload on site."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_labor_agreement`
 WITH METRICS
@@ -735,6 +745,7 @@ AS $$
       expr: COUNT(CASE WHEN no_strike_clause_flag = TRUE THEN 1 END)
       comment: "Number of agreements with no-strike clauses. Measures project continuity protection through labor relations risk management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`workforce_carbon_reduction_participation`
 WITH METRICS

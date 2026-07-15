@@ -64,7 +64,7 @@ AS $$
       expr: COUNT(adjudication_id)
       comment: "Total number of adjudicated claims"
     - name: "unique_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct member count for utilization and penetration analysis"
     - name: "unique_providers"
       expr: COUNT(DISTINCT provider_id)
@@ -85,6 +85,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(oop_amount AS DOUBLE)) / NULLIF(SUM(CAST(allowed_amount AS DOUBLE)), 0), 2)
       comment: "Member out-of-pocket as percentage of allowed amount - benefit design effectiveness"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_denial`
 WITH METRICS
@@ -132,7 +133,7 @@ AS $$
       expr: COUNT(denial_id)
       comment: "Total number of denials for volume tracking"
     - name: "unique_claims_denied"
-      expr: COUNT(DISTINCT claim_header_id)
+      expr: COUNT(DISTINCT header_id)
       comment: "Distinct claims with denials - claim-level denial rate denominator"
     - name: "avg_denied_amount_per_denial"
       expr: AVG(CAST(denied_net_amount AS DOUBLE))
@@ -150,6 +151,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN letter_generated_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(denial_id), 0), 2)
       comment: "Percentage of denials with member notification letters - compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_header`
 WITH METRICS
@@ -234,6 +236,7 @@ AS $$
       comment: "Average number of service lines per claim - complexity metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -308,6 +311,7 @@ AS $$
       comment: "Average adjustment as percentage of gross payment - offset effectiveness"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -357,7 +361,7 @@ AS $$
       expr: COUNT(adjustment_id)
       comment: "Total number of adjustments - volume metric"
     - name: "unique_claims_adjusted"
-      expr: COUNT(DISTINCT claim_header_id)
+      expr: COUNT(DISTINCT header_id)
       comment: "Distinct claims with adjustments - claim-level adjustment rate denominator"
     - name: "unique_providers_adjusted"
       expr: COUNT(DISTINCT provider_id)
@@ -381,6 +385,7 @@ AS $$
       expr: SUM(CASE WHEN overpayment_indicator = TRUE THEN CAST(adjusted_amount AS DOUBLE) ELSE 0 END)
       comment: "Total overpayment amount identified - recovery opportunity metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`claim_diagnosis`
 WITH METRICS
@@ -419,10 +424,10 @@ AS $$
       expr: COUNT(diagnosis_id)
       comment: "Total number of diagnosis records - volume metric"
     - name: "unique_members_with_diagnosis"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct members with diagnoses - prevalence denominator"
     - name: "unique_claims_with_diagnosis"
-      expr: COUNT(DISTINCT claim_header_id)
+      expr: COUNT(DISTINCT header_id)
       comment: "Distinct claims with diagnoses - coding completeness metric"
     - name: "avg_risk_adjustment_factor"
       expr: AVG(CAST(risk_adjustment_factor AS DOUBLE))

@@ -83,6 +83,7 @@ AS $$
       comment: "Number of distinct aircraft tail numbers that operated at least one flight leg. Measures active fleet utilisation."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_cancellation`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +155,7 @@ AS $$
       comment: "Percentage of DOT-reportable cancellations for which a regulatory report has been submitted. Measures compliance with reporting obligations."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_delay_record`
 WITH METRICS
 LANGUAGE YAML
@@ -219,6 +221,7 @@ AS $$
       comment: "Percentage of delay events that are within the airline's control. Key accountability metric for operational leadership."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_fuel_uplift`
 WITH METRICS
 LANGUAGE YAML
@@ -278,6 +281,7 @@ AS $$
       comment: "Total number of fuel uplift events. Baseline volume metric for procurement activity and operational tempo."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_irop_event`
 WITH METRICS
 LANGUAGE YAML
@@ -333,6 +337,7 @@ AS $$
       expr: COUNT(DISTINCT route_id)
       comment: "Number of distinct routes affected by IROP events. Measures network-wide disruption breadth for recovery planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_dispatch_release`
 WITH METRICS
@@ -392,6 +397,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN etops_authorization_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of dispatch releases with ETOPS authorisation. Measures the proportion of long-haul extended operations in the network."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_diversion`
 WITH METRICS
@@ -458,6 +464,7 @@ AS $$
       comment: "Percentage of diversions where passengers are eligible for compensation. Measures compensation cost exposure rate from diversion events."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_weight_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -513,6 +520,7 @@ AS $$
       expr: COUNT(CASE WHEN special_load_indicator = TRUE THEN 1 END)
       comment: "Number of flights with special load handling requirements. Used for safety compliance tracking and ground handling resource planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_scheduled_flight`
 WITH METRICS
@@ -582,6 +590,7 @@ AS $$
       comment: "Number of wet-leased scheduled flights. Measures capacity sourced externally, with implications for cost and brand risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`flight_booking_segment`
 WITH METRICS
 LANGUAGE YAML
@@ -625,6 +634,6 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN upgrade_status = 'UPGRADED' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of booking segments where the passenger was upgraded. Measures premium cabin utilisation and loyalty programme effectiveness."
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers across all booking segments. Used for unique traveller volume analysis and loyalty programme reach."
 $$;

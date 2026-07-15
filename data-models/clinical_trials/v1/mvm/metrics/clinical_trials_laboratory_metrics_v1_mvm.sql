@@ -86,6 +86,7 @@ AS $$
       comment: "Number of results that have completed source data verification. Tracks clinical monitoring progress and data quality assurance."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_bioanalytical_result`
 WITH METRICS
 LANGUAGE YAML
@@ -166,6 +167,7 @@ AS $$
       comment: "Number of results below the limit of quantification. High BLQ rates affect PK parameter estimation and regulatory acceptability."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_bioanalytical_assay`
 WITH METRICS
 LANGUAGE YAML
@@ -240,6 +242,7 @@ AS $$
       comment: "Average sample volume required per assay in microliters. Informs specimen collection planning and patient burden assessment."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_specimen`
 WITH METRICS
 LANGUAGE YAML
@@ -308,6 +311,7 @@ AS $$
       comment: "Average number of freeze-thaw cycles experienced by specimens. Excessive cycles degrade analyte stability and can invalidate results."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_specimen_shipment`
 WITH METRICS
 LANGUAGE YAML
@@ -375,6 +379,7 @@ AS $$
       expr: COUNT(DISTINCT study_id)
       comment: "Number of distinct studies with active specimen shipments. Measures logistics operational breadth and multi-study coordination complexity."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_lab_query`
 WITH METRICS
@@ -456,6 +461,7 @@ AS $$
       comment: "Number of unique subjects with at least one open or historical lab query. Measures subject-level data quality burden."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_lab_facility`
 WITH METRICS
 LANGUAGE YAML
@@ -524,6 +530,7 @@ AS $$
       comment: "Number of countries with at least one active laboratory facility. Measures global network reach for multinational study support."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_lab_accreditation`
 WITH METRICS
 LANGUAGE YAML
@@ -532,8 +539,8 @@ AS $$
   comment: "Laboratory accreditation and regulatory certification compliance metrics. Tracks accreditation status, expiry risk, sponsor approval, and proficiency testing outcomes — essential for regulatory inspection readiness and vendor qualification governance."
   source: "`clinical_trials_ecm`.`laboratory`.`lab_accreditation`"
   dimensions:
-    - name: "primary_lab_facility_id"
-      expr: primary_lab_facility_id
+    - name: "lab_facility_id"
+      expr: lab_facility_id
       comment: "Primary laboratory facility for facility-level accreditation status tracking."
     - name: "accreditation_type"
       expr: accreditation_type
@@ -588,9 +595,10 @@ AS $$
       expr: COUNT(CASE WHEN accreditation_expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN 1 END)
       comment: "Number of accreditations expiring within the next 90 days. Proactive expiry management prevents study disruption due to lapsed accreditation."
     - name: "distinct_facilities_accredited"
-      expr: COUNT(DISTINCT primary_lab_facility_id)
+      expr: COUNT(DISTINCT lab_facility_id)
       comment: "Number of distinct facilities with at least one accreditation record. Measures the breadth of the accredited laboratory network."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_pk_sample`
 WITH METRICS
@@ -672,6 +680,7 @@ AS $$
       comment: "Number of unique subjects with PK samples collected. Measures PK data coverage across the enrolled population."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_specimen_collection`
 WITH METRICS
 LANGUAGE YAML
@@ -742,6 +751,7 @@ AS $$
       expr: COUNT(DISTINCT trial_subject_id)
       comment: "Number of unique subjects with at least one specimen collection. Measures collection coverage across the enrolled population."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`laboratory_reference_range`
 WITH METRICS

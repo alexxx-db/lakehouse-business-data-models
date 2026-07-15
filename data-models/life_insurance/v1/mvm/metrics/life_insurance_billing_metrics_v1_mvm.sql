@@ -101,6 +101,7 @@ AS $$
       comment: "Number of distinct billing accounts with bills issued — tracks active account engagement and billing reach."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_premium_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -199,6 +200,7 @@ AS $$
       comment: "Number of distinct billing accounts with payments — tracks account-level payment engagement."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_lapse_event`
 WITH METRICS
 LANGUAGE YAML
@@ -291,6 +293,7 @@ AS $$
       comment: "Number of distinct policies that lapsed — the definitive persistency metric used in lapse rate calculations."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_grace_period`
 WITH METRICS
 LANGUAGE YAML
@@ -374,6 +377,7 @@ AS $$
       comment: "Number of distinct policies currently in grace period — the definitive lapse-risk pipeline size metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_nsf_event`
 WITH METRICS
 LANGUAGE YAML
@@ -450,6 +454,7 @@ AS $$
       expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct billing accounts with NSF events — identifies accounts with payment quality issues for targeted outreach."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_premium_schedule`
 WITH METRICS
@@ -533,9 +538,10 @@ AS $$
       expr: AVG(CAST(modal_premium_amount AS DOUBLE))
       comment: "Average modal premium per schedule — benchmarks premium adequacy and tracks premium level trends across the in-force book."
     - name: "count_distinct_policies_scheduled"
-      expr: COUNT(DISTINCT primary_premium_in_force_policy_id)
+      expr: COUNT(DISTINCT in_force_policy_id)
       comment: "Number of distinct in-force policies with premium schedules — measures the active billing universe size."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_reinstatement`
 WITH METRICS
@@ -629,6 +635,7 @@ AS $$
       comment: "Number of distinct policies with reinstatement applications — measures the breadth of reinstatement activity across the lapsed book."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_apl_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -718,6 +725,7 @@ AS $$
       comment: "Number of distinct policies with APL transactions — measures the breadth of APL utilization across the in-force book."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_premium_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -804,6 +812,7 @@ AS $$
       comment: "Number of distinct policies with premium adjustments — measures the breadth of repricing activity across the in-force book."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_suspense_account`
 WITH METRICS
 LANGUAGE YAML
@@ -877,6 +886,7 @@ AS $$
       expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct billing accounts with suspense items — measures the breadth of unallocated cash across the account base."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_eft_authorization`
 WITH METRICS
@@ -961,6 +971,7 @@ AS $$
       comment: "Number of distinct billing accounts with EFT authorizations — measures EFT channel penetration across the account base."
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_account`
 WITH METRICS
 LANGUAGE YAML
@@ -1043,6 +1054,7 @@ AS $$
       expr: AVG(CAST(balance AS DOUBLE))
       comment: "Average balance per billing account — benchmarks typical outstanding premium liability for collections prioritization."
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`billing_premium_allocation`
 WITH METRICS

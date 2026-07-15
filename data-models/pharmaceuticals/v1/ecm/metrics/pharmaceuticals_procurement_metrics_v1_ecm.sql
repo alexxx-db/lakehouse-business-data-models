@@ -77,6 +77,7 @@ AS $$
       comment: "Average days from PO creation to confirmed delivery for lead time optimization"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_vendor_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -160,6 +161,7 @@ AS $$
       comment: "Number of performance evaluations for scorecard activity tracking"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -236,6 +238,7 @@ AS $$
       expr: COUNT(DISTINCT material_id)
       comment: "Number of unique materials received for inventory diversity tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_supplier_audit`
 WITH METRICS
@@ -319,6 +322,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_site_id)
       comment: "Number of unique vendor sites audited for audit program coverage tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_vendor_complaint`
 WITH METRICS
@@ -409,6 +413,7 @@ AS $$
       comment: "Number of unique materials with complaints for material quality risk identification"
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_sourcing_event`
 WITH METRICS
 LANGUAGE YAML
@@ -485,9 +490,10 @@ AS $$
       expr: SUM(CASE WHEN audit_requirement_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of sourcing events requiring supplier audit for quality assurance workload planning"
     - name: "distinct_awarded_vendor_count"
-      expr: COUNT(DISTINCT awarded_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors awarded contracts for supplier diversification tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_incoming_inspection`
 WITH METRICS
@@ -565,6 +571,7 @@ AS $$
       expr: COUNT(DISTINCT material_id)
       comment: "Number of unique materials inspected for material quality diversity tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`procurement_supply_contract`
 WITH METRICS

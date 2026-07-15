@@ -29,6 +29,7 @@ AS $$
       comment: "Maximum Rate of Change of Frequency observed (Hz/s)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`grid_agc_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -37,8 +38,8 @@ AS $$
   comment: "Automatic Generation Control (AGC) effectiveness and compliance metrics"
   source: "`energy_utilities_ecm`.`grid`.`agc_signal`"
   dimensions:
-    - name: "primary_control_area_id"
-      expr: primary_control_area_id
+    - name: "control_area_id"
+      expr: control_area_id
       comment: "Control area identifier for the AGC signal"
     - name: "nerc_region"
       expr: nerc_region
@@ -76,6 +77,7 @@ AS $$
       comment: "Average filtered ACE (MW)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`grid_generation_dispatch`
 WITH METRICS
 LANGUAGE YAML
@@ -88,7 +90,7 @@ AS $$
       expr: generating_unit_id
       comment: "Identifier of the generating unit"
     - name: "control_area_id"
-      expr: generation_control_area_id
+      expr: control_area_id
       comment: "Control area where generation is dispatched"
     - name: "fuel_type"
       expr: fuel_type
@@ -120,6 +122,7 @@ AS $$
       comment: "Average ramp rate (MW per minute)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`grid_load_forecast_accuracy`
 WITH METRICS
 LANGUAGE YAML
@@ -128,8 +131,8 @@ AS $$
   comment: "Load forecast accuracy and error aggregation"
   source: "`energy_utilities_ecm`.`grid`.`load_forecast`"
   dimensions:
-    - name: "load_control_area_id"
-      expr: load_control_area_id
+    - name: "control_area_id"
+      expr: control_area_id
       comment: "Control area for which load is forecasted"
     - name: "forecast_horizon_type"
       expr: forecast_horizon_type
@@ -157,6 +160,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of forecast records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`grid_reliability`
 WITH METRICS
@@ -192,6 +196,7 @@ AS $$
       expr: AVG(CAST(event_duration_minutes AS DOUBLE))
       comment: "Average event duration (minutes)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`grid_scada_measurements`
 WITH METRICS

@@ -98,6 +98,7 @@ AS $$
       comment: "Number of invoices rejected by electronic billing portals"
 $$;
 
+
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_ar_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -192,9 +193,10 @@ AS $$
       expr: COUNT(DISTINCT organisation_id)
       comment: "Number of unique clients with outstanding AR"
     - name: "distinct_matters_with_ar"
-      expr: COUNT(DISTINCT primary_ar_matter_id)
+      expr: COUNT(DISTINCT matter_id)
       comment: "Number of unique matters with outstanding AR"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_time_entry`
 WITH METRICS
@@ -299,7 +301,7 @@ AS $$
       expr: COUNT(CASE WHEN billing_guideline_compliant = FALSE THEN 1 END)
       comment: "Number of time entries violating billing guidelines"
     - name: "distinct_timekeepers"
-      expr: COUNT(DISTINCT primary_timekeeper_id)
+      expr: COUNT(DISTINCT timekeeper_id)
       comment: "Number of unique timekeepers recording time"
     - name: "distinct_matters_worked"
       expr: COUNT(DISTINCT matter_id)
@@ -308,6 +310,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique clients served"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_payment`
 WITH METRICS
@@ -403,12 +406,13 @@ AS $$
       expr: COUNT(CASE WHEN is_multi_matter = TRUE THEN 1 END)
       comment: "Number of payments allocated across multiple matters"
     - name: "distinct_paying_clients"
-      expr: COUNT(DISTINCT paying_organisation_id)
+      expr: COUNT(DISTINCT organisation_id)
       comment: "Number of unique clients making payments"
     - name: "distinct_matters_paid"
       expr: COUNT(DISTINCT matter_id)
       comment: "Number of unique matters receiving payments"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_wip_ledger`
 WITH METRICS
@@ -498,7 +502,7 @@ AS $$
       expr: SUM(CASE WHEN is_contingency_accrual = TRUE THEN CAST(wip_amount AS DOUBLE) ELSE 0 END)
       comment: "Total contingency accrual WIP"
     - name: "distinct_matters_with_wip"
-      expr: COUNT(DISTINCT primary_wip_matter_id)
+      expr: COUNT(DISTINCT matter_id)
       comment: "Number of unique matters with WIP"
     - name: "distinct_timekeepers_with_wip"
       expr: COUNT(DISTINCT primary_wip_timekeeper_id)
@@ -507,6 +511,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique clients with WIP"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_collection_action`
 WITH METRICS
@@ -596,6 +601,7 @@ AS $$
       expr: COUNT(DISTINCT invoice_id)
       comment: "Number of unique invoices in collections"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`billing_write_off`
 WITH METRICS

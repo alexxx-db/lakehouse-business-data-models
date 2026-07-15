@@ -74,6 +74,7 @@ AS $$
       comment: "Deferred maintenance per gross square foot for capital needs assessment"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_capital_project`
 WITH METRICS
 LANGUAGE YAML
@@ -145,6 +146,7 @@ AS $$
       comment: "Cost per gross square foot for construction cost benchmarking"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_work_order`
 WITH METRICS
 LANGUAGE YAML
@@ -171,8 +173,8 @@ AS $$
     - name: "building_id"
       expr: building_id
       comment: "Building location identifier"
-    - name: "assigned_crew_id"
-      expr: assigned_crew_id
+    - name: "crew_id"
+      expr: crew_id
       comment: "Assigned crew identifier"
     - name: "request_month"
       expr: DATE_TRUNC('MONTH', request_date)
@@ -224,6 +226,7 @@ AS $$
       expr: ROUND(SUM(CAST(labor_cost AS DOUBLE)) / NULLIF(SUM(CAST(actual_labor_hours AS DOUBLE)), 0), 2)
       comment: "Average labor rate per hour for workforce cost benchmarking"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_space_assignment`
 WITH METRICS
@@ -286,6 +289,7 @@ AS $$
       expr: ROUND(SUM(CAST(annual_chargeback_amount AS DOUBLE)) / NULLIF(SUM(CAST(assigned_square_footage AS DOUBLE)), 0), 2)
       comment: "Chargeback amount per square foot for cost allocation analysis"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_room`
 WITH METRICS
@@ -367,6 +371,7 @@ AS $$
       comment: "Net assignable square feet per station for space utilization standards"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_space_utilization_survey`
 WITH METRICS
 LANGUAGE YAML
@@ -437,6 +442,7 @@ AS $$
       expr: SUM(CAST(square_footage_surveyed AS DOUBLE) * CAST(instruction_percentage AS DOUBLE) / 100.0)
       comment: "Total instruction space square footage for academic space planning"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_lease_agreement`
 WITH METRICS
@@ -511,6 +517,7 @@ AS $$
       expr: ROUND(SUM(CAST(annual_base_rent AS DOUBLE)) / NULLIF(SUM(CAST(leased_square_footage AS DOUBLE)), 0), 2)
       comment: "Annual rent per square foot for market rate benchmarking"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`facility_asset`
 WITH METRICS

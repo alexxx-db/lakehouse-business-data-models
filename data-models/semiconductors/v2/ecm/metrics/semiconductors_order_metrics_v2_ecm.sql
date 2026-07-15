@@ -92,6 +92,7 @@ AS $$
       comment: "Number of distinct customer accounts placing orders — customer breadth and concentration metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -175,6 +176,7 @@ AS $$
       comment: "Net revenue from MPW order lines — tracks MPW program revenue contribution for R&D cost recovery analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_backlog_position`
 WITH METRICS
 LANGUAGE YAML
@@ -252,6 +254,7 @@ AS $$
       comment: "Number of distinct customers with open backlog — customer concentration and breadth metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_shipment`
 WITH METRICS
 LANGUAGE YAML
@@ -326,6 +329,7 @@ AS $$
       comment: "Number of distinct customers receiving shipments — active customer fulfilment breadth metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_rma`
 WITH METRICS
 LANGUAGE YAML
@@ -397,6 +401,7 @@ AS $$
       comment: "Number of currently open RMAs — operational workload and customer satisfaction risk indicator."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_allocation_record`
 WITH METRICS
 LANGUAGE YAML
@@ -467,6 +472,7 @@ AS $$
       expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct customers with allocations — customer coverage metric for supply fairness analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_wafer_start_authorization`
 WITH METRICS
@@ -542,6 +548,7 @@ AS $$
       comment: "Number of distinct fab sites with active wafer start authorizations — fab capacity distribution metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_hold`
 WITH METRICS
 LANGUAGE YAML
@@ -610,6 +617,7 @@ AS $$
       comment: "Order value at risk where wafer starts are impacted — fab capacity and revenue risk intersection metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_nre_order`
 WITH METRICS
 LANGUAGE YAML
@@ -632,6 +640,7 @@ AS $$
       expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct customers with NRE orders — NRE customer breadth and concentration metric."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_blanket_order`
 WITH METRICS
@@ -665,6 +674,7 @@ AS $$
       comment: "Number of distinct customers with blanket orders — long-term customer commitment breadth metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_mpw_order`
 WITH METRICS
 LANGUAGE YAML
@@ -696,6 +706,7 @@ AS $$
       expr: COUNT(DISTINCT mpw_shuttle_id)
       comment: "Number of distinct MPW shuttles with orders — active shuttle program count."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_nre_milestone`
 WITH METRICS
@@ -765,6 +776,7 @@ AS $$
       comment: "Percentage of milestones completed on or before planned date — NRE delivery schedule adherence KPI."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`order_amendment`
 WITH METRICS
 LANGUAGE YAML
@@ -832,6 +844,6 @@ AS $$
       expr: COUNT(CASE WHEN amendment_status = 'Pending' THEN 1 END)
       comment: "Number of amendments pending approval — approval queue backlog metric for governance."
     - name: "distinct_orders_amended"
-      expr: COUNT(DISTINCT primary_amendment_order_id)
+      expr: COUNT(DISTINCT order_id)
       comment: "Number of distinct orders with amendments — order book change breadth metric."
 $$;

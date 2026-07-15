@@ -95,6 +95,7 @@ AS $$
       comment: "Number of distinct assets with performance records in scope. Provides portfolio size context for all per-asset averages."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_fund_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -187,6 +188,7 @@ AS $$
       comment: "Number of fund performance reporting periods in scope. Provides denominator context for all average metrics."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_capital_account`
 WITH METRICS
 LANGUAGE YAML
@@ -267,6 +269,7 @@ AS $$
       comment: "Number of distinct investors with capital accounts in scope. Provides LP base size context for all aggregate metrics."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_capital_call`
 WITH METRICS
 LANGUAGE YAML
@@ -329,6 +332,7 @@ AS $$
       comment: "Total number of capital calls issued. Provides volume context for all per-call average metrics."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_commitment`
 WITH METRICS
 LANGUAGE YAML
@@ -390,9 +394,10 @@ AS $$
       expr: SUM(CAST(recallable_distributions_amount AS DOUBLE))
       comment: "Total recallable distributions across commitments. Tracks capital that can be recalled for future investments per LPA terms."
     - name: "investor_commitment_count"
-      expr: COUNT(DISTINCT commitment_investor_id)
+      expr: COUNT(DISTINCT investor_id)
       comment: "Number of distinct investors with active commitments. Tracks LP base breadth and concentration risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_deal`
 WITH METRICS
@@ -468,6 +473,7 @@ AS $$
       comment: "Total number of investment deals in scope. Provides pipeline volume context for all per-deal average metrics."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_debt_facility`
 WITH METRICS
 LANGUAGE YAML
@@ -533,6 +539,7 @@ AS $$
       comment: "Total number of debt facilities in scope. Provides portfolio size context for all per-facility average metrics."
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_debt_covenant`
 WITH METRICS
 LANGUAGE YAML
@@ -585,6 +592,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of covenants in scope. Provides denominator for breach rate calculations and compliance coverage assessment."
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_distribution`
 WITH METRICS
@@ -653,6 +661,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of distribution events in scope. Provides volume context for all per-distribution average metrics."
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_portfolio_asset`
 WITH METRICS

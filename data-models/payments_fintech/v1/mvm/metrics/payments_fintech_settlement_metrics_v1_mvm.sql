@@ -44,6 +44,7 @@ AS $$
       comment: "Average fee as percentage of gross amount"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_cycle_efficiency`
 WITH METRICS
 LANGUAGE YAML
@@ -82,6 +83,7 @@ AS $$
       comment: "Average cycle duration in seconds"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_net_position_summary`
 WITH METRICS
 LANGUAGE YAML
@@ -113,6 +115,7 @@ AS $$
       expr: AVG(CASE WHEN is_adjusted THEN 1 ELSE 0 END) * 100
       comment: "Percentage of positions that have been adjusted"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_merchant_payout_performance`
 WITH METRICS
@@ -152,6 +155,7 @@ AS $$
       comment: "Average payout amount per record"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_adjustment_impact`
 WITH METRICS
 LANGUAGE YAML
@@ -170,7 +174,7 @@ AS $$
       expr: participant_id
       comment: "Participant linked to adjustment"
     - name: "settlement_id"
-      expr: original_settlement_id
+      expr: settlement_id
       comment: "Settlement identifier that the adjustment relates to"
   measures:
     - name: "total_adjustments"

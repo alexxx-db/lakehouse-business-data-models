@@ -77,6 +77,7 @@ AS $$
       comment: "Total economy class seat capacity"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_availability_snapshot`
 WITH METRICS
 LANGUAGE YAML
@@ -160,6 +161,7 @@ AS $$
       comment: "Total seats consumed by upgrades"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_overbooking_control`
 WITH METRICS
 LANGUAGE YAML
@@ -240,6 +242,7 @@ AS $$
       comment: "Total booking limit (capacity + overbooking)"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_bucket_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -308,6 +311,7 @@ AS $$
       comment: "Number of unique employees making adjustments"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_irop_reprotection`
 WITH METRICS
 LANGUAGE YAML
@@ -375,12 +379,13 @@ AS $$
       expr: SUM(CAST(seats_released AS DOUBLE))
       comment: "Total ring-fenced seats released back to inventory"
     - name: "distinct_disrupted_flights"
-      expr: COUNT(DISTINCT primary_irop_scheduled_flight_id)
+      expr: COUNT(DISTINCT scheduled_flight_id)
       comment: "Number of unique flights experiencing irregular operations"
     - name: "distinct_irop_events"
       expr: COUNT(DISTINCT flight_irop_event_id)
       comment: "Number of unique IROP events"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_codeshare_allocation`
 WITH METRICS
@@ -452,12 +457,13 @@ AS $$
       expr: COUNT(DISTINCT marketing_carrier_code)
       comment: "Number of unique marketing carrier partners"
     - name: "distinct_operating_carriers"
-      expr: COUNT(DISTINCT operating_carrier_id)
+      expr: COUNT(DISTINCT carrier_id)
       comment: "Number of unique operating carriers"
     - name: "distinct_bilateral_agreements"
       expr: COUNT(DISTINCT bilateral_asa_id)
       comment: "Number of unique bilateral air service agreements"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_group_block`
 WITH METRICS
@@ -545,6 +551,7 @@ AS $$
       comment: "Number of unique PNRs for group bookings"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`inventory_waitlist_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -606,7 +613,7 @@ AS $$
       expr: SUM(CAST(seat_count_requested AS DOUBLE))
       comment: "Total seats requested on waitlist"
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique passengers on waitlist"
     - name: "distinct_pnrs"
       expr: COUNT(DISTINCT pnr_id)

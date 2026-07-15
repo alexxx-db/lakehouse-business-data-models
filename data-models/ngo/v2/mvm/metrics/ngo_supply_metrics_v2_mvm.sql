@@ -83,6 +83,7 @@ AS $$
       comment: "Number of distinct warehouses holding stock. Indicates geographic distribution of the supply pipeline."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_purchase_order`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +173,7 @@ AS $$
       comment: "Freight costs as a percentage of total procurement spend. High freight ratios indicate logistics inefficiency or remote delivery challenges."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -248,6 +250,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors with goods receipts in the period. Measures active supplier base breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_distribution_order`
 WITH METRICS
@@ -335,6 +338,7 @@ AS $$
       comment: "Number of distinct implementing partners executing distributions. Measures partner network breadth and dependency concentration."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -352,8 +356,8 @@ AS $$
     - name: "commodity_id"
       expr: commodity_id
       comment: "Commodity being moved — enables per-item flow and loss analysis."
-    - name: "source_warehouse_id"
-      expr: source_warehouse_id
+    - name: "warehouse_id"
+      expr: warehouse_id
       comment: "Origin warehouse — enables corridor-level flow analysis."
     - name: "transport_mode"
       expr: transport_mode
@@ -399,12 +403,13 @@ AS $$
       expr: COUNT(DISTINCT commodity_id)
       comment: "Number of distinct commodities with stock movements in the period. Measures supply chain breadth and activity coverage."
     - name: "distinct_movement_corridors"
-      expr: COUNT(DISTINCT source_warehouse_id)
+      expr: COUNT(DISTINCT warehouse_id)
       comment: "Number of distinct origin warehouses with outbound movements. Indicates geographic distribution network activity."
     - name: "avg_quantity_per_movement"
       expr: AVG(CAST(quantity AS DOUBLE))
       comment: "Average quantity per stock movement transaction. Benchmarks movement batch sizes — very small averages may indicate inefficient dispatch practices."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_waybill`
 WITH METRICS
@@ -426,8 +431,8 @@ AS $$
     - name: "vendor_id"
       expr: vendor_id
       comment: "Transport vendor/carrier — enables carrier performance scorecarding."
-    - name: "origin_warehouse_id"
-      expr: origin_warehouse_id
+    - name: "warehouse_id"
+      expr: warehouse_id
       comment: "Origin warehouse — enables corridor-level performance analysis."
     - name: "country_office_id"
       expr: country_office_id
@@ -482,6 +487,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct transport vendors used. Measures carrier base diversity and single-source dependency risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_vendor`
 WITH METRICS
@@ -538,6 +544,7 @@ AS $$
       expr: COUNT(DISTINCT country_of_operation)
       comment: "Number of distinct countries where active vendors operate. Measures geographic supply base coverage — critical for assessing procurement reach in field operations."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`supply_distribution_plan`
 WITH METRICS

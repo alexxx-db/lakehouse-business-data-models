@@ -67,7 +67,7 @@ AS $$
       expr: COUNT(DISTINCT talent_profile_id)
       comment: "Number of unique talent profiles under contract"
     - name: "distinct_production_count"
-      expr: COUNT(DISTINCT production_project_id)
+      expr: COUNT(DISTINCT project_id)
       comment: "Number of unique production projects with talent contracts"
     - name: "pay_or_play_contract_count"
       expr: SUM(CASE WHEN pay_or_play_flag = TRUE THEN 1 ELSE 0 END)
@@ -85,6 +85,7 @@ AS $$
       expr: SUM(CASE WHEN contract_status = 'terminated' THEN 1 ELSE 0 END)
       comment: "Number of terminated contracts"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_residual_payment`
 WITH METRICS
@@ -162,6 +163,7 @@ AS $$
       expr: SUM(CASE WHEN audit_report_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of residual payments subject to audit"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_appearance_schedule`
 WITH METRICS
@@ -246,6 +248,7 @@ AS $$
       comment: "Number of appearances requiring guild notification"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_compensation_structure`
 WITH METRICS
 LANGUAGE YAML
@@ -328,6 +331,7 @@ AS $$
       expr: COUNT(DISTINCT contract_id)
       comment: "Number of unique contracts with defined compensation structures"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_profile`
 WITH METRICS
@@ -423,6 +427,7 @@ AS $$
       expr: COUNT(DISTINCT talent_agency_id)
       comment: "Number of unique talent agencies representing talent in the system"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_role`
 WITH METRICS

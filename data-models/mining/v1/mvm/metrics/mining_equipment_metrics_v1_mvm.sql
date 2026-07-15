@@ -62,6 +62,7 @@ AS $$
       comment: "Number of assets whose next scheduled service date has passed. A leading indicator of maintenance compliance risk and potential unplanned downtime."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_utilisation_record`
 WITH METRICS
 LANGUAGE YAML
@@ -142,6 +143,7 @@ AS $$
       comment: "Average Overall Equipment Effectiveness score. The single most comprehensive equipment performance KPI — combines availability, performance, and quality into one executive metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_oee_record`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: SUM(CAST(reject_unit_count AS DOUBLE))
       comment: "Total number of rejected production units. Quantifies quality losses attributable to equipment performance and drives quality improvement actions."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_downtime_event`
 WITH METRICS
@@ -290,6 +293,7 @@ AS $$
       comment: "Number of unplanned (corrective) downtime events. Measures reactive maintenance burden — high values indicate reliability programme gaps."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_fuel_consumption`
 WITH METRICS
 LANGUAGE YAML
@@ -316,8 +320,8 @@ AS $$
     - name: "is_anomaly_flagged"
       expr: is_anomaly_flagged
       comment: "Whether the transaction was flagged as anomalous — used to identify fuel theft, measurement errors, or abnormal consumption events."
-    - name: "primary_fuel_asset_id"
-      expr: primary_fuel_asset_id
+    - name: "asset_id"
+      expr: asset_id
       comment: "Asset that consumed the fuel — enables per-asset fuel cost and efficiency analysis."
     - name: "transaction_month"
       expr: DATE_TRUNC('MONTH', transaction_timestamp)
@@ -346,6 +350,7 @@ AS $$
       comment: "Average emissions factor applied to fuel consumption. Supports emissions intensity benchmarking and fuel mix optimisation for decarbonisation planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_payload_cycle`
 WITH METRICS
 LANGUAGE YAML
@@ -363,8 +368,8 @@ AS $$
     - name: "shift_type"
       expr: shift_type
       comment: "Shift during which the cycle occurred — enables shift-level productivity comparison."
-    - name: "primary_payload_asset_id"
-      expr: primary_payload_asset_id
+    - name: "asset_id"
+      expr: asset_id
       comment: "Haul truck asset identifier — enables per-truck productivity benchmarking."
     - name: "cycle_status"
       expr: cycle_status
@@ -410,6 +415,7 @@ AS $$
       expr: COUNT(CASE WHEN overload_flag = TRUE THEN 1 END)
       comment: "Number of cycles where the truck was overloaded. Overloading accelerates tyre wear and structural damage — this KPI drives loading practice compliance management."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_fleet_assignment`
 WITH METRICS
@@ -473,6 +479,7 @@ AS $$
       comment: "Proportion of assignments that were planned vs. reactive. Measures dispatch planning maturity — higher rates indicate better schedule adherence and operational predictability."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_inspection`
 WITH METRICS
 LANGUAGE YAML
@@ -525,6 +532,7 @@ AS $$
       expr: AVG(CAST(equipment_hours_at_inspection AS DOUBLE))
       comment: "Average equipment operating hours at time of inspection. Validates that inspections are being conducted at the correct service intervals."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_tyre_record`
 WITH METRICS

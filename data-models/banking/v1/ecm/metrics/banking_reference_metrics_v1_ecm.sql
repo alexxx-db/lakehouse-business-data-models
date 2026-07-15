@@ -44,6 +44,7 @@ AS $$
       comment: "Count of rates occurring on business days."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`reference_exchange_rate`
 WITH METRICS
 LANGUAGE YAML
@@ -52,8 +53,8 @@ AS $$
   comment: "Exchange rate performance and pricing metrics."
   source: "`banking_ecm`.`reference`.`exchange_rate`"
   dimensions:
-    - name: "base_currency_id"
-      expr: base_currency_id
+    - name: "currency_id"
+      expr: currency_id
       comment: "Base currency identifier."
     - name: "quote_currency_code"
       expr: quote_currency_code
@@ -87,6 +88,7 @@ AS $$
       expr: AVG(CAST(data_quality_score AS DOUBLE))
       comment: "Average data quality score for exchange rates."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`reference_product_type`
 WITH METRICS
@@ -128,6 +130,7 @@ AS $$
       expr: SUM(CASE WHEN liquidity_risk_flag THEN 1 ELSE 0 END)
       comment: "Count of product types with liquidity risk flag."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`reference_rate_benchmark`
 WITH METRICS

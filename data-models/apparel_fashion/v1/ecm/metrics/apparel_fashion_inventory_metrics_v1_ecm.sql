@@ -77,6 +77,7 @@ AS $$
       comment: "Number of unique warehouse locations holding inventory"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -144,6 +145,7 @@ AS $$
       expr: COUNT(DISTINCT destination_location_code)
       comment: "Number of unique destination locations"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_goods_receipt`
 WITH METRICS
@@ -222,6 +224,7 @@ AS $$
       comment: "Number of unique vendors from whom goods were received"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -289,9 +292,10 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs replenished"
     - name: "distinct_destination_count"
-      expr: COUNT(DISTINCT destination_retail_store_id)
+      expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique destination locations"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
@@ -370,6 +374,7 @@ AS $$
       comment: "Number of unique locations counted"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_transfer_order`
 WITH METRICS
 LANGUAGE YAML
@@ -446,12 +451,13 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs transferred"
     - name: "distinct_source_location_count"
-      expr: COUNT(DISTINCT source_retail_store_id)
+      expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique source locations"
     - name: "distinct_destination_location_count"
-      expr: COUNT(DISTINCT destination_location_warehouse_location_id)
+      expr: COUNT(DISTINCT warehouse_location_id)
       comment: "Number of unique destination locations"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_stock_valuation`
 WITH METRICS
@@ -532,6 +538,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs valued"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_reservation`
 WITH METRICS

@@ -65,6 +65,7 @@ AS $$
       comment: "Count of fixed assets that have been disposed — tracks asset retirement activity and portfolio turnover rate."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_acquisition`
 WITH METRICS
 LANGUAGE YAML
@@ -123,6 +124,7 @@ AS $$
       expr: SUM(CAST(salvage_value AS DOUBLE))
       comment: "Total estimated salvage value assigned at acquisition — informs long-term residual value planning and depreciation base calculations."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_capital_project`
 WITH METRICS
@@ -183,6 +185,7 @@ AS $$
       comment: "Average actual spend per capital project — benchmarks project scale and informs future capital budgeting norms."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_capital_project_expenditure`
 WITH METRICS
 LANGUAGE YAML
@@ -242,6 +245,7 @@ AS $$
       comment: "Total value of reversed expenditure transactions — a data quality and financial control metric; high reversal rates indicate posting errors or project scope changes."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_inspection`
 WITH METRICS
 LANGUAGE YAML
@@ -300,6 +304,7 @@ AS $$
       expr: AVG(CAST(cost AS DOUBLE))
       comment: "Average cost per asset inspection — benchmarks inspection efficiency and identifies high-cost inspection types or facilities."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_container`
 WITH METRICS
@@ -363,6 +368,7 @@ AS $$
       comment: "Count of containers with RFID tracking enabled — measures automated identification technology penetration for service verification and billing accuracy."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_retirement`
 WITH METRICS
 LANGUAGE YAML
@@ -418,6 +424,7 @@ AS $$
       expr: AVG(CAST(gain_loss_amount AS DOUBLE))
       comment: "Average gain or loss per asset retirement — benchmarks disposal efficiency and informs optimal timing for asset replacement decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_valuation`
 WITH METRICS
@@ -478,6 +485,7 @@ AS $$
       comment: "Average remaining useful life across all valued assets — a portfolio health metric indicating the average age of the asset base and timing of future replacement needs."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_lease`
 WITH METRICS
 LANGUAGE YAML
@@ -537,6 +545,7 @@ AS $$
       comment: "Average monthly lease payment per lease agreement — benchmarks lease cost efficiency and identifies outlier high-cost leases for renegotiation."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_transfer`
 WITH METRICS
 LANGUAGE YAML
@@ -560,8 +569,8 @@ AS $$
     - name: "sending_facility_id"
       expr: sending_facility_id
       comment: "Facility originating the transfer — identifies facilities with high outbound asset movement for network rebalancing analysis."
-    - name: "receiving_facility_id"
-      expr: receiving_facility_id
+    - name: "facility_id"
+      expr: facility_id
       comment: "Facility receiving the transferred asset — identifies facilities with high inbound demand for capacity planning."
     - name: "requires_maintenance_flag"
       expr: requires_maintenance_flag
@@ -589,6 +598,7 @@ AS $$
       expr: COUNT(DISTINCT fixed_asset_id)
       comment: "Count of distinct fixed assets that have been transferred — measures the breadth of asset mobility across the network, distinguishing from total transfer volume."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`asset_facility`
 WITH METRICS

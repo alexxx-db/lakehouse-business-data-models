@@ -1,72 +1,5 @@
 -- Metric views for domain: workforce | Business: Grocery | Version: 1 | Generated on: 2026-05-04 18:32:13
 
-CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_associate_headcount`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Core headcount and tenure metrics for workforce planning"
-  source: "`grocery_ecm`.`workforce`.`associate`"
-  dimensions:
-    - name: "department_code"
-      expr: department_code
-      comment: "Department code of the associate"
-    - name: "work_location_id"
-      expr: work_location_id
-      comment: "Store location where the associate works"
-    - name: "employment_status"
-      expr: employment_status
-      comment: "Current employment status (e.g., Active, Terminated)"
-    - name: "gender"
-      expr: gender
-      comment: "Gender of the associate"
-    - name: "ethnicity"
-      expr: ethnicity
-      comment: "Ethnicity of the associate"
-    - name: "veteran_status"
-      expr: veteran_status
-      comment: "Veteran status of the associate"
-    - name: "union_member"
-      expr: union_member
-      comment: "Whether the associate is a union member"
-    - name: "hire_year"
-      expr: YEAR(hire_date)
-      comment: "Year the associate was hired"
-  measures:
-    - name: "total_headcount"
-      expr: COUNT(DISTINCT associate_id)
-      comment: "Number of active associates (headcount)"
-$$;
-
-CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_associate_tenure_and_compensation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tenure, compensation, and turnover indicators"
-  source: "`grocery_ecm`.`workforce`.`associate`"
-  dimensions:
-    - name: "department_code"
-      expr: department_code
-      comment: "Department code"
-    - name: "work_location_id"
-      expr: work_location_id
-      comment: "Store location ID"
-    - name: "employment_status"
-      expr: employment_status
-      comment: "Current employment status"
-  measures:
-    - name: "average_tenure_days"
-      expr: AVG(DATEDIFF(current_date(), hire_date))
-      comment: "Average tenure in days for associates"
-    - name: "average_pay_rate"
-      expr: AVG(CAST(pay_rate AS DOUBLE))
-      comment: "Average base pay rate across associates"
-    - name: "termination_count"
-      expr: SUM(CASE WHEN termination_date IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of associates who have terminated"
-$$;
-
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_time_entry_overtime`
 WITH METRICS
 LANGUAGE YAML
@@ -76,7 +9,7 @@ AS $$
   source: "`grocery_ecm`.`workforce`.`time_entry`"
   dimensions:
     - name: "associate_id"
-      expr: primary_time_associate_id
+      expr: associate_id
       comment: "Associate ID for the time entry"
     - name: "department_code"
       expr: department_code
@@ -95,6 +28,7 @@ AS $$
       expr: SUM(CAST(actual_hours_worked AS DOUBLE))
       comment: "Total actual hours worked (including regular and overtime)"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_labor_budget`
 WITH METRICS
@@ -125,6 +59,7 @@ AS $$
       comment: "Average labor cost percent target across budget records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_payroll_run_financials`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +89,7 @@ AS $$
       comment: "Total payroll deductions"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_performance_review_scores`
 WITH METRICS
 LANGUAGE YAML
@@ -182,6 +118,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of performance reviews recorded"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_certification_compliance`
 WITH METRICS
@@ -215,6 +152,7 @@ AS $$
       comment: "Total number of certification records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_leave_request_utilization`
 WITH METRICS
 LANGUAGE YAML
@@ -226,8 +164,8 @@ AS $$
     - name: "leave_type"
       expr: leave_type
       comment: "Type of leave (e.g., Vacation, Sick, FMLA)"
-    - name: "primary_leave_associate_id"
-      expr: primary_leave_associate_id
+    - name: "associate_id"
+      expr: associate_id
       comment: "Associate ID for whom the leave is taken"
     - name: "store_location_id"
       expr: store_location_id

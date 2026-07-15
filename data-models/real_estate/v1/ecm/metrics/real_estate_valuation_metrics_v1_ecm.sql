@@ -73,12 +73,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(engagement_fee AS DOUBLE)) / NULLIF(SUM(CAST(concluded_market_value AS DOUBLE)), 0), 4)
       comment: "Engagement fees as a percentage of total concluded market value (basis points)"
     - name: "distinct_appraisers"
-      expr: COUNT(DISTINCT appraisal_appraiser_id)
+      expr: COUNT(DISTINCT appraiser_id)
       comment: "Number of unique appraisers engaged"
     - name: "distinct_assets_appraised"
       expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique assets appraised"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_appraisal_review`
 WITH METRICS
@@ -157,6 +158,7 @@ AS $$
       comment: "Number of unique reviewers conducting reviews"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_appraiser`
 WITH METRICS
 LANGUAGE YAML
@@ -233,6 +235,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN ivsc_member_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of appraisers who are IVSC members"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_dcf_model`
 WITH METRICS
@@ -313,6 +316,7 @@ AS $$
       expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique assets with DCF models"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_nav_calculation`
 WITH METRICS
@@ -403,6 +407,7 @@ AS $$
       comment: "Number of unique portfolios valued"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_tax_appeal`
 WITH METRICS
 LANGUAGE YAML
@@ -488,6 +493,7 @@ AS $$
       expr: COUNT(DISTINCT appraiser_id)
       comment: "Number of unique appraisers engaged for appeals"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`valuation_value_history`
 WITH METRICS

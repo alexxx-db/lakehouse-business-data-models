@@ -83,6 +83,7 @@ AS $$
       comment: "Number of distinct suppliers invoiced. Used for supplier concentration and spend diversification analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_ar_item`
 WITH METRICS
 LANGUAGE YAML
@@ -169,6 +170,7 @@ AS $$
       comment: "Number of distinct customers with open AR. Used for customer concentration and credit exposure analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_journal_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -246,6 +248,7 @@ AS $$
       comment: "Average FX rate applied across journal entries. Used for currency translation analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_center`
 WITH METRICS
 LANGUAGE YAML
@@ -302,6 +305,7 @@ AS $$
       comment: "Average variance per cost center. Identifies systemic over/under-spending patterns."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_profit_center`
 WITH METRICS
 LANGUAGE YAML
@@ -357,6 +361,7 @@ AS $$
       expr: AVG(CAST(oee_target_percent AS DOUBLE))
       comment: "Average OEE target percentage across profit centers. Links financial targets to operational efficiency goals."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_budget`
 WITH METRICS
@@ -422,6 +427,7 @@ AS $$
       expr: AVG(CAST(variance_threshold_percent AS DOUBLE))
       comment: "Average variance tolerance threshold across budgets. Used to calibrate budget control tightness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_fixed_asset`
 WITH METRICS
@@ -494,6 +500,7 @@ AS $$
       comment: "Average tax depreciation rate across fixed assets. Used for tax planning and deferred tax modeling."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -553,6 +560,7 @@ AS $$
       comment: "Number of distinct cost objects receiving allocations. Measures allocation breadth and cost distribution coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_capex_request`
 WITH METRICS
 LANGUAGE YAML
@@ -608,6 +616,7 @@ AS $$
       expr: AVG(CAST(expected_roi_percent AS DOUBLE))
       comment: "Average expected ROI across CapEx requests. Key investment quality metric for capital allocation decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_intercompany_transaction`
 WITH METRICS
@@ -676,9 +685,10 @@ AS $$
       expr: AVG(CAST(exchange_rate AS DOUBLE))
       comment: "Average FX rate applied to intercompany transactions. Used for currency translation analysis."
     - name: "distinct_sending_entity_count"
-      expr: COUNT(DISTINCT intercompany_company_code_id)
+      expr: COUNT(DISTINCT company_code_id)
       comment: "Number of distinct sending legal entities. Measures intercompany network complexity for consolidation planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_estimate`
 WITH METRICS
@@ -739,6 +749,7 @@ AS $$
       comment: "Average quantity per cost estimate. Used for volume-based cost analysis and economies of scale assessment."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_gl_account`
 WITH METRICS
 LANGUAGE YAML
@@ -794,6 +805,7 @@ AS $$
       expr: AVG(CAST(current_balance AS DOUBLE))
       comment: "Average current balance per GL account. Used to identify high-balance accounts for audit focus."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_allocation_cycle`
 WITH METRICS

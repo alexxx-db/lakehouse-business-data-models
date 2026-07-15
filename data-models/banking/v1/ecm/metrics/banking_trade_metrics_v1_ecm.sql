@@ -17,8 +17,8 @@ AS $$
     - name: "trading_book"
       expr: trading_book
       comment: "Trading book identifier"
-    - name: "trade_product_type_id"
-      expr: trade_product_type_id
+    - name: "product_type_id"
+      expr: product_type_id
       comment: "Product type identifier"
     - name: "regulatory_reporting_flag"
       expr: regulatory_reporting_flag
@@ -40,6 +40,7 @@ AS $$
       expr: AVG(CAST(notional_amount AS DOUBLE))
       comment: "Average notional amount per capture"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`trade_execution`
 WITH METRICS
@@ -78,6 +79,7 @@ AS $$
       expr: SUM(CAST(clearing_fee AS DOUBLE))
       comment: "Total clearing fees"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`trade_position`
 WITH METRICS
@@ -119,6 +121,7 @@ AS $$
       expr: AVG(CAST(market_price AS DOUBLE))
       comment: "Average market price across positions"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`trade_fee`
 WITH METRICS

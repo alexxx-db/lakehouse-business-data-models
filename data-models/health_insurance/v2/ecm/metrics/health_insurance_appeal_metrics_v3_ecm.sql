@@ -58,12 +58,13 @@ AS $$
       expr: AVG(CAST(appeal_review_cycle_days AS DOUBLE))
       comment: "Average number of days to complete appeal review - key operational efficiency metric"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with appeals - indicates member experience issues"
     - name: "distinct_providers"
       expr: COUNT(DISTINCT provider_id)
       comment: "Number of unique providers involved in appeals - indicates provider friction points"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`appeal_timeline`
 WITH METRICS
@@ -127,6 +128,7 @@ AS $$
       comment: "Average number of days appeals are overdue when breached - indicates severity of compliance issues"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`appeal_external_review`
 WITH METRICS
 LANGUAGE YAML
@@ -142,6 +144,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of external reviews - indicates escalation volume and potential quality issues"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`appeal_penalty`
 WITH METRICS
@@ -211,6 +214,7 @@ AS $$
       comment: "Average penalty amount per violation - indicates typical severity"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`appeal_adverse_determination`
 WITH METRICS
 LANGUAGE YAML
@@ -278,9 +282,10 @@ AS $$
       expr: AVG(CAST(monetary_amount_denied AS DOUBLE))
       comment: "Average amount denied per adverse determination"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with adverse determinations - indicates member experience impact"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`appeal_outcome`
 WITH METRICS
@@ -337,6 +342,6 @@ AS $$
       expr: COUNT(DISTINCT case_id)
       comment: "Number of unique appeal cases with outcomes"
     - name: "distinct_members"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with appeal outcomes"
 $$;

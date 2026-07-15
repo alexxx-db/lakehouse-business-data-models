@@ -70,9 +70,10 @@ AS $$
       expr: SUM(CASE WHEN is_cancelled = TRUE THEN 1 ELSE 0 END)
       comment: "Total number of cancelled bookings, key for forecasting and revenue management"
     - name: "unique_guests"
-      expr: COUNT(DISTINCT guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Distinct guest count, measure of customer reach"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_commission_accrual`
 WITH METRICS
@@ -139,6 +140,7 @@ AS $$
       comment: "Average Daily Rate for commissioned bookings"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_rate_parity_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -198,6 +200,7 @@ AS $$
       comment: "Sum of contracted parity rates for comparison analysis"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -253,6 +256,7 @@ AS $$
       expr: SUM(CAST(marketing_coop_amount AS DOUBLE))
       comment: "Total marketing co-op investment committed across contracts"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_ota_partner`
 WITH METRICS
@@ -315,6 +319,7 @@ AS $$
       expr: AVG(CAST(review_score AS DOUBLE))
       comment: "Average guest review score on partner platforms"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_wholesale_allotment`
 WITH METRICS
@@ -380,6 +385,7 @@ AS $$
       expr: AVG(CAST(wash_factor_pct AS DOUBLE))
       comment: "Average wash factor percentage for allotment forecasting"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`channel_metasearch_listing`
 WITH METRICS

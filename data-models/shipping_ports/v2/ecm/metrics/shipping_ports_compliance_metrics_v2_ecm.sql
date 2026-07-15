@@ -74,6 +74,7 @@ AS $$
       comment: "Average audit team size. Supports workforce planning for the compliance audit function."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_customs_declaration`
 WITH METRICS
 LANGUAGE YAML
@@ -151,6 +152,7 @@ AS $$
       comment: "Number of declarations compliant with IMO FAL Form 3 requirements. Measures port facilitation compliance."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_customs_hold`
 WITH METRICS
 LANGUAGE YAML
@@ -219,6 +221,7 @@ AS $$
       comment: "Average variance between actual and estimated hold delay hours. Measures accuracy of hold duration forecasting for operational planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_sanctions_screening`
 WITH METRICS
 LANGUAGE YAML
@@ -286,6 +289,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors screened. Measures supply chain sanctions screening coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_violation`
 WITH METRICS
@@ -361,6 +365,7 @@ AS $$
       comment: "Number of distinct vessels with recorded violations. Identifies repeat-offender vessels for targeted inspection programmes."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_marpol_record`
 WITH METRICS
 LANGUAGE YAML
@@ -431,6 +436,7 @@ AS $$
       expr: COUNT(CASE WHEN port_authority_endorsement_flag = TRUE THEN 1 END)
       comment: "Number of MARPOL records endorsed by port authority. Measures regulatory validation coverage and documentation completeness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_hs_code`
 WITH METRICS
@@ -503,6 +509,7 @@ AS $$
       comment: "Average excise duty rate across applicable HS codes. Supports excise revenue forecasting and compliance monitoring."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_import_export_permit`
 WITH METRICS
 LANGUAGE YAML
@@ -567,9 +574,10 @@ AS $$
       expr: COUNT(CASE WHEN sanctions_screening_status NOT IN ('cleared', 'pass', 'no_match') THEN 1 END)
       comment: "Number of permits with non-cleared sanctions screening. Critical risk KPI for trade compliance enforcement."
     - name: "distinct_commodities_permitted"
-      expr: COUNT(DISTINCT compliance_hs_code_id)
+      expr: COUNT(DISTINCT hs_code_id)
       comment: "Number of distinct HS codes covered by permits. Measures breadth of commodity coverage under trade control."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_trade_restriction`
 WITH METRICS
@@ -620,12 +628,13 @@ AS $$
       expr: COUNT(CASE WHEN derogation_available_flag = TRUE THEN 1 END)
       comment: "Number of restrictions where derogation is available. Identifies opportunities for trade facilitation through exemption management."
     - name: "distinct_affected_countries"
-      expr: COUNT(DISTINCT affected_country_id)
+      expr: COUNT(DISTINCT country_id)
       comment: "Number of distinct countries affected by trade restrictions. Measures geographic scope of trade control obligations."
     - name: "distinct_restricted_commodities"
       expr: COUNT(DISTINCT commodity_code_id)
       comment: "Number of distinct commodity codes under trade restriction. Measures commodity-level trade control coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`compliance_declaration_screening`
 WITH METRICS

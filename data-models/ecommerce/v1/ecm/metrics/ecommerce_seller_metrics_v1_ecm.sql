@@ -35,6 +35,7 @@ AS $$
       comment: "Average gross GMV per settlement record"
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`seller_scorecard`
 WITH METRICS
 LANGUAGE YAML
@@ -75,6 +76,7 @@ AS $$
       expr: AVG(CAST(nps_contribution_score AS DOUBLE))
       comment: "Average NPS contribution score"
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`seller_commission`
 WITH METRICS
@@ -117,6 +119,7 @@ AS $$
       comment: "Average subscription fee amount"
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`seller_fraud_investigation`
 WITH METRICS
 LANGUAGE YAML
@@ -155,6 +158,7 @@ AS $$
       comment: "Number of fraud investigations"
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`seller_profile`
 WITH METRICS
 LANGUAGE YAML
@@ -172,8 +176,8 @@ AS $$
     - name: "primary_category"
       expr: primary_category
       comment: "Primary product category of the seller"
-    - name: "seller_tier_id"
-      expr: seller_tier_id
+    - name: "tier_id"
+      expr: tier_id
       comment: "Identifier of the seller tier"
     - name: "platform_join_date"
       expr: platform_join_date

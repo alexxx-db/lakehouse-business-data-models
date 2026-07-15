@@ -20,8 +20,8 @@ AS $$
     - name: "detection_month"
       expr: DATE_TRUNC('month', detection_date)
       comment: "Month in which the alert was detected"
-    - name: "detection_branch_id"
-      expr: detection_branch_id
+    - name: "branch_id"
+      expr: branch_id
       comment: "Branch where detection occurred"
     - name: "high_risk_geography_flag"
       expr: high_risk_geography_flag
@@ -46,6 +46,7 @@ AS $$
       expr: SUM(CASE WHEN sar_filed_flag THEN 1 ELSE 0 END)
       comment: "Count of alerts that resulted in a SAR filing"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_aml_case`
 WITH METRICS
@@ -82,6 +83,7 @@ AS $$
       comment: "Average risk score across cases"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_sanctions_screening_event`
 WITH METRICS
 LANGUAGE YAML
@@ -99,8 +101,8 @@ AS $$
     - name: "screening_month"
       expr: DATE_TRUNC('month', screening_timestamp)
       comment: "Month of the screening event"
-    - name: "screening_branch_id"
-      expr: screening_branch_id
+    - name: "branch_id"
+      expr: branch_id
       comment: "Branch where screening was executed"
     - name: "risk_rating"
       expr: risk_rating
@@ -116,6 +118,7 @@ AS $$
       expr: SUM(CASE WHEN sar_filed THEN 1 ELSE 0 END)
       comment: "Count of screenings that triggered a SAR filing"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_regulatory_filing`
 WITH METRICS

@@ -65,6 +65,7 @@ AS $$
       comment: "Number of unique suppliers engaged, indicating supply base diversity"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_supplier_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -130,6 +131,7 @@ AS $$
       comment: "Total number of supplier evaluations conducted"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -191,6 +193,7 @@ AS $$
       expr: COUNT(CASE WHEN match_tolerance_exceeded_flag = true THEN 1 END)
       comment: "Number of receipts exceeding match tolerance requiring investigation"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_supplier_invoice`
 WITH METRICS
@@ -263,6 +266,7 @@ AS $$
       comment: "Number of unique suppliers invoicing in the period"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -324,6 +328,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of unique carriers under contract for logistics services"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_po_line`
 WITH METRICS
@@ -390,6 +395,7 @@ AS $$
       comment: "Number of unique suppliers across PO lines"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_purchase_requisition`
 WITH METRICS
 LANGUAGE YAML
@@ -449,6 +455,7 @@ AS $$
       comment: "Number of unique requestors generating procurement demand"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_rfq`
 WITH METRICS
 LANGUAGE YAML
@@ -501,9 +508,10 @@ AS $$
       expr: COUNT(CASE WHEN rfq_status = 'Cancelled' THEN 1 END)
       comment: "Number of cancelled RFQs indicating sourcing process issues"
     - name: "distinct_awarded_supplier_count"
-      expr: COUNT(DISTINCT awarded_supplier_id)
+      expr: COUNT(DISTINCT supplier_id)
       comment: "Number of unique suppliers awarded contracts through competitive bidding"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`procurement_rate_agreement`
 WITH METRICS

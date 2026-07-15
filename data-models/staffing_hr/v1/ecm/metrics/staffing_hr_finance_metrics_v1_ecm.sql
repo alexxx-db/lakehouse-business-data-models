@@ -92,6 +92,7 @@ AS $$
       comment: "Number of accounts with active disputes"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_ap_account`
 WITH METRICS
 LANGUAGE YAML
@@ -175,6 +176,7 @@ AS $$
       comment: "Number of MSP/VMS managed vendor accounts"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_revenue_recognition_event`
 WITH METRICS
 LANGUAGE YAML
@@ -249,6 +251,7 @@ AS $$
       comment: "Number of revenue recognition reversals"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_budget`
 WITH METRICS
 LANGUAGE YAML
@@ -313,6 +316,7 @@ AS $$
       expr: COUNT(DISTINCT client_account_id)
       comment: "Number of unique clients with budgets"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_journal_entry`
 WITH METRICS
@@ -384,6 +388,7 @@ AS $$
       expr: COUNT(DISTINCT legal_entity_id)
       comment: "Number of unique legal entities with journal entries"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_cash_flow`
 WITH METRICS
@@ -462,6 +467,7 @@ AS $$
       comment: "Number of unique legal entities with transactions"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_fixed_asset`
 WITH METRICS
 LANGUAGE YAML
@@ -535,6 +541,7 @@ AS $$
       expr: COUNT(DISTINCT department_id)
       comment: "Number of unique departments with fixed assets"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`finance_intercompany_transaction`
 WITH METRICS
@@ -612,7 +619,7 @@ AS $$
       expr: SUM(CASE WHEN is_reversal = TRUE THEN 1 ELSE 0 END)
       comment: "Number of reversal transactions"
     - name: "unique_originating_entities"
-      expr: COUNT(DISTINCT originating_legal_entity_id)
+      expr: COUNT(DISTINCT legal_entity_id)
       comment: "Number of unique originating legal entities"
     - name: "unique_receiving_entities"
       expr: COUNT(DISTINCT receiving_legal_entity_id)

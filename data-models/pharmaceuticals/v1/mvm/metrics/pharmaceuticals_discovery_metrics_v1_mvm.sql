@@ -56,6 +56,7 @@ AS $$
       comment: "Number of distinct therapeutic areas represented in the compound portfolio. Informs strategic diversification and pipeline balance decisions."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_hts_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -112,6 +113,7 @@ AS $$
       comment: "Number of distinct discovery projects that have run at least one HTS campaign. Tracks active project engagement with screening infrastructure."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_screening_result`
 WITH METRICS
 LANGUAGE YAML
@@ -167,9 +169,10 @@ AS $$
       expr: COUNT(CASE WHEN pan_assay_interference_flag = TRUE THEN 1 END)
       comment: "Number of results flagged as pan-assay interference compounds. High PAINS counts indicate library quality issues that inflate apparent hit rates and waste medicinal chemistry resources."
     - name: "distinct_compounds_screened"
-      expr: COUNT(DISTINCT primary_screening_compound_id)
+      expr: COUNT(DISTINCT compound_id)
       comment: "Number of distinct compounds that have been screened. Measures library coverage and screening breadth — informs library expansion investment decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_adme_profile`
 WITH METRICS
@@ -239,6 +242,7 @@ AS $$
       comment: "Number of distinct compounds with ADME profiles. Measures DMPK coverage of the compound portfolio — gaps indicate compounds advancing without PK characterization."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_lead_series`
 WITH METRICS
 LANGUAGE YAML
@@ -297,6 +301,7 @@ AS $$
       expr: COUNT(DISTINCT therapeutic_area_id)
       comment: "Number of distinct therapeutic areas represented in the lead series portfolio. Informs strategic balance and diversification decisions at the portfolio committee level."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_candidate_nomination`
 WITH METRICS
@@ -357,6 +362,7 @@ AS $$
       comment: "Number of distinct molecular targets with nominated candidates. Tracks target coverage of the development pipeline — informs target strategy and portfolio balance."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_compound_synthesis`
 WITH METRICS
 LANGUAGE YAML
@@ -415,6 +421,7 @@ AS $$
       expr: COUNT(DISTINCT compound_id)
       comment: "Number of distinct compounds produced. Measures chemical diversity output of the synthesis function — informs SAR coverage and library expansion strategy."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_sar_study`
 WITH METRICS
@@ -475,6 +482,7 @@ AS $$
       comment: "Number of distinct molecular targets being optimized through SAR. Tracks target coverage of the lead optimization portfolio — informs target strategy and resource prioritization."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_molecular_target`
 WITH METRICS
 LANGUAGE YAML
@@ -531,6 +539,7 @@ AS $$
       comment: "Number of distinct indications addressed by the target portfolio. Tracks disease coverage breadth — informs business development and licensing strategy for indication expansion."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_project`
 WITH METRICS
 LANGUAGE YAML
@@ -583,6 +592,7 @@ AS $$
       expr: COUNT(DISTINCT molecular_target_id)
       comment: "Number of distinct molecular targets being pursued across projects. Tracks target diversity of the pipeline — informs target strategy and identifies redundant programs competing for the same target."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`discovery_assay`
 WITH METRICS

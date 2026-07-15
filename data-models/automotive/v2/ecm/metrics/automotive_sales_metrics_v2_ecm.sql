@@ -100,9 +100,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN actual_delivery_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of orders delivered - order-to-delivery conversion KPI"
     - name: "unique_customers"
-      expr: COUNT(DISTINCT vehicle_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Distinct customers placing orders - customer acquisition and retention indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
@@ -204,9 +205,10 @@ AS $$
       expr: AVG(CAST(probability AS DOUBLE))
       comment: "Average win probability across opportunities - pipeline quality indicator"
     - name: "unique_customers"
-      expr: COUNT(DISTINCT opportunity_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Distinct customers with opportunities - prospect base size"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_quote`
 WITH METRICS
@@ -315,6 +317,7 @@ AS $$
       comment: "Incentive as percentage of subtotal - program cost efficiency"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_fleet_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -409,9 +412,10 @@ AS $$
       expr: AVG(CAST(volume_tier_discount_percentage AS DOUBLE))
       comment: "Average volume tier discount - volume incentive effectiveness"
     - name: "unique_fleet_customers"
-      expr: COUNT(DISTINCT fleet_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Distinct fleet customers - B2B customer base size"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_campaign`
 WITH METRICS
@@ -498,6 +502,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(kpi_market_share_actual AS DOUBLE)) / NULLIF(SUM(CAST(kpi_market_share_target AS DOUBLE)), 0), 2)
       comment: "Percentage of market share target achieved - strategic effectiveness KPI"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_lead`
 WITH METRICS
@@ -603,6 +608,7 @@ AS $$
       comment: "Average estimated budget per lead - deal size potential"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_quota`
 WITH METRICS
 LANGUAGE YAML
@@ -688,6 +694,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN incentive_eligible = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of quotas with incentive eligibility - compensation coverage"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`sales_delivery_appointment`
 WITH METRICS

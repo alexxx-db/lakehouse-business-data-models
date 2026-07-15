@@ -41,6 +41,7 @@ AS $$
       comment: "Count of reconciliations that were auto‑reconciled"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_gl_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -88,6 +89,7 @@ AS $$
       comment: "Total debit amount posted in the period"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_payable`
 WITH METRICS
 LANGUAGE YAML
@@ -132,6 +134,7 @@ AS $$
       comment: "Total net amount of overdue payments"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_receivable`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +175,7 @@ AS $$
       expr: SUM(CASE WHEN due_date < CURRENT_DATE THEN net_amount ELSE 0 END)
       comment: "Total net amount that is past due"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_financial_statement`
 WITH METRICS
@@ -223,6 +227,7 @@ AS $$
       comment: "Cash flow from financing activities"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_intercompany_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -237,8 +242,8 @@ AS $$
     - name: "fiscal_quarter"
       expr: fiscal_quarter
       comment: "Fiscal quarter"
-    - name: "primary_intercompany_legal_entity_id"
-      expr: primary_intercompany_legal_entity_id
+    - name: "legal_entity_id"
+      expr: legal_entity_id
       comment: "Legal entity originating the transaction"
     - name: "receiving_entity_legal_entity_id"
       expr: receiving_entity_legal_entity_id
@@ -266,6 +271,7 @@ AS $$
       expr: SUM(CASE WHEN elimination_flag THEN 1 ELSE 0 END)
       comment: "Count of transactions flagged for elimination"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_fx_revaluation`
 WITH METRICS
@@ -298,6 +304,7 @@ AS $$
       expr: SUM(CAST(revalued_balance AS DOUBLE))
       comment: "Sum of balances after revaluation"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_tax_provision`
 WITH METRICS

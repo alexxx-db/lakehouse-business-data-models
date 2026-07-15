@@ -26,6 +26,7 @@ AS $$
       comment: "Number of blend recipe records"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_price_history`
 WITH METRICS
 LANGUAGE YAML
@@ -58,6 +59,7 @@ AS $$
       comment: "Number of price history records"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_emission_factor`
 WITH METRICS
 LANGUAGE YAML
@@ -81,6 +83,7 @@ AS $$
       comment: "Number of emission factor records"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_crude_lifting_nomination`
 WITH METRICS
 LANGUAGE YAML
@@ -92,8 +95,8 @@ AS $$
     - name: "crude_grade_id"
       expr: crude_grade_id
       comment: "Identifier for the crude grade"
-    - name: "venture_partner_id"
-      expr: venture_partner_id
+    - name: "partner_id"
+      expr: partner_id
       comment: "Partner responsible for the nomination"
     - name: "lifting_priority"
       expr: lifting_priority
@@ -109,6 +112,7 @@ AS $$
       expr: AVG(actual_lifted_volume_bbl / NULLIF(lifting_nomination_volume_bbl, 0) * 100)
       comment: "Average percentage of nominated volume that was actually lifted"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_budget_allocation`
 WITH METRICS

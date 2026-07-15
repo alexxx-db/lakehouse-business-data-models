@@ -74,6 +74,7 @@ AS $$
       comment: "Maximum peak demand sell-through rate observed across positions. Identifies the highest-velocity SKU or node — used to size peak capacity and safety stock buffers."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -141,6 +142,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of stock movement events. Baseline throughput volume metric used to normalise other KPIs and benchmark warehouse operational load."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_adjustment`
 WITH METRICS
@@ -210,6 +212,7 @@ AS $$
       comment: "Number of distinct SKUs that received at least one adjustment in the period. A broad spread indicates systemic process issues; concentration on few SKUs may indicate targeted shrinkage or quality problems."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_stock_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -275,6 +278,7 @@ AS $$
       comment: "Percentage of allocations that were cancelled. A rising cancellation rate is a leading indicator of inventory availability problems or demand-supply misalignment."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_transfer_order`
 WITH METRICS
 LANGUAGE YAML
@@ -295,8 +299,8 @@ AS $$
     - name: "primary_transfer_warehouse_node_id"
       expr: primary_transfer_warehouse_node_id
       comment: "Source warehouse node of the transfer — used to identify nodes that are net exporters of inventory."
-    - name: "destination_warehouse_warehouse_node_id"
-      expr: destination_warehouse_warehouse_node_id
+    - name: "warehouse_node_id"
+      expr: warehouse_node_id
       comment: "Destination warehouse node of the transfer — used to identify nodes that are net importers of inventory."
     - name: "priority_level"
       expr: priority_level
@@ -345,6 +349,7 @@ AS $$
       expr: COUNT(CASE WHEN transfer_status = 'Cancelled' THEN transfer_order_id END)
       comment: "Number of transfer orders that were cancelled. High cancellation rates indicate planning instability or supply constraints — used to assess network planning quality."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_safety_stock_rule`
 WITH METRICS
@@ -416,6 +421,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs covered by an active safety stock rule. Measures policy coverage breadth — gaps indicate SKUs at risk of stockout without a formal buffer policy."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`inventory_warehouse_node`
 WITH METRICS

@@ -29,6 +29,7 @@ AS $$
       comment: "Average daily price change percentage"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_fixed_income`
 WITH METRICS
 LANGUAGE YAML
@@ -55,6 +56,7 @@ AS $$
       comment: "Average YTM, indicating portfolio return expectations"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_derivative`
 WITH METRICS
 LANGUAGE YAML
@@ -63,8 +65,8 @@ AS $$
   comment: "Derivative exposure and risk metrics for capital planning"
   source: "`banking_ecm`.`security`.`derivative`"
   dimensions:
-    - name: "underlying_instrument_id"
-      expr: underlying_instrument_id
+    - name: "instrument_id"
+      expr: instrument_id
       comment: "Underlying instrument of the derivative"
     - name: "maturity_year"
       expr: DATE_TRUNC('year', maturity_date)
@@ -80,6 +82,7 @@ AS $$
       expr: SUM(CAST(rwa_amount AS DOUBLE))
       comment: "Total RWA derived from derivative positions"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_liquidity_holding`
 WITH METRICS
@@ -109,6 +112,7 @@ AS $$
       expr: AVG(CAST(fx_rate_to_position_currency AS DOUBLE))
       comment: "Average FX rate used for valuation"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_holding`
 WITH METRICS

@@ -80,6 +80,7 @@ AS $$
       comment: "Denominator for collection rate calculation (net amount invoiced)"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: SUM(CAST(amount AS DOUBLE))
       comment: "Denominator for payment application rate (total payment amount)"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_dispute`
 WITH METRICS
@@ -227,6 +229,7 @@ AS $$
       expr: SUM(CAST(disputed_amount AS DOUBLE))
       comment: "Denominator for dispute credit rate (disputed amount)"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_placement_fee`
 WITH METRICS
@@ -311,6 +314,7 @@ AS $$
       comment: "Denominator for fee collection rate (amount invoiced)"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_spread_record`
 WITH METRICS
 LANGUAGE YAML
@@ -394,6 +398,7 @@ AS $$
       comment: "Denominator for margin rate calculation (bill amount)"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_credit_memo`
 WITH METRICS
 LANGUAGE YAML
@@ -458,7 +463,7 @@ AS $$
       expr: COUNT(DISTINCT client_account_id)
       comment: "Number of unique clients receiving credits - quality issue breadth"
     - name: "distinct_invoice_count"
-      expr: COUNT(DISTINCT primary_credit_invoice_id)
+      expr: COUNT(DISTINCT invoice_id)
       comment: "Number of unique invoices credited"
     - name: "application_rate_numerator"
       expr: SUM(CAST(applied_amount AS DOUBLE))
@@ -467,6 +472,7 @@ AS $$
       expr: SUM(CAST(credit_amount AS DOUBLE))
       comment: "Denominator for credit application rate (total credit amount)"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_write_off`
 WITH METRICS
@@ -547,6 +553,7 @@ AS $$
       expr: SUM((CAST(amount AS DOUBLE)) - (CAST(recovered_amount AS DOUBLE)))
       comment: "Net loss after recoveries - true bad debt cost"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`billing_collection_activity`
 WITH METRICS

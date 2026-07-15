@@ -71,6 +71,7 @@ AS $$
       comment: "Count of consignments containing dangerous goods"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_leg`
 WITH METRICS
 LANGUAGE YAML
@@ -135,6 +136,7 @@ AS $$
       expr: AVG(CAST(carbon_emissions_kg AS DOUBLE))
       comment: "Average carbon emissions per leg in kilograms"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_exception_event`
 WITH METRICS
@@ -204,6 +206,7 @@ AS $$
       comment: "Number of unique consignments experiencing exceptions"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_pod`
 WITH METRICS
 LANGUAGE YAML
@@ -256,12 +259,13 @@ AS $$
       expr: COUNT(DISTINCT consignee_profile_id)
       comment: "Number of unique consignees receiving deliveries"
     - name: "unique_delivery_agents"
-      expr: COUNT(DISTINCT delivery_agent_id)
+      expr: COUNT(DISTINCT agent_id)
       comment: "Number of unique delivery agents"
     - name: "deliveries_with_signature"
       expr: COUNT(CASE WHEN recipient_signature IS NOT NULL AND recipient_signature != '' THEN 1 END)
       comment: "Number of deliveries with captured signatures"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_charge`
 WITH METRICS
@@ -328,6 +332,7 @@ AS $$
       comment: "Number of unique consignments with charges"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_eta_milestone`
 WITH METRICS
 LANGUAGE YAML
@@ -390,6 +395,7 @@ AS $$
       comment: "Number of unique consignments being tracked"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`shipment_freight_manifest`
 WITH METRICS
 LANGUAGE YAML
@@ -408,7 +414,7 @@ AS $$
       expr: equipment_type_code
       comment: "Type of equipment used (container, trailer, aircraft)"
     - name: "origin_facility"
-      expr: origin_facility_id
+      expr: facility_id
       comment: "Origin facility identifier"
     - name: "destination_facility"
       expr: destination_facility_code

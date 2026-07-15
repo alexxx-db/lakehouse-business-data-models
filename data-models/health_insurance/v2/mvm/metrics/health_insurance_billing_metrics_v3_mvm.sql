@@ -82,12 +82,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(net_amount_due AS DOUBLE)) / NULLIF(SUM(CAST(total_premium_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of total premium that is member responsibility after subsidies"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with invoices in the period"
     - name: "distinct_account_count"
       expr: COUNT(DISTINCT account_id)
       comment: "Number of unique billing accounts with invoices in the period"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_premium_payment`
 WITH METRICS
@@ -168,9 +169,10 @@ AS $$
       expr: COUNT(DISTINCT payer_account_number)
       comment: "Number of unique payer accounts making payments in the period"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members associated with payments in the period"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_payment_allocation`
 WITH METRICS
@@ -261,6 +263,7 @@ AS $$
       comment: "Number of unique payments allocated to invoices"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_grace_period`
 WITH METRICS
 LANGUAGE YAML
@@ -331,12 +334,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN is_eligible_for_aptc = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of grace periods with APTC eligibility, indicating subsidy program reach"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members entering grace periods"
     - name: "distinct_account_count"
       expr: COUNT(DISTINCT account_id)
       comment: "Number of unique billing accounts entering grace periods"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_aptc_subsidy`
 WITH METRICS
@@ -393,12 +397,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(ytd_aptc_applied AS DOUBLE)) / NULLIF(SUM(CAST(annual_aptc_cap AS DOUBLE)), 0), 2)
       comment: "Percentage of annual APTC cap utilized year-to-date, indicating subsidy consumption pace"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members receiving APTC subsidies"
     - name: "distinct_plan_election_count"
       expr: COUNT(DISTINCT plan_election_id)
       comment: "Number of unique plan elections with APTC subsidies"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_cms_remittance`
 WITH METRICS
@@ -467,12 +472,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(net_remittance_amount AS DOUBLE)) / NULLIF(SUM(CAST(gross_payment_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of gross payment realized as net remittance after all adjustments"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members associated with CMS remittances"
     - name: "distinct_account_count"
       expr: COUNT(DISTINCT account_id)
       comment: "Number of unique billing accounts associated with CMS remittances"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_account`
 WITH METRICS

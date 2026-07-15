@@ -41,6 +41,7 @@ AS $$
       comment: "Number of performance records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`promotion_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -81,6 +82,7 @@ AS $$
       expr: AVG(CAST(final_price AS DOUBLE))
       comment: "Average final price per redemption"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`promotion_digital_coupon`
 WITH METRICS
@@ -129,6 +131,7 @@ AS $$
       comment: "Number of digital coupons issued"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`promotion_funding_claim`
 WITH METRICS
 LANGUAGE YAML
@@ -173,6 +176,7 @@ AS $$
       comment: "Average claimed funding per claim"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`promotion_promo_offer`
 WITH METRICS
 LANGUAGE YAML
@@ -187,8 +191,8 @@ AS $$
     - name: "supplier_id"
       expr: supplier_id
       comment: "Supplier providing the offer"
-    - name: "target_segment_id"
-      expr: target_segment_id
+    - name: "segment_id"
+      expr: segment_id
       comment: "Customer segment targeted"
     - name: "discount_type"
       expr: discount_type

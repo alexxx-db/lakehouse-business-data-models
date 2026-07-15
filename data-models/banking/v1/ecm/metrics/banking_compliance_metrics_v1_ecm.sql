@@ -23,8 +23,8 @@ AS $$
     - name: "detection_month"
       expr: DATE_TRUNC('month', detection_date)
       comment: "Month bucket for detection date"
-    - name: "detection_branch_id"
-      expr: detection_branch_id
+    - name: "branch_id"
+      expr: branch_id
       comment: "Branch where detection occurred"
   measures:
     - name: "total_alerts"
@@ -46,6 +46,7 @@ AS $$
       expr: SUM(CASE WHEN pep_flag THEN 1 ELSE 0 END)
       comment: "Count of alerts involving politically exposed persons"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_aml_case`
 WITH METRICS
@@ -88,6 +89,7 @@ AS $$
       comment: "Count of cases that have an associated SAR filing"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_regulatory_filing`
 WITH METRICS
 LANGUAGE YAML
@@ -102,8 +104,8 @@ AS $$
     - name: "filing_status"
       expr: filing_status
       comment: "Current status of the filing"
-    - name: "filing_branch_id"
-      expr: filing_branch_id
+    - name: "branch_id"
+      expr: branch_id
       comment: "Branch responsible for the filing"
     - name: "reporting_period_month"
       expr: DATE_TRUNC('month', reporting_period_start_date)
@@ -125,6 +127,7 @@ AS $$
       expr: SUM(CASE WHEN fatca_jurisdiction IS NOT NULL THEN 1 ELSE 0 END)
       comment: "Count of filings that include a FATCA jurisdiction"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_sanctions_screening_event`
 WITH METRICS
@@ -160,6 +163,7 @@ AS $$
       expr: SUM(CASE WHEN sar_filed THEN 1 ELSE 0 END)
       comment: "Count of screenings that resulted in a SAR filing"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`compliance_breach`
 WITH METRICS

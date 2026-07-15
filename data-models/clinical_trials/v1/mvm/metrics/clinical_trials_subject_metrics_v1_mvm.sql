@@ -98,6 +98,7 @@ AS $$
       comment: "Number of subjects with confirmed eligibility. Measures protocol compliance at the eligibility gate — deviations here carry regulatory risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_trial_subject`
 WITH METRICS
 LANGUAGE YAML
@@ -187,6 +188,7 @@ AS $$
       comment: "Average treatment exposure duration per subject. Informs dosing compliance and treatment duration analysis for efficacy and safety assessments."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_disposition`
 WITH METRICS
 LANGUAGE YAML
@@ -260,6 +262,7 @@ AS $$
       expr: AVG(CAST(DATEDIFF(disposition_date, last_visit_date) AS DOUBLE))
       comment: "Average days between last visit and formal disposition. Operational efficiency metric — long gaps indicate data entry delays that risk database lock timelines."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_deviation`
 WITH METRICS
@@ -335,6 +338,7 @@ AS $$
       comment: "Average days from deviation occurrence to PI awareness. Site oversight timeliness KPI — delays in PI notification are a GCP finding category."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_visit`
 WITH METRICS
 LANGUAGE YAML
@@ -402,6 +406,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN visit_status = 'Missed' THEN trial_subject_id END)
       comment: "Number of unique subjects with at least one missed visit. Subject-level retention risk KPI — used to prioritize subject outreach and site support interventions."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_demographic`
 WITH METRICS
@@ -471,6 +476,7 @@ AS $$
       comment: "Average days from reference start date to informed consent. Consent process efficiency metric — prolonged consent timelines indicate site training or process gaps."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_randomization_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -488,8 +494,8 @@ AS $$
     - name: "arm_id"
       expr: arm_id
       comment: "Treatment arm — primary dimension for randomization balance analysis."
-    - name: "randomization_treatment_arm_id"
-      expr: randomization_treatment_arm_id
+    - name: "treatment_arm_id"
+      expr: treatment_arm_id
       comment: "Randomization treatment arm — enables comparison of planned vs. actual arm assignments."
     - name: "assignment_status"
       expr: assignment_status
@@ -535,6 +541,7 @@ AS $$
       expr: AVG(CAST(DATEDIFF(CAST(randomization_timestamp AS DATE), randomization_date) AS DOUBLE))
       comment: "Average days between randomization date and IRT confirmation timestamp. IRT system efficiency metric — delays indicate system integration or site process issues."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_eligibility_assessment`
 WITH METRICS
@@ -603,6 +610,7 @@ AS $$
       expr: AVG(CAST(DATEDIFF(sdv_date, assessment_date) AS DOUBLE))
       comment: "Average days from eligibility assessment to source data verification. Monitoring efficiency KPI — prolonged SDV cycles indicate monitoring resource constraints or site access issues."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_concomitant_medication`
 WITH METRICS
@@ -677,6 +685,7 @@ AS $$
       expr: AVG(CAST(dose AS DOUBLE))
       comment: "Average dose of concomitant medications. Pharmacological exposure metric — used in drug interaction and safety analyses to characterize exposure levels."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`subject_population_assignment`
 WITH METRICS

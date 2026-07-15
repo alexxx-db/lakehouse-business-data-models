@@ -125,6 +125,7 @@ AS $$
       comment: "Count of placements eligible for programmatic buying"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_buy`
 WITH METRICS
 LANGUAGE YAML
@@ -228,9 +229,10 @@ AS $$
       expr: COUNT(DISTINCT ad_channel_id)
       comment: "Number of unique ad channels across buys"
     - name: "distinct_buyers"
-      expr: COUNT(DISTINCT buyer_worker_id)
+      expr: COUNT(DISTINCT worker_id)
       comment: "Number of unique buyers executing buys"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_plan`
 WITH METRICS
@@ -353,6 +355,7 @@ AS $$
       expr: COUNT(DISTINCT worker_id)
       comment: "Number of unique planners creating plans"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_plan_line`
 WITH METRICS
@@ -488,6 +491,7 @@ AS $$
       comment: "Number of unique campaigns across plan lines"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_programmatic_deal`
 WITH METRICS
 LANGUAGE YAML
@@ -586,6 +590,7 @@ AS $$
       comment: "Number of unique campaigns across deals"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_insertion_order`
 WITH METRICS
 LANGUAGE YAML
@@ -683,6 +688,7 @@ AS $$
       expr: COUNT(DISTINCT ad_channel_id)
       comment: "Number of unique ad channels across insertion orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_audience_rating`
 WITH METRICS
@@ -802,6 +808,7 @@ AS $$
       expr: COUNT(DISTINCT audience_segment_id)
       comment: "Number of unique audience segments across ratings"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`media_publisher_property`
 WITH METRICS

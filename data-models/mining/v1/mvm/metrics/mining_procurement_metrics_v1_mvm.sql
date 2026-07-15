@@ -87,6 +87,7 @@ AS $$
       comment: "Number of unique vendors receiving purchase orders — measures vendor base breadth and concentration risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_purchase_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -162,6 +163,7 @@ AS $$
       comment: "Average under-delivery tolerance percentage across lines — used to assess acceptable shortfall thresholds in supply contracts."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -235,6 +237,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors delivering goods — measures active supplier base and concentration risk in inbound supply."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_vendor`
 WITH METRICS
@@ -312,6 +315,7 @@ AS $$
       expr: COUNT(CASE WHEN prequalification_status = 'Approved' THEN 1 END)
       comment: "Number of prequalified vendors — measures the pool of vendors eligible for new contract awards."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_vendor_performance`
 WITH METRICS
@@ -393,6 +397,7 @@ AS $$
       comment: "Average order fill rate percentage — measures vendor ability to fulfil ordered quantities in full, impacting production continuity."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -473,6 +478,7 @@ AS $$
       comment: "Number of distinct vendors under contract — measures contracted vendor base breadth and concentration risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_inventory_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -537,9 +543,10 @@ AS $$
       expr: COUNT(CASE WHEN unrestricted_stock_quantity > maximum_stock_level_quantity THEN 1 END)
       comment: "Number of materials where stock exceeds maximum level — identifies overstock situations driving excess working capital and storage costs."
     - name: "distinct_material_count"
-      expr: COUNT(DISTINCT supply_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials held in inventory — measures the breadth of the materials portfolio under management."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_requisition`
 WITH METRICS
@@ -619,6 +626,7 @@ AS $$
       comment: "Number of distinct vendors nominated on requisitions — measures vendor diversity in the demand pipeline."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_delivery_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -689,6 +697,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors with active delivery schedules — measures active supply base breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_freight_order`
 WITH METRICS

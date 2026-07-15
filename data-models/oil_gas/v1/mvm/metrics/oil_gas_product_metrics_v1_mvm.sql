@@ -14,8 +14,8 @@ AS $$
     - name: "crude_grade_id"
       expr: crude_grade_id
       comment: "Identifier for the crude grade tested"
-    - name: "laboratory_vendor_id"
-      expr: laboratory_vendor_id
+    - name: "vendor_id"
+      expr: vendor_id
       comment: "Laboratory vendor performing the assay"
     - name: "lease_id"
       expr: lease_id
@@ -37,6 +37,7 @@ AS $$
       expr: AVG(CAST(sulfur_content_wt_pct AS DOUBLE))
       comment: "Average sulfur content by weight"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_price_history`
 WITH METRICS
@@ -76,6 +77,7 @@ AS $$
       comment: "Total processing cost"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_refined_product`
 WITH METRICS
 LANGUAGE YAML
@@ -110,6 +112,7 @@ AS $$
       expr: AVG(CAST(viscosity_cst AS DOUBLE))
       comment: "Average viscosity (cSt)"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`product_ngl_stream`
 WITH METRICS

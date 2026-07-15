@@ -85,9 +85,10 @@ AS $$
       expr: AVG(CAST(drg_weight AS DOUBLE))
       comment: "Average DRG weight per visit, indicating case complexity"
     - name: "distinct_patients"
-      expr: COUNT(DISTINCT visit_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with visits"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_adt_event`
 WITH METRICS
@@ -169,6 +170,7 @@ AS $$
       comment: "Distinct count of visits with ADT events"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_bed_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -245,6 +247,7 @@ AS $$
       expr: COUNT(DISTINCT visit_id)
       comment: "Distinct count of visits with bed assignments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_drg_assignment`
 WITH METRICS
@@ -328,6 +331,7 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with DRG assignments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_triage_assessment`
 WITH METRICS
@@ -430,6 +434,7 @@ AS $$
       comment: "Distinct count of visits with triage assessments"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_visit_diagnosis`
 WITH METRICS
 LANGUAGE YAML
@@ -527,6 +532,7 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with visit diagnoses"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_visit_procedure`
 WITH METRICS
@@ -626,6 +632,7 @@ AS $$
       comment: "Distinct count of patients with procedures"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`encounter_discharge_summary`
 WITH METRICS
 LANGUAGE YAML
@@ -696,6 +703,6 @@ AS $$
       expr: AVG(CAST(time_to_completion_hours AS DOUBLE))
       comment: "Average time to complete discharge summary in hours"
     - name: "distinct_patients_discharged"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with discharge summaries"
 $$;

@@ -47,6 +47,7 @@ AS $$
       comment: "Average number of days invoices are past their due date"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_carrier_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -88,6 +89,7 @@ AS $$
       comment: "Total minimum volume commitment units"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_tap_record`
 WITH METRICS
 LANGUAGE YAML
@@ -102,8 +104,8 @@ AS $$
     - name: "tap_file_id"
       expr: tap_file_id
       comment: "Identifier of the source TAP file"
-    - name: "visited_carrier_id"
-      expr: visited_carrier_id
+    - name: "carrier_id"
+      expr: carrier_id
       comment: "Carrier that was visited during the event"
     - name: "call_event_type"
       expr: call_event_type
@@ -132,6 +134,7 @@ AS $$
       comment: "Number of unique subscribers (MSISDN) in the TAP data"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_transit_traffic_record`
 WITH METRICS
 LANGUAGE YAML
@@ -143,8 +146,8 @@ AS $$
     - name: "carrier_agreement_id"
       expr: carrier_agreement_id
       comment: "Carrier agreement governing the transit"
-    - name: "originating_carrier_id"
-      expr: originating_carrier_id
+    - name: "carrier_id"
+      expr: carrier_id
       comment: "Carrier that originated the traffic"
     - name: "traffic_type"
       expr: traffic_type
@@ -170,6 +173,7 @@ AS $$
       comment: "Average gross billed amount per transit record"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`interconnect_peering_arrangement`
 WITH METRICS
 LANGUAGE YAML
@@ -178,8 +182,8 @@ AS $$
   comment: "Performance and capacity KPIs for peering arrangements"
   source: "`telecommunication_ecm`.`interconnect`.`peering_arrangement`"
   dimensions:
-    - name: "peer_carrier_id"
-      expr: peer_carrier_id
+    - name: "carrier_id"
+      expr: carrier_id
       comment: "Carrier on the opposite side of the peering"
     - name: "location_site_id"
       expr: location_site_id

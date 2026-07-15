@@ -71,6 +71,7 @@ AS $$
       comment: "Number of distinct drug products with active submissions, indicating pipeline breadth under regulatory review."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_application`
 WITH METRICS
 LANGUAGE YAML
@@ -157,6 +158,7 @@ AS $$
       comment: "Number of distinct health authorities to which applications have been filed, measuring global regulatory reach."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_approval`
 WITH METRICS
 LANGUAGE YAML
@@ -221,7 +223,7 @@ AS $$
       expr: COUNT(CASE WHEN pediatric_indication = TRUE THEN 1 END)
       comment: "Number of approvals covering pediatric indications, relevant for pediatric exclusivity and compliance obligations."
     - name: "distinct_markets_approved"
-      expr: COUNT(DISTINCT market_country_id)
+      expr: COUNT(DISTINCT country_id)
       comment: "Number of distinct markets (countries) with active approvals, measuring global commercial authorization footprint."
     - name: "distinct_products_approved"
       expr: COUNT(DISTINCT drug_product_id)
@@ -230,6 +232,7 @@ AS $$
       expr: COUNT(CASE WHEN pai_required = TRUE THEN 1 END)
       comment: "Number of approvals with outstanding Pre-Approval Inspection requirements, flagging manufacturing compliance risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_variation`
 WITH METRICS
@@ -298,6 +301,7 @@ AS $$
       expr: COUNT(DISTINCT drug_product_id)
       comment: "Number of distinct drug products with post-approval variation activity, measuring portfolio-wide change burden."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_post_approval_commitment`
 WITH METRICS
@@ -370,6 +374,7 @@ AS $$
       comment: "Number of distinct drug products with active post-approval commitments, measuring portfolio-wide obligation breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_designation`
 WITH METRICS
 LANGUAGE YAML
@@ -438,6 +443,7 @@ AS $$
       comment: "Number of distinct medicinal products with at least one regulatory designation, measuring pipeline designation coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_milestone`
 WITH METRICS
 LANGUAGE YAML
@@ -499,6 +505,7 @@ AS $$
       expr: COUNT(DISTINCT medicinal_product_id)
       comment: "Number of distinct medicinal products with active regulatory milestones, measuring active pipeline breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_product_registration`
 WITH METRICS
@@ -571,6 +578,7 @@ AS $$
       comment: "Number of registrations with outstanding post-approval commitments, quantifying ongoing regulatory obligations."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_rems`
 WITH METRICS
 LANGUAGE YAML
@@ -638,6 +646,7 @@ AS $$
       expr: COUNT(DISTINCT drug_product_id)
       comment: "Number of distinct drug products with active REMS programs, measuring the breadth of risk management obligations."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`regulatory_label_change`
 WITH METRICS

@@ -83,6 +83,7 @@ AS $$
       comment: "Percentage of policies with risk ceded to reinsurers"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_loan`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: AVG(CAST(to_csv_ratio AS DOUBLE))
       comment: "Average loan-to-cash-surrender-value ratio (loan utilization against available collateral)"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_surrender`
 WITH METRICS
@@ -219,6 +221,7 @@ AS $$
       comment: "Taxable gain as percentage of gross amount (tax efficiency indicator)"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_dividend`
 WITH METRICS
 LANGUAGE YAML
@@ -280,6 +283,7 @@ AS $$
       expr: AVG(CAST(accumulated_interest_rate AS DOUBLE))
       comment: "Average interest rate credited on accumulated dividends"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_conversion`
 WITH METRICS
@@ -343,6 +347,7 @@ AS $$
       comment: "Percentage of conversions where evidence of insurability was waived"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_reinstatement`
 WITH METRICS
 LANGUAGE YAML
@@ -401,6 +406,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN nigo_flag = TRUE THEN policy_reinstatement_id END) / NULLIF(COUNT(DISTINCT policy_reinstatement_id), 0), 2)
       comment: "Percentage of reinstatement applications Not In Good Order (application quality indicator)"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_value`
 WITH METRICS
@@ -473,6 +479,7 @@ AS $$
       comment: "Average death benefit per policy"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`policy_rider`
 WITH METRICS
 LANGUAGE YAML
@@ -528,6 +535,6 @@ AS $$
       expr: AVG(CAST(premium_amount AS DOUBLE))
       comment: "Average premium amount per rider"
     - name: "rider_attachment_rate"
-      expr: ROUND(100.0 * COUNT(DISTINCT policy_rider_id) / NULLIF(COUNT(DISTINCT primary_policy_in_force_policy_id), 0), 2)
+      expr: ROUND(100.0 * COUNT(DISTINCT policy_rider_id) / NULLIF(COUNT(DISTINCT in_force_policy_id), 0), 2)
       comment: "Average number of riders per base policy (rider penetration rate)"
 $$;

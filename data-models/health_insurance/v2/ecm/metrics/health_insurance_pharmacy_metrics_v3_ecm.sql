@@ -64,7 +64,7 @@ AS $$
       expr: AVG(CAST(ingredient_cost AS DOUBLE))
       comment: "Average ingredient cost per claim. Used to track drug cost inflation and generic substitution impact."
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with pharmacy claims. Measures pharmacy benefit utilization breadth."
     - name: "distinct_prescriber_count"
       expr: COUNT(DISTINCT prescriber_npi)
@@ -76,6 +76,7 @@ AS $$
       expr: SUM(CAST(quantity_dispensed AS DOUBLE))
       comment: "Total drug quantity dispensed across all claims. Used for utilization management and drug trend analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_claim_line`
 WITH METRICS
@@ -160,6 +161,7 @@ AS $$
       comment: "Number of unique drugs dispensed. Measures formulary utilization breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_benefit_accumulator`
 WITH METRICS
 LANGUAGE YAML
@@ -236,15 +238,16 @@ AS $$
       expr: SUM(CAST(third_party_applied_amt AS DOUBLE))
       comment: "Total third-party amounts applied to accumulators. Tracks copay assistance and manufacturer coupon impact."
     - name: "members_with_moop_met"
-      expr: COUNT(DISTINCT CASE WHEN is_moop_met = TRUE THEN member_subscriber_id END)
+      expr: COUNT(DISTINCT CASE WHEN is_moop_met = TRUE THEN subscriber_id END)
       comment: "Number of unique members who have met their MOOP. Measures catastrophic coverage liability exposure."
     - name: "members_with_deductible_met"
-      expr: COUNT(DISTINCT CASE WHEN is_deductible_met = TRUE THEN member_subscriber_id END)
+      expr: COUNT(DISTINCT CASE WHEN is_deductible_met = TRUE THEN subscriber_id END)
       comment: "Number of unique members who have met their deductible. Tracks benefit phase transition timing."
     - name: "avg_oop_applied_per_member"
       expr: AVG(CAST(oop_applied_amt AS DOUBLE))
       comment: "Average out-of-pocket applied per accumulator record. Benchmarks member financial burden across benefit designs."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_drug_rebate`
 WITH METRICS
@@ -317,6 +320,7 @@ AS $$
       comment: "Average AWP unit price across rebated drugs. Used to benchmark rebate rates as a percentage of AWP."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_prior_authorization`
 WITH METRICS
 LANGUAGE YAML
@@ -366,7 +370,7 @@ AS $$
       expr: AVG(CAST(approved_quantity AS DOUBLE))
       comment: "Average approved drug quantity per PA. Benchmarks clinical criteria consistency."
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Number of unique members with PA requests. Measures PA program utilization breadth."
     - name: "distinct_prescriber_count"
       expr: COUNT(DISTINCT prescriber_npi)
@@ -384,6 +388,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN criteria_met = TRUE THEN prior_authorization_id END)
       comment: "Number of PAs where clinical criteria were met. Measures clinical criteria program effectiveness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_formulary`
 WITH METRICS
@@ -437,6 +442,7 @@ AS $$
       expr: AVG(CAST(tier_count AS DOUBLE))
       comment: "Average number of tiers across formularies. Benchmarks formulary complexity and benefit design variation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_formulary_drug_tier`
 WITH METRICS
@@ -503,6 +509,7 @@ AS $$
       comment: "Number of unique drugs on formulary tiers. Measures formulary coverage breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_drug_pricing`
 WITH METRICS
 LANGUAGE YAML
@@ -564,6 +571,7 @@ AS $$
       expr: COUNT(DISTINCT drug_master_id)
       comment: "Number of unique drugs with active pricing records. Measures pricing database coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_pbm_contract`
 WITH METRICS
@@ -630,6 +638,7 @@ AS $$
       comment: "Number of PBM contracts with performance guarantees. Measures financial risk protection coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_dur_alert`
 WITH METRICS
 LANGUAGE YAML
@@ -673,7 +682,7 @@ AS $$
       expr: SUM(CAST(quantity_dispensed AS DOUBLE))
       comment: "Total quantity dispensed following DUR review. Measures drug volume approved after clinical intervention."
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with DUR alerts. Measures patient safety program reach."
     - name: "distinct_prescriber_count"
       expr: COUNT(DISTINCT prescriber_npi)
@@ -688,6 +697,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN severity_level_code IN ('1', 'HIGH', 'MAJOR') THEN dur_alert_id END)
       comment: "Number of high-severity DUR alerts. Prioritizes patient safety intervention focus."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_formulary_exception`
 WITH METRICS
@@ -744,9 +754,10 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN appeal_rights_notified = TRUE THEN formulary_exception_id END)
       comment: "Number of exceptions where appeal rights notification was sent. Tracks CMS regulatory notification compliance."
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Number of unique members with formulary exception requests. Measures member access program reach."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_part_d_submission`
 WITH METRICS
@@ -809,6 +820,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_resubmission = TRUE THEN part_d_submission_id END)
       comment: "Number of resubmissions. Measures data quality issues requiring correction and reprocessing."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_specialty_drug_program`
 WITH METRICS
@@ -875,6 +887,7 @@ AS $$
       comment: "Number of limited distribution specialty programs. Measures specialty pharmacy network exclusivity management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_dispensing_pharmacy`
 WITH METRICS
 LANGUAGE YAML
@@ -934,6 +947,7 @@ AS $$
       comment: "Number of states with network pharmacy coverage. Measures geographic network breadth for adequacy assessment."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`pharmacy_mtm_service`
 WITH METRICS
 LANGUAGE YAML
@@ -980,13 +994,13 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN cmr_completion_date IS NOT NULL THEN mtm_service_id END)
       comment: "Number of completed Comprehensive Medication Reviews (CMR). Primary CMS Star measure for MTM program quality."
     - name: "total_mtm_member_count"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Total unique members enrolled in MTM. Measures MTM program reach and eligibility capture rate."
     - name: "opted_out_member_count"
-      expr: COUNT(DISTINCT CASE WHEN opt_out_flag = TRUE THEN member_subscriber_id END)
+      expr: COUNT(DISTINCT CASE WHEN opt_out_flag = TRUE THEN subscriber_id END)
       comment: "Number of members who opted out of MTM. Tracks program engagement barriers."
     - name: "star_eligible_member_count"
-      expr: COUNT(DISTINCT CASE WHEN star_measure_eligible_flag = TRUE THEN member_subscriber_id END)
+      expr: COUNT(DISTINCT CASE WHEN star_measure_eligible_flag = TRUE THEN subscriber_id END)
       comment: "Number of members eligible for CMS Star measure reporting. Denominator for Star measure compliance rate."
     - name: "avg_intervention_count"
       expr: AVG(CAST(intervention_count AS DOUBLE))

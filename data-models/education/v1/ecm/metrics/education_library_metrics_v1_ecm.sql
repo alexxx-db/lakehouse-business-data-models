@@ -71,6 +71,7 @@ AS $$
       comment: "Number of unique patrons with loan activity"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_acquisition_order`
 WITH METRICS
 LANGUAGE YAML
@@ -145,6 +146,7 @@ AS $$
       comment: "Number of unique vendors used for acquisitions"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_electronic_resource`
 WITH METRICS
 LANGUAGE YAML
@@ -213,6 +215,7 @@ AS $$
       comment: "Number of unique content providers"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_course_reserve`
 WITH METRICS
 LANGUAGE YAML
@@ -278,6 +281,7 @@ AS $$
       comment: "Number of unique instructors requesting reserves"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_oer_resource`
 WITH METRICS
 LANGUAGE YAML
@@ -342,12 +346,13 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN institutional_repository_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of OER resources hosted in institutional repository"
     - name: "unique_instructors"
-      expr: COUNT(DISTINCT primary_oer_instructor_id)
+      expr: COUNT(DISTINCT instructor_id)
       comment: "Number of unique instructors adopting OER"
     - name: "unique_courses"
-      expr: COUNT(DISTINCT primary_oer_course_id)
+      expr: COUNT(DISTINCT course_id)
       comment: "Number of unique courses using OER"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_usage_stat`
 WITH METRICS
@@ -435,6 +440,7 @@ AS $$
       comment: "Percentage of requests denied due to access limits or licensing"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_fine`
 WITH METRICS
 LANGUAGE YAML
@@ -509,6 +515,7 @@ AS $$
       comment: "Number of unique patrons with fine activity"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_ill_request`
 WITH METRICS
 LANGUAGE YAML
@@ -573,6 +580,7 @@ AS $$
       expr: COUNT(DISTINCT lending_institution_code)
       comment: "Number of unique lending institutions used"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`library_digital_object`
 WITH METRICS
@@ -647,7 +655,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN oer_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of objects designated as Open Educational Resources"
     - name: "unique_authors"
-      expr: COUNT(DISTINCT author_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique authors contributing to repository"
     - name: "unique_departments"
       expr: COUNT(DISTINCT academic_department)

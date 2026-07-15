@@ -62,6 +62,7 @@ AS $$
       comment: "Number of unique tenants billed in the period"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_ap_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -123,6 +124,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors paid in the period"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_noi_statement`
 WITH METRICS
@@ -198,6 +200,7 @@ AS $$
       comment: "Number of unique properties included in NOI reporting"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_debt_instrument`
 WITH METRICS
 LANGUAGE YAML
@@ -269,6 +272,7 @@ AS $$
       comment: "Number of unique properties with debt financing"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_budget_line`
 WITH METRICS
 LANGUAGE YAML
@@ -334,6 +338,7 @@ AS $$
       comment: "Total unfavorable variance amount"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_financial_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -396,6 +401,7 @@ AS $$
       comment: "Projected NOI margin as percentage of EGI - forecasted operating efficiency"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_journal_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -454,9 +460,10 @@ AS $$
       expr: COUNT(CASE WHEN approval_status = 'Pending' THEN journal_entry_id END)
       comment: "Count of entries pending approval for workflow monitoring"
     - name: "distinct_posted_by_count"
-      expr: COUNT(DISTINCT posted_by_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique employees posting entries for segregation of duties analysis"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`finance_fixed_asset`
 WITH METRICS

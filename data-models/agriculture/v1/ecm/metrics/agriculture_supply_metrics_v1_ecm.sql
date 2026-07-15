@@ -56,6 +56,7 @@ AS $$
       comment: "Count of shipments that departed on or before the scheduled departure date"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_carrier`
 WITH METRICS
 LANGUAGE YAML
@@ -103,6 +104,7 @@ AS $$
       comment: "Average compliance score across carriers"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_freight_booking`
 WITH METRICS
 LANGUAGE YAML
@@ -117,8 +119,8 @@ AS $$
     - name: "commodity_id"
       expr: commodity_id
       comment: "Commodity being shipped"
-    - name: "destination_location_facility_id"
-      expr: destination_location_facility_id
+    - name: "facility_id"
+      expr: facility_id
       comment: "Facility receiving the shipment"
     - name: "booking_status"
       expr: booking_status
@@ -155,6 +157,7 @@ AS $$
       expr: SUM(CAST(accessorial_amount AS DOUBLE))
       comment: "Sum of accessorial charges across bookings"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_transport_order`
 WITH METRICS

@@ -64,7 +64,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of diagnosis records"
     - name: "unique_patients_diagnosed"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with diagnoses"
     - name: "chronic_condition_count"
       expr: SUM(CASE WHEN chronic_condition_flag = TRUE THEN 1 ELSE 0 END)
@@ -100,6 +100,7 @@ AS $$
       expr: SUM(CASE WHEN sdoh_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of social determinants of health diagnoses - population health metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_procedure_event`
 WITH METRICS
@@ -202,6 +203,7 @@ AS $$
       comment: "Surgical timeout compliance rate - critical safety metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_allergy`
 WITH METRICS
 LANGUAGE YAML
@@ -296,6 +298,7 @@ AS $$
       expr: SUM(CASE WHEN data_quality_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of allergy records with data quality flags"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_plan`
 WITH METRICS
@@ -398,6 +401,7 @@ AS $$
       comment: "Average number of goals per care plan"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_immunization`
 WITH METRICS
 LANGUAGE YAML
@@ -492,6 +496,7 @@ AS $$
       expr: SUM(CAST(dose_quantity AS DOUBLE))
       comment: "Total vaccine dose quantity administered"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_vital_sign`
 WITH METRICS

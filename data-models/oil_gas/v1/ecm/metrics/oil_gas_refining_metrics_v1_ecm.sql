@@ -35,6 +35,7 @@ AS $$
       comment: "Average energy efficiency index, higher values indicate better efficiency"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`refining_unit_run`
 WITH METRICS
 LANGUAGE YAML
@@ -46,8 +47,8 @@ AS $$
     - name: "process_unit_id"
       expr: process_unit_id
       comment: "Identifier of the process unit"
-    - name: "primary_petroleum_product_id"
-      expr: primary_petroleum_product_id
+    - name: "petroleum_product_id"
+      expr: petroleum_product_id
       comment: "Primary product produced in the run"
     - name: "run_type"
       expr: run_type
@@ -70,6 +71,7 @@ AS $$
       comment: "Total barrel‑of‑oil‑equivalent output"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`refining_blend_event`
 WITH METRICS
 LANGUAGE YAML
@@ -90,8 +92,8 @@ AS $$
     - name: "blend_date"
       expr: DATE_TRUNC('day', blend_start_timestamp)
       comment: "Date the blend started"
-    - name: "target_petroleum_product_id"
-      expr: target_petroleum_product_id
+    - name: "petroleum_product_id"
+      expr: petroleum_product_id
       comment: "Target product of the blend"
   measures:
     - name: "total_blend_volume_bbl"
@@ -101,6 +103,7 @@ AS $$
       expr: SUM(CAST(blend_loss_bbl AS DOUBLE))
       comment: "Total volume loss during blending in barrels"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`refining_refinery`
 WITH METRICS
@@ -130,6 +133,7 @@ AS $$
       expr: AVG(CAST(nelson_complexity_index AS DOUBLE))
       comment: "Average Nelson Complexity Index, indicating overall refinery complexity"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`refining_product_quality_test`
 WITH METRICS
@@ -166,6 +170,7 @@ AS $$
       comment: "Average measured value across all tests"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`refining_crude_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -183,8 +188,8 @@ AS $$
     - name: "receipt_day"
       expr: DATE_TRUNC('day', receipt_date)
       comment: "Date of receipt"
-    - name: "source_production_facility_id"
-      expr: source_production_facility_id
+    - name: "production_facility_id"
+      expr: production_facility_id
       comment: "Originating production facility"
   measures:
     - name: "total_gross_volume_bbl"

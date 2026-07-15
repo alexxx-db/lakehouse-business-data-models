@@ -62,6 +62,7 @@ AS $$
       comment: "Number of distinct studies with workforce assignments for portfolio coverage analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_payroll_record`
 WITH METRICS
 LANGUAGE YAML
@@ -124,6 +125,7 @@ AS $$
       comment: "Number of distinct employees receiving pay in the period for headcount validation."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_training_record`
 WITH METRICS
 LANGUAGE YAML
@@ -173,12 +175,13 @@ AS $$
       expr: COUNT(CASE WHEN pass_fail_status = 'Pass' THEN 1 END)
       comment: "Number of training assessments passed for first-time pass rate calculation."
     - name: "distinct_employees_trained"
-      expr: COUNT(DISTINCT primary_training_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees with training records for coverage analysis."
     - name: "waiver_count"
       expr: COUNT(CASE WHEN waiver_reason IS NOT NULL THEN 1 END)
       comment: "Number of training waivers granted, indicating potential compliance gaps requiring oversight."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_resource_plan`
 WITH METRICS
@@ -245,6 +248,7 @@ AS $$
       comment: "Number of distinct studies with resource plans for portfolio planning coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_capa`
 WITH METRICS
 LANGUAGE YAML
@@ -304,6 +308,7 @@ AS $$
       comment: "Number of distinct employees with CAPAs for workforce quality risk distribution analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_certification`
 WITH METRICS
 LANGUAGE YAML
@@ -362,6 +367,7 @@ AS $$
       expr: COUNT(CASE WHEN is_regulatory_required = true THEN 1 END)
       comment: "Count of regulatory-required certifications for compliance reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`workforce_position`
 WITH METRICS

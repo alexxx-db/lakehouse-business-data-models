@@ -83,6 +83,7 @@ AS $$
       comment: "Average contracted SLA uptime percentage, measuring service reliability expectations"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_vendor_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -162,6 +163,7 @@ AS $$
       expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
       comment: "Total withholding tax amount, used for tax compliance and remittance tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_purchase_order`
 WITH METRICS
@@ -243,6 +245,7 @@ AS $$
       comment: "Average days from PO creation to invoice verification, measuring procure-to-pay cycle time"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_vendor_scorecard`
 WITH METRICS
 LANGUAGE YAML
@@ -323,6 +326,7 @@ AS $$
       comment: "Number of scorecard evaluations completed, measuring evaluation activity volume"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_sla_measurement`
 WITH METRICS
 LANGUAGE YAML
@@ -397,6 +401,7 @@ AS $$
       comment: "Average measurement confidence score, indicating reliability of SLA measurements"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_vendor_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -468,6 +473,7 @@ AS $$
       comment: "Average hours from incident detection to vendor acknowledgement, measuring vendor responsiveness"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_service_order`
 WITH METRICS
 LANGUAGE YAML
@@ -533,6 +539,7 @@ AS $$
       comment: "Average SLA completion time in hours, measuring service delivery speed"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_rfp`
 WITH METRICS
 LANGUAGE YAML
@@ -588,7 +595,7 @@ AS $$
       expr: COUNT(DISTINCT rfp_id)
       comment: "Number of distinct RFPs, measuring strategic sourcing activity volume"
     - name: "awarded_vendor_count"
-      expr: COUNT(DISTINCT awarded_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors awarded contracts, indicating vendor selection outcomes"
     - name: "avg_rfp_value"
       expr: AVG(CAST(estimated_contract_value AS DOUBLE))
@@ -606,6 +613,7 @@ AS $$
       expr: AVG(CAST(price_weight_pct AS DOUBLE))
       comment: "Average price evaluation weight percentage, indicating cost criteria importance"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`partner_vendor`
 WITH METRICS

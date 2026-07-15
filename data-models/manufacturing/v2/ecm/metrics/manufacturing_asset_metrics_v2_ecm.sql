@@ -58,9 +58,10 @@ AS $$
       expr: COUNT(CASE WHEN warranty_expiry_date < CURRENT_DATE() THEN 1 END)
       comment: "Number of equipment assets with expired warranties. Drives warranty renewal and risk exposure decisions for asset protection."
     - name: "distinct_plant_count"
-      expr: COUNT(DISTINCT plant_id)
+      expr: COUNT(DISTINCT asset_plant_id)
       comment: "Number of distinct plants with registered equipment. Used for geographic asset distribution analysis and plant-level investment planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_work_order`
 WITH METRICS
@@ -129,6 +130,7 @@ AS $$
       expr: COUNT(CASE WHEN planned_finish_date < CURRENT_TIMESTAMP() AND work_order_status NOT IN ('Completed', 'Closed', 'Cancelled') THEN 1 END)
       comment: "Number of work orders past their planned finish date and not yet closed. Measures maintenance backlog and schedule adherence — a critical operational risk indicator."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_downtime_event`
 WITH METRICS
@@ -201,6 +203,7 @@ AS $$
       comment: "Number of distinct equipment assets that experienced downtime. Measures fleet-wide failure breadth for maintenance prioritization."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_pm_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -262,6 +265,7 @@ AS $$
       expr: COUNT(DISTINCT equipment_register_id)
       comment: "Number of distinct equipment assets covered by PM schedules. Measures PM program coverage breadth across the fleet."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_reliability_record`
 WITH METRICS
@@ -328,6 +332,7 @@ AS $$
       comment: "Average MTBF variance percentage against target. Measures reliability program effectiveness — high variance indicates maintenance strategy misalignment."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_capex_asset_record`
 WITH METRICS
 LANGUAGE YAML
@@ -390,6 +395,7 @@ AS $$
       comment: "Average net book value per capital asset. Benchmarks asset depreciation health and replacement timing across the portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_calibration_record`
 WITH METRICS
 LANGUAGE YAML
@@ -446,6 +452,7 @@ AS $$
       comment: "Number of distinct equipment assets with calibration records. Measures calibration program coverage across the instrumented asset fleet."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_inspection_event`
 WITH METRICS
 LANGUAGE YAML
@@ -495,6 +502,7 @@ AS $$
       expr: COUNT(CASE WHEN next_inspection_due_date < CURRENT_DATE() AND inspection_status NOT IN ('Completed', 'Closed') THEN 1 END)
       comment: "Number of inspections past their due date. Critical compliance risk KPI — overdue inspections create regulatory and safety exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_failure_record`
 WITH METRICS
@@ -560,6 +568,7 @@ AS $$
       expr: COUNT(CASE WHEN spare_part_consumed_flag = TRUE THEN 1 END)
       comment: "Number of failures requiring spare part consumption. Drives spare parts inventory planning and stocking strategy decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_warranty`
 WITH METRICS

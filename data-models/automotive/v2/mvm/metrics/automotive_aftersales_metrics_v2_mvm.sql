@@ -88,9 +88,10 @@ AS $$
       expr: COUNT(DISTINCT vin_registry_id)
       comment: "Number of unique vehicles serviced, indicating customer base breadth"
     - name: "unique_customers_serviced"
-      expr: COUNT(DISTINCT primary_aftersales_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers served, measuring customer reach"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_appointment`
 WITH METRICS
@@ -180,12 +181,13 @@ AS $$
       expr: SUM(CAST(CASE WHEN warranty_flag = TRUE THEN 1 ELSE 0 END AS INT))
       comment: "Number of appointments covered under warranty"
     - name: "unique_customers"
-      expr: COUNT(DISTINCT primary_aftersales_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers with service appointments"
     - name: "unique_vehicles"
       expr: COUNT(DISTINCT vin_registry_id)
       comment: "Number of unique vehicles scheduled for service"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_repair_order_line`
 WITH METRICS
@@ -282,6 +284,7 @@ AS $$
       comment: "Number of unique technicians who performed work"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_warranty_claim`
 WITH METRICS
 LANGUAGE YAML
@@ -373,9 +376,10 @@ AS $$
       expr: COUNT(DISTINCT service_center_id)
       comment: "Number of unique service centers filing warranty claims"
     - name: "unique_suppliers_implicated"
-      expr: COUNT(DISTINCT responsible_procurement_supplier_id)
+      expr: COUNT(DISTINCT procurement_supplier_id)
       comment: "Number of unique suppliers implicated in warranty claims, for supplier quality accountability"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_campaign`
 WITH METRICS
@@ -462,9 +466,10 @@ AS $$
       expr: COUNT(DISTINCT model_id)
       comment: "Number of unique vehicle models affected by campaigns, indicating quality issue breadth"
     - name: "unique_suppliers_responsible"
-      expr: COUNT(DISTINCT responsible_procurement_supplier_id)
+      expr: COUNT(DISTINCT procurement_supplier_id)
       comment: "Number of unique suppliers responsible for campaign issues, for supplier quality management"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_parts_order`
 WITH METRICS
@@ -548,9 +553,10 @@ AS $$
       expr: COUNT(DISTINCT service_center_id)
       comment: "Number of unique service centers placing parts orders"
     - name: "unique_fulfillment_warehouses"
-      expr: COUNT(DISTINCT fulfillment_warehouse_id)
+      expr: COUNT(DISTINCT warehouse_id)
       comment: "Number of unique warehouses fulfilling parts orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_vehicle_warranty`
 WITH METRICS
@@ -638,6 +644,7 @@ AS $$
       comment: "Number of unique customers holding warranties"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_technician`
 WITH METRICS
 LANGUAGE YAML
@@ -708,6 +715,7 @@ AS $$
       expr: COUNT(DISTINCT dealership_id)
       comment: "Number of unique dealerships employing technicians"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_center`
 WITH METRICS

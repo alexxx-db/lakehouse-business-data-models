@@ -95,6 +95,7 @@ AS $$
       comment: "Number of distinct equipment assets serviced — used for installed base coverage and asset health tracking."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_request`
 WITH METRICS
 LANGUAGE YAML
@@ -168,6 +169,7 @@ AS $$
       expr: COUNT(CASE WHEN request_status NOT IN ('Closed', 'Resolved', 'Cancelled') THEN 1 END)
       comment: "Number of currently open service requests — primary backlog KPI for support capacity management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_contract`
 WITH METRICS
@@ -246,6 +248,7 @@ AS $$
       comment: "Average tax rate applied to service contracts — used for tax provision and pricing compliance review."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_sla_milestone`
 WITH METRICS
 LANGUAGE YAML
@@ -289,12 +292,13 @@ AS $$
       expr: COUNT(CASE WHEN escalated_flag = TRUE THEN 1 END)
       comment: "Number of milestones that triggered escalation — measures escalation rate and management intervention frequency."
     - name: "distinct_service_requests_with_breach"
-      expr: COUNT(DISTINCT CASE WHEN breach_flag = TRUE THEN service_request_id END)
+      expr: COUNT(DISTINCT CASE WHEN breach_flag = TRUE THEN request_id END)
       comment: "Number of distinct service requests with at least one SLA breach — used to measure customer impact of SLA failures."
     - name: "distinct_service_contracts_with_breach"
       expr: COUNT(DISTINCT CASE WHEN breach_flag = TRUE THEN service_contract_id END)
       comment: "Number of distinct service contracts with SLA breaches — used to identify at-risk contracts and penalty exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_satisfaction_survey`
 WITH METRICS
@@ -339,6 +343,7 @@ AS $$
       expr: COUNT(DISTINCT service_contract_id)
       comment: "Number of distinct service contracts with survey responses — used to assess contract satisfaction coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_warranty`
 WITH METRICS
@@ -398,6 +403,7 @@ AS $$
       expr: COUNT(DISTINCT customer_account_id)
       comment: "Number of distinct customers with active warranties — measures warranty coverage breadth across the customer base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_rma`
 WITH METRICS
@@ -461,6 +467,7 @@ AS $$
       comment: "Number of distinct customers with RMA cases — measures return issue breadth and customer satisfaction risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_installed_base`
 WITH METRICS
 LANGUAGE YAML
@@ -516,6 +523,7 @@ AS $$
       expr: COUNT(DISTINCT customer_account_id)
       comment: "Number of distinct customers with installed assets — measures installed base customer coverage and upsell opportunity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_capa_record`
 WITH METRICS
@@ -576,6 +584,7 @@ AS $$
       comment: "Number of closed CAPA records — used to calculate closure rate and demonstrate quality programme effectiveness."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_part_consumption`
 WITH METRICS
 LANGUAGE YAML
@@ -632,6 +641,7 @@ AS $$
       comment: "Number of distinct spare parts consumed — used for parts catalogue rationalisation and stocking strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_pm_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -684,6 +694,7 @@ AS $$
       expr: COUNT(CASE WHEN next_due_date < CURRENT_DATE() AND schedule_status NOT IN ('Completed', 'Cancelled') THEN 1 END)
       comment: "Number of PM schedules past their due date — critical operational KPI for maintenance backlog and compliance risk management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_engineer`
 WITH METRICS

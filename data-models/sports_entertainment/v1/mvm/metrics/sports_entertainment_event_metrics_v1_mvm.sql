@@ -92,6 +92,7 @@ AS $$
       comment: "Number of distinct seasons represented in the fixture dataset. Used for multi-season trend analysis and calendar planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_match_result`
 WITH METRICS
 LANGUAGE YAML
@@ -165,6 +166,7 @@ AS $$
       expr: COUNT(DISTINCT fixture_id)
       comment: "Number of distinct fixtures that have a recorded match result. Used to measure result capture completeness against scheduled fixtures."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_broadcast_window`
 WITH METRICS
@@ -258,6 +260,7 @@ AS $$
       comment: "Number of distinct territories with broadcast windows. Geographic rights coverage breadth metric for global distribution strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_tournament`
 WITH METRICS
 LANGUAGE YAML
@@ -347,6 +350,7 @@ AS $$
       comment: "Number of distinct countries hosting tournaments. Geographic diversification KPI for global market development strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_officiating_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -426,9 +430,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN wada_compliance_verified_flag = TRUE THEN officiating_assignment_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of officiating assignments with verified WADA compliance. Anti-doping regulatory KPI for governing body reporting."
     - name: "distinct_officials_assigned"
-      expr: COUNT(DISTINCT primary_officiating_official_id)
+      expr: COUNT(DISTINCT official_id)
       comment: "Number of distinct officials assigned across fixtures. Measures officiating pool depth and rotation diversity."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_incident`
 WITH METRICS
@@ -515,9 +520,10 @@ AS $$
       expr: COUNT(CASE WHEN incident_status != 'resolved' THEN event_incident_id END)
       comment: "Number of incidents not yet resolved. Operational backlog KPI for event safety and security response teams."
     - name: "distinct_fixtures_with_incidents"
-      expr: COUNT(DISTINCT primary_event_fixture_id)
+      expr: COUNT(DISTINCT fixture_id)
       comment: "Number of distinct fixtures that experienced at least one incident. Measures event safety risk breadth across the fixture calendar."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_participant`
 WITH METRICS
@@ -601,6 +607,7 @@ AS $$
       expr: COUNT(DISTINCT nationality_country)
       comment: "Number of distinct nationalities represented across participants. International diversity KPI for global market development and broadcast rights strategy."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_scoring_event`
 WITH METRICS
@@ -691,6 +698,7 @@ AS $$
       comment: "Average number of scoring events per fixture. Entertainment intensity KPI used to benchmark match excitement levels across competitions and seasons."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`event_venue_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -764,7 +772,7 @@ AS $$
       expr: COUNT(CASE WHEN vip_hospitality_enabled = TRUE THEN venue_assignment_id END)
       comment: "Number of venue assignments with VIP hospitality enabled. Premium revenue channel activation KPI for commercial and hospitality teams."
     - name: "distinct_venues_assigned"
-      expr: COUNT(DISTINCT primary_venue_id)
+      expr: COUNT(DISTINCT venue_id)
       comment: "Number of distinct venues assigned across events. Venue portfolio utilization breadth metric for operations and commercial strategy."
     - name: "distinct_fixtures_assigned"
       expr: COUNT(DISTINCT fixture_id)

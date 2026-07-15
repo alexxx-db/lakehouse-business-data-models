@@ -80,6 +80,7 @@ AS $$
       comment: "Percentage of orders that are gifts - seasonal and marketing indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_sales_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +173,7 @@ AS $$
       comment: "Percentage of lines with ATP confirmation - inventory availability metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_fulfillment`
 WITH METRICS
 LANGUAGE YAML
@@ -255,6 +257,7 @@ AS $$
       comment: "Number of unique destination countries"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_backorder`
 WITH METRICS
 LANGUAGE YAML
@@ -316,7 +319,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique customers with backorders - customer impact metric"
     - name: "unique_skus_backordered"
-      expr: COUNT(DISTINCT backorder_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs on backorder - inventory planning metric"
     - name: "nos_backorder_count"
       expr: SUM(CASE WHEN nos_flag = TRUE THEN 1 ELSE 0 END)
@@ -325,6 +328,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN nos_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of backorders that are NOS items - measures inventory policy compliance"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_rma`
 WITH METRICS
@@ -399,6 +403,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN quality_defect_code IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of returns due to defects - product quality indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_payment`
 WITH METRICS
@@ -483,6 +488,7 @@ AS $$
       comment: "Number of unique payment methods used"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_purchase_order`
 WITH METRICS
 LANGUAGE YAML
@@ -559,6 +565,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN moq_compliance_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "MOQ compliance rate - vendor terms adherence"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_otif`
 WITH METRICS

@@ -71,6 +71,7 @@ AS $$
       comment: "Number of distinct vehicles involved in incidents"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_osha_recordable`
 WITH METRICS
 LANGUAGE YAML
@@ -142,6 +143,7 @@ AS $$
       comment: "Number of distinct facilities with OSHA recordable cases"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_near_miss`
 WITH METRICS
 LANGUAGE YAML
@@ -197,9 +199,10 @@ AS $$
       expr: COUNT(DISTINCT vehicle_id)
       comment: "Number of distinct vehicles involved in near misses"
     - name: "unique_reporting_employees"
-      expr: COUNT(DISTINCT primary_near_reporting_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees reporting near misses - engagement indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_training`
 WITH METRICS
@@ -269,6 +272,7 @@ AS $$
       comment: "Count of DOT-required training completions"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -337,6 +341,7 @@ AS $$
       comment: "Number of distinct routes audited"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_corrective_action`
 WITH METRICS
 LANGUAGE YAML
@@ -398,6 +403,7 @@ AS $$
       expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities with corrective actions"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_observation`
 WITH METRICS
@@ -469,6 +475,7 @@ AS $$
       expr: COUNT(DISTINCT route_id)
       comment: "Number of distinct routes with observations"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`safety_medical_case`
 WITH METRICS

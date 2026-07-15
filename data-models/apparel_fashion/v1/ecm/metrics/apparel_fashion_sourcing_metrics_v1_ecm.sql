@@ -92,6 +92,7 @@ AS $$
       comment: "Number of unique production factories used"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_purchase_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -183,6 +184,7 @@ AS $$
       expr: COUNT(DISTINCT production_factory_id)
       comment: "Number of unique production factories across lines"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_vendor_quote`
 WITH METRICS
@@ -276,6 +278,7 @@ AS $$
       comment: "Number of unique RFQs receiving quotes"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_rfq`
 WITH METRICS
 LANGUAGE YAML
@@ -346,10 +349,10 @@ AS $$
       expr: SUM(CAST(awarded_quote_amount AS DOUBLE))
       comment: "Total value of awarded quotes"
     - name: "awarded_rfq_count"
-      expr: SUM(CASE WHEN awarded_vendor_id IS NOT NULL THEN 1 ELSE 0 END)
+      expr: SUM(CASE WHEN vendor_id IS NOT NULL THEN 1 ELSE 0 END)
       comment: "Count of RFQs that have been awarded"
     - name: "rfq_award_rate_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN awarded_vendor_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      expr: ROUND(100.0 * SUM(CASE WHEN vendor_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of RFQs that have been awarded - measures sourcing decision velocity"
     - name: "cost_savings_pct"
       expr: ROUND(100.0 * (SUM(CAST(target_cost AS DOUBLE)) - SUM(CAST(awarded_quote_amount AS DOUBLE))) / NULLIF(SUM(CAST(target_cost AS DOUBLE)), 0), 2)
@@ -364,9 +367,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN sustainability_requirement IS NOT NULL AND sustainability_requirement != '' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of RFQs with sustainability requirements - tracks sustainable sourcing commitment"
     - name: "distinct_awarded_vendor_count"
-      expr: COUNT(DISTINCT awarded_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors awarded RFQs"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_agreement`
 WITH METRICS
@@ -469,6 +473,7 @@ AS $$
       comment: "Number of unique vendors with agreements"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_sample_evaluation`
 WITH METRICS
 LANGUAGE YAML
@@ -554,6 +559,7 @@ AS $$
       expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique evaluators"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_tna_milestone`
 WITH METRICS
@@ -652,6 +658,7 @@ AS $$
       expr: COUNT(DISTINCT sourcing_purchase_order_id)
       comment: "Number of unique purchase orders tracked in TNA"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_vendor_cost_quote`
 WITH METRICS

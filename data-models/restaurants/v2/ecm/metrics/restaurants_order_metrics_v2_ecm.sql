@@ -79,16 +79,16 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_lto = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of orders that included an LTO item. Directly measures promotional campaign effectiveness."
     - name: "loyalty_orders"
-      expr: COUNT(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 END)
+      expr: COUNT(CASE WHEN member_id IS NOT NULL THEN 1 END)
       comment: "Number of orders placed by loyalty program members. Tracks loyalty program engagement and its contribution to order volume."
     - name: "loyalty_attach_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      expr: ROUND(100.0 * COUNT(CASE WHEN member_id IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of orders linked to a loyalty member. Measures loyalty program penetration across total order volume."
     - name: "distinct_guests"
-      expr: COUNT(DISTINCT guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique guests placing orders. Used to distinguish volume growth from guest frequency growth."
     - name: "revenue_per_guest"
-      expr: ROUND(SUM(CAST(total_amount AS DOUBLE)) / NULLIF(COUNT(DISTINCT guest_profile_id), 0), 2)
+      expr: ROUND(SUM(CAST(total_amount AS DOUBLE)) / NULLIF(COUNT(DISTINCT profile_id), 0), 2)
       comment: "Average revenue generated per unique guest. Measures guest monetization and lifetime value contribution per visit cycle."
     - name: "discount_to_revenue_pct"
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
@@ -97,6 +97,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(tip_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_amount AS DOUBLE)), 0), 2)
       comment: "Tips as a percentage of gross revenue. Benchmarks service quality and gratuity culture across channels and units."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_item`
 WITH METRICS
@@ -199,6 +200,7 @@ AS $$
       comment: "Item-level discount as a percentage of gross revenue. Measures promotional cost burden at the item level."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -288,6 +290,7 @@ AS $$
       comment: "Interchange fees as a percentage of applied payment amount. Measures payment processing cost efficiency."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_refund`
 WITH METRICS
 LANGUAGE YAML
@@ -364,6 +367,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN nps_survey_sent = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of refunds where an NPS survey was sent. Measures completeness of guest recovery follow-up."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_drive_thru_event`
 WITH METRICS
@@ -448,6 +452,7 @@ AS $$
       comment: "Percentage of drive-thru events meeting or beating the SOS target. Primary brand SOS compliance KPI."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_kds_ticket`
 WITH METRICS
 LANGUAGE YAML
@@ -506,6 +511,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN void_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of KDS tickets that were voided. Measures order accuracy and kitchen operational quality."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_discount`
 WITH METRICS
@@ -584,6 +590,7 @@ AS $$
       comment: "Total discount as a percentage of original price. Measures the effective discount depth across all promotional activity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_delivery_order`
 WITH METRICS
 LANGUAGE YAML
@@ -646,6 +653,7 @@ AS $$
       comment: "Percentage of delivery orders fulfilled contactlessly. Measures contactless adoption and safety compliance."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_ingredient_usage`
 WITH METRICS
 LANGUAGE YAML
@@ -692,6 +700,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN waste_flag = TRUE THEN CAST(unit_cost AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(unit_cost AS DOUBLE)), 0), 2)
       comment: "Waste cost as a percentage of total ingredient cost. Measures the financial burden of waste on food cost."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`order_catering_order`
 WITH METRICS

@@ -80,6 +80,7 @@ AS $$
       comment: "Number of programs that have received competent person sign-off — governance completeness KPI for JORC/NI 43-101 compliance."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_drill_hole`
 WITH METRICS
 LANGUAGE YAML
@@ -151,6 +152,7 @@ AS $$
       comment: "Average absolute deviation between actual and planned depth in metres — program execution accuracy KPI; persistent deviations indicate contractor performance issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_expenditure`
 WITH METRICS
 LANGUAGE YAML
@@ -209,9 +211,10 @@ AS $$
       expr: COUNT(DISTINCT drill_program_id)
       comment: "Number of distinct drill programs with recorded expenditure — portfolio breadth KPI used to assess capital deployment across the exploration pipeline."
     - name: "distinct_licences_with_spend"
-      expr: COUNT(DISTINCT exploration_licence_id)
+      expr: COUNT(DISTINCT licence_id)
       comment: "Number of distinct exploration licences with recorded expenditure — used to verify statutory spend obligations are being met across the licence portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_resource_estimate`
 WITH METRICS
@@ -287,6 +290,7 @@ AS $$
       comment: "Number of distinct prospects with at least one resource estimate — exploration pipeline breadth KPI used in portfolio reviews."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_ore_reserve`
 WITH METRICS
 LANGUAGE YAML
@@ -358,6 +362,7 @@ AS $$
       comment: "Total number of ore reserve declarations — portfolio breadth KPI for board and investor reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_prospect`
 WITH METRICS
 LANGUAGE YAML
@@ -426,6 +431,7 @@ AS $$
       comment: "Average cut-off grade applied across prospects — economic threshold KPI; rising cut-off grades reduce the economic resource base."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_sample`
 WITH METRICS
 LANGUAGE YAML
@@ -491,6 +497,7 @@ AS $$
       comment: "Number of QAQC samples (standards, blanks, duplicates) submitted — data quality governance KPI; JORC requires minimum QAQC insertion rates."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_licence`
 WITH METRICS
 LANGUAGE YAML
@@ -553,6 +560,7 @@ AS $$
       comment: "Average licence area in square kilometres — portfolio composition KPI used to benchmark licence sizes against industry norms."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_survey`
 WITH METRICS
 LANGUAGE YAML
@@ -611,6 +619,7 @@ AS $$
       expr: COUNT(DISTINCT prospect_id)
       comment: "Number of distinct prospects covered by surveys — exploration coverage KPI used to identify prospects lacking geophysical data."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_drill_hole_survey`
 WITH METRICS

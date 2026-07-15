@@ -32,6 +32,7 @@ AS $$
       comment: "Number of point transactions."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`loyalty_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -72,6 +73,7 @@ AS $$
       expr: COUNT(DISTINCT membership_id)
       comment: "Unique members who redeemed."
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`loyalty_membership`
 WITH METRICS
@@ -114,6 +116,7 @@ AS $$
       comment: "Number of unique households represented."
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`loyalty_engagement_event`
 WITH METRICS
 LANGUAGE YAML
@@ -151,6 +154,6 @@ AS $$
       expr: COUNT(DISTINCT membership_id)
       comment: "Unique members generating events."
     - name: "distinct_shoppers"
-      expr: COUNT(DISTINCT primary_engagement_shopper_id)
+      expr: COUNT(DISTINCT shopper_id)
       comment: "Unique shoppers involved in events."
 $$;
