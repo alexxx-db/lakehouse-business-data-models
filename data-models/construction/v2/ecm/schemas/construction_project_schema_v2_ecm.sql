@@ -821,11 +821,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`site` (
     CONSTRAINT pk_site PRIMARY KEY(`project_site_assignment_id`)
 ) COMMENT 'Master reference table for site. Referenced by site_id.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`site` (
-    `site_id` BIGINT COMMENT '',
-    CONSTRAINT pk_site PRIMARY KEY(`site_id`)
-) COMMENT '';
-
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ADD CONSTRAINT `fk_project_wbs_element_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ADD CONSTRAINT `fk_project_wbs_element_parent_wbs_element_id` FOREIGN KEY (`parent_wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
