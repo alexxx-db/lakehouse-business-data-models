@@ -40,13 +40,19 @@ Install any model into Unity Catalog — catalog, schemas, tables, foreign keys,
 
 ### Widgets
 
+The installer shows seven widgets, in order:
+
 | Widget | Default | Purpose |
 |---|---|---|
-| `model` | — | Industry to install (pre-loaded with all 40). |
+| `model` | — | Industry to install (pre-loaded with all 40). Defaults to a placeholder so you choose an industry explicitly. |
 | `model_size` | `mvm` | `mvm` (demo-ready subset) or `ecm` (full coverage). The installer always resolves the **latest** version (`v2/`, `v3/`, …) automatically. |
-| `catalog_name` | industry name | Target Unity Catalog catalog. |
+| `catalog_name` | industry name | Base target Unity Catalog catalog. For the multi-catalog styles it also hosts the shared `_metrics` schema. |
+| `cataloging_style` | `One Catalog` | How schemas map to catalogs: `One Catalog` (everything in `catalog_name`), `Catalog per Division` (one catalog per operations/business/corporate division), or `Catalog per Domain` (one catalog per domain). |
+| `catalog_prefix` | — | Optional prefix for the satellite catalogs created by the multi-catalog styles. Defaults to `cat_` when a multi-catalog style is chosen and both prefix and suffix are left blank. |
+| `catalog_suffix` | — | Optional suffix for the satellite catalogs created by the multi-catalog styles. |
 | `local_install` | — | Optional workspace/Volume folder path. If set, the installer reads model files from there instead of fetching from this repo (useful for installing a pinned/older version offline). |
-| `session_id` | — | Leave blank to use the job launcher. The launched job sets this automatically to run the install in-place. |
+
+Advanced settings are not shown as widgets and use built-in defaults forwarded to the launched job automatically: 32 threads × 20-statement batches (the measured serverless optimum), metric views on, and source = this repo. `session_id` is job-injected — leave it blank on an interactive run and the notebook launches the install as a Databricks job that sets it automatically to run the install in-place.
 
 The launched job tags itself (prefix `dbx_vibe_agent_installer_`) with the `industry`, `size`, `version`, and final install `duration`. See [`model-installer/`](./model-installer/) for full notebook documentation.
 
@@ -312,7 +318,7 @@ Click an industry name to jump to its folder.
 
 ## Known limitations
 
-- **Some Metric Views will fail.** During generation, the agent confuses some column names in Metric Views and you might get installation errors, fixing these errors should be very simple by using the correct column names.
+- **Metric views install cleanly.** An earlier generation confused some column names in a handful of metric views, which caused occasional install errors. Every affected reference has been corrected against the physical schema — column renames, two source-schema corrections, and one nested-aggregate rewrite — with no views dropped. All 80 models now install with zero metric-view errors, validated end-to-end against live catalogs across all 40 ECMs and 40 MVMs.
 - **Sample data is synthetic.** The agent generates plausible-looking values, but never use them as ground truth for analytics; replace with real ingestion before going to production.
 - **27 ECMs have cross-domain duplicate product names** (e.g. `party` shared across 4 domains in `payments_fintech/v1/ecm`). These are usually legitimate shared lookups but a future agent version may consolidate them under a single owning domain. **All 40 MVMs are clean of this.**
 - **4 ECMs have one siloed product each** (`finance.ledger` in `education`, `facility.organization` in `healthcare`, `program.program` in `ngo`, `marine.pilotage_exemption` in `shipping_ports`). These are legitimate top-level reference entities that the agent didn't link out from. **All 40 MVMs are silo-free.**
