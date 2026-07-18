@@ -618,7 +618,7 @@ AS $$
       expr: YEAR(wealth_screening_date)
       comment: "Year of screening for data freshness analysis and refresh cycle planning."
     - name: "net_worth_range"
-      expr: net_worth_range
+      expr: "CASE WHEN estimated_net_worth IS NULL THEN 'Unknown' WHEN CAST(estimated_net_worth AS DOUBLE) >= 10000000 THEN '$10M+' WHEN CAST(estimated_net_worth AS DOUBLE) >= 1000000 THEN '$1M-$10M' WHEN CAST(estimated_net_worth AS DOUBLE) >= 100000 THEN '$100K-$1M' ELSE 'Under $100K' END"
       comment: "Net worth range band for prospect pool capacity distribution analysis."
   measures:
     - name: "total_screening_count"
