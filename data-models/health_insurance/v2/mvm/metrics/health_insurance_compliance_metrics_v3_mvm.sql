@@ -541,7 +541,7 @@ AS $$
       expr: accreditation_program_status
       comment: "Current status of accreditation program (active, pending, expired, suspended)"
     - name: "level"
-      expr: level
+      expr: accreditation_program_level
       comment: "Accreditation level achieved (excellent, commendable, accredited, provisional)"
     - name: "rating"
       expr: rating

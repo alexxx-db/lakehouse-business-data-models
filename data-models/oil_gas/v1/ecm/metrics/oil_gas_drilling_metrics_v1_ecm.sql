@@ -35,6 +35,7 @@ AS $$
       comment: "Count of AFEs that exceeded their budget"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_daily_drilling_report`
 WITH METRICS
 LANGUAGE YAML
@@ -76,6 +77,7 @@ AS $$
       comment: "Average weight on bit in kilo‑pounds"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_bit_run`
 WITH METRICS
 LANGUAGE YAML
@@ -90,8 +92,8 @@ AS $$
     - name: "equipment_id"
       expr: equipment_id
       comment: "Equipment (e.g., top drive) used"
-    - name: "reservoir_zone_id"
-      expr: reservoir_zone_id
+    - name: "zone_id"
+      expr: zone_id
       comment: "Reservoir zone targeted"
     - name: "run_number"
       expr: run_number
@@ -113,6 +115,7 @@ AS $$
       expr: AVG(CAST(average_flow_rate_gpm AS DOUBLE))
       comment: "Average drilling fluid flow rate in gallons per minute"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_wellbore`
 WITH METRICS
@@ -149,6 +152,7 @@ AS $$
       comment: "Average true vertical depth in meters"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_stimulation_job`
 WITH METRICS
 LANGUAGE YAML
@@ -163,8 +167,8 @@ AS $$
     - name: "stimulation_type"
       expr: stimulation_type
       comment: "Type of stimulation (e.g., Fracture, Acidizing)"
-    - name: "reservoir_zone_id"
-      expr: reservoir_zone_id
+    - name: "zone_id"
+      expr: zone_id
       comment: "Target reservoir zone"
     - name: "job_date"
       expr: job_date

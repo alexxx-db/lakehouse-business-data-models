@@ -32,6 +32,7 @@ AS $$
       comment: "Number of journal entry records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_gl_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -69,6 +70,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of GL balance records"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_account_reconciliation`
 WITH METRICS
@@ -108,6 +110,7 @@ AS $$
       comment: "Number of reconciliation records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_revenue_recognition_event`
 WITH METRICS
 LANGUAGE YAML
@@ -143,6 +146,7 @@ AS $$
       comment: "Number of revenue recognition events"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_payable`
 WITH METRICS
 LANGUAGE YAML
@@ -154,8 +158,8 @@ AS $$
     - name: "legal_entity_id"
       expr: legal_entity_id
       comment: "Legal entity responsible for the payable"
-    - name: "vendor_party_id"
-      expr: vendor_party_id
+    - name: "party_id"
+      expr: party_id
       comment: "Vendor party identifier"
     - name: "payment_method"
       expr: payment_method
@@ -184,6 +188,7 @@ AS $$
       comment: "Number of payable records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`ledger_receivable`
 WITH METRICS
 LANGUAGE YAML
@@ -195,8 +200,8 @@ AS $$
     - name: "legal_entity_id"
       expr: legal_entity_id
       comment: "Legal entity owning the receivable"
-    - name: "customer_party_id"
-      expr: customer_party_id
+    - name: "party_id"
+      expr: party_id
       comment: "Customer party identifier"
     - name: "payment_method"
       expr: payment_method

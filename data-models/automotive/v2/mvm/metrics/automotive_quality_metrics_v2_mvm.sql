@@ -364,7 +364,7 @@ AS $$
       expr: root_cause_analysis_type
       comment: "Type of root cause analysis method (5-Why, Fishbone, FMEA, 8D)"
     - name: "category"
-      expr: category
+      expr: root_cause_analysis_category
       comment: "Category of root cause (material, method, machine, manpower, environment)"
     - name: "severity_level"
       expr: severity_level
@@ -413,6 +413,6 @@ AS $$
       expr: COUNT(DISTINCT defect_record_id)
       comment: "Number of distinct defect records analyzed"
     - name: "unique_root_cause_categories"
-      expr: COUNT(DISTINCT category)
+      expr: COUNT(DISTINCT root_cause_analysis_category)
       comment: "Number of distinct root cause categories identified"
 $$;

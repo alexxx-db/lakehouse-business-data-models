@@ -297,17 +297,17 @@ AS $$
   source: "`vibe_health_insurance_v1`.`pharmacy`.`formulary`"
   dimensions:
     - name: "Category"
-      expr: category
+      expr: formulary_category
     - name: "Change Notification Date"
       expr: change_notification_date
     - name: "Cms Formulary Code"
       expr: cms_formulary_code
     - name: "Code"
-      expr: code
+      expr: formulary_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: formulary_description
     - name: "Drug Count"
       expr: drug_count
     - name: "Drug Utilization Review Ind"

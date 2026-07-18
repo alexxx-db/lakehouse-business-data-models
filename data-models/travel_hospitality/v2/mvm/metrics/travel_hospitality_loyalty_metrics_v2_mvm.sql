@@ -35,8 +35,8 @@ AS $$
     - name: "tier_expiration_month"
       expr: DATE_TRUNC('MONTH', tier_expiration_date)
       comment: "Month when the member's tier status expires. Enables proactive retention campaigns before tier downgrade."
-    - name: "member_enrollment_hotel_property_id"
-      expr: member_enrollment_hotel_property_id
+    - name: "property_id"
+      expr: property_id
       comment: "Property where the member enrolled. Identifies top enrollment-generating properties."
   measures:
     - name: "total_active_members"
@@ -94,6 +94,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN email_opt_in = TRUE THEN member_id END) / NULLIF(COUNT(member_id), 0), 2)
       comment: "Percentage of members opted into email communications. Informs email channel capacity for loyalty marketing campaigns."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_points_ledger`
 WITH METRICS
@@ -175,6 +176,7 @@ AS $$
       comment: "Effective points earned per unit of qualifying spend. Measures actual earning rate vs. program design — deviations signal rule misapplication or fraud."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -249,6 +251,7 @@ AS $$
       comment: "Effective monetary value delivered per point redeemed. Measures the real-world value of the loyalty currency — critical for program economics and liability valuation."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_promotion`
 WITH METRICS
 LANGUAGE YAML
@@ -317,6 +320,7 @@ AS $$
       comment: "Count of currently active promotions. Measures live promotional exposure and concurrent campaign load on the program."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_benefit_entitlement`
 WITH METRICS
 LANGUAGE YAML
@@ -378,6 +382,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN entitlement_status = 'Revoked' THEN benefit_entitlement_id END) / NULLIF(COUNT(benefit_entitlement_id), 0), 2)
       comment: "Percentage of benefits that were revoked. Elevated revocation rates may signal fraud, policy violations, or operational errors requiring investigation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`loyalty_accrual_rule`
 WITH METRICS

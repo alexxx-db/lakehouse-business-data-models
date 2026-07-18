@@ -106,7 +106,7 @@ AS $$
   source: "`grocery_ecm`.`finance`.`payment_run`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: payment_run_status
       comment: "Current status of the payment run"
     - name: "payment_method"
       expr: payment_method

@@ -56,6 +56,7 @@ AS $$
       comment: "Total target impressions across campaigns for reach planning"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_campaign_flight`
 WITH METRICS
 LANGUAGE YAML
@@ -127,6 +128,7 @@ AS $$
       comment: "Total budget variance (budget minus actual spend) for financial control"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_lead`
 WITH METRICS
 LANGUAGE YAML
@@ -182,10 +184,10 @@ AS $$
       expr: COUNT(DISTINCT lead_id)
       comment: "Count of unique leads excluding duplicates"
     - name: "converted_leads"
-      expr: COUNT(DISTINCT CASE WHEN converted_investor_id IS NOT NULL THEN lead_id END)
+      expr: COUNT(DISTINCT CASE WHEN investor_id IS NOT NULL THEN lead_id END)
       comment: "Number of leads that converted to investors"
     - name: "lead_conversion_rate"
-      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN converted_investor_id IS NOT NULL THEN lead_id END) / NULLIF(COUNT(DISTINCT lead_id), 0), 2)
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN investor_id IS NOT NULL THEN lead_id END) / NULLIF(COUNT(DISTINCT lead_id), 0), 2)
       comment: "Percentage of leads that converted to investors - critical sales effectiveness metric"
     - name: "avg_budget_max"
       expr: AVG(CAST(budget_max AS DOUBLE))
@@ -197,6 +199,7 @@ AS $$
       expr: SUM(CAST(budget_max AS DOUBLE))
       comment: "Total maximum budget potential across all leads for pipeline value estimation"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_lead_activity`
 WITH METRICS
@@ -266,6 +269,7 @@ AS $$
       comment: "Average attribution weight per activity"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_event`
 WITH METRICS
 LANGUAGE YAML
@@ -324,6 +328,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(total_event_cost AS DOUBLE)) / NULLIF(SUM(CAST(budgeted_cost AS DOUBLE)), 0), 2)
       comment: "Percentage of budgeted cost actually spent - event cost control metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_listing_syndication`
 WITH METRICS
@@ -401,6 +406,7 @@ AS $$
       expr: AVG(CAST(asking_rent_psf AS DOUBLE))
       comment: "Average asking rent per square foot across syndicated listings"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`marketing_market_survey`
 WITH METRICS

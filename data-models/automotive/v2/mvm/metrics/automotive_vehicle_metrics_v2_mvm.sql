@@ -169,7 +169,7 @@ AS $$
       expr: authority_name
       comment: "Regulatory authority granting approval"
     - name: "category"
-      expr: category
+      expr: homologation_category
       comment: "Homologation category"
     - name: "regulatory_framework"
       expr: regulatory_framework
@@ -284,7 +284,7 @@ AS $$
       expr: brand_name
       comment: "Brand name"
     - name: "model_name"
-      expr: name
+      expr: model_name
       comment: "Model name"
     - name: "body_style"
       expr: body_style
@@ -497,10 +497,10 @@ AS $$
   source: "`vibe_automotive_v1`.`vehicle`.`platform`"
   dimensions:
     - name: "platform_name"
-      expr: name
+      expr: platform_name
       comment: "Platform name"
     - name: "platform_code"
-      expr: code
+      expr: platform_code
       comment: "Platform code"
     - name: "platform_type"
       expr: platform_type

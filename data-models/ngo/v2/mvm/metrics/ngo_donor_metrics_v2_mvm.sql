@@ -61,7 +61,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of gifts received. Baseline volume metric for fundraising throughput and donor engagement tracking."
     - name: "unique_donor_count"
-      expr: COUNT(DISTINCT primary_gift_constituent_id)
+      expr: COUNT(DISTINCT constituent_id)
       comment: "Number of unique donors who made a gift. Core donor base metric used to track donor acquisition, retention, and breadth of support."
     - name: "avg_gift_amount"
       expr: AVG(CAST(amount AS DOUBLE))
@@ -79,6 +79,7 @@ AS $$
       expr: SUM(CASE WHEN refund_flag = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
       comment: "Total value of refunded gifts. Quantifies revenue at risk from reversals and informs donor relations interventions."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_pledge`
 WITH METRICS
@@ -151,6 +152,7 @@ AS $$
       comment: "Sum of most recent installment payments received. Provides a near-term cash receipts indicator for treasury management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
       comment: "Number of currently active campaigns. Measures operational fundraising pipeline depth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_constituent`
 WITH METRICS
@@ -293,6 +296,7 @@ AS $$
       comment: "Number of constituents with valid GDPR consent. Critical compliance metric for EU donor engagement and regulatory risk management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_prospect`
 WITH METRICS
 LANGUAGE YAML
@@ -358,6 +362,7 @@ AS $$
       comment: "Total upper-bound gift potential across all prospects. Provides a ceiling estimate for the major gift pipeline value."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_appeal`
 WITH METRICS
 LANGUAGE YAML
@@ -417,6 +422,7 @@ AS $$
       comment: "Total number of appeals executed. Baseline metric for solicitation program scale and channel activity volume."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_fundraising_event`
 WITH METRICS
 LANGUAGE YAML
@@ -472,6 +478,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of fundraising events. Baseline metric for events program scale and portfolio breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_stewardship_activity`
 WITH METRICS
@@ -543,6 +550,7 @@ AS $$
       expr: AVG(CAST(cost_amount AS DOUBLE))
       comment: "Average cost per stewardship activity. Benchmarks stewardship efficiency and informs budget allocation across activity types."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_fund`
 WITH METRICS

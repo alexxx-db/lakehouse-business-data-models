@@ -110,6 +110,7 @@ AS $$
       comment: "Number of claims involving dangerous goods shipments"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`claim_settlement`
 WITH METRICS
 LANGUAGE YAML
@@ -213,6 +214,7 @@ AS $$
       expr: COUNT(CASE WHEN dangerous_goods_flag = TRUE THEN 1 END)
       comment: "Number of settlements involving dangerous goods"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`claim_reserve`
 WITH METRICS
@@ -324,6 +326,7 @@ AS $$
       comment: "Number of reserves involving dangerous goods"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`claim_cargo_survey`
 WITH METRICS
 LANGUAGE YAML
@@ -424,7 +427,7 @@ AS $$
       expr: COUNT(DISTINCT cargo_claim_id)
       comment: "Number of unique claims with surveys conducted"
     - name: "distinct_survey_agents"
-      expr: COUNT(DISTINCT survey_agent_id)
+      expr: COUNT(DISTINCT agent_id)
       comment: "Number of unique survey agents engaged"
     - name: "distinct_customers"
       expr: COUNT(DISTINCT customer_account_id)
@@ -442,6 +445,7 @@ AS $$
       expr: COUNT(CASE WHEN is_dangerous_goods = TRUE THEN 1 END)
       comment: "Number of surveys involving dangerous goods"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`claim_liability_determination`
 WITH METRICS
@@ -558,6 +562,7 @@ AS $$
       expr: COUNT(CASE WHEN dangerous_goods_flag = TRUE THEN 1 END)
       comment: "Number of determinations involving dangerous goods"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`claim_policy`
 WITH METRICS

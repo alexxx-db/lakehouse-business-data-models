@@ -95,6 +95,7 @@ AS $$
       comment: "Number of unique registers used"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_pos_transaction_line`
 WITH METRICS
 LANGUAGE YAML
@@ -183,6 +184,7 @@ AS $$
       expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique stores with sales"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_daily_sales_summary`
 WITH METRICS
@@ -285,6 +287,7 @@ AS $$
       comment: "Number of unique stores reporting"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_return_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -364,9 +367,10 @@ AS $$
       expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique stores processing returns"
     - name: "unique_skus_returned"
-      expr: COUNT(DISTINCT primary_return_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs returned"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_bopis_order`
 WITH METRICS
@@ -429,9 +433,10 @@ AS $$
       expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique stores fulfilling BOPIS orders"
     - name: "unique_pickers"
-      expr: COUNT(DISTINCT primary_bopis_pick_associate_id)
+      expr: COUNT(DISTINCT associate_id)
       comment: "Number of unique associates picking BOPIS orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_ship_from_store`
 WITH METRICS
@@ -525,6 +530,7 @@ AS $$
       comment: "Number of unique SKUs shipped from store"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_shrinkage_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -599,6 +605,7 @@ AS $$
       comment: "Number of unique SKUs involved in shrinkage"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_cycle_count`
 WITH METRICS
 LANGUAGE YAML
@@ -669,6 +676,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs counted"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_retail_store`
 WITH METRICS
@@ -743,6 +751,7 @@ AS $$
       expr: COUNT(DISTINCT store_cluster_id)
       comment: "Number of unique store clusters"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_traffic_count`
 WITH METRICS
@@ -830,6 +839,7 @@ AS $$
       comment: "Number of unique stores with traffic counts"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`store_shift`
 WITH METRICS
 LANGUAGE YAML
@@ -900,7 +910,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN no_show_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "No-show rate as percentage of scheduled shifts"
     - name: "unique_associates"
-      expr: COUNT(DISTINCT shift_associate_id)
+      expr: COUNT(DISTINCT associate_id)
       comment: "Number of unique associates working shifts"
     - name: "unique_stores"
       expr: COUNT(DISTINCT retail_store_id)

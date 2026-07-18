@@ -79,7 +79,7 @@ AS $$
       expr: technology
       comment: "Underlying technology of the circuit (e.g., Ethernet, MPLS)"
     - name: "status"
-      expr: status
+      expr: circuit_status
       comment: "Operational status of the circuit"
     - name: "activation_year"
       expr: DATE_TRUNC('year', activation_date)

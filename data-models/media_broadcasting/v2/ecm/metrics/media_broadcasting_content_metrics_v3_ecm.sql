@@ -648,7 +648,7 @@ LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "NOTE: Per VREQ-037, content.billing_line is designated for migration to the billing domain. This minimal metric view is provided for current-state tracking. Tracks billing line records by cost center allocation. Used by finance teams for cost attribution and financial reporting."
-  source: "`vibe_media_broadcasting_v1`.`content`.`billing_line`"
+  source: "`vibe_media_broadcasting_v1`.`billing`.`billing_line`"
   dimensions:
     - name: "finance_cost_center_id"
       expr: finance_cost_center_id

@@ -14,8 +14,8 @@ AS $$
     - name: "calculation_timestamp"
       expr: calculation_timestamp
       comment: "Timestamp when the ATC calculation was performed"
-    - name: "primary_atc_path_id"
-      expr: primary_atc_path_id
+    - name: "path_id"
+      expr: path_id
       comment: "Identifier of the primary transmission path for the ATC"
   measures:
     - name: "total_firm_atc_mw"
@@ -31,6 +31,7 @@ AS $$
       expr: MAX(CAST(atc_mw AS DOUBLE))
       comment: "Maximum ATC (MW) observed"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_congestion_event`
 WITH METRICS
@@ -67,6 +68,7 @@ AS $$
       comment: "Average LMP differential (USD/MWh) across events"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_outage`
 WITH METRICS
 LANGUAGE YAML
@@ -102,6 +104,7 @@ AS $$
       comment: "Average estimated repair cost per outage (USD)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_service_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -136,6 +139,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of active service agreements"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_power_transformer`
 WITH METRICS

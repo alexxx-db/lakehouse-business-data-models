@@ -23,8 +23,8 @@ AS $$
     - name: "schedule_interval_end_timestamp"
       expr: schedule_interval_end_timestamp
       comment: "End of the dispatch interval"
-    - name: "primary_generating_unit_id"
-      expr: primary_generating_unit_id
+    - name: "generating_unit_id"
+      expr: generating_unit_id
       comment: "Primary generating unit associated with the schedule"
   measures:
     - name: "total_actual_output_mw"
@@ -40,6 +40,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of dispatch schedule records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`generation_capacity_plan`
 WITH METRICS
@@ -58,8 +59,8 @@ AS $$
     - name: "control_area_id"
       expr: control_area_id
       comment: "Control area associated with the plan"
-    - name: "primary_capacity_power_plant_id"
-      expr: primary_capacity_power_plant_id
+    - name: "power_plant_id"
+      expr: power_plant_id
       comment: "Primary power plant for the capacity plan"
     - name: "plan_name"
       expr: plan_name
@@ -85,6 +86,7 @@ AS $$
       comment: "Number of capacity plan records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`generation_emissions_reading`
 WITH METRICS
 LANGUAGE YAML
@@ -99,8 +101,8 @@ AS $$
     - name: "power_plant_id"
       expr: power_plant_id
       comment: "Power plant identifier"
-    - name: "primary_generating_unit_id"
-      expr: primary_generating_unit_id
+    - name: "generating_unit_id"
+      expr: generating_unit_id
       comment: "Generating unit linked to the reading"
     - name: "reporting_year"
       expr: reporting_year
@@ -125,6 +127,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of emissions reading records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`generation_fuel_contract`
 WITH METRICS
@@ -160,6 +163,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of fuel contract records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`generation_output_telemetry`
 WITH METRICS

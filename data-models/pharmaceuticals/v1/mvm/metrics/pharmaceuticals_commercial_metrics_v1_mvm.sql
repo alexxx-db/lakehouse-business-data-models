@@ -65,6 +65,7 @@ AS $$
       comment: "Count of performance records in the selected period and cohort. Used to validate data completeness and coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_sales_order`
 WITH METRICS
 LANGUAGE YAML
@@ -132,6 +133,7 @@ AS $$
       expr: COUNT(CASE WHEN order_status = 'Cancelled' THEN 1 END)
       comment: "Count of cancelled orders. Elevated cancellation rates signal supply, pricing, or customer satisfaction issues requiring intervention."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_call_activity`
 WITH METRICS
@@ -204,6 +206,7 @@ AS $$
       comment: "Number of distinct HCPs reached. Measures breadth of promotional reach and targeting coverage against the target list."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_copay_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -268,9 +271,10 @@ AS $$
       expr: COUNT(DISTINCT patient_id)
       comment: "Number of distinct patients who redeemed copay benefits. Measures program reach and patient access breadth."
     - name: "unique_prescribers"
-      expr: COUNT(DISTINCT prescriber_master_id)
+      expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct prescribers whose patients used the copay program. Indicates HCP adoption and prescribing confidence supported by patient access programs."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_kol_engagement`
 WITH METRICS
@@ -331,6 +335,7 @@ AS $$
       comment: "Number of distinct KOLs engaged. Measures breadth of scientific network activation and relationship portfolio health."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_brand_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -386,6 +391,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of brand plans. Portfolio breadth metric for commercial operations planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_hcp_target`
 WITH METRICS
@@ -449,6 +455,7 @@ AS $$
       comment: "Average planned face-to-face call mix percentage across targets. Informs channel strategy and field force deployment model decisions."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_mlr_review`
 WITH METRICS
 LANGUAGE YAML
@@ -511,6 +518,7 @@ AS $$
       comment: "Number of distinct brands with active MLR submissions. Measures breadth of promotional activity requiring compliance oversight."
 $$;
 
+
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_psp_enrollment`
 WITH METRICS
 LANGUAGE YAML
@@ -569,6 +577,7 @@ AS $$
       expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct HCPs whose patients are enrolled. Indicates HCP adoption of patient support programs and prescribing confidence."
 $$;
+
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`commercial_sample_management`
 WITH METRICS

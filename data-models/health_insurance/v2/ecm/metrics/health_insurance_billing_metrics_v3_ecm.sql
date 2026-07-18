@@ -70,7 +70,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_premium_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of total premium reduced by discounts"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members invoiced"
     - name: "distinct_group_count"
       expr: COUNT(DISTINCT group_id)
@@ -79,6 +79,7 @@ AS $$
       expr: COUNT(DISTINCT health_plan_id)
       comment: "Distinct count of health plans invoiced"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_premium_payment`
 WITH METRICS
@@ -153,7 +154,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(unapplied_amount AS DOUBLE)) / NULLIF(SUM(CAST(payment_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of payment amount not yet allocated to invoices"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members making payments"
     - name: "distinct_group_count"
       expr: COUNT(DISTINCT group_id)
@@ -162,6 +163,7 @@ AS $$
       expr: COUNT(DISTINCT premium_invoice_id)
       comment: "Distinct count of invoices receiving payments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_premium_reconciliation`
 WITH METRICS
@@ -227,7 +229,7 @@ AS $$
       expr: AVG(CAST(variance_amount AS DOUBLE))
       comment: "Average variance amount per reconciliation"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members included in reconciliation"
     - name: "distinct_group_count"
       expr: COUNT(DISTINCT group_id)
@@ -236,6 +238,7 @@ AS $$
       expr: COUNT(DISTINCT health_plan_id)
       comment: "Distinct count of health plans included in reconciliation"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_collection_case`
 WITH METRICS
@@ -292,12 +295,13 @@ AS $$
       expr: ROUND(100.0 * (SUM(CAST(delinquent_amount AS DOUBLE)) - SUM(CAST(net_amount_due AS DOUBLE))) / NULLIF(SUM(CAST(delinquent_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of delinquent amount recovered"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with collection cases"
     - name: "distinct_case_owner_count"
-      expr: COUNT(DISTINCT case_owner_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Distinct count of employees managing collection cases"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_mlr_rebate`
 WITH METRICS
@@ -364,6 +368,7 @@ AS $$
       comment: "Distinct count of health plans with MLR rebate calculations"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_cobra_billing`
 WITH METRICS
 LANGUAGE YAML
@@ -422,7 +427,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(admin_fee_amount AS DOUBLE)) / NULLIF(SUM(CAST(premium_amount AS DOUBLE)), 0), 2)
       comment: "Administrative fee as percentage of premium"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with COBRA billing"
     - name: "distinct_group_count"
       expr: COUNT(DISTINCT group_id)
@@ -431,6 +436,7 @@ AS $$
       expr: COUNT(DISTINCT health_plan_id)
       comment: "Distinct count of health plans with COBRA billing"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_aptc_subsidy`
 WITH METRICS
@@ -481,12 +487,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(ytd_aptc_applied AS DOUBLE)) / NULLIF(SUM(CAST(annual_aptc_cap AS DOUBLE)), 0), 2)
       comment: "Percentage of annual APTC cap utilized year-to-date"
     - name: "distinct_member_count"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members receiving APTC subsidy"
     - name: "distinct_plan_count"
-      expr: COUNT(DISTINCT plan_health_plan_id)
+      expr: COUNT(DISTINCT health_plan_id)
       comment: "Distinct count of health plans with APTC subsidy"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`billing_dispute`
 WITH METRICS
@@ -528,6 +535,6 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Distinct count of vendors involved in billing disputes"
     - name: "distinct_invoice_count"
-      expr: COUNT(DISTINCT related_invoice_premium_invoice_id)
+      expr: COUNT(DISTINCT premium_invoice_id)
       comment: "Distinct count of invoices under dispute"
 $$;

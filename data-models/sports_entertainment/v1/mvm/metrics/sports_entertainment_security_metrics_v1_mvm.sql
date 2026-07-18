@@ -83,6 +83,7 @@ AS $$
       comment: "Number of distinct access zones activated — indicates operational footprint and zone coverage during an event."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -162,9 +163,10 @@ AS $$
       expr: COUNT(DISTINCT venue_id)
       comment: "Number of distinct venues that recorded at least one security incident — used to benchmark venue-level security performance."
     - name: "distinct_fixtures_with_incidents"
-      expr: COUNT(DISTINCT primary_security_event_fixture_id)
+      expr: COUNT(DISTINCT fixture_id)
       comment: "Number of distinct fixtures that recorded at least one security incident — supports event-level risk profiling."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_screening_event`
 WITH METRICS
@@ -243,6 +245,7 @@ AS $$
       comment: "Number of distinct screening checkpoints active during the period — measures operational coverage and checkpoint utilisation."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_credential`
 WITH METRICS
 LANGUAGE YAML
@@ -314,6 +317,7 @@ AS $$
       comment: "Number of distinct issuing authorities in the credential portfolio — measures accreditation source diversity and governance complexity."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_ejection_record`
 WITH METRICS
 LANGUAGE YAML
@@ -384,6 +388,7 @@ AS $$
       expr: COUNT(DISTINCT fixture_id)
       comment: "Number of distinct fixtures recording at least one ejection — used to identify high-risk events for enhanced security deployment."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_emergency_activation`
 WITH METRICS
@@ -458,6 +463,7 @@ AS $$
       expr: COUNT(DISTINCT venue_id)
       comment: "Number of distinct venues that experienced an emergency activation — used to identify venues with elevated safety risk profiles."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`security_credential_assignment`
 WITH METRICS

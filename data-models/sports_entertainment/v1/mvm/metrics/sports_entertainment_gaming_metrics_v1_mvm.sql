@@ -89,6 +89,7 @@ AS $$
       comment: "Number of wagers flagged under responsible-gaming controls. Compliance KPI for regulatory reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_payout`
 WITH METRICS
 LANGUAGE YAML
@@ -165,6 +166,7 @@ AS $$
       expr: COUNT(DISTINCT bettor_account_id)
       comment: "Count of distinct bettors receiving payouts. Measures breadth of prize distribution."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_bettor_account`
 WITH METRICS
@@ -245,6 +247,7 @@ AS $$
       expr: COUNT(CASE WHEN w2g_threshold_met = TRUE THEN 1 END)
       comment: "Accounts that have met the IRS W-2G reporting threshold. Drives tax compliance workload planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_contest_entry`
 WITH METRICS
@@ -332,6 +335,7 @@ AS $$
       comment: "Number of entries with W-2G reportable prizes. Drives IRS tax form issuance volume."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_betting_market`
 WITH METRICS
 LANGUAGE YAML
@@ -412,6 +416,7 @@ AS $$
       comment: "Number of futures markets open. Tracks long-duration liability concentration."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_responsible_gaming_limit`
 WITH METRICS
 LANGUAGE YAML
@@ -479,6 +484,7 @@ AS $$
       expr: AVG(CAST(previous_limit_amount AS DOUBLE))
       comment: "Average previous limit amount before the most recent change. Used to quantify magnitude of limit adjustments."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_self_exclusion`
 WITH METRICS
@@ -551,6 +557,7 @@ AS $$
       comment: "Count of distinct players with self-exclusion records. Measures breadth of the excluded population."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_regulatory_report`
 WITH METRICS
 LANGUAGE YAML
@@ -621,6 +628,7 @@ AS $$
       expr: AVG(CAST(ggr_amount AS DOUBLE))
       comment: "Average GGR per regulatory report period. Used for period-over-period revenue benchmarking."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_wallet`
 WITH METRICS
@@ -699,6 +707,7 @@ AS $$
       comment: "Total number of wallets. Baseline metric for player fund account population."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_odds_feed`
 WITH METRICS
 LANGUAGE YAML
@@ -770,6 +779,7 @@ AS $$
       comment: "Number of price-boosted odds records. Measures promotional pricing activity and associated margin cost."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`gaming_fantasy_team`
 WITH METRICS
 LANGUAGE YAML
@@ -825,6 +835,6 @@ AS $$
       expr: SUM(CAST(trades_accepted AS DOUBLE))
       comment: "Total trades accepted across all teams. Measures trade market activity and league engagement depth."
     - name: "unique_managers"
-      expr: COUNT(DISTINCT primary_fantasy_bettor_account_id)
+      expr: COUNT(DISTINCT bettor_account_id)
       comment: "Count of distinct fantasy team managers. Measures unique player participation in fantasy leagues."
 $$;

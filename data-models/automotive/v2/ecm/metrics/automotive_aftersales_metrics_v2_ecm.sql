@@ -79,7 +79,7 @@ AS $$
       expr: COUNT(DISTINCT vin_registry_id)
       comment: "Number of unique vehicles serviced"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT aftersales_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers served"
     - name: "distinct_service_centers"
       expr: COUNT(DISTINCT service_center_id)
@@ -88,6 +88,7 @@ AS $$
       expr: COUNT(DISTINCT technician_id)
       comment: "Number of unique technicians working on repair orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_warranty_claim`
 WITH METRICS
@@ -180,9 +181,10 @@ AS $$
       expr: COUNT(DISTINCT service_center_id)
       comment: "Number of unique service centers submitting warranty claims"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT aftersales_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers with warranty claims"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_campaign`
 WITH METRICS
@@ -281,9 +283,10 @@ AS $$
       expr: COUNT(DISTINCT vehicle_program_id)
       comment: "Number of unique vehicle programs affected by campaigns"
     - name: "distinct_nameplates"
-      expr: COUNT(DISTINCT nameplate_id)
+      expr: COUNT(DISTINCT aftersales_nameplate_id)
       comment: "Number of unique nameplates affected by campaigns"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_center`
 WITH METRICS
@@ -395,6 +398,7 @@ AS $$
       comment: "Number of unique dealerships operating service centers"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_parts_order`
 WITH METRICS
 LANGUAGE YAML
@@ -471,12 +475,13 @@ AS $$
       expr: SUM(CAST(CASE WHEN priority_flag = TRUE THEN 1 ELSE 0 END AS INT))
       comment: "Count of priority parts orders"
     - name: "distinct_dealerships"
-      expr: COUNT(DISTINCT primary_aftersales_dealership_id)
+      expr: COUNT(DISTINCT dealership_id)
       comment: "Number of unique dealerships placing parts orders"
     - name: "distinct_fulfillment_locations"
       expr: COUNT(DISTINCT fulfillment_location_code)
       comment: "Number of unique fulfillment locations serving orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_service_appointment`
 WITH METRICS
@@ -578,7 +583,7 @@ AS $$
       expr: SUM(CAST(CASE WHEN is_repeat_service = TRUE THEN 1 ELSE 0 END AS INT))
       comment: "Count of repeat service appointments for same issue"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT aftersales_customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers with service appointments"
     - name: "distinct_vins"
       expr: COUNT(DISTINCT vin_registry_id)
@@ -587,6 +592,7 @@ AS $$
       expr: COUNT(DISTINCT aftersales_dealership_id)
       comment: "Number of unique dealerships with service appointments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_customer_satisfaction_survey`
 WITH METRICS
@@ -658,7 +664,7 @@ AS $$
       expr: SUM(CAST(CASE WHEN warranty_flag = TRUE THEN 1 ELSE 0 END AS INT))
       comment: "Count of surveys for warranty service"
     - name: "distinct_customers"
-      expr: COUNT(DISTINCT customer_party_id)
+      expr: COUNT(DISTINCT party_id)
       comment: "Number of unique customers who completed surveys"
     - name: "distinct_service_centers"
       expr: COUNT(DISTINCT service_center_id)
@@ -667,6 +673,7 @@ AS $$
       expr: COUNT(DISTINCT aftersales_repair_order_id)
       comment: "Number of unique repair orders associated with surveys"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_technician`
 WITH METRICS
@@ -750,6 +757,7 @@ AS $$
       expr: COUNT(DISTINCT specialization)
       comment: "Number of unique specialization areas covered"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`aftersales_loaner_vehicle`
 WITH METRICS

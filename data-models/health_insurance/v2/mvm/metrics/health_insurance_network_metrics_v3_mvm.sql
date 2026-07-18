@@ -463,10 +463,10 @@ AS $$
   source: "`vibe_health_insurance_v1`.`network`.`tier`"
   dimensions:
     - name: "tier_name"
-      expr: name
+      expr: tier_name
       comment: "Name of the network tier"
     - name: "tier_code"
-      expr: code
+      expr: tier_code
       comment: "Code identifier for the tier"
     - name: "tier_type"
       expr: tier_type

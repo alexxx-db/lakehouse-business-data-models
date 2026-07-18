@@ -205,7 +205,7 @@ AS $$
       expr: region
       comment: "Geographic region of the cash pool"
     - name: "status"
-      expr: status
+      expr: cash_pool_status
       comment: "Current status of the cash pool"
   measures:
     - name: "total_pool_balance"

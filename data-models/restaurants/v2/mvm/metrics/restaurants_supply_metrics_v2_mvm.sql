@@ -237,7 +237,7 @@ AS $$
       expr: ingredient_id
       comment: "Unique ingredient identifier"
     - name: "category"
-      expr: category
+      expr: ingredient_category
       comment: "Ingredient category (protein, produce, dairy, etc.)"
     - name: "sub_category"
       expr: sub_category
@@ -313,7 +313,7 @@ AS $$
       expr: SUM(CASE WHEN kosher_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of kosher certified ingredients"
     - name: "distinct_categories"
-      expr: COUNT(DISTINCT category)
+      expr: COUNT(DISTINCT ingredient_category)
       comment: "Number of unique ingredient categories"
 $$;
 

@@ -64,7 +64,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of diagnosis records"
     - name: "unique_patients_diagnosed"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Distinct count of patients with diagnoses"
     - name: "chronic_condition_count"
       expr: SUM(CASE WHEN chronic_condition_flag = TRUE THEN 1 ELSE 0 END)
@@ -214,7 +214,7 @@ AS $$
       expr: allergen_type
       comment: "Type of allergen (drug, food, environmental, etc.)"
     - name: "category"
-      expr: category
+      expr: allergy_category
       comment: "Allergy category classification"
     - name: "clinical_status"
       expr: clinical_status

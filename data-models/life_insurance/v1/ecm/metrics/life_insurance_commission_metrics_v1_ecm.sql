@@ -64,12 +64,13 @@ AS $$
       expr: COUNT(1)
       comment: "Number of commission transactions"
     - name: "unique_producers"
-      expr: COUNT(DISTINCT commission_producer_id)
+      expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers earning commission"
     - name: "unique_policies"
       expr: COUNT(DISTINCT in_force_policy_id)
       comment: "Number of distinct policies generating commission"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_payment`
 WITH METRICS
@@ -132,6 +133,7 @@ AS $$
       expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers receiving payment"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_chargeback`
 WITH METRICS
@@ -203,6 +205,7 @@ AS $$
       expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers with chargebacks"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_advance_commission`
 WITH METRICS
@@ -281,6 +284,7 @@ AS $$
       comment: "Number of distinct producers receiving advances"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_bonus_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -348,9 +352,10 @@ AS $$
       expr: COUNT(1)
       comment: "Number of bonus payments issued"
     - name: "unique_producers_bonused"
-      expr: COUNT(DISTINCT primary_bonus_producer_id)
+      expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers receiving bonus payments"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_statement`
 WITH METRICS
@@ -444,6 +449,7 @@ AS $$
       comment: "Number of distinct producers receiving statements"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_run`
 WITH METRICS
 LANGUAGE YAML
@@ -533,6 +539,7 @@ AS $$
       comment: "Number of commission runs executed"
 $$;
 
+
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_hold`
 WITH METRICS
 LANGUAGE YAML
@@ -597,6 +604,7 @@ AS $$
       expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers with holds"
 $$;
+
 
 CREATE OR REPLACE VIEW `life_insurance_ecm`.`_metrics`.`commission_persistency_credit`
 WITH METRICS
@@ -671,6 +679,6 @@ AS $$
       expr: COUNT(1)
       comment: "Number of persistency credits issued"
     - name: "unique_producers_credited"
-      expr: COUNT(DISTINCT primary_persistency_producer_id)
+      expr: COUNT(DISTINCT producer_id)
       comment: "Number of distinct producers earning persistency credits"
 $$;

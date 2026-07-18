@@ -35,6 +35,7 @@ AS $$
       comment: "Total acquisition cost for parcels"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`land_conservation_practice`
 WITH METRICS
 LANGUAGE YAML
@@ -76,6 +77,7 @@ AS $$
       comment: "Average cost per acre of practice"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`land_irrigation_zone`
 WITH METRICS
 LANGUAGE YAML
@@ -107,6 +109,7 @@ AS $$
       expr: AVG(CAST(application_efficiency_pct AS DOUBLE))
       comment: "Average water application efficiency"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`land_soil_sample`
 WITH METRICS
@@ -143,6 +146,7 @@ AS $$
       comment: "Average potassium recommendation per acre"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`land_lease`
 WITH METRICS
 LANGUAGE YAML
@@ -161,8 +165,8 @@ AS $$
     - name: "lease_type"
       expr: lease_type
       comment: "Classification of lease agreement"
-    - name: "tenant_account_id"
-      expr: tenant_account_id
+    - name: "account_id"
+      expr: account_id
       comment: "Account identifier of the tenant"
     - name: "lease_start_year"
       expr: DATE_TRUNC('year', start_date)

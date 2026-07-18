@@ -62,6 +62,7 @@ AS $$
       comment: "Total number of inventory position records"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_inbound_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -114,6 +115,7 @@ AS $$
       expr: SUM(CASE WHEN cross_dock_flag = true THEN 1 ELSE 0 END)
       comment: "Count of cross-dock receipts for flow-through efficiency tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_outbound_shipment_order`
 WITH METRICS
@@ -177,6 +179,7 @@ AS $$
       comment: "Total cash-on-delivery amount across orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_pick_task`
 WITH METRICS
 LANGUAGE YAML
@@ -239,6 +242,7 @@ AS $$
       comment: "Count of tasks with short picks - inventory accuracy signal"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_labor_activity`
 WITH METRICS
 LANGUAGE YAML
@@ -294,12 +298,13 @@ AS $$
       expr: AVG(CAST(duration_minutes AS DOUBLE))
       comment: "Average activity duration in minutes"
     - name: "distinct_employee_count"
-      expr: COUNT(DISTINCT primary_labor_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees performing activities - headcount utilization"
     - name: "quality_check_pass_count"
       expr: SUM(CASE WHEN quality_check_passed = true THEN 1 ELSE 0 END)
       comment: "Count of activities passing quality checks - first-pass quality rate numerator"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_dock_appointment`
 WITH METRICS
@@ -351,6 +356,7 @@ AS $$
       comment: "Count of cancelled appointments - planning disruption metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_cycle_count`
 WITH METRICS
 LANGUAGE YAML
@@ -401,6 +407,7 @@ AS $$
       comment: "Count of cycles with posted adjustments - inventory correction volume"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_outbound_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -450,6 +457,7 @@ AS $$
       expr: AVG(CAST(unit_price AS DOUBLE))
       comment: "Average unit price across order lines - value density indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_putaway_task`
 WITH METRICS
@@ -507,6 +515,7 @@ AS $$
       comment: "Count of putaway tasks with exceptions - process quality indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_returns_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -553,6 +562,7 @@ AS $$
       expr: COUNT(DISTINCT customer_account_id)
       comment: "Number of distinct customers returning goods - customer satisfaction signal"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_inventory_movement`
 WITH METRICS
@@ -606,6 +616,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs moved - product velocity breadth"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`warehouse_pick_wave`
 WITH METRICS

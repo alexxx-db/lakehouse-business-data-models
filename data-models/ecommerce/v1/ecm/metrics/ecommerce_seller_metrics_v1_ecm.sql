@@ -135,7 +135,7 @@ AS $$
       expr: detection_method
       comment: "Method used to detect fraud"
     - name: "status"
-      expr: status
+      expr: fraud_investigation_status
       comment: "Current status of the investigation"
     - name: "regulatory_reported"
       expr: regulatory_reported
@@ -172,8 +172,8 @@ AS $$
     - name: "primary_category"
       expr: primary_category
       comment: "Primary product category of the seller"
-    - name: "seller_tier_id"
-      expr: seller_tier_id
+    - name: "tier_id"
+      expr: tier_id
       comment: "Identifier of the seller tier"
     - name: "platform_join_date"
       expr: platform_join_date

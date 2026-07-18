@@ -270,7 +270,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: production_plant_description
     - name: "Is Active"
       expr: is_active
     - name: "Last Inspection Date"
@@ -284,7 +284,7 @@ AS $$
     - name: "Manager Phone"
       expr: manager_phone
     - name: "Name"
-      expr: name
+      expr: production_plant_name
     - name: "Next Maintenance Date"
       expr: next_maintenance_date
     - name: "Notes"
@@ -452,7 +452,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: routing_description
     - name: "Is Default Routing"
       expr: is_default_routing
     - name: "Is Phantom Routing"
@@ -752,9 +752,9 @@ AS $$
     - name: "Capacity Planning Group"
       expr: capacity_planning_group
     - name: "Category"
-      expr: category
+      expr: work_center_category
     - name: "Code"
-      expr: code
+      expr: work_center_code
     - name: "Control Key"
       expr: control_key
     - name: "Created Timestamp"
@@ -770,7 +770,7 @@ AS $$
     - name: "Mes Integration Enabled"
       expr: mes_integration_enabled
     - name: "Name"
-      expr: name
+      expr: work_center_name
     - name: "Number Of Machines"
       expr: number_of_machines
     - name: "Number Of Operators"

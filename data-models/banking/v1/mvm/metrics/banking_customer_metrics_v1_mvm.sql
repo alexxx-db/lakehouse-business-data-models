@@ -17,8 +17,8 @@ AS $$
     - name: "customer_segment"
       expr: customer_segment
       comment: "Segment assigned to the customer."
-    - name: "domicile_country_id"
-      expr: domicile_country_id
+    - name: "country_id"
+      expr: country_id
       comment: "Country of domicile (FK to reference.country)."
   measures:
     - name: "total_customers"
@@ -34,6 +34,7 @@ AS $$
       expr: SUM(CASE WHEN is_sanctioned THEN 1 ELSE 0 END)
       comment: "Count of parties flagged as sanctioned."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`customer_individual_profile`
 WITH METRICS
@@ -76,6 +77,7 @@ AS $$
       comment: "Count of individuals flagged as PEP."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`customer_kyc_record`
 WITH METRICS
 LANGUAGE YAML
@@ -110,6 +112,7 @@ AS $$
       expr: SUM(CASE WHEN regulatory_reporting_flag THEN 1 ELSE 0 END)
       comment: "Count of KYC records flagged for regulatory reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`customer_onboarding_case`
 WITH METRICS

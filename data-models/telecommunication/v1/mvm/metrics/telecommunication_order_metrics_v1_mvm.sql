@@ -71,6 +71,7 @@ AS $$
       comment: "Count of orders that were cancelled"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: COUNT(DISTINCT fulfillment_order_id)
       comment: "Number of unique fulfillment orders containing these lines"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_charge`
 WITH METRICS
@@ -225,6 +227,7 @@ AS $$
       comment: "Number of unique fulfillment orders associated with charges"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_fallout`
 WITH METRICS
 LANGUAGE YAML
@@ -301,6 +304,7 @@ AS $$
       expr: AVG(CAST(retry_count AS DOUBLE))
       comment: "Average number of retry attempts per fallout"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_sla`
 WITH METRICS
@@ -382,6 +386,7 @@ AS $$
       comment: "Count of SLAs where breach notification was sent"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_appointment`
 WITH METRICS
 LANGUAGE YAML
@@ -453,6 +458,7 @@ AS $$
       comment: "Average number of reschedules per appointment"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_task`
 WITH METRICS
 LANGUAGE YAML
@@ -520,9 +526,10 @@ AS $$
       expr: AVG(CAST(retry_count AS DOUBLE))
       comment: "Average number of retry attempts per task"
     - name: "unique_technicians"
-      expr: COUNT(DISTINCT task_assigned_technician_id)
+      expr: COUNT(DISTINCT technician_id)
       comment: "Number of unique technicians assigned to tasks"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`order_service_qualification`
 WITH METRICS

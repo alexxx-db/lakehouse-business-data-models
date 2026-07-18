@@ -92,6 +92,7 @@ AS $$
       comment: "Forecast bias rate as percentage variance from statistical baseline to consensus"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_demand_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -184,6 +185,7 @@ AS $$
       comment: "Forecast bias rate as percentage variance from baseline to consensus"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_inventory_policy`
 WITH METRICS
 LANGUAGE YAML
@@ -275,9 +277,10 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs with inventory policies"
     - name: "distinct_network_node_count"
-      expr: COUNT(DISTINCT supply_network_node_id)
+      expr: COUNT(DISTINCT network_node_id)
       comment: "Number of distinct supply network nodes with inventory policies"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_replenishment_order`
 WITH METRICS
@@ -352,7 +355,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs in replenishment orders"
     - name: "distinct_destination_node_count"
-      expr: COUNT(DISTINCT destination_location_supply_network_node_id)
+      expr: COUNT(DISTINCT network_node_id)
       comment: "Number of distinct destination network nodes receiving replenishment"
     - name: "distinct_source_node_count"
       expr: COUNT(DISTINCT primary_supply_network_node_id)
@@ -367,6 +370,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(received_quantity AS DOUBLE)) / NULLIF(SUM(CAST(shipped_quantity AS DOUBLE)), 0), 2)
       comment: "Receipt completion rate as percentage of received vs shipped quantity"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_safety_stock`
 WITH METRICS
@@ -462,12 +466,13 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs with safety stock calculations"
     - name: "distinct_network_node_count"
-      expr: COUNT(DISTINCT supply_network_node_id)
+      expr: COUNT(DISTINCT network_node_id)
       comment: "Number of distinct supply network nodes with safety stock"
     - name: "safety_stock_override_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN calculated_safety_stock_units != approved_safety_stock_units THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of safety stock calculations that were manually overridden"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_sop_cycle`
 WITH METRICS
@@ -564,6 +569,7 @@ AS $$
       comment: "Supply gap rate as percentage of unmet demand vs consensus demand"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`supply_atp_record`
 WITH METRICS
 LANGUAGE YAML
@@ -649,7 +655,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs with ATP records"
     - name: "distinct_network_node_count"
-      expr: COUNT(DISTINCT supply_network_node_id)
+      expr: COUNT(DISTINCT network_node_id)
       comment: "Number of distinct supply network nodes with ATP"
     - name: "distinct_trade_account_count"
       expr: COUNT(DISTINCT trade_account_id)

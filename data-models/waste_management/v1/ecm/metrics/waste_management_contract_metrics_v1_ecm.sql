@@ -68,6 +68,7 @@ AS $$
       comment: "Number of unique customers with contracts"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_franchise_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -135,6 +136,7 @@ AS $$
       expr: COUNT(DISTINCT municipality_id)
       comment: "Number of unique municipalities with franchise agreements"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_disposal_agreement`
 WITH METRICS
@@ -207,6 +209,7 @@ AS $$
       comment: "Number of unique facilities with disposal agreements"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_hauling_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -268,15 +271,16 @@ AS $$
       expr: AVG(CAST(insurance_coverage_amount AS DOUBLE))
       comment: "Average insurance coverage amount per hauling agreement"
     - name: "distinct_hauler_count"
-      expr: COUNT(DISTINCT hauler_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique hauler vendors with agreements"
     - name: "distinct_origin_facility_count"
       expr: COUNT(DISTINCT origin_facility_id)
       comment: "Number of unique origin facilities"
     - name: "distinct_destination_facility_count"
-      expr: COUNT(DISTINCT destination_facility_id)
+      expr: COUNT(DISTINCT facility_id)
       comment: "Number of unique destination facilities"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_termination`
 WITH METRICS
@@ -349,6 +353,7 @@ AS $$
       comment: "Number of unique contracts terminated"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_renewal`
 WITH METRICS
 LANGUAGE YAML
@@ -413,6 +418,7 @@ AS $$
       expr: COUNT(DISTINCT contract_id)
       comment: "Number of unique contracts renewed"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_volume_commitment`
 WITH METRICS
@@ -485,6 +491,7 @@ AS $$
       comment: "Number of unique contracts with volume commitments"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_compliance_obligation`
 WITH METRICS
 LANGUAGE YAML
@@ -547,6 +554,7 @@ AS $$
       comment: "Number of unique regulatory requirements"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_amendment`
 WITH METRICS
 LANGUAGE YAML
@@ -596,6 +604,7 @@ AS $$
       expr: COUNT(DISTINCT contract_id)
       comment: "Number of unique contracts with amendments"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`contract_performance_obligation`
 WITH METRICS

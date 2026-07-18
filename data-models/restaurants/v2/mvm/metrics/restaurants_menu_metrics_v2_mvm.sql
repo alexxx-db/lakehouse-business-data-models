@@ -368,10 +368,10 @@ AS $$
   source: "`vibe_restaurants_v1`.`menu`.`recipe`"
   dimensions:
     - name: "recipe_name"
-      expr: name
+      expr: recipe_name
       comment: "Name of the recipe"
     - name: "recipe_code"
-      expr: code
+      expr: recipe_code
       comment: "Unique code identifying the recipe"
     - name: "recipe_status"
       expr: recipe_status
@@ -380,7 +380,7 @@ AS $$
       expr: recipe_type
       comment: "Type of recipe (entree, side, sauce, etc.)"
     - name: "category"
-      expr: category
+      expr: recipe_category
       comment: "Recipe category classification"
     - name: "subcategory"
       expr: subcategory

@@ -17,8 +17,8 @@ AS $$
     - name: "asset_id"
       expr: asset_id
       comment: "Instrument asset identifier used for the run"
-    - name: "reagent_lot_id"
-      expr: reagent_lot_id
+    - name: "lot_id"
+      expr: lot_id
       comment: "Lot identifier of the reagent used"
     - name: "flow_cell_id"
       expr: flow_cell_id
@@ -37,6 +37,7 @@ AS $$
       expr: AVG(CAST(duplicate_rate_percent AS DOUBLE))
       comment: "Average duplicate read rate across QC runs"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_test_order`
 WITH METRICS
@@ -70,6 +71,7 @@ AS $$
       comment: "Average price per test order (USD)"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_genomic_result`
 WITH METRICS
 LANGUAGE YAML
@@ -101,6 +103,7 @@ AS $$
       expr: AVG(CAST(variant_allele_frequency AS DOUBLE))
       comment: "Average observed allele frequency in the cohort"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_assay`
 WITH METRICS

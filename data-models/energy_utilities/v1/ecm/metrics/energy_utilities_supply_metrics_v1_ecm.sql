@@ -38,6 +38,7 @@ AS $$
       comment: "Average gross value per purchase order"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_supplier_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -70,6 +71,7 @@ AS $$
       comment: "Average contract value"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_emergency_stock_event`
 WITH METRICS
 LANGUAGE YAML
@@ -87,11 +89,11 @@ AS $$
     - name: "declared_emergency_date"
       expr: declared_emergency_date
       comment: "Date the emergency was declared"
-    - name: "primary_vendor_id"
-      expr: primary_vendor_id
+    - name: "vendor_id"
+      expr: vendor_id
       comment: "Vendor providing emergency stock"
-    - name: "primary_warehouse_id"
-      expr: primary_warehouse_id
+    - name: "warehouse_id"
+      expr: warehouse_id
       comment: "Warehouse from which emergency stock was dispatched"
   measures:
     - name: "event_count"
@@ -107,6 +109,7 @@ AS $$
       expr: AVG(CAST(lead_time_achieved_hours AS DOUBLE))
       comment: "Average lead time actually achieved (hours)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_inventory_count`
 WITH METRICS
@@ -145,6 +148,7 @@ AS $$
       expr: AVG(CAST(variance_tolerance_percent AS DOUBLE))
       comment: "Average allowed variance tolerance percent"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`supply_vendor_evaluation`
 WITH METRICS
@@ -198,8 +202,8 @@ AS $$
     - name: "sending_plant_id"
       expr: sending_plant_id
       comment: "Plant sending the stock"
-    - name: "receiving_plant_id"
-      expr: receiving_plant_id
+    - name: "receiving_plant_code"
+      expr: receiving_plant_code
       comment: "Plant receiving the stock"
     - name: "actual_arrival_date"
       expr: actual_arrival_date

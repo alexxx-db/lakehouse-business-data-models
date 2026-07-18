@@ -49,12 +49,13 @@ AS $$
       expr: AVG(CAST(target_cost AS DOUBLE))
       comment: "Average target cost per RFQ"
     - name: "rfq_award_rate"
-      expr: COUNT(DISTINCT CASE WHEN awarded_vendor_id IS NOT NULL THEN rfq_id END) * 100.0 / NULLIF(COUNT(DISTINCT rfq_id), 0)
+      expr: COUNT(DISTINCT CASE WHEN vendor_id IS NOT NULL THEN rfq_id END) * 100.0 / NULLIF(COUNT(DISTINCT rfq_id), 0)
       comment: "Percentage of RFQs that resulted in vendor awards"
     - name: "distinct_awarded_vendors"
-      expr: COUNT(DISTINCT awarded_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors awarded RFQs"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_vendor_quote`
 WITH METRICS
@@ -120,6 +121,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors submitting quotes"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_purchase_order`
 WITH METRICS
@@ -198,6 +200,7 @@ AS $$
       comment: "Number of unique supplier factories with orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_vendor_cost_quote`
 WITH METRICS
 LANGUAGE YAML
@@ -269,6 +272,7 @@ AS $$
       comment: "Number of unique vendors providing cost quotes"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_sample_request`
 WITH METRICS
 LANGUAGE YAML
@@ -324,6 +328,7 @@ AS $$
       expr: COUNT(DISTINCT supplier_factory_id)
       comment: "Number of unique factories submitting samples"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_sample_evaluation`
 WITH METRICS
@@ -396,6 +401,7 @@ AS $$
       comment: "Number of unique styles evaluated"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_lab_dip`
 WITH METRICS
 LANGUAGE YAML
@@ -460,6 +466,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors submitting lab dips"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`sourcing_tna_milestone`
 WITH METRICS

@@ -380,7 +380,7 @@ AS $$
       expr: approval_status
       comment: "Approval status of the BOM — tracks approval workflow progress."
     - name: "category"
-      expr: category
+      expr: bom_category
       comment: "BOM category — enables categorical segmentation for analysis."
     - name: "explosion_type"
       expr: explosion_type

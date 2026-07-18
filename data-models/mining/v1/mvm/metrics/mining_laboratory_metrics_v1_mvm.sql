@@ -74,6 +74,7 @@ AS $$
       comment: "Average detection limit across assay results — tracks instrument sensitivity over time; rising limits may indicate instrument degradation or method drift."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_qaqc_result`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: AVG(CAST(absolute_difference AS DOUBLE))
       comment: "Average absolute difference between reported and expected values — provides a scale-aware measure of analytical error for method performance benchmarking."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_sample_batch`
 WITH METRICS
@@ -222,6 +224,7 @@ AS $$
       comment: "Average QAQC sample insertion rate as a percentage of total samples — measures adherence to quality program requirements; typically benchmarked at 5-10% for industry standards."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_metallurgical_test`
 WITH METRICS
 LANGUAGE YAML
@@ -296,6 +299,7 @@ AS $$
       comment: "Average abrasion index across tests — measures ore abrasiveness; high values indicate elevated liner and media wear costs in the processing plant."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_instrument`
 WITH METRICS
 LANGUAGE YAML
@@ -355,6 +359,7 @@ AS $$
       comment: "Average upper measurement range limit across instruments — used to assess fleet-wide capacity for high-grade sample analysis without dilution."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_sample_dispatch`
 WITH METRICS
 LANGUAGE YAML
@@ -410,9 +415,10 @@ AS $$
       expr: COUNT(CASE WHEN sample_condition_on_receipt = 'DAMAGED' THEN 1 END)
       comment: "Count of dispatches where samples arrived damaged — measures packaging and handling failure rate; damaged samples require re-sampling, adding cost and delay."
     - name: "distinct_destination_laboratories"
-      expr: COUNT(DISTINCT destination_laboratory_id)
+      expr: COUNT(DISTINCT laboratory_id)
       comment: "Count of distinct destination laboratories used — measures the breadth of the external laboratory network and vendor concentration risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_sample_program`
 WITH METRICS
@@ -476,6 +482,7 @@ AS $$
       comment: "Average certified reference material insertion rate across programs — measures accuracy monitoring coverage; critical for JORC-compliant resource estimation data quality."
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_analytical_method`
 WITH METRICS
 LANGUAGE YAML
@@ -537,6 +544,7 @@ AS $$
       expr: SUM(CAST(cost_per_sample AS DOUBLE))
       comment: "Sum of cost per sample across all methods in the register — used as a denominator component for weighted average cost calculations in program budgeting."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory_qaqc_sample`
 WITH METRICS
@@ -602,6 +610,7 @@ AS $$
       expr: AVG(CAST(expected_grade AS DOUBLE))
       comment: "Average expected grade across QAQC samples — used as the reference benchmark for assessing analytical accuracy at the program level."
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`laboratory`
 WITH METRICS

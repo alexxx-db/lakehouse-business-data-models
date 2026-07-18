@@ -74,6 +74,7 @@ AS $$
       comment: "Distinct sessions containing ad impressions"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_storefront_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -157,6 +158,7 @@ AS $$
       comment: "Count of transactions flagged as fraudulent"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_player_subscription`
 WITH METRICS
 LANGUAGE YAML
@@ -230,6 +232,7 @@ AS $$
       expr: SUM(CAST(payment_failure_count AS BIGINT))
       comment: "Total count of payment failures across all subscriptions"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_player_ltv_segment`
 WITH METRICS
@@ -305,6 +308,7 @@ AS $$
       comment: "Distinct players in LTV segmentation"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_storefront_item`
 WITH METRICS
 LANGUAGE YAML
@@ -379,6 +383,7 @@ AS $$
       comment: "Total stock quantity across all items (for limited inventory items)"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_dlc_entitlement`
 WITH METRICS
 LANGUAGE YAML
@@ -434,12 +439,13 @@ AS $$
       expr: AVG(CAST(purchase_price_amount AS DOUBLE))
       comment: "Average purchase price per DLC entitlement"
     - name: "unique_dlc_owners"
-      expr: COUNT(DISTINCT primary_dlc_player_account_id)
+      expr: COUNT(DISTINCT player_account_id)
       comment: "Distinct players who own at least one DLC entitlement"
     - name: "unique_active_dlc_owners"
-      expr: COUNT(DISTINCT CASE WHEN entitlement_status = 'active' THEN primary_dlc_player_account_id END)
+      expr: COUNT(DISTINCT CASE WHEN entitlement_status = 'active' THEN player_account_id END)
       comment: "Distinct players with at least one active DLC entitlement"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`monetization_ad_placement`
 WITH METRICS

@@ -15,7 +15,7 @@ AS $$
     - name: "Case Type"
       expr: case_type
     - name: "Category"
-      expr: category
+      expr: case_category
     - name: "Closed Timestamp"
       expr: closed_timestamp
     - name: "Customer Satisfaction Score"
@@ -23,7 +23,7 @@ AS $$
     - name: "Dealer Code"
       expr: dealer_code
     - name: "Description"
-      expr: description
+      expr: case_description
     - name: "Dynamics Case Reference"
       expr: dynamics_case_reference
     - name: "Escalation Level"
@@ -457,7 +457,7 @@ AS $$
   source: "`vibe_automotive_v1`.`customer`.`preference`"
   dimensions:
     - name: "Category"
-      expr: category
+      expr: preference_category
     - name: "Channel"
       expr: channel
     - name: "Created Timestamp"

@@ -65,6 +65,7 @@ AS $$
       comment: "Number of SKUs requiring lot traceability. Drives quality system investment and regulatory compliance scope."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_family`
 WITH METRICS
 LANGUAGE YAML
@@ -127,6 +128,7 @@ AS $$
       comment: "Number of product families in active lifecycle status. Measures the healthy, revenue-generating core of the portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_bom_header`
 WITH METRICS
 LANGUAGE YAML
@@ -185,6 +187,7 @@ AS $$
       expr: AVG(CAST(lot_size AS DOUBLE))
       comment: "Average lot size across BOMs. Used to optimise production run lengths and reduce changeover costs."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_bom_line`
 WITH METRICS
@@ -245,6 +248,7 @@ AS $$
       comment: "Number of distinct components used across all BOMs. Measures component portfolio breadth and rationalisation opportunity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_revision`
 WITH METRICS
 LANGUAGE YAML
@@ -301,6 +305,7 @@ AS $$
       comment: "Number of distinct SKUs that have active revisions. Indicates breadth of change activity across the product portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_certification`
 WITH METRICS
 LANGUAGE YAML
@@ -353,6 +358,7 @@ AS $$
       expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs with at least one certification. Measures certification coverage breadth across the portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_change_order`
 WITH METRICS
@@ -413,6 +419,7 @@ AS $$
       comment: "Number of distinct SKUs with active change orders. Indicates breadth of change activity and portfolio instability risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_lifecycle_stage`
 WITH METRICS
 LANGUAGE YAML
@@ -444,9 +451,10 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_active = TRUE THEN lifecycle_stage_id END)
       comment: "Number of currently active lifecycle stage assignments. Measures the live portfolio under lifecycle governance."
     - name: "distinct_skus_in_lifecycle_management"
-      expr: COUNT(DISTINCT primary_lifecycle_sku_master_id)
+      expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs under active lifecycle management. Tracks portfolio coverage of the lifecycle governance process."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_specification`
 WITH METRICS
@@ -497,6 +505,7 @@ AS $$
       expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs with at least one specification. Measures specification coverage across the product portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_plant_data`
 WITH METRICS
@@ -557,6 +566,7 @@ AS $$
       comment: "Number of plant-material records requiring batch management. Tracks traceability scope and quality system workload."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_catalog_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -609,6 +619,7 @@ AS $$
       expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs represented in the catalog. Measures catalog coverage of the product portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_configuration`
 WITH METRICS
@@ -666,6 +677,7 @@ AS $$
       comment: "Average power rating in kilowatts across configurations. Informs energy efficiency analysis and regulatory compliance for energy labelling."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_substitution`
 WITH METRICS
 LANGUAGE YAML
@@ -712,9 +724,10 @@ AS $$
       expr: AVG(CAST(price_variance_percent AS DOUBLE))
       comment: "Average price variance percentage between primary and substitute SKUs. Tracks cost impact of substitution decisions — a key procurement KPI."
     - name: "distinct_skus_with_substitutes"
-      expr: COUNT(DISTINCT primary_sku_master_id)
+      expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct primary SKUs with at least one substitution option. Measures supply risk coverage across the product portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_supply_agreement`
 WITH METRICS

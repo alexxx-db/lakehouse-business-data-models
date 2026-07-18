@@ -59,6 +59,7 @@ AS $$
       comment: "Number of stackable coupons — high values indicate compounding discount risk requiring governance review."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_coupon_redemption`
 WITH METRICS
 LANGUAGE YAML
@@ -111,6 +112,7 @@ AS $$
       expr: COUNT(DISTINCT coupon_id)
       comment: "Number of distinct coupon instruments redeemed — indicates breadth of active promotional portfolio utilization."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_dynamic_price_rule`
 WITH METRICS
@@ -180,6 +182,7 @@ AS $$
       comment: "Percentage of rules in experimental/test mode — high values may indicate insufficient production-grade pricing coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_price_history`
 WITH METRICS
 LANGUAGE YAML
@@ -232,6 +235,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs that experienced a price change — measures breadth of pricing activity across the product catalog."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_price_list`
 WITH METRICS
@@ -295,6 +299,7 @@ AS $$
       comment: "Number of price lists where discounting is permitted — measures promotional exposure breadth across the pricing portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_price_list_item`
 WITH METRICS
 LANGUAGE YAML
@@ -332,7 +337,7 @@ AS $$
       comment: "Month the price list item became effective — used for pricing lifecycle trend analysis."
   measures:
     - name: "total_priced_skus"
-      expr: COUNT(DISTINCT primary_price_product_variant_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of distinct SKUs with an active price list entry — measures catalog pricing coverage."
     - name: "avg_base_price"
       expr: AVG(CAST(base_price AS DOUBLE))
@@ -356,6 +361,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_promotional = TRUE THEN price_list_item_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of price list items currently priced promotionally — measures promotional depth across the catalog."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_price_override`
 WITH METRICS
@@ -418,6 +424,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'approved' THEN price_override_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of price overrides that received approval — measures pricing governance effectiveness and policy adherence."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_promotional_campaign`
 WITH METRICS
@@ -484,6 +491,7 @@ AS $$
       comment: "Number of currently active promotional campaigns — baseline measure of live promotional portfolio size."
 $$;
 
+
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_promotion_rule`
 WITH METRICS
 LANGUAGE YAML
@@ -530,6 +538,7 @@ AS $$
       expr: COUNT(DISTINCT promotional_campaign_id)
       comment: "Number of distinct promotional campaigns covered by promotion rules — measures rules engine breadth across the campaign portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `ecommerce_ecm`.`_metrics`.`pricing_markdown_schedule`
 WITH METRICS

@@ -358,7 +358,7 @@ AS $$
     - name: "Campaign Type"
       expr: campaign_type
     - name: "Code"
-      expr: code
+      expr: campaign_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Currency Code"
@@ -372,7 +372,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: campaign_name
     - name: "Notes"
       expr: notes
     - name: "Priority Level"
@@ -546,7 +546,7 @@ AS $$
     - name: "Demographic Target"
       expr: demographic_target
     - name: "Description"
-      expr: description
+      expr: proposal_description
     - name: "Expiry Date"
       expr: expiry_date
   measures:
@@ -702,7 +702,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: sales_agency_name
   measures:
     - name: "Row Count"
       expr: COUNT(1)

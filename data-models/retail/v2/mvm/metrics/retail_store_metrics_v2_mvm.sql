@@ -60,11 +60,11 @@ AS $$
     - name: "Clustering Methodology"
       expr: clustering_methodology
     - name: "Code"
-      expr: code
+      expr: cluster_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: cluster_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -184,11 +184,11 @@ AS $$
     - name: "Clienteling Service Flag"
       expr: clienteling_service_flag
     - name: "Code"
-      expr: code
+      expr: format_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: format_description
     - name: "Dsd Receiving Flag"
       expr: dsd_receiving_flag
     - name: "Effective End Date"
@@ -343,7 +343,7 @@ AS $$
     - name: "Climate Zone"
       expr: climate_zone
     - name: "Code"
-      expr: code
+      expr: region_code
     - name: "Comp Sales Base Year"
       expr: comp_sales_base_year
     - name: "Country Code"

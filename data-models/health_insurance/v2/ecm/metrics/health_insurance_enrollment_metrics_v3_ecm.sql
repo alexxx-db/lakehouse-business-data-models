@@ -85,12 +85,13 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_primary_coverage = TRUE THEN enrollment_eligibility_span_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of spans representing primary coverage. Used to understand coordination of benefits exposure and dual-coverage population size."
     - name: "distinct_members_enrolled"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique subscribers with at least one eligibility span. Core membership headcount metric for executive dashboards and regulatory filings."
     - name: "distinct_groups_enrolled"
       expr: COUNT(DISTINCT group_id)
       comment: "Count of distinct employer groups with active enrollment. Measures breadth of employer client base for sales and account management leadership."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_transaction`
 WITH METRICS
@@ -130,8 +131,8 @@ AS $$
     - name: "created_timestamp_month"
       expr: DATE_TRUNC('MONTH', created_timestamp)
       comment: "Month the transaction was created for volume trend reporting."
-    - name: "member_group_id"
-      expr: member_group_id
+    - name: "group_id"
+      expr: group_id
       comment: "Employer group associated with the transaction for group-level reporting."
     - name: "compliance_status"
       expr: compliance_status
@@ -165,12 +166,13 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_grace_period = TRUE THEN transaction_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of transactions in grace period status. Elevated rates signal premium collection risk and potential lapse exposure."
     - name: "distinct_members_transacted"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with enrollment transactions. Measures breadth of enrollment activity for operational planning."
     - name: "claims_reprocess_transaction_count"
       expr: COUNT(CASE WHEN claims_reprocess_flag = TRUE THEN transaction_id END)
       comment: "Number of transactions triggering claims reprocessing. High counts indicate enrollment corrections with downstream claims cost impact requiring executive attention."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_batch`
 WITH METRICS
@@ -243,6 +245,7 @@ AS $$
       comment: "Percentage of batches containing retroactive enrollment changes. High rates indicate enrollment data latency issues with downstream financial and claims impact."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_cms_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -313,9 +316,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN risk_adjustment_flag = TRUE THEN cms_submission_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of submissions with risk adjustment implications. Used by actuarial and finance teams to size risk adjustment revenue exposure."
     - name: "distinct_members_submitted"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members included in CMS submissions. Measures regulatory filing coverage breadth for compliance completeness assessment."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_exchange_enrollment`
 WITH METRICS
@@ -393,9 +397,10 @@ AS $$
       expr: COUNT(CASE WHEN reporting_1095a_flag = TRUE THEN exchange_enrollment_id END)
       comment: "Count of enrollments requiring 1095-A tax form generation. Regulatory compliance metric for ACA reporting obligations."
     - name: "distinct_members_enrolled"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members enrolled through the exchange. Core marketplace membership headcount for executive and regulatory reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_open_enrollment_period`
 WITH METRICS
@@ -432,8 +437,8 @@ AS $$
     - name: "start_date_month"
       expr: DATE_TRUNC('MONTH', start_date)
       comment: "Month the enrollment period started for calendar analysis."
-    - name: "plan_health_plan_id"
-      expr: plan_health_plan_id
+    - name: "health_plan_id"
+      expr: health_plan_id
       comment: "Health plan identifier for plan-level enrollment period reporting."
   measures:
     - name: "total_enrollment_periods"
@@ -458,6 +463,7 @@ AS $$
       expr: AVG(CAST(volume_actual AS DOUBLE))
       comment: "Average actual enrollment volume per open enrollment period. Benchmarks period performance for planning future enrollment campaigns."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_pend_queue`
 WITH METRICS
@@ -533,6 +539,7 @@ AS $$
       comment: "Percentage of pended items due to CMS data match failures. Regulatory risk metric — high rates indicate eligibility data integrity issues with CMS."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_medicaid_eligibility`
 WITH METRICS
 LANGUAGE YAML
@@ -594,9 +601,10 @@ AS $$
       expr: COUNT(CASE WHEN redetermination_due_date <= CURRENT_DATE() AND eligibility_status = 'Active' THEN medicaid_eligibility_id END)
       comment: "Count of active members with overdue redeterminations. Regulatory compliance metric — high counts risk state contract violations and CMS audit findings."
     - name: "distinct_members_enrolled"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with Medicaid eligibility records. Core Medicaid membership headcount for state reporting and capitation calculations."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_qualifying_life_event`
 WITH METRICS
@@ -614,9 +622,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total qualifying life event records. Baseline SEP volume metric for enrollment operations planning."
     - name: "distinct_members_with_qle"
-      expr: COUNT(DISTINCT member_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of unique members with qualifying life events. Measures SEP-eligible population size for enrollment capacity planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`enrollment_reconciliation`
 WITH METRICS

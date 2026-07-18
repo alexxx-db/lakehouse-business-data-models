@@ -67,7 +67,7 @@ AS $$
       expr: COUNT(DISTINCT talent_profile_id)
       comment: "Number of unique talent profiles under contract"
     - name: "distinct_production_count"
-      expr: COUNT(DISTINCT production_project_id)
+      expr: COUNT(DISTINCT project_id)
       comment: "Number of unique production projects with talent contracts"
     - name: "pay_or_play_contract_count"
       expr: SUM(CASE WHEN pay_or_play_flag = TRUE THEN 1 ELSE 0 END)
@@ -433,7 +433,7 @@ AS $$
   source: "`vibe_media_broadcasting_v1`.`talent`.`role`"
   dimensions:
     - name: "category"
-      expr: category
+      expr: role_category
       comment: "Category of the role (lead, supporting, guest, background, stunt)"
     - name: "role_status"
       expr: role_status

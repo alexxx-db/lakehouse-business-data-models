@@ -83,6 +83,7 @@ AS $$
       comment: "Percentage of matters with signed engagement letters"
 $$;
 
+
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_budget`
 WITH METRICS
 LANGUAGE YAML
@@ -150,6 +151,7 @@ AS $$
       expr: COUNT(DISTINCT timekeeper_id)
       comment: "Count of unique timekeepers with budget records"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_phase`
 WITH METRICS
@@ -224,6 +226,7 @@ AS $$
       expr: COUNT(DISTINCT matter_id)
       comment: "Count of unique matters with phases"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_judgment`
 WITH METRICS
@@ -311,6 +314,7 @@ AS $$
       comment: "Count of unique matters with judgments"
 $$;
 
+
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_disbursement`
 WITH METRICS
 LANGUAGE YAML
@@ -387,9 +391,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN write_off_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of disbursements written off"
     - name: "distinct_matters"
-      expr: COUNT(DISTINCT primary_matter_id)
+      expr: COUNT(DISTINCT matter_id)
       comment: "Count of unique matters with disbursements"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_hearing`
 WITH METRICS
@@ -470,6 +475,7 @@ AS $$
       expr: COUNT(DISTINCT judge_id)
       comment: "Count of unique judges presiding over hearings"
 $$;
+
 
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_task`
 WITH METRICS
@@ -554,6 +560,7 @@ AS $$
       comment: "Count of unique matters with tasks"
 $$;
 
+
 CREATE OR REPLACE VIEW `legal_ecm`.`_metrics`.`matter_risk`
 WITH METRICS
 LANGUAGE YAML
@@ -624,6 +631,6 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN closure_date IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of risks that have been closed"
     - name: "distinct_matters"
-      expr: COUNT(DISTINCT primary_matter_id)
+      expr: COUNT(DISTINCT matter_id)
       comment: "Count of unique matters with identified risks"
 $$;

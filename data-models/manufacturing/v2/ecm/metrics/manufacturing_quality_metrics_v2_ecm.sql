@@ -62,6 +62,7 @@ AS $$
       comment: "Number of distinct SKUs affected by NCRs; highlights product lines with systemic quality issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_capa`
 WITH METRICS
 LANGUAGE YAML
@@ -127,6 +128,7 @@ AS $$
       comment: "Number of distinct SKUs with CAPAs; highlights product lines with systemic quality issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_lot`
 WITH METRICS
 LANGUAGE YAML
@@ -185,6 +187,7 @@ AS $$
       expr: COUNT(DISTINCT supplier_id)
       comment: "Number of distinct suppliers with inspection lots; measures supplier quality coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_result`
 WITH METRICS
@@ -251,6 +254,7 @@ AS $$
       comment: "Number of distinct work centers with inspection results; measures quality monitoring coverage breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_customer_complaint`
 WITH METRICS
 LANGUAGE YAML
@@ -310,6 +314,7 @@ AS $$
       comment: "Number of distinct customers who filed complaints; measures breadth of customer quality dissatisfaction."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_ppap_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -365,6 +370,7 @@ AS $$
       expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs undergoing PPAP; measures new product launch pipeline size."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_spc`
 WITH METRICS
@@ -424,6 +430,7 @@ AS $$
       expr: COUNT(DISTINCT work_center_id)
       comment: "Number of distinct work centers with active SPC charts; measures statistical process control coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_audit`
 WITH METRICS
@@ -486,6 +493,7 @@ AS $$
       expr: COUNT(DISTINCT audited_entity_name)
       comment: "Number of distinct entities audited; measures audit program coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_supplier_quality_audit`
 WITH METRICS
@@ -552,6 +560,7 @@ AS $$
       comment: "Number of distinct suppliers audited; measures supplier quality monitoring coverage breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_fmea`
 WITH METRICS
 LANGUAGE YAML
@@ -601,6 +610,7 @@ AS $$
       expr: COUNT(DISTINCT supplier_id)
       comment: "Number of distinct suppliers referenced in FMEAs; measures supplier risk analysis coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_rma_disposition`
 WITH METRICS
@@ -664,6 +674,7 @@ AS $$
       comment: "Number of distinct customers with RMA dispositions; measures breadth of customer-facing quality issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_apqp_project`
 WITH METRICS
 LANGUAGE YAML
@@ -719,9 +730,9 @@ AS $$
       expr: COUNT(CASE WHEN lessons_learned_documented = TRUE THEN 1 END)
       comment: "Count of projects with documented lessons learned; measures organizational quality learning maturity."
     - name: "distinct_customers_in_apqp"
-      expr: COUNT(DISTINCT primary_apqp_customer_account_id)
+      expr: COUNT(DISTINCT customer_account_id)
       comment: "Number of distinct customers with active APQP projects; measures new product launch breadth across customer base."
     - name: "distinct_skus_in_apqp"
-      expr: COUNT(DISTINCT primary_apqp_sku_master_id)
+      expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of distinct SKUs in APQP pipeline; measures new product introduction portfolio size."
 $$;

@@ -65,6 +65,7 @@ AS $$
       comment: "Number of distinct carriers under contract, indicating network breadth"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_sla_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -135,6 +136,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of distinct carriers with SLA performance measurements"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_volume_actuals`
 WITH METRICS
@@ -207,6 +209,7 @@ AS $$
       comment: "Number of distinct agreements with volume actuals recorded"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_penalty_event`
 WITH METRICS
 LANGUAGE YAML
@@ -268,6 +271,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of distinct carriers that incurred penalty events"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_dispute`
 WITH METRICS
@@ -334,6 +338,7 @@ AS $$
       comment: "Number of distinct agreements with active disputes"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_carrier_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -368,6 +373,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of distinct carriers under agreement"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_volume_commitment`
 WITH METRICS
@@ -440,6 +446,7 @@ AS $$
       comment: "Number of distinct agreements with volume commitments"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_renewal_event`
 WITH METRICS
 LANGUAGE YAML
@@ -492,9 +499,10 @@ AS $$
       expr: AVG(CAST(otif_compliance_percentage AS DOUBLE))
       comment: "Average OTIF compliance percentage of contracts at renewal"
     - name: "distinct_agreements_renewed"
-      expr: COUNT(DISTINCT primary_renewal_agreement_id)
+      expr: COUNT(DISTINCT agreement_id)
       comment: "Number of distinct agreements that went through renewal"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_rate_schedule`
 WITH METRICS
@@ -566,6 +574,7 @@ AS $$
       expr: COUNT(DISTINCT agreement_id)
       comment: "Number of distinct agreements with rate schedules"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`contract_compliance_obligation`
 WITH METRICS

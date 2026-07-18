@@ -41,6 +41,7 @@ AS $$
       comment: "Average current state‑of‑charge across assets (%)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`renewable_curtailment_event`
 WITH METRICS
 LANGUAGE YAML
@@ -82,6 +83,7 @@ AS $$
       comment: "Total monetary credit awarded for curtailments (USD)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`renewable_generation_meter_read`
 WITH METRICS
 LANGUAGE YAML
@@ -90,8 +92,8 @@ AS $$
   comment: "Generation performance and curtailment visibility from meter reads"
   source: "`energy_utilities_ecm`.`renewable`.`generation_meter_read`"
   dimensions:
-    - name: "generation_der_registry_id"
-      expr: generation_der_registry_id
+    - name: "der_registry_id"
+      expr: der_registry_id
       comment: "DER registry identifier for the generating asset"
     - name: "meter_id"
       expr: meter_id
@@ -116,6 +118,7 @@ AS $$
       expr: SUM(CAST(curtailed_energy_kwh AS DOUBLE))
       comment: "Total energy curtailed as recorded in meter reads (kWh)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`renewable_ppa_contract`
 WITH METRICS
@@ -152,6 +155,7 @@ AS $$
       comment: "Average base price across PPAs (USD per MWh)"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`renewable_rec_certificate`
 WITH METRICS
 LANGUAGE YAML
@@ -183,6 +187,7 @@ AS $$
       expr: SUM(CAST(generation_mwh AS DOUBLE))
       comment: "Total generation represented by RECs (MWh)"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`renewable_vpp_configuration`
 WITH METRICS

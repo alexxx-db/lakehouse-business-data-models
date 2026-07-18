@@ -256,7 +256,7 @@ AS $$
     - name: "Claims Adjudication Flag"
       expr: claims_adjudication_flag
     - name: "Code"
-      expr: code
+      expr: participation_status_code
     - name: "Continuity Of Care End Date"
       expr: continuity_of_care_end_date
     - name: "Credentialing Approval Date"
@@ -276,7 +276,7 @@ AS $$
     - name: "Member Notification Method"
       expr: member_notification_method
     - name: "Name"
-      expr: name
+      expr: participation_status_name
     - name: "Network Tier Code"
       expr: network_tier_code
     - name: "Next Recredentialing Date"
@@ -362,7 +362,7 @@ AS $$
     - name: "Board Certifications"
       expr: board_certifications
     - name: "Category"
-      expr: category
+      expr: provider_category
     - name: "City"
       expr: city
     - name: "Country Code"
@@ -405,7 +405,7 @@ AS $$
     - name: "Board Certified Flag"
       expr: board_certified_flag
     - name: "Category"
-      expr: category
+      expr: specialty_category
     - name: "Certification Date"
       expr: certification_date
     - name: "Certification Expiration Date"
@@ -415,7 +415,7 @@ AS $$
     - name: "Certifying Board Name"
       expr: certifying_board_name
     - name: "Code"
-      expr: code
+      expr: specialty_code
     - name: "Credentialing Effective Date"
       expr: credentialing_effective_date
     - name: "Credentialing End Date"

@@ -89,6 +89,7 @@ AS $$
       comment: "Percentage of menu items eligible for combo bundling. Informs upsell and bundle strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_pmix_record`
 WITH METRICS
 LANGUAGE YAML
@@ -187,6 +188,7 @@ AS $$
       comment: "Sum of menu list prices across records. Used with avg_selling_price to compute realized price vs. list price gap."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_price`
 WITH METRICS
 LANGUAGE YAML
@@ -267,6 +269,7 @@ AS $$
       comment: "Average promotional discount as a percentage of base price across all price records. Measures promotional intensity and margin impact."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_cost`
 WITH METRICS
 LANGUAGE YAML
@@ -343,6 +346,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(theoretical_cost_variance_amount AS DOUBLE)) / NULLIF(SUM(CAST(theoretical_cost_amount AS DOUBLE)), 0), 2)
       comment: "Theoretical cost variance as a percentage of theoretical cost. Measures overall food cost control effectiveness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_recipe`
 WITH METRICS
@@ -433,6 +437,7 @@ AS $$
       comment: "Average implied gross margin (menu price minus food cost) per recipe. Guides recipe prioritization in menu engineering."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_combo_meal`
 WITH METRICS
 LANGUAGE YAML
@@ -507,6 +512,7 @@ AS $$
       comment: "Number of combos available on third-party delivery. Tracks digital channel bundle coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_engineering_review`
 WITH METRICS
 LANGUAGE YAML
@@ -575,6 +581,7 @@ AS $$
       comment: "Number of reviews requiring food safety review. Ensures food safety is integrated into menu engineering decisions."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_item_86_event`
 WITH METRICS
 LANGUAGE YAML
@@ -642,12 +649,13 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN olo_suppressed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of 86 events where the item was suppressed from online ordering. Measures digital channel availability impact."
     - name: "distinct_items_86d"
-      expr: COUNT(DISTINCT primary_menu_item_id)
+      expr: COUNT(DISTINCT menu_item_id)
       comment: "Number of distinct menu items that experienced an 86 event. Breadth of stockout exposure across the menu."
     - name: "distinct_units_with_86_events"
       expr: COUNT(DISTINCT unit_id)
       comment: "Number of distinct restaurant units that experienced 86 events. Identifies systemic supply chain issues vs. isolated incidents."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_lto`
 WITH METRICS
@@ -725,6 +733,7 @@ AS $$
       expr: COUNT(CASE WHEN is_returning_item = TRUE THEN 1 END)
       comment: "Number of LTOs that are returning fan-favorite items. Returning items typically have lower launch risk and higher initial velocity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`menu_nutrition_profile`
 WITH METRICS

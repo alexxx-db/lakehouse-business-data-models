@@ -77,6 +77,7 @@ AS $$
       comment: "Number of unique advertisers with active orders. Measures client base breadth and concentration risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_ad_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Total number of order lines. Baseline volume metric for order complexity and workload analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of unique advertisers with campaigns. Measures client base breadth and concentration risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_proposal`
 WITH METRICS
@@ -287,6 +290,7 @@ AS $$
       comment: "Number of unique advertisers in proposal pipeline. Measures client reach and pipeline diversity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_upfront_deal`
 WITH METRICS
 LANGUAGE YAML
@@ -355,6 +359,7 @@ AS $$
       comment: "Number of unique advertisers in upfront deals. Measures upfront client concentration and diversity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_upfront_commitment`
 WITH METRICS
 LANGUAGE YAML
@@ -420,6 +425,7 @@ AS $$
       comment: "Average cancellation option percentage across commitments. Measures contractual revenue risk exposure."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_scatter_order`
 WITH METRICS
 LANGUAGE YAML
@@ -428,23 +434,24 @@ AS $$
   comment: "Scatter order KPIs for tracking scatter market revenue, advertiser activity, and channel placement for short-term inventory monetization management."
   source: "`vibe_media_broadcasting_v1`.`sales`.`scatter_order`"
   dimensions:
-    - name: "sales_advertiser_id"
-      expr: sales_advertiser_id
+    - name: "advertiser_id"
+      expr: advertiser_id
       comment: "Advertiser associated with the scatter order for advertiser-level scatter revenue analysis."
-    - name: "scheduling_channel_id"
-      expr: scheduling_channel_id
+    - name: "channel_id"
+      expr: channel_id
       comment: "Channel targeted by the scatter order for channel-level scatter inventory analysis."
   measures:
     - name: "scatter_order_count"
       expr: COUNT(1)
       comment: "Total number of scatter orders. Baseline volume metric for scatter market activity and demand tracking."
     - name: "distinct_advertiser_count"
-      expr: COUNT(DISTINCT sales_advertiser_id)
+      expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of unique advertisers placing scatter orders. Measures scatter market breadth and client diversity."
     - name: "distinct_channel_count"
-      expr: COUNT(DISTINCT scheduling_channel_id)
+      expr: COUNT(DISTINCT channel_id)
       comment: "Number of distinct channels targeted by scatter orders. Measures scatter inventory distribution across network."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
@@ -507,6 +514,7 @@ AS $$
       expr: COUNT(DISTINCT sales_account_id)
       comment: "Number of unique accounts with active opportunities. Measures pipeline breadth and account coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_forecast`
 WITH METRICS
@@ -582,6 +590,7 @@ AS $$
       comment: "Total number of forecast records. Baseline volume metric for forecast submission tracking."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_affidavit`
 WITH METRICS
 LANGUAGE YAML
@@ -640,6 +649,7 @@ AS $$
       expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of unique advertisers with affidavits. Measures post-air billing breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_impression_delivery`
 WITH METRICS
@@ -709,6 +719,7 @@ AS $$
       comment: "Total number of impression delivery records. Baseline volume metric for digital delivery activity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_makegood`
 WITH METRICS
 LANGUAGE YAML
@@ -767,6 +778,7 @@ AS $$
       expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of unique advertisers with makegoods. Measures breadth of delivery failure impact on client relationships."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_advertising_audience_guarantee`
 WITH METRICS
@@ -830,6 +842,7 @@ AS $$
       comment: "Count of guarantees requiring makegoods. Quantifies active makegood liability in the portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_agency_commission`
 WITH METRICS
 LANGUAGE YAML
@@ -885,6 +898,7 @@ AS $$
       expr: COUNT(DISTINCT sales_agency_id)
       comment: "Number of unique agencies receiving commissions. Measures agency relationship breadth and cost concentration."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_political_ad_disclosure`
 WITH METRICS
@@ -944,6 +958,7 @@ AS $$
       expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of unique political advertisers. Measures political client base breadth for compliance management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_carriage_deal`
 WITH METRICS
@@ -1010,6 +1025,7 @@ AS $$
       comment: "Number of unique distribution partners. Measures distribution network breadth and concentration risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`sales_territory`
 WITH METRICS
 LANGUAGE YAML
@@ -1056,6 +1072,6 @@ AS $$
       expr: COUNT(CASE WHEN upfront_participation_flag = TRUE THEN 1 END)
       comment: "Count of territories participating in upfront. Measures upfront season sales force coverage."
     - name: "distinct_rep_count"
-      expr: COUNT(DISTINCT assigned_sales_rep_id)
+      expr: COUNT(DISTINCT rep_id)
       comment: "Number of unique sales reps assigned to territories. Measures sales force deployment and coverage gaps."
 $$;

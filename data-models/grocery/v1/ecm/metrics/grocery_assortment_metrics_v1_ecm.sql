@@ -38,6 +38,7 @@ AS $$
       comment: "Number of slotting fee records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`assortment_planogram_compliance`
 WITH METRICS
 LANGUAGE YAML
@@ -72,6 +73,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of planogram compliance records"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`assortment_plan`
 WITH METRICS
@@ -111,6 +113,7 @@ AS $$
       comment: "Number of assortment plans"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`assortment_category_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -146,6 +149,7 @@ AS $$
       comment: "Number of category records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`assortment_space_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -161,7 +165,7 @@ AS $$
       expr: store_location_id
       comment: "Store location identifier"
     - name: "category_id"
-      expr: primary_space_category_id
+      expr: category_id
       comment: "Category of the allocated space"
     - name: "season_name"
       expr: season_name

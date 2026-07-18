@@ -83,7 +83,7 @@ AS $$
       expr: candidate_type
       comment: "Type of candidate (internal, external, referral)"
     - name: "status"
-      expr: status
+      expr: candidate_status
       comment: "Current status of candidate in pipeline"
     - name: "source"
       expr: source
@@ -306,7 +306,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN completion_date IS NOT NULL THEN performance_review_id END)
       comment: "Number of completed performance reviews"
     - name: "unique_employees_reviewed"
-      expr: COUNT(DISTINCT primary_performance_worker_id)
+      expr: COUNT(DISTINCT worker_id)
       comment: "Number of unique employees who received reviews"
     - name: "avg_overall_rating_score"
       expr: AVG(CAST(overall_rating_score AS DOUBLE))
@@ -327,13 +327,13 @@ AS $$
       expr: AVG(CAST(merit_increase_pct AS DOUBLE))
       comment: "Average merit increase percentage recommended"
     - name: "employees_recommended_for_promotion"
-      expr: COUNT(DISTINCT CASE WHEN promotion_recommended = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN promotion_recommended = TRUE THEN worker_id END)
       comment: "Number of employees recommended for promotion"
     - name: "employees_on_pip"
-      expr: COUNT(DISTINCT CASE WHEN pip_required = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN pip_required = TRUE THEN worker_id END)
       comment: "Number of employees requiring performance improvement plan"
     - name: "succession_candidates"
-      expr: COUNT(DISTINCT CASE WHEN succession_candidate = TRUE THEN primary_performance_worker_id END)
+      expr: COUNT(DISTINCT CASE WHEN succession_candidate = TRUE THEN worker_id END)
       comment: "Number of employees identified as succession candidates"
 $$;
 

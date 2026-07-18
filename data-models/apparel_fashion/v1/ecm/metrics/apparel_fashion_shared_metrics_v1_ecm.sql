@@ -24,7 +24,7 @@ AS $$
       expr: credit_rating
       comment: "Credit rating tier for financial risk and partner quality assessment."
     - name: "status"
-      expr: status
+      expr: organization_status
       comment: "Current operational status (active, inactive, dissolved) for entity health monitoring."
     - name: "fiscal_year_end_month"
       expr: fiscal_year_end_month
@@ -46,7 +46,7 @@ AS $$
       expr: COUNT(DISTINCT organization_id)
       comment: "Distinct count of organizations - critical for portfolio size tracking, M&A pipeline, and entity consolidation decisions."
     - name: "active_organization_count"
-      expr: COUNT(DISTINCT CASE WHEN status = 'active' THEN organization_id END)
+      expr: COUNT(DISTINCT CASE WHEN organization_status = 'active' THEN organization_id END)
       comment: "Count of active organizations - operational health indicator for resource allocation and market presence decisions."
     - name: "publicly_traded_count"
       expr: COUNT(DISTINCT CASE WHEN is_publicly_traded = true THEN organization_id END)

@@ -74,6 +74,7 @@ AS $$
       comment: "Total payment failures across subscriptions, indicating billing health"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_fan_account`
 WITH METRICS
 LANGUAGE YAML
@@ -150,6 +151,7 @@ AS $$
       expr: COUNT(CASE WHEN ccpa_opt_out_flag = TRUE THEN 1 END)
       comment: "Count of accounts that opted out under CCPA, privacy compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_fan_interaction`
 WITH METRICS
@@ -228,6 +230,7 @@ AS $$
       comment: "Total loyalty points awarded through interactions, engagement incentive tracking"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_content_recommendation`
 WITH METRICS
 LANGUAGE YAML
@@ -298,9 +301,10 @@ AS $$
       expr: COUNT(DISTINCT fan_account_id)
       comment: "Distinct count of fans who received recommendations, reach metric"
     - name: "unique_content_recommended"
-      expr: COUNT(DISTINCT content_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Distinct count of content assets recommended, catalog coverage metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_sla_incident`
 WITH METRICS
@@ -379,6 +383,7 @@ AS $$
       comment: "Count of incidents requiring regulatory notification, compliance metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_notification_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -450,6 +455,7 @@ AS $$
       comment: "Count of campaigns with documented GDPR lawful basis, compliance metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_ab_test`
 WITH METRICS
 LANGUAGE YAML
@@ -517,6 +523,7 @@ AS $$
       expr: COUNT(CASE WHEN ccpa_applicable = TRUE THEN 1 END)
       comment: "Count of tests subject to CCPA, privacy compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`platform_digital_touchpoint`
 WITH METRICS

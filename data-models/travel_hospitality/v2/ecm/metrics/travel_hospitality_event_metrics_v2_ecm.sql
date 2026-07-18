@@ -89,6 +89,7 @@ AS $$
       comment: "Number of distinct client accounts booking events"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_revenue`
 WITH METRICS
 LANGUAGE YAML
@@ -178,6 +179,7 @@ AS $$
       comment: "Number of distinct properties with event revenue"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_inquiry`
 WITH METRICS
 LANGUAGE YAML
@@ -258,6 +260,7 @@ AS $$
       comment: "Number of distinct inquiry source channels"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_lost_business`
 WITH METRICS
 LANGUAGE YAML
@@ -337,6 +340,7 @@ AS $$
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties losing business"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_proposal`
 WITH METRICS
@@ -427,6 +431,7 @@ AS $$
       comment: "Number of distinct properties issuing proposals"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -512,12 +517,13 @@ AS $$
       expr: AVG(CAST(total_amount_due AS DOUBLE))
       comment: "Average invoice amount"
     - name: "unique_accounts"
-      expr: COUNT(DISTINCT client_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct client accounts invoiced"
     - name: "unique_properties"
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties issuing invoices"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_function_space`
 WITH METRICS
@@ -616,6 +622,7 @@ AS $$
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties with function spaces"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`event_group_block`
 WITH METRICS

@@ -89,6 +89,7 @@ AS $$
       comment: "Number of unique SKUs in stock positions"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -171,6 +172,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs involved in movements"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_goods_receipt`
 WITH METRICS
@@ -261,6 +263,7 @@ AS $$
       comment: "Number of unique SKUs received"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
 LANGUAGE YAML
@@ -349,6 +352,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs counted"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_transfer_order`
 WITH METRICS
@@ -454,6 +458,7 @@ AS $$
       comment: "Number of unique SKUs transferred"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
 LANGUAGE YAML
@@ -548,12 +553,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN cancelled_reason IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(replenishment_order_id), 0), 2)
       comment: "Percentage of replenishment orders cancelled, indicating planning accuracy issues"
     - name: "unique_destination_store_count"
-      expr: COUNT(DISTINCT destination_retail_store_id)
+      expr: COUNT(DISTINCT retail_store_id)
       comment: "Number of unique destination stores receiving replenishment"
     - name: "unique_sku_replenished"
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs replenished"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_stock_valuation`
 WITH METRICS
@@ -652,6 +658,7 @@ AS $$
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs with valuation records"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`inventory_asn`
 WITH METRICS

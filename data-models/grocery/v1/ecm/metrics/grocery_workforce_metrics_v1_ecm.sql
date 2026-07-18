@@ -11,8 +11,8 @@ AS $$
     - name: "department_code"
       expr: department_code
       comment: "Department code of the associate"
-    - name: "work_location_id"
-      expr: work_location_id
+    - name: "store_location_id"
+      expr: store_location_id
       comment: "Store location where the associate works"
     - name: "employment_status"
       expr: employment_status
@@ -49,8 +49,8 @@ AS $$
     - name: "department_code"
       expr: department_code
       comment: "Department code"
-    - name: "work_location_id"
-      expr: work_location_id
+    - name: "store_location_id"
+      expr: store_location_id
       comment: "Store location ID"
     - name: "employment_status"
       expr: employment_status
@@ -76,7 +76,7 @@ AS $$
   source: "`grocery_ecm`.`workforce`.`time_entry`"
   dimensions:
     - name: "associate_id"
-      expr: primary_time_associate_id
+      expr: associate_id
       comment: "Associate ID for the time entry"
     - name: "department_code"
       expr: department_code
@@ -95,6 +95,7 @@ AS $$
       expr: SUM(CAST(actual_hours_worked AS DOUBLE))
       comment: "Total actual hours worked (including regular and overtime)"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_labor_budget`
 WITH METRICS
@@ -125,6 +126,7 @@ AS $$
       comment: "Average labor cost percent target across budget records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_payroll_run_financials`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +156,7 @@ AS $$
       comment: "Total payroll deductions"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_performance_review_scores`
 WITH METRICS
 LANGUAGE YAML
@@ -182,6 +185,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of performance reviews recorded"
 $$;
+
 
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_certification_compliance`
 WITH METRICS
@@ -215,6 +219,7 @@ AS $$
       comment: "Total number of certification records"
 $$;
 
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_leave_request_utilization`
 WITH METRICS
 LANGUAGE YAML
@@ -226,8 +231,8 @@ AS $$
     - name: "leave_type"
       expr: leave_type
       comment: "Type of leave (e.g., Vacation, Sick, FMLA)"
-    - name: "primary_leave_associate_id"
-      expr: primary_leave_associate_id
+    - name: "associate_id"
+      expr: associate_id
       comment: "Associate ID for whom the leave is taken"
     - name: "store_location_id"
       expr: store_location_id

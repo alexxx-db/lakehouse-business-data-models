@@ -80,6 +80,7 @@ AS $$
       comment: "Number of distinct funds in the performance period"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_asset_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +173,7 @@ AS $$
       comment: "Number of distinct assets in performance measurement"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_capital_account`
 WITH METRICS
 LANGUAGE YAML
@@ -255,6 +257,7 @@ AS $$
       comment: "Number of distinct investors with capital accounts"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_capital_call`
 WITH METRICS
 LANGUAGE YAML
@@ -322,6 +325,7 @@ AS $$
       expr: COUNT(DISTINCT fund_id)
       comment: "Number of distinct funds issuing capital calls"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_distribution`
 WITH METRICS
@@ -403,6 +407,7 @@ AS $$
       comment: "Number of distinct funds making distributions"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_commitment`
 WITH METRICS
 LANGUAGE YAML
@@ -470,12 +475,13 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of investor commitments"
     - name: "investor_count"
-      expr: COUNT(DISTINCT commitment_investor_id)
+      expr: COUNT(DISTINCT investor_id)
       comment: "Number of distinct investors with commitments"
     - name: "fund_count"
       expr: COUNT(DISTINCT fund_id)
       comment: "Number of distinct funds with commitments"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_debt_facility`
 WITH METRICS
@@ -553,6 +559,7 @@ AS $$
       expr: COUNT(DISTINCT fund_id)
       comment: "Number of distinct funds with debt facilities"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_portfolio_asset`
 WITH METRICS
@@ -642,6 +649,7 @@ AS $$
       expr: COUNT(DISTINCT portfolio_id)
       comment: "Number of distinct portfolios"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`investment_deal`
 WITH METRICS

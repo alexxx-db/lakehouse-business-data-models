@@ -17,8 +17,8 @@ AS $$
     - name: "acquisition_year"
       expr: YEAR(acquisition_date)
       comment: "Year the collateral was acquired."
-    - name: "jurisdiction_country_id"
-      expr: jurisdiction_country_id
+    - name: "country_id"
+      expr: country_id
       comment: "Country jurisdiction of the collateral."
   measures:
     - name: "total_collateral_count"
@@ -43,6 +43,7 @@ AS $$
       expr: SUM(CASE WHEN concentration_limit_flag THEN 1 ELSE 0 END)
       comment: "Number of assets breaching concentration limits."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`collateral_position`
 WITH METRICS
@@ -82,6 +83,7 @@ AS $$
       comment: "Aggregate gross positive exposure across positions."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`collateral_valuation`
 WITH METRICS
 LANGUAGE YAML
@@ -117,6 +119,7 @@ AS $$
       comment: "Average width of confidence intervals for valuation estimates."
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`collateral_margin_exposure`
 WITH METRICS
 LANGUAGE YAML
@@ -128,8 +131,8 @@ AS $$
     - name: "exposure_year"
       expr: YEAR(exposure_date)
       comment: "Year of the exposure date."
-    - name: "exposure_currency_id"
-      expr: exposure_currency_id
+    - name: "currency_id"
+      expr: currency_id
       comment: "Currency of the exposure amount."
   measures:
     - name: "total_exposure_count"
@@ -148,6 +151,7 @@ AS $$
       expr: SUM(CAST(gne_amount AS DOUBLE))
       comment: "Aggregate gross negative exposure amount."
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`collateral_pledge`
 WITH METRICS

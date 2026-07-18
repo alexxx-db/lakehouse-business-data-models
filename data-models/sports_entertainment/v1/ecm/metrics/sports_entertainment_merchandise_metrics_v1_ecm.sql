@@ -71,6 +71,7 @@ AS $$
       comment: "Number of unique customers placing orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -135,6 +136,7 @@ AS $$
       expr: COUNT(DISTINCT sku_sku_catalog_id)
       comment: "Number of unique SKUs sold"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_inventory_position`
 WITH METRICS
@@ -206,6 +208,7 @@ AS $$
       expr: COUNT(DISTINCT sku_sku_catalog_id)
       comment: "Number of unique SKUs in inventory"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_return_request`
 WITH METRICS
@@ -284,6 +287,7 @@ AS $$
       comment: "Number of unique customers making returns"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_royalty_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -360,6 +364,7 @@ AS $$
       expr: COUNT(DISTINCT licensing_agreement_id)
       comment: "Number of unique licensing agreements with royalty activity"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_fulfillment_shipment`
 WITH METRICS
@@ -438,6 +443,7 @@ AS $$
       comment: "Number of unique customers receiving shipments"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_licensing_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -496,9 +502,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_exclusive = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of agreements that are exclusive"
     - name: "unique_licensors"
-      expr: COUNT(DISTINCT licensor_corporate_entity_id)
+      expr: COUNT(DISTINCT corporate_entity_id)
       comment: "Number of unique licensor entities"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_compliance_check`
 WITH METRICS

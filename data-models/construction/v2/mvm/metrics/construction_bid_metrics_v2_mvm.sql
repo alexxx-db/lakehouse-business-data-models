@@ -255,7 +255,7 @@ AS $$
       expr: estimating_method
       comment: "Method used for estimating (e.g., Parametric, Bottom-Up, Analogous)"
     - name: "category"
-      expr: category
+      expr: estimate_category
       comment: "Category of the estimate (e.g., Labor, Material, Equipment)"
     - name: "is_gmp"
       expr: is_gmp

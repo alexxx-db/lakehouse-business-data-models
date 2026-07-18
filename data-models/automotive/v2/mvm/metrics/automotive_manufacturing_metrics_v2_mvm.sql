@@ -216,7 +216,7 @@ AS $$
     - name: "City"
       expr: city
     - name: "Code"
-      expr: code
+      expr: plant_code
     - name: "Commissioning Date"
       expr: commissioning_date
     - name: "Company Code"
@@ -539,13 +539,13 @@ AS $$
     - name: "Change Reason"
       expr: change_reason
     - name: "Code"
-      expr: code
+      expr: routing_code
     - name: "Compliance Standard"
       expr: compliance_standard
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: routing_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -637,9 +637,9 @@ AS $$
     - name: "Capacity Category"
       expr: capacity_category
     - name: "Category"
-      expr: category
+      expr: work_center_category
     - name: "Code"
-      expr: code
+      expr: work_center_code
     - name: "Commissioning Date"
       expr: commissioning_date
     - name: "Created Timestamp"
@@ -649,7 +649,7 @@ AS $$
     - name: "Decommissioning Date"
       expr: decommissioning_date
     - name: "Description"
-      expr: description
+      expr: work_center_description
     - name: "Is Bottleneck"
       expr: is_bottleneck
     - name: "Is Jis Enabled"

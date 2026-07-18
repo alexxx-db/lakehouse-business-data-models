@@ -89,6 +89,7 @@ AS $$
       comment: "Number of unique retail stores with orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_sales_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -184,6 +185,7 @@ AS $$
       comment: "Number of unique sales orders represented"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_fulfillment`
 WITH METRICS
 LANGUAGE YAML
@@ -267,6 +269,7 @@ AS $$
       comment: "Number of unique carriers used"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_rma`
 WITH METRICS
 LANGUAGE YAML
@@ -341,6 +344,7 @@ AS $$
       comment: "Number of unique orders with returns"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_backorder`
 WITH METRICS
 LANGUAGE YAML
@@ -405,7 +409,7 @@ AS $$
       expr: AVG(CAST(extended_amount AS DOUBLE))
       comment: "Average value per backorder"
     - name: "unique_skus_backordered"
-      expr: COUNT(DISTINCT backorder_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs on backorder"
     - name: "unique_orders_with_backorders"
       expr: COUNT(DISTINCT sales_order_id)
@@ -414,6 +418,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique customers affected by backorders"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_purchase_order`
 WITH METRICS
@@ -501,6 +506,7 @@ AS $$
       comment: "Number of unique production factories sourced from"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -580,6 +586,7 @@ AS $$
       expr: COUNT(DISTINCT sales_order_id)
       comment: "Number of unique orders with payments"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`order_allocation`
 WITH METRICS

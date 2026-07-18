@@ -80,6 +80,7 @@ AS $$
       comment: "Count of terminated services - churn metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_activation_event`
 WITH METRICS
 LANGUAGE YAML
@@ -147,12 +148,13 @@ AS $$
       expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of subscribers with activation events - customer acquisition metric"
     - name: "unique_network_elements_used"
-      expr: COUNT(DISTINCT network_element_id)
+      expr: COUNT(DISTINCT element_id)
       comment: "Distinct count of network elements involved in activations - infrastructure utilization"
     - name: "regulatory_reportable_activations"
       expr: COUNT(CASE WHEN regulatory_reporting_flag = TRUE THEN 1 END)
       comment: "Count of activations requiring regulatory reporting - compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_provisioning_order`
 WITH METRICS
@@ -221,7 +223,7 @@ AS $$
       expr: COUNT(DISTINCT subscriber_id)
       comment: "Distinct count of subscribers with provisioning orders"
     - name: "unique_technicians_assigned"
-      expr: COUNT(DISTINCT assigned_technician_id)
+      expr: COUNT(DISTINCT technician_id)
       comment: "Distinct count of technicians assigned to orders - workforce utilization"
     - name: "high_priority_orders"
       expr: COUNT(CASE WHEN priority IN ('urgent', 'high') THEN 1 END)
@@ -230,6 +232,7 @@ AS $$
       expr: COUNT(CASE WHEN mnp_port_type IS NOT NULL THEN 1 END)
       comment: "Count of orders involving mobile number portability"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_svc_suspension`
 WITH METRICS
@@ -311,6 +314,7 @@ AS $$
       comment: "Count of suspensions meeting regulatory requirements - compliance metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_svc_status_history`
 WITH METRICS
 LANGUAGE YAML
@@ -384,6 +388,7 @@ AS $$
       expr: COUNT(CASE WHEN approval_status = 'pending' THEN 1 END)
       comment: "Count of transitions pending approval - workflow backlog metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_number_assignment`
 WITH METRICS
@@ -470,6 +475,7 @@ AS $$
       expr: COUNT(CASE WHEN do_not_call_registry_flag = TRUE THEN 1 END)
       comment: "Count of numbers on do-not-call registry - marketing constraint metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`service_sla_profile`
 WITH METRICS

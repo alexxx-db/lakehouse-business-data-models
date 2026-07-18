@@ -83,6 +83,7 @@ AS $$
       comment: "Average odometer reading for mobile equipment utilization"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_downtime_event`
 WITH METRICS
 LANGUAGE YAML
@@ -172,6 +173,7 @@ AS $$
       comment: "Number of unique assets experiencing downtime for fleet health assessment"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_fuel_consumption`
 WITH METRICS
 LANGUAGE YAML
@@ -180,8 +182,8 @@ AS $$
   comment: "Fuel consumption and emissions metrics for cost control and environmental reporting"
   source: "`mining_ecm`.`equipment`.`fuel_consumption`"
   dimensions:
-    - name: "primary_fuel_asset_id"
-      expr: primary_fuel_asset_id
+    - name: "asset_id"
+      expr: asset_id
       comment: "Asset consuming fuel"
     - name: "fuel_type"
       expr: fuel_type
@@ -242,9 +244,10 @@ AS $$
       expr: AVG(CAST(fuel_burn_rate_l_per_hr AS DOUBLE))
       comment: "Average fuel burn rate for efficiency benchmarking"
     - name: "distinct_assets_fueled"
-      expr: COUNT(DISTINCT primary_fuel_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique assets fueled for fleet coverage analysis"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_payload_cycle`
 WITH METRICS
@@ -254,8 +257,8 @@ AS $$
   comment: "Haul truck payload and cycle time metrics for production optimization and fleet efficiency"
   source: "`mining_ecm`.`equipment`.`payload_cycle`"
   dimensions:
-    - name: "primary_payload_asset_id"
-      expr: primary_payload_asset_id
+    - name: "asset_id"
+      expr: asset_id
       comment: "Haul truck performing the payload cycle"
     - name: "cycle_status"
       expr: cycle_status
@@ -337,9 +340,10 @@ AS $$
       expr: AVG(CAST(fuel_consumed_litres AS DOUBLE))
       comment: "Average fuel consumed per cycle for efficiency tracking"
     - name: "distinct_trucks"
-      expr: COUNT(DISTINCT primary_payload_asset_id)
+      expr: COUNT(DISTINCT asset_id)
       comment: "Number of unique trucks performing cycles"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_utilisation_record`
 WITH METRICS
@@ -436,6 +440,7 @@ AS $$
       comment: "Number of unique assets with utilisation records"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_oee_record`
 WITH METRICS
 LANGUAGE YAML
@@ -519,6 +524,7 @@ AS $$
       comment: "Number of unique assets with OEE records"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_inspection`
 WITH METRICS
 LANGUAGE YAML
@@ -598,6 +604,7 @@ AS $$
       expr: COUNT(DISTINCT inspector_employee_id)
       comment: "Number of unique inspectors for competency planning"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`equipment_drill_activity`
 WITH METRICS

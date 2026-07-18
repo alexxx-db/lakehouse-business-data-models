@@ -15,7 +15,7 @@ AS $$
       expr: severity
       comment: "Severity classification of the non-conformance (critical, major, minor)"
     - name: "category"
-      expr: category
+      expr: ncr_category
       comment: "Category of non-conformance (material, workmanship, design, etc.)"
     - name: "discipline"
       expr: discipline
@@ -148,7 +148,7 @@ AS $$
       expr: punch_item_status
       comment: "Current status of the punch item (open, closed, in progress, rejected)"
     - name: "category"
-      expr: category
+      expr: punch_item_category
       comment: "Category of punch item (cosmetic, functional, safety, etc.)"
     - name: "priority"
       expr: priority
@@ -293,7 +293,7 @@ AS $$
       expr: weather_conditions
       comment: "Weather conditions during the pour"
     - name: "level"
-      expr: level
+      expr: concrete_pour_record_level
       comment: "Building level or elevation where pour occurred"
   measures:
     - name: "total_pours"

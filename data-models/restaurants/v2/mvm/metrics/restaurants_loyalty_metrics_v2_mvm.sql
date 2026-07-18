@@ -174,7 +174,7 @@ AS $$
     - name: "Bonus Points Value"
       expr: bonus_points_value
     - name: "Code"
-      expr: code
+      expr: offer_code
     - name: "Created By User"
       expr: created_by_user
     - name: "Created Timestamp"
@@ -184,7 +184,7 @@ AS $$
     - name: "Daypart Restriction"
       expr: daypart_restriction
     - name: "Description"
-      expr: description
+      expr: offer_description
     - name: "Discount Type"
       expr: discount_type
     - name: "Distribution Channel"
@@ -286,7 +286,7 @@ AS $$
     - name: "Birthday Bonus Points"
       expr: birthday_bonus_points
     - name: "Code"
-      expr: code
+      expr: program_code
     - name: "Country Codes"
       expr: country_codes
     - name: "Created Timestamp"
@@ -294,7 +294,7 @@ AS $$
     - name: "Currency Name"
       expr: currency_name
     - name: "Description"
-      expr: description
+      expr: program_description
     - name: "End Date"
       expr: end_date
     - name: "Enrollment Bonus Points"
@@ -410,7 +410,7 @@ AS $$
     - name: "Availability Start Date"
       expr: availability_start_date
     - name: "Code"
-      expr: code
+      expr: reward_code
     - name: "Combinable With Other Offers"
       expr: combinable_with_other_offers
     - name: "Created Timestamp"
@@ -418,7 +418,7 @@ AS $$
     - name: "Daypart Restriction"
       expr: daypart_restriction
     - name: "Description"
-      expr: description
+      expr: reward_description
     - name: "Discount Type"
       expr: discount_type
     - name: "Featured Flag"
@@ -434,7 +434,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: reward_name
     - name: "Partner Name"
       expr: partner_name
   measures:
@@ -477,13 +477,13 @@ AS $$
     - name: "Birthday Reward Eligible"
       expr: birthday_reward_eligible
     - name: "Code"
-      expr: code
+      expr: tier_code
     - name: "Color Code"
       expr: color_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: tier_description
     - name: "Early Access Lto"
       expr: early_access_lto
     - name: "Effective End Date"

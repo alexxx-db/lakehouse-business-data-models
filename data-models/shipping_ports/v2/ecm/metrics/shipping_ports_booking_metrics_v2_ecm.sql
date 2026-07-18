@@ -71,6 +71,7 @@ AS $$
       comment: "Average TEU volume per call booking — indicates vessel size mix and helps benchmark against port capacity thresholds."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_cargo_booking`
 WITH METRICS
 LANGUAGE YAML
@@ -104,7 +105,7 @@ AS $$
       expr: DATE_TRUNC('MONTH', booking_date)
       comment: "Month the cargo booking was placed — enables monthly throughput trend analysis."
     - name: "shipping_line"
-      expr: masterdata_shipping_line_id
+      expr: shipping_line_id
       comment: "Shipping line associated with the cargo booking — enables carrier-level volume and revenue segmentation."
   measures:
     - name: "total_cargo_bookings"
@@ -147,6 +148,7 @@ AS $$
       expr: AVG(CAST(teu_count AS DOUBLE))
       comment: "Average TEU per cargo booking — indicates average shipment size and helps identify large-volume shipper segments."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_berth_reservation`
 WITH METRICS
@@ -231,6 +233,7 @@ AS $$
       comment: "Number of distinct berths with active reservations — measures berth utilization breadth across the port estate."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_voyage_nomination`
 WITH METRICS
 LANGUAGE YAML
@@ -298,6 +301,7 @@ AS $$
       expr: COUNT(DISTINCT shipping_line_id)
       comment: "Number of distinct shipping lines submitting voyage nominations — measures carrier diversity and commercial reach of the port."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_slot_reservation`
 WITH METRICS
@@ -391,6 +395,7 @@ AS $$
       comment: "Number of slot reservations flagged for restow — quantifies restow demand which directly impacts crane productivity and vessel turnaround time."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_service_order`
 WITH METRICS
 LANGUAGE YAML
@@ -458,6 +463,7 @@ AS $$
       expr: SUM(CAST(service_quantity AS DOUBLE))
       comment: "Total service quantity delivered across all orders — measures operational throughput volume for ancillary services."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_pre_arrival`
 WITH METRICS
@@ -539,6 +545,7 @@ AS $$
       comment: "Average TEU per pre-arrival notification — benchmarks vessel size mix and validates against booking commitments."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_amendment`
 WITH METRICS
 LANGUAGE YAML
@@ -610,6 +617,7 @@ AS $$
       comment: "Number of distinct port community participants submitting amendments — measures breadth of booking instability across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_truck_gate_booking`
 WITH METRICS
 LANGUAGE YAML
@@ -674,9 +682,10 @@ AS $$
       expr: COUNT(CASE WHEN is_refrigerated = TRUE THEN 1 END)
       comment: "Number of gate appointments for refrigerated containers — drives reefer inspection staffing and cold-chain gate lane planning."
     - name: "distinct_trucking_companies"
-      expr: COUNT(DISTINCT trucking_company_port_community_participant_id)
+      expr: COUNT(DISTINCT port_community_participant_id)
       comment: "Number of distinct trucking companies using the gate — measures haulier diversity and identifies concentration risk in gate throughput."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_resource_allocation`
 WITH METRICS
@@ -751,6 +760,7 @@ AS $$
       expr: COUNT(CASE WHEN swl_compliance_flag = FALSE THEN 1 END)
       comment: "Number of resource allocations with SWL non-compliance — critical safety KPI; any non-zero value triggers immediate HSE investigation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`booking_confirmation`
 WITH METRICS

@@ -92,6 +92,7 @@ AS $$
       comment: "Number of bookings that have been ticketed"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_itinerary_segment`
 WITH METRICS
 LANGUAGE YAML
@@ -187,6 +188,7 @@ AS $$
       comment: "Number of unique routes flown"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_booking_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -266,6 +268,7 @@ AS $$
       expr: COUNT(DISTINCT pnr_id)
       comment: "Number of unique PNRs with payment transactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_check_in_event`
 WITH METRICS
@@ -355,12 +358,13 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN mobile_boarding_pass_issued_flag = TRUE THEN check_in_event_id END)
       comment: "Number of mobile boarding passes issued"
     - name: "unique_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique passengers who checked in"
     - name: "unique_pnrs"
       expr: COUNT(DISTINCT pnr_id)
       comment: "Number of unique PNRs with check-in events"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_refund_transaction`
 WITH METRICS
@@ -453,6 +457,7 @@ AS $$
       expr: COUNT(DISTINCT pnr_id)
       comment: "Number of unique PNRs with refund transactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_voluntary_change`
 WITH METRICS
@@ -551,6 +556,7 @@ AS $$
       expr: COUNT(DISTINCT pnr_id)
       comment: "Number of unique PNRs with voluntary changes"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`reservation_fare_quote`
 WITH METRICS

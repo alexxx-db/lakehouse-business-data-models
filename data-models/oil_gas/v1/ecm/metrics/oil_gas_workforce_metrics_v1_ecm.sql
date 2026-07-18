@@ -27,6 +27,7 @@ AS $$
       comment: "Total number of active employees"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`workforce_employee_average_tenure`
 WITH METRICS
 LANGUAGE YAML
@@ -47,6 +48,7 @@ AS $$
       expr: AVG(DATEDIFF(current_date, hire_date) / 365.0)
       comment: "Average tenure in years for active employees"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`workforce_payroll_cost`
 WITH METRICS
@@ -83,6 +85,7 @@ AS $$
       comment: "Average overtime hours per payroll record"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`workforce_leave_utilization`
 WITH METRICS
 LANGUAGE YAML
@@ -103,6 +106,7 @@ AS $$
       comment: "Number of leave requests submitted"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`workforce_training_completion`
 WITH METRICS
 LANGUAGE YAML
@@ -115,7 +119,7 @@ AS $$
       expr: training_course_id
       comment: "Identifier of the training course"
     - name: "employee_id"
-      expr: primary_workforce_employee_id
+      expr: employee_id
       comment: "Employee who attended the training"
     - name: "training_month"
       expr: DATE_TRUNC('month', training_date)

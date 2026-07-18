@@ -107,6 +107,7 @@ AS $$
       comment: "Count of distinct client accounts with timesheet activity. Measures breadth of active client engagements."
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_approved_hours_summary`
 WITH METRICS
 LANGUAGE YAML
@@ -205,6 +206,7 @@ AS $$
       comment: "Count of distinct clients with approved billable hours. Measures revenue-generating client breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_shift`
 WITH METRICS
 LANGUAGE YAML
@@ -287,6 +289,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Count of unique workers with shift records. Measures active scheduled headcount for capacity planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_time_entry`
 WITH METRICS
@@ -374,6 +377,7 @@ AS $$
       comment: "Count of unique workers with time entries. Measures active workforce size at the entry level for capacity analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_absence_record`
 WITH METRICS
 LANGUAGE YAML
@@ -450,9 +454,10 @@ AS $$
       expr: COUNT(CASE WHEN replacement_requested = TRUE THEN 1 END)
       comment: "Number of absences where a replacement worker was requested. Measures operational impact severity and backfill demand."
     - name: "distinct_absent_workers"
-      expr: COUNT(DISTINCT primary_absence_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Count of unique workers with absence records. Measures breadth of absenteeism across the workforce for pattern analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_adjustment`
 WITH METRICS
@@ -527,6 +532,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Count of unique workers with adjustment records. Measures breadth of adjustment impact across the workforce."
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_approval_workflow`
 WITH METRICS
@@ -614,6 +620,7 @@ AS $$
       comment: "Count of distinct clients with active approval workflow records. Measures breadth of approval activity across the client base."
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_pay_period`
 WITH METRICS
 LANGUAGE YAML
@@ -666,6 +673,7 @@ AS $$
       expr: COUNT(CASE WHEN holiday_adjustment_flag = TRUE THEN 1 END)
       comment: "Number of pay periods with holiday adjustments. Tracks holiday-impacted payroll cycles for premium pay planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm_v1`.`_metrics`.`timesheet_offboarding_record`
 WITH METRICS

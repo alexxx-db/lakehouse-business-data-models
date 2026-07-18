@@ -29,6 +29,7 @@ AS $$
       comment: "Mean Absolute Error (MAE) in MW"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_capacity_requirement`
 WITH METRICS
 LANGUAGE YAML
@@ -40,8 +41,8 @@ AS $$
     - name: "planning_period_id"
       expr: planning_period_id
       comment: "Planning period identifier"
-    - name: "rto_iso_zone_id"
-      expr: rto_iso_zone_id
+    - name: "zone_id"
+      expr: zone_id
       comment: "RTO/ISO zone associated with the requirement"
     - name: "requirement_type"
       expr: requirement_type
@@ -60,6 +61,7 @@ AS $$
       expr: AVG(CAST(capacity_auction_clearing_price_per_mw_day AS DOUBLE))
       comment: "Average auction clearing price per MW‑day"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_energy_price`
 WITH METRICS
@@ -93,6 +95,7 @@ AS $$
       comment: "Average carbon price in USD per ton"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_load_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -107,8 +110,8 @@ AS $$
     - name: "control_area_id"
       expr: control_area_id
       comment: "Control area for the load forecast"
-    - name: "forecast_zone_id"
-      expr: forecast_zone_id
+    - name: "zone_id"
+      expr: zone_id
       comment: "Geographic zone of the load forecast"
     - name: "day_type"
       expr: day_type
@@ -127,6 +130,7 @@ AS $$
       expr: AVG(CAST(forecast_accuracy_mape AS DOUBLE))
       comment: "Average Mean Absolute Percentage Error of load forecasts"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_peak_demand`
 WITH METRICS

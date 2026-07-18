@@ -149,7 +149,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of conditions registered in the condition registry"
     - name: "unique_members_with_conditions"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with registered conditions, representing disease burden"
     - name: "chronic_condition_count"
       expr: COUNT(CASE WHEN is_chronic = TRUE THEN 1 END)
@@ -249,7 +249,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of care gaps identified across the member population"
     - name: "unique_members_with_gaps"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with one or more care gaps, representing quality improvement opportunity"
     - name: "open_gap_count"
       expr: COUNT(CASE WHEN gap_status = 'open' THEN 1 END)
@@ -370,7 +370,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of HEDIS measure results recorded"
     - name: "unique_members_measured"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with HEDIS measure results, representing quality measurement coverage"
     - name: "denominator_eligible_count"
       expr: COUNT(CASE WHEN denominator_criteria_met = TRUE THEN 1 END)
@@ -441,7 +441,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of risk tier assignments across all members and time periods"
     - name: "unique_members_stratified"
-      expr: COUNT(DISTINCT member_identity_id)
+      expr: COUNT(DISTINCT identity_id)
       comment: "Distinct count of members with risk tier assignments, representing stratified population coverage"
     - name: "current_tier_assignment_count"
       expr: COUNT(CASE WHEN is_current = TRUE THEN 1 END)
@@ -500,7 +500,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of care plan goals set across all members and plans"
     - name: "unique_plans_with_goals"
-      expr: COUNT(DISTINCT plan_id)
+      expr: COUNT(DISTINCT care_plan_id)
       comment: "Distinct count of care plans with defined goals, representing care planning completeness"
     - name: "compliant_goal_count"
       expr: COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END)
@@ -525,16 +525,16 @@ AS $$
   source: "`vibe_health_insurance_v1`.`care`.`program`"
   dimensions:
     - name: "program_name"
-      expr: name
+      expr: program_name
       comment: "Name of the care management program"
     - name: "program_code"
-      expr: code
+      expr: program_code
       comment: "Standardized code for the care program"
     - name: "program_type"
       expr: program_type
       comment: "Type of care program (disease management, case management, wellness, transitional care, etc.)"
     - name: "category"
-      expr: category
+      expr: program_category
       comment: "Category of the care program (chronic care, preventive, behavioral health, etc.)"
     - name: "program_status"
       expr: program_status

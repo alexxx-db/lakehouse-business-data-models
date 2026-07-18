@@ -52,10 +52,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of network alarms raised"
     - name: "unique_affected_elements"
-      expr: COUNT(DISTINCT affected_network_element_id)
+      expr: COUNT(DISTINCT element_id)
       comment: "Count of distinct network elements that generated alarms"
     - name: "unique_affected_subscribers"
-      expr: COUNT(DISTINCT affected_subscriber_id)
+      expr: COUNT(DISTINCT subscriber_id)
       comment: "Count of distinct subscribers impacted by alarms"
     - name: "total_customer_impact"
       expr: SUM(CAST(customer_impact_count AS DOUBLE))
@@ -79,6 +79,7 @@ AS $$
       expr: SUM(CASE WHEN acknowledgement_status = 'unacknowledged' THEN 1 ELSE 0 END)
       comment: "Count of alarms not yet acknowledged by operations"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_capacity`
 WITH METRICS
@@ -145,6 +146,7 @@ AS $$
       comment: "Total number of capacity measurements recorded"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_config_change`
 WITH METRICS
 LANGUAGE YAML
@@ -206,6 +208,7 @@ AS $$
       expr: AVG(CAST(downtime_duration_minutes AS DOUBLE))
       comment: "Average downtime in minutes per configuration change"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_element`
 WITH METRICS
@@ -271,6 +274,7 @@ AS $$
       expr: SUM(CASE WHEN warranty_expiration_date < CURRENT_DATE THEN 1 ELSE 0 END)
       comment: "Count of network elements with expired warranty"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_performance_counter`
 WITH METRICS
@@ -352,6 +356,7 @@ AS $$
       comment: "Count of failed performance data collections"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_planned_outage`
 WITH METRICS
 LANGUAGE YAML
@@ -431,6 +436,7 @@ AS $$
       expr: SUM(CASE WHEN impact_severity IN ('high', 'critical') THEN 1 ELSE 0 END)
       comment: "Count of outages with high or critical customer impact"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_ran_cell`
 WITH METRICS
@@ -521,6 +527,7 @@ AS $$
       comment: "Average user capacity per cell"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_slice`
 WITH METRICS
 LANGUAGE YAML
@@ -591,6 +598,7 @@ AS $$
       expr: COUNT(DISTINCT tenant_code)
       comment: "Count of distinct tenants using network slices"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_topology`
 WITH METRICS
@@ -674,6 +682,7 @@ AS $$
       expr: AVG(CAST(mttr_hours AS DOUBLE))
       comment: "Average mean time to repair in hours"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`network_transmission_link`
 WITH METRICS

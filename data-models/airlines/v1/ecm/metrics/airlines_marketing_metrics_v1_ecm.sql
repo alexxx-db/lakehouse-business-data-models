@@ -68,6 +68,7 @@ AS $$
       comment: "Number of distinct target markets"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_campaign_execution`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +155,7 @@ AS $$
       comment: "Average unsubscribe rate percentage across executions"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_campaign_response`
 WITH METRICS
 LANGUAGE YAML
@@ -224,9 +226,10 @@ AS $$
       expr: COUNT(DISTINCT campaign_execution_id)
       comment: "Number of distinct campaign executions generating responses"
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT passenger_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers responding"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_spend`
 WITH METRICS
@@ -296,6 +299,7 @@ AS $$
       comment: "Number of distinct vendors paid"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_audience_segment`
 WITH METRICS
 LANGUAGE YAML
@@ -363,6 +367,7 @@ AS $$
       expr: COUNT(DISTINCT owning_team)
       comment: "Number of distinct teams owning segments"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_ab_test`
 WITH METRICS
@@ -443,6 +448,7 @@ AS $$
       expr: COUNT(DISTINCT campaign_id)
       comment: "Number of distinct campaigns with A/B tests"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_promotional_fare`
 WITH METRICS
@@ -533,6 +539,7 @@ AS $$
       comment: "Number of distinct campaigns with promotional fares"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_survey_response`
 WITH METRICS
 LANGUAGE YAML
@@ -615,12 +622,13 @@ AS $$
       expr: COUNT(DISTINCT nps_survey_id)
       comment: "Number of distinct surveys with responses"
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers responding"
     - name: "distinct_flights"
       expr: COUNT(DISTINCT flight_leg_id)
       comment: "Number of distinct flights surveyed"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_social_media_post`
 WITH METRICS
@@ -711,6 +719,7 @@ AS $$
       comment: "Number of distinct campaigns with social posts"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`marketing_email_send`
 WITH METRICS
 LANGUAGE YAML
@@ -790,7 +799,7 @@ AS $$
       expr: COUNT(DISTINCT campaign_execution_id)
       comment: "Number of distinct campaign executions"
     - name: "distinct_passengers"
-      expr: COUNT(DISTINCT passenger_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct passengers receiving emails"
     - name: "distinct_creatives"
       expr: COUNT(DISTINCT digital_campaign_creative_id)

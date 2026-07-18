@@ -65,6 +65,7 @@ AS $$
       comment: "Number of unique properties placing purchase orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_vendor_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -132,6 +133,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors invoiced"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_vendor_performance`
 WITH METRICS
@@ -204,6 +206,7 @@ AS $$
       comment: "Number of unique vendors evaluated"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -269,6 +272,7 @@ AS $$
       comment: "Number of unique purchase orders received against"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_purchase_requisition`
 WITH METRICS
 LANGUAGE YAML
@@ -318,15 +322,16 @@ AS $$
       expr: AVG(DATEDIFF(closed_timestamp, submitted_timestamp))
       comment: "Average days from requisition submission to PO creation"
     - name: "distinct_requestors"
-      expr: COUNT(DISTINCT primary_purchase_requestor_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique employees submitting requisitions"
     - name: "distinct_preferred_vendors"
-      expr: COUNT(DISTINCT preferred_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique preferred vendors specified"
     - name: "distinct_properties"
       expr: COUNT(DISTINCT property_id)
       comment: "Number of unique properties with requisitions"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_vendor`
 WITH METRICS
@@ -380,6 +385,7 @@ AS $$
       expr: COUNT(DISTINCT country_code)
       comment: "Number of unique countries vendors operate from"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_vendor_contract`
 WITH METRICS
@@ -443,6 +449,7 @@ AS $$
       comment: "Number of unique properties with vendor contracts"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_category`
 WITH METRICS
 LANGUAGE YAML
@@ -495,6 +502,7 @@ AS $$
       expr: AVG(CAST(lead_time_days AS DOUBLE))
       comment: "Average lead time in days for category"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`procurement_project`
 WITH METRICS

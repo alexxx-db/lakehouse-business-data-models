@@ -169,7 +169,7 @@ AS $$
       expr: channel_status
       comment: "Operational status of the channel (e.g. active, inactive, suspended) for portfolio health monitoring."
     - name: "category"
-      expr: category
+      expr: channel_category
       comment: "Channel category classification for strategic grouping and portfolio analysis."
     - name: "geographic_scope"
       expr: geographic_scope

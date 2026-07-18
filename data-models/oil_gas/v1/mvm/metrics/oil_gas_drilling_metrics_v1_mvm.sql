@@ -59,6 +59,7 @@ AS $$
       comment: "Average hours the bit spent on bottom"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_daily_drilling_report`
 WITH METRICS
 LANGUAGE YAML
@@ -115,6 +116,7 @@ AS $$
       comment: "Average standpipe pressure"
 $$;
 
+
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_casing_design`
 WITH METRICS
 LANGUAGE YAML
@@ -126,8 +128,8 @@ AS $$
     - name: "design_date"
       expr: DATE_TRUNC('day', created_timestamp)
       comment: "Date the design was created"
-    - name: "target_formation_id"
-      expr: target_formation_id
+    - name: "formation_id"
+      expr: formation_id
       comment: "Target formation for the casing"
     - name: "well_program_id"
       expr: well_program_id
@@ -158,6 +160,7 @@ AS $$
       expr: AVG(CAST(weight_per_foot_lb AS DOUBLE))
       comment: "Average weight per foot of casing"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_cementing_job`
 WITH METRICS
@@ -199,6 +202,7 @@ AS $$
       expr: AVG(CAST(lead_slurry_density_ppg AS DOUBLE))
       comment: "Average density of lead slurry"
 $$;
+
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`drilling_stimulation_job`
 WITH METRICS

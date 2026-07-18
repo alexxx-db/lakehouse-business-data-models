@@ -829,7 +829,7 @@ AS $$
     - name: "Deprecation Reason"
       expr: deprecation_reason
     - name: "Description"
-      expr: description
+      expr: optimization_algorithm_description
     - name: "Documentation Url"
       expr: documentation_url
     - name: "Effective End Date"
@@ -955,7 +955,7 @@ AS $$
     - name: "Days Of Week"
       expr: days_of_week
     - name: "Description"
-      expr: description
+      expr: optimization_rule_description
     - name: "Device Filter"
       expr: device_filter
     - name: "Effective End Date"

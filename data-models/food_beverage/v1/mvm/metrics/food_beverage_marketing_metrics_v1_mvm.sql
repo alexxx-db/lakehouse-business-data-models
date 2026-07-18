@@ -109,9 +109,10 @@ AS $$
       expr: COUNT(DISTINCT market_id)
       comment: "Number of distinct markets measured"
     - name: "distinct_consumer_segments_measured"
-      expr: COUNT(DISTINCT consumer_segment_id)
+      expr: COUNT(DISTINCT segment_id)
       comment: "Number of distinct consumer segments measured"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_campaign`
 WITH METRICS
@@ -210,6 +211,7 @@ AS $$
       expr: COUNT(DISTINCT segment_id)
       comment: "Number of distinct consumer segments targeted"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_campaign_execution`
 WITH METRICS
@@ -335,6 +337,7 @@ AS $$
       expr: COUNT(DISTINCT media_plan_id)
       comment: "Number of distinct media plans executed"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_media_plan`
 WITH METRICS
@@ -466,6 +469,7 @@ AS $$
       expr: COUNT(DISTINCT market_id)
       comment: "Number of distinct markets with media plans"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_media_spend`
 WITH METRICS
@@ -607,6 +611,7 @@ AS $$
       comment: "Number of distinct media suppliers"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_syndicated_market_data`
 WITH METRICS
 LANGUAGE YAML
@@ -740,6 +745,7 @@ AS $$
       expr: COUNT(DISTINCT market_id)
       comment: "Number of distinct markets tracked"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`marketing_consumer_insight`
 WITH METRICS

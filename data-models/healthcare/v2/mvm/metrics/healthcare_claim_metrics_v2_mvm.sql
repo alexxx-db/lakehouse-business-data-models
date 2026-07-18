@@ -94,10 +94,10 @@ AS $$
       expr: SUM(CAST(total_billed_amount AS DOUBLE))
       comment: "Denominator for contractual adjustment rate - total billed"
     - name: "distinct_patients"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with claims - patient volume metric"
     - name: "distinct_rendering_providers"
-      expr: COUNT(DISTINCT rendering_provider_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers rendering services - capacity utilization"
     - name: "claims_with_appeals"
       expr: SUM(CASE WHEN appeal_filed_flag = TRUE THEN 1 ELSE 0 END)
@@ -122,7 +122,7 @@ AS $$
       expr: denial_type
       comment: "Type of denial (e.g., technical, clinical, authorization)"
     - name: "category"
-      expr: category
+      expr: denial_category
       comment: "Denial category for grouping and analysis"
     - name: "carc_code"
       expr: carc_code
@@ -204,7 +204,7 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with denials - patient impact metric"
     - name: "distinct_providers_denied"
-      expr: COUNT(DISTINCT provider_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers with denials - provider performance metric"
 $$;
 
@@ -308,10 +308,10 @@ AS $$
       expr: SUM(CASE WHEN appeal_filed_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of authorization denials appealed - appeal activity"
     - name: "distinct_patients"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients requiring prior authorization"
     - name: "distinct_requesting_providers"
-      expr: COUNT(DISTINCT requesting_provider_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers requesting authorizations"
 $$;
 
@@ -422,7 +422,7 @@ AS $$
       expr: appeal_type
       comment: "Type of appeal (e.g., reconsideration, redetermination, ALJ hearing)"
     - name: "level"
-      expr: level
+      expr: appeal_level
       comment: "Appeal level (e.g., first level, second level, external review)"
     - name: "outcome_code"
       expr: outcome_code

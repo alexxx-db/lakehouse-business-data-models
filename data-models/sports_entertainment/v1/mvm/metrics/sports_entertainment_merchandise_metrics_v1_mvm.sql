@@ -85,9 +85,10 @@ AS $$
       expr: COUNT(CASE WHEN gift_order_flag = TRUE THEN 1 END)
       comment: "Number of orders flagged as gifts. Tracks gifting program adoption and seasonal gifting demand."
     - name: "distinct_fans"
-      expr: COUNT(DISTINCT primary_merch_fan_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Count of unique fans who placed at least one order. Measures fan reach and customer base breadth for the merchandise business."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_order_line`
 WITH METRICS
@@ -175,6 +176,7 @@ AS $$
       comment: "Count of lines eligible for return. Quantifies return liability exposure for financial provisioning."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_fulfillment_shipment`
 WITH METRICS
 LANGUAGE YAML
@@ -258,6 +260,7 @@ AS $$
       comment: "Average shipment weight in kilograms. Used for carrier rate benchmarking and packaging optimisation decisions."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_return_request`
 WITH METRICS
 LANGUAGE YAML
@@ -331,9 +334,10 @@ AS $$
       expr: COUNT(CASE WHEN ip_compliance_flag = TRUE THEN 1 END)
       comment: "Number of returns flagged for IP compliance concerns. Triggers brand protection and anti-counterfeiting investigations."
     - name: "distinct_returning_fans"
-      expr: COUNT(DISTINCT primary_return_customer_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Count of unique fans submitting return requests. Identifies repeat returners and informs fan-level return policy decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_royalty_payment`
 WITH METRICS
@@ -415,6 +419,7 @@ AS $$
       comment: "Number of distinct licensing agreements generating royalty payments. Measures licensing portfolio breadth and obligation complexity."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_inventory_position`
 WITH METRICS
 LANGUAGE YAML
@@ -482,6 +487,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of inventory position records. Baseline measure for inventory complexity and data completeness monitoring."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_licensing_agreement`
 WITH METRICS
@@ -556,6 +562,7 @@ AS $$
       expr: COUNT(DISTINCT territory_code)
       comment: "Number of distinct territories covered by licensing agreements. Measures global IP licensing reach and market coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_sku_catalog`
 WITH METRICS
@@ -633,6 +640,7 @@ AS $$
       expr: COUNT(DISTINCT brand_name)
       comment: "Number of distinct brands in the SKU catalog. Measures brand portfolio breadth and licensing relationship diversity."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`merchandise_supplier`
 WITH METRICS

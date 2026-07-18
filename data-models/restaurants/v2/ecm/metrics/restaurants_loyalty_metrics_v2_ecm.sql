@@ -71,6 +71,7 @@ AS $$
       comment: "Percentage of members opted into SMS. Measures direct mobile messaging reach for time-sensitive offers."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_points_ledger`
 WITH METRICS
 LANGUAGE YAML
@@ -120,9 +121,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_voided = TRUE THEN points_ledger_id END) / NULLIF(COUNT(DISTINCT points_ledger_id), 0), 2)
       comment: "Percentage of points transactions that were voided. Elevated rates signal POS integration issues or fraud patterns."
     - name: "unique_members_transacting"
-      expr: COUNT(DISTINCT loyalty_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct members with points ledger activity. Measures active engagement breadth across the member base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_offer_redemption`
 WITH METRICS
@@ -155,6 +157,7 @@ AS $$
       expr: AVG(CAST(discount_amount AS DOUBLE))
       comment: "Average discount per redemption. Used to benchmark offer generosity and compare across offer types."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_redemption`
 WITH METRICS
@@ -214,6 +217,7 @@ AS $$
       expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct members who redeemed rewards. Measures active redemption participation breadth across the member base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_tier_history`
 WITH METRICS
@@ -280,6 +284,7 @@ AS $$
       comment: "Percentage of tier changes that were promotional rather than earned. Used to assess reliance on promotional tier grants vs. organic progression."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_enrollment_event`
 WITH METRICS
 LANGUAGE YAML
@@ -336,6 +341,7 @@ AS $$
       comment: "Count of enrollments driven by a referral code. Measures referral program effectiveness as an acquisition channel."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_challenge_enrollment`
 WITH METRICS
 LANGUAGE YAML
@@ -385,9 +391,10 @@ AS $$
       expr: SUM(CASE WHEN reward_issued_flag = TRUE THEN CAST(reward_value AS DOUBLE) ELSE 0 END)
       comment: "Total monetary value of rewards issued for challenge completions. Measures the financial cost of the challenge reward program."
     - name: "unique_participating_members"
-      expr: COUNT(DISTINCT loyalty_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct members participating in challenges. Measures gamification reach across the member base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_offer_assignment`
 WITH METRICS
@@ -438,9 +445,10 @@ AS $$
       expr: AVG(CAST(personalization_score AS DOUBLE))
       comment: "Average personalization score of assigned offers. Measures the targeting quality of the personalization engine — higher scores should correlate with higher redemption rates."
     - name: "unique_members_receiving_offers"
-      expr: COUNT(DISTINCT loyalty_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct members who received offer assignments. Measures offer program reach across the member base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_segment`
 WITH METRICS
@@ -495,6 +503,7 @@ AS $$
       comment: "Average maximum ACV threshold used in segment definitions. Used to calibrate high-value customer segment boundaries."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`loyalty_referral`
 WITH METRICS
 LANGUAGE YAML
@@ -538,6 +547,6 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN fraud_flag = TRUE THEN referral_id END) / NULLIF(COUNT(DISTINCT referral_id), 0), 2)
       comment: "Percentage of referrals flagged for fraud. Elevated rates indicate referral abuse patterns requiring program controls review."
     - name: "unique_referring_members"
-      expr: COUNT(DISTINCT primary_referral_referred_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Count of distinct members who made referrals. Measures the breadth of referral program participation across the member base."
 $$;

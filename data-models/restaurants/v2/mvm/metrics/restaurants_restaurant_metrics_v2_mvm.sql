@@ -9,10 +9,10 @@ AS $$
   source: "`vibe_restaurants_v1`.`restaurant`.`brand`"
   dimensions:
     - name: "brand_name"
-      expr: name
+      expr: brand_name
       comment: "Brand name for segmentation and reporting"
     - name: "brand_category"
-      expr: category
+      expr: brand_category
       comment: "Brand category (e.g., QSR, Fast Casual, Fine Dining) for competitive analysis"
     - name: "brand_segment"
       expr: segment

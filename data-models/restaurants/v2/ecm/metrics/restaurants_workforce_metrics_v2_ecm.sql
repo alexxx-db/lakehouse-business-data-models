@@ -77,6 +77,7 @@ AS $$
       comment: "Count of distinct employees who received a payroll record in the period. Tracks active paid headcount."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_shift_operations`
 WITH METRICS
 LANGUAGE YAML
@@ -141,6 +142,7 @@ AS $$
       expr: SUM(CAST(actual_hours AS DOUBLE) - CAST(scheduled_hours AS DOUBLE))
       comment: "Total variance between actual and scheduled hours (positive = over-scheduled, negative = under-staffed). Drives scheduling optimization."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_labor_budget_vs_forecast`
 WITH METRICS
@@ -210,6 +212,7 @@ AS $$
       comment: "Number of labor budget records. Used to verify budget coverage across units and periods."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_labor_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -268,6 +271,7 @@ AS $$
       expr: COUNT(CASE WHEN lto_flag = TRUE THEN labor_forecast_id END)
       comment: "Number of forecast periods flagged with an active LTO. Tracks LTO-driven demand planning coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_employee_workforce`
 WITH METRICS
@@ -336,6 +340,7 @@ AS $$
       expr: COUNT(CASE WHEN union_member = TRUE THEN employee_id END)
       comment: "Number of union member employees. Tracks union workforce size for labor relations and contract compliance."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_performance_review`
 WITH METRICS
@@ -408,6 +413,7 @@ AS $$
       comment: "Average total competency score across all reviews. Composite skill assessment KPI for talent development planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_labor_violations`
 WITH METRICS
 LANGUAGE YAML
@@ -470,6 +476,7 @@ AS $$
       comment: "Number of distinct employees with labor violations. Identifies concentration of compliance risk in specific individuals."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_training_compliance`
 WITH METRICS
 LANGUAGE YAML
@@ -529,6 +536,7 @@ AS $$
       comment: "Number of training completions that satisfy a compliance requirement. Tracks regulatory obligation fulfillment volume."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_recruitment`
 WITH METRICS
 LANGUAGE YAML
@@ -578,9 +586,10 @@ AS $$
       expr: AVG(CAST(salary_range_max AS DOUBLE))
       comment: "Average maximum salary offered across requisitions. Tracks ceiling compensation levels for budget planning."
     - name: "distinct_positions_recruited"
-      expr: COUNT(DISTINCT recruiting_position_id)
+      expr: COUNT(DISTINCT position_id)
       comment: "Number of distinct positions being recruited for. Tracks breadth of open headcount needs."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_onboarding`
 WITH METRICS
@@ -641,6 +650,7 @@ AS $$
       comment: "Percentage of new hires enrolled in ServSafe during onboarding. Tracks food safety training pipeline for new employees."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_leave_management`
 WITH METRICS
 LANGUAGE YAML
@@ -696,9 +706,10 @@ AS $$
       expr: COUNT(CASE WHEN payroll_impact_flag = TRUE THEN leave_request_id END)
       comment: "Number of leave requests with a payroll impact. Tracks the volume of absences requiring payroll adjustment."
     - name: "distinct_employees_on_leave"
-      expr: COUNT(DISTINCT leave_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees with leave requests. Tracks breadth of workforce absence exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`workforce_certification_compliance`
 WITH METRICS

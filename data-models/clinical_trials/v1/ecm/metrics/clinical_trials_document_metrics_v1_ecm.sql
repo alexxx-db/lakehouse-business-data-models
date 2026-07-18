@@ -80,6 +80,7 @@ AS $$
       comment: "Number of assessments flagged as high inspection readiness risk"
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_inspection_readiness`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Total open inspection findings requiring resolution"
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_workflow`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(CASE WHEN electronic_signature_required = true THEN 1 END)
       comment: "Number of workflows requiring electronic signature — 21 CFR Part 11 compliance tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_access_log`
 WITH METRICS
@@ -287,6 +290,7 @@ AS $$
       comment: "Number of accesses where justification was required but not provided — compliance gap"
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_signature`
 WITH METRICS
 LANGUAGE YAML
@@ -342,12 +346,13 @@ AS $$
       expr: COUNT(CASE WHEN signature_status = 'pending' AND due_date < CURRENT_DATE() THEN 1 END)
       comment: "Number of overdue pending signatures — critical compliance risk"
     - name: "distinct_signers"
-      expr: COUNT(DISTINCT signature_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Distinct individuals providing signatures"
     - name: "regulatory_submission_signatures"
       expr: COUNT(CASE WHEN is_regulatory_submission_applicable = true THEN 1 END)
       comment: "Signatures applicable to regulatory submissions — highest priority tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_site_file`
 WITH METRICS
@@ -411,6 +416,7 @@ AS $$
       comment: "Total open action items across site files — operational workload indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_sop`
 WITH METRICS
 LANGUAGE YAML
@@ -469,6 +475,7 @@ AS $$
       expr: COUNT(CASE WHEN deviation_triggered = true THEN 1 END)
       comment: "Number of SOPs that have triggered deviations — quality signal"
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_etmf_exchange`
 WITH METRICS
@@ -531,6 +538,7 @@ AS $$
       expr: COUNT(CASE WHEN rejection_code IS NOT NULL THEN 1 END)
       comment: "Number of exchanges that were rejected — quality gate effectiveness"
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_distribution`
 WITH METRICS

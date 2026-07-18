@@ -83,6 +83,7 @@ AS $$
       comment: "Count of turnarounds where all services completed successfully"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_baggage_irregularity`
 WITH METRICS
 LANGUAGE YAML
@@ -159,9 +160,10 @@ AS $$
       expr: SUM(CASE WHEN dot_reportable_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of DOT-reportable irregularities - regulatory compliance metric"
     - name: "unique_passengers_affected"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique passengers impacted by irregularities"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_deicing_event`
 WITH METRICS
@@ -243,6 +245,7 @@ AS $$
       comment: "Count of events requiring environmental reporting"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_gate_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -322,6 +325,7 @@ AS $$
       expr: COUNT(DISTINCT flight_leg_id)
       comment: "Number of unique flights assigned"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_handling_performance`
 WITH METRICS
@@ -418,6 +422,7 @@ AS $$
       comment: "Number of unique flights measured"
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_slot_utilization`
 WITH METRICS
 LANGUAGE YAML
@@ -485,6 +490,7 @@ AS $$
       expr: COUNT(DISTINCT station_id)
       comment: "Number of unique stations with slot operations"
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`airport_boarding_event`
 WITH METRICS
@@ -565,7 +571,7 @@ AS $$
       expr: SUM(CASE WHEN is_interline_passenger = TRUE THEN 1 ELSE 0 END)
       comment: "Count of interline passengers"
     - name: "unique_passengers_boarded"
-      expr: COUNT(DISTINCT pax_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique passengers boarded"
     - name: "unique_flights_boarded"
       expr: COUNT(DISTINCT flight_leg_id)

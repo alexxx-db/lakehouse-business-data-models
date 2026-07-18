@@ -44,6 +44,7 @@ AS $$
       comment: "Average gross amount per order"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -75,9 +76,10 @@ AS $$
       expr: AVG(CAST(unit_price AS DOUBLE))
       comment: "Average unit price across order lines"
     - name: "distinct_orders"
-      expr: COUNT(DISTINCT sales_order_id)
+      expr: COUNT(DISTINCT order_id)
       comment: "Number of distinct orders represented in the line items"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_contract`
 WITH METRICS
@@ -110,6 +112,7 @@ AS $$
       expr: AVG(CAST(price AS DOUBLE))
       comment: "Average contract price per unit"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_opportunity`
 WITH METRICS
@@ -149,6 +152,7 @@ AS $$
       comment: "Average probability of closing across opportunities"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_demand_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -169,8 +173,8 @@ AS $$
     - name: "commodity_id"
       expr: commodity_id
       comment: "Commodity being forecasted"
-    - name: "sales_territory_id"
-      expr: sales_territory_id
+    - name: "territory_id"
+      expr: territory_id
       comment: "Territory for which the forecast is made"
   measures:
     - name: "forecast_count"
@@ -186,6 +190,7 @@ AS $$
       expr: AVG(CAST(forecast_accuracy_pct AS DOUBLE))
       comment: "Average forecast accuracy percentage"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_market_price`
 WITH METRICS
@@ -218,6 +223,7 @@ AS $$
       expr: AVG(CAST(close_price AS DOUBLE))
       comment: "Average closing price across records"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`sales_broker`
 WITH METRICS

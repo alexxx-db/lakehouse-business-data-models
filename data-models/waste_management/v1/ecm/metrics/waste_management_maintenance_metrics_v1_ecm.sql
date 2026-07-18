@@ -86,6 +86,7 @@ AS $$
       comment: "Count of work orders involving warranty claims"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_downtime_event`
 WITH METRICS
 LANGUAGE YAML
@@ -169,6 +170,7 @@ AS $$
       comment: "Number of distinct assets that experienced downtime"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_pm_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -251,9 +253,10 @@ AS $$
       expr: SUM(CASE WHEN auto_wo_generation = TRUE THEN 1 ELSE 0 END)
       comment: "Count of PM schedules with automatic work order generation enabled"
     - name: "distinct_assets_on_pm"
-      expr: COUNT(DISTINCT COALESCE(CAST(vehicle_id AS STRING), CAST(fixed_asset_id AS STRING), CAST(boiler_unit_id AS STRING), CAST(turbine_generator_id AS STRING), CAST(landfill_site_id AS STRING)))
+      expr: COUNT(DISTINCT COALESCE(CAST(vehicle_id AS STRING), CAST(fixed_asset_id AS STRING), CAST(boiler_unit_id AS STRING), CAST(turbine_generator_id AS STRING), CAST(site_id AS STRING)))
       comment: "Number of distinct assets covered by PM schedules"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_budget`
 WITH METRICS
@@ -338,6 +341,7 @@ AS $$
       comment: "Count of budgets allocated for DOT inspections"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_parts_usage`
 WITH METRICS
 LANGUAGE YAML
@@ -417,6 +421,7 @@ AS $$
       expr: SUM(CASE WHEN reorder_triggered_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of transactions that triggered inventory reorder"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_technician_assignment`
 WITH METRICS
@@ -500,7 +505,7 @@ AS $$
       expr: SUM((CAST(actual_labor_hours AS DOUBLE)) - (CAST(scheduled_labor_hours AS DOUBLE)))
       comment: "Total variance between actual and scheduled labor hours"
     - name: "distinct_technicians"
-      expr: COUNT(DISTINCT primary_technician_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct technicians assigned"
     - name: "distinct_work_orders"
       expr: COUNT(DISTINCT work_order_id)
@@ -512,6 +517,7 @@ AS $$
       expr: SUM(CASE WHEN labor_confirmed_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of assignments with confirmed labor hours"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`maintenance_warranty_claim`
 WITH METRICS

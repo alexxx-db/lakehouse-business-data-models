@@ -83,6 +83,7 @@ AS $$
       comment: "Revenue from bookings flagged as critical priority. Used for escalation management and executive attention."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_opportunity`
 WITH METRICS
 LANGUAGE YAML
@@ -157,6 +158,7 @@ AS $$
       comment: "Average unit price across opportunities. Used to monitor ASP (Average Selling Price) trends in the pipeline."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_forecast`
 WITH METRICS
 LANGUAGE YAML
@@ -222,6 +224,7 @@ AS $$
       comment: "Number of unique accounts with active forecasts. Measures forecast coverage breadth across the customer base."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_design_win`
 WITH METRICS
 LANGUAGE YAML
@@ -277,7 +280,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of design wins. Baseline KPI for design win velocity and sales funnel conversion."
     - name: "distinct_accounts_with_design_wins"
-      expr: COUNT(DISTINCT primary_sales_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique accounts with design wins. Measures customer penetration and design win breadth."
     - name: "avg_estimated_annual_revenue_gross"
       expr: AVG(CAST(estimated_annual_revenue_gross AS DOUBLE))
@@ -295,6 +298,7 @@ AS $$
       expr: AVG(CAST(competitor_displacement_score AS DOUBLE))
       comment: "Average competitor displacement score across design wins. Measures competitive win quality and market share capture effectiveness."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_quote`
 WITH METRICS
@@ -361,6 +365,7 @@ AS $$
       comment: "Number of unique accounts receiving quotes. Measures quoting reach and customer engagement breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_nre_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -425,6 +430,7 @@ AS $$
       expr: SUM((CAST(nre_total_amount AS DOUBLE)) - (CAST(actual_revenue_recognized AS DOUBLE)))
       comment: "Difference between contracted NRE value and recognized revenue. Measures deferred NRE revenue and milestone completion risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_customer_contract`
 WITH METRICS
@@ -491,6 +497,7 @@ AS $$
       comment: "Average discount rate across contracts. Used to monitor pricing discipline and margin impact of contracted discounts."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_lead`
 WITH METRICS
 LANGUAGE YAML
@@ -547,6 +554,7 @@ AS $$
       comment: "Number of unique companies (accounts) with active leads. Measures market reach and new logo pipeline breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_rebate_program`
 WITH METRICS
 LANGUAGE YAML
@@ -600,6 +608,7 @@ AS $$
       comment: "Total Tier 2 revenue threshold across all rebate programs. Used to assess stretch targets and incremental rebate exposure."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -652,6 +661,7 @@ AS $$
       expr: SUM((CAST(actual_spend AS DOUBLE)) - (CAST(budget_amount AS DOUBLE)))
       comment: "Difference between actual spend and budget (positive = over budget, negative = under budget). Used for budget variance management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`sales_territory`
 WITH METRICS

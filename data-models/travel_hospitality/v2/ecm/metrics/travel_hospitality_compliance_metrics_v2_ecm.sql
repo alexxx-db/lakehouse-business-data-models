@@ -86,6 +86,7 @@ AS $$
       comment: "Number of distinct properties audited"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_audit_finding`
 WITH METRICS
 LANGUAGE YAML
@@ -175,6 +176,7 @@ AS $$
       comment: "Number of distinct audits with findings"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_corrective_action`
 WITH METRICS
 LANGUAGE YAML
@@ -261,6 +263,7 @@ AS $$
       comment: "Number of distinct properties with corrective actions"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_permit`
 WITH METRICS
 LANGUAGE YAML
@@ -340,6 +343,7 @@ AS $$
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties with permits"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_health_safety_incident`
 WITH METRICS
@@ -429,6 +433,7 @@ AS $$
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties with incidents"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_privacy_incident`
 WITH METRICS
@@ -528,6 +533,7 @@ AS $$
       comment: "Number of distinct properties with privacy incidents"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_policy_acknowledgment`
 WITH METRICS
 LANGUAGE YAML
@@ -607,12 +613,13 @@ AS $$
       expr: COUNT(DISTINCT policy_id)
       comment: "Number of distinct policies acknowledged"
     - name: "distinct_employees_acknowledging"
-      expr: COUNT(DISTINCT primary_policy_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees acknowledging policies"
     - name: "distinct_properties_with_acknowledgments"
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties with acknowledgments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_risk_register`
 WITH METRICS
@@ -712,6 +719,7 @@ AS $$
       comment: "Number of distinct properties with risks"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_regulatory_filing`
 WITH METRICS
 LANGUAGE YAML
@@ -806,6 +814,7 @@ AS $$
       expr: COUNT(DISTINCT property_id)
       comment: "Number of distinct properties with filings"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`compliance_sanction_screening`
 WITH METRICS

@@ -74,6 +74,7 @@ AS $$
       comment: "Percentage by which PO values have grown through amendments vs. original value. A leading indicator of scope management effectiveness."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_vendor_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +155,7 @@ AS $$
       comment: "Number of invoices that passed three-way match automatically. Measures AP automation effectiveness and straight-through processing rate."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_vendor_evaluation`
 WITH METRICS
 LANGUAGE YAML
@@ -224,6 +226,7 @@ AS $$
       expr: AVG(CAST(bonding_limit_amount AS DOUBLE))
       comment: "Average bonding capacity limit across evaluated vendors. Informs maximum contract value that can be awarded to the supply base."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_vendor_qualification`
 WITH METRICS
@@ -296,6 +299,7 @@ AS $$
       comment: "Number of distinct vendors in the qualification register. Measures approved vendor list breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -357,6 +361,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors delivering in the period. Measures active supply base utilisation."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_purchase_requisition`
 WITH METRICS
@@ -423,6 +428,7 @@ AS $$
       comment: "Number of distinct projects generating procurement demand. Measures portfolio-wide procurement activity."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_rfq`
 WITH METRICS
 LANGUAGE YAML
@@ -475,9 +481,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN rfq_status = 'Awarded' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of issued RFQs resulting in an award. Low rates indicate tendering inefficiency or market availability issues."
     - name: "distinct_vendor_count"
-      expr: COUNT(DISTINCT awarded_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of distinct vendors awarded through RFQ. Measures supply base utilisation from competitive tendering."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_po_amendment`
 WITH METRICS
@@ -538,6 +545,7 @@ AS $$
       comment: "Number of distinct vendors with amended POs. Identifies vendors with high change activity for relationship management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_vendor_quotation`
 WITH METRICS
 LANGUAGE YAML
@@ -597,6 +605,7 @@ AS $$
       comment: "Percentage of quotations meeting technical requirements. Low rates indicate specification quality issues or supply base capability gaps."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_framework_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -653,6 +662,7 @@ AS $$
       comment: "Number of distinct vendors under framework agreements. Measures strategic supply base breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_approval_workflow`
 WITH METRICS
 LANGUAGE YAML
@@ -705,6 +715,7 @@ AS $$
       expr: COUNT(DISTINCT construction_project_id)
       comment: "Number of distinct projects with configured approval workflows. Measures governance framework deployment across the project portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`procurement_delivery_schedule`
 WITH METRICS

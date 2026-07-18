@@ -74,6 +74,7 @@ AS $$
       comment: "Number of events eligible for co-curricular credit. Measures breadth of experiential learning opportunities offered."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_conduct_case`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Number of cases with overdue sanction completion. Directly signals compliance risk and need for follow-up intervention."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_conduct_sanction`
 WITH METRICS
 LANGUAGE YAML
@@ -215,6 +217,7 @@ AS $$
       expr: COUNT(CASE WHEN external_agency_reported_flag = TRUE THEN 1 END)
       comment: "Number of sanctions reported to external agencies. Critical compliance and risk management metric for institutional legal exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_counseling_case`
 WITH METRICS
@@ -290,6 +293,7 @@ AS $$
       comment: "Number of cases initiated through mandatory referral. Tracks involuntary caseload volume relevant to conduct-counseling integration policy."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_dining_enrollment`
 WITH METRICS
 LANGUAGE YAML
@@ -360,6 +364,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN enrollment_status = 'Cancelled' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of dining enrollments that were cancelled. Rising cancellation rates signal dissatisfaction or affordability issues requiring program response."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_event_attendance`
 WITH METRICS
@@ -432,6 +437,7 @@ AS $$
       comment: "Number of attendance records with special accommodation requests. Informs accessibility planning and ADA compliance for event programming."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_health_appointment`
 WITH METRICS
 LANGUAGE YAML
@@ -502,6 +508,7 @@ AS $$
       expr: COUNT(CASE WHEN follow_up_required = TRUE THEN 1 END)
       comment: "Number of appointments requiring a follow-up visit. Measures continuity-of-care demand and informs scheduling capacity for follow-up slots."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_health_visit`
 WITH METRICS
@@ -574,6 +581,7 @@ AS $$
       comment: "Number of visits where follow-up care was recommended. Informs scheduling demand for follow-up appointment slots."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_housing_application`
 WITH METRICS
 LANGUAGE YAML
@@ -614,7 +622,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of housing applications submitted. Baseline demand metric for Housing Office capacity planning."
     - name: "unique_applicants"
-      expr: COUNT(DISTINCT primary_housing_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of distinct students who submitted a housing application. Measures housing demand breadth across the student population."
     - name: "total_application_fee_revenue"
       expr: SUM(CAST(application_fee_amount AS DOUBLE))
@@ -641,6 +649,7 @@ AS $$
       expr: COUNT(CASE WHEN gender_inclusive_housing_flag = TRUE THEN 1 END)
       comment: "Number of applications requesting gender-inclusive housing. Measures demand for inclusive housing options to inform inventory allocation decisions."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_housing_assignment`
 WITH METRICS
@@ -709,6 +718,7 @@ AS $$
       expr: COUNT(CASE WHEN assignment_status = 'Cancelled' THEN 1 END)
       comment: "Number of cancelled housing assignments. Tracks mid-year attrition and associated revenue loss and refund exposure."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_immunization_record`
 WITH METRICS
@@ -781,6 +791,7 @@ AS $$
       comment: "Number of exemption records with supporting documentation on file. Measures documentation compliance for exemption policy enforcement."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_org_membership`
 WITH METRICS
 LANGUAGE YAML
@@ -852,6 +863,7 @@ AS $$
       comment: "Percentage of members who completed leadership training. Measures leadership development program reach and informs training investment decisions."
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_service_learning_placement`
 WITH METRICS
 LANGUAGE YAML
@@ -922,6 +934,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN reflection_submission_status = 'Submitted' THEN 1 END) / NULLIF(COUNT(CASE WHEN reflection_required_flag = TRUE THEN 1 END), 0), 2)
       comment: "Percentage of required reflections that have been submitted. Academic compliance KPI for service-learning course integration; low rates risk grade and credit impacts."
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`studentlife_student_org`
 WITH METRICS

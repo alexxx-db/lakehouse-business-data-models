@@ -41,6 +41,7 @@ AS $$
       comment: "Number of forecast accuracy records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_capacity_requirement`
 WITH METRICS
 LANGUAGE YAML
@@ -52,8 +53,8 @@ AS $$
     - name: "planning_period_id"
       expr: planning_period_id
       comment: "Planning period associated with the requirement"
-    - name: "rto_iso_zone_id"
-      expr: rto_iso_zone_id
+    - name: "zone_id"
+      expr: zone_id
       comment: "RTO/ISO zone identifier"
     - name: "requirement_type"
       expr: requirement_type
@@ -78,6 +79,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of capacity requirement records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_energy_price`
 WITH METRICS
@@ -114,6 +116,7 @@ AS $$
       comment: "Number of energy price records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_generation`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +151,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of generation forecast records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`forecast_resource_adequacy`
 WITH METRICS

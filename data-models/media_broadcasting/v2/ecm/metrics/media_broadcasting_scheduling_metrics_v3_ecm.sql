@@ -65,6 +65,7 @@ AS $$
       comment: "Count of currently active channels. Operational baseline for scheduling and traffic capacity planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_ad_break`
 WITH METRICS
 LANGUAGE YAML
@@ -133,6 +134,7 @@ AS $$
       comment: "Number of breaks with affidavits generated. Tracks proof-of-performance compliance rate for billing and advertiser reporting."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_schedule_slot`
 WITH METRICS
 LANGUAGE YAML
@@ -197,6 +199,7 @@ AS $$
       expr: COUNT(DISTINCT title_id)
       comment: "Number of distinct content titles scheduled. Measures content diversity and library utilization breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_program_schedule`
 WITH METRICS
@@ -266,6 +269,7 @@ AS $$
       comment: "Total runtime in seconds across all schedules. Used to compute ad-to-content ratio for yield analysis."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_playout_event`
 WITH METRICS
 LANGUAGE YAML
@@ -333,6 +337,7 @@ AS $$
       expr: AVG(CAST(start_deviation_seconds AS DOUBLE))
       comment: "Average deviation between scheduled and actual start time in seconds. Key on-air accuracy KPI — large deviations indicate scheduling or automation issues."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_daypart`
 WITH METRICS
@@ -405,6 +410,7 @@ AS $$
       comment: "Number of scatter-eligible dayparts. Measures short-term market inventory capacity for opportunistic revenue."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_channel_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -451,6 +457,7 @@ AS $$
       expr: COUNT(DISTINCT channel_id)
       comment: "Number of distinct channels receiving campaign allocations. Measures channel inventory utilization breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_blackout_rule`
 WITH METRICS
@@ -501,12 +508,13 @@ AS $$
       expr: COUNT(CASE WHEN must_carry_exempt_flag = TRUE THEN 1 END)
       comment: "Number of rules with must-carry exemptions. Measures regulatory carve-outs that affect distribution obligations."
     - name: "distinct_titles_under_blackout"
-      expr: COUNT(DISTINCT primary_scheduling_title_id)
+      expr: COUNT(DISTINCT title_id)
       comment: "Number of distinct content titles subject to blackout rules. Measures breadth of rights-restricted content in the schedule."
     - name: "distinct_channels_with_blackout"
       expr: COUNT(DISTINCT channel_id)
       comment: "Number of distinct channels with active blackout rules. Identifies channels with highest rights compliance complexity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_simulcast_config`
 WITH METRICS
@@ -570,6 +578,7 @@ AS $$
       comment: "Number of distinct target channels receiving simulcast feeds. Measures simulcast distribution reach."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_channel_carriage`
 WITH METRICS
 LANGUAGE YAML
@@ -622,6 +631,7 @@ AS $$
       expr: COUNT(DISTINCT channel_id)
       comment: "Number of distinct channels with carriage agreements. Measures portfolio distribution coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_epg_entry`
 WITH METRICS
@@ -687,6 +697,7 @@ AS $$
       expr: COUNT(DISTINCT series_name)
       comment: "Number of distinct series represented in the EPG. Measures content library breadth and programming diversity."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`scheduling_channel_targeting`
 WITH METRICS

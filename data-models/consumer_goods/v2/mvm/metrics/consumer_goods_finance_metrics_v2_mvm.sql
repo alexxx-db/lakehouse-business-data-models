@@ -71,6 +71,7 @@ AS $$
       comment: "Denominator for discount capture rate: total discounts available"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_ap_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -123,6 +124,7 @@ AS $$
       expr: AVG(CAST(payment_amount AS DOUBLE))
       comment: "Average payment amount per transaction"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_ar_invoice`
 WITH METRICS
@@ -204,6 +206,7 @@ AS $$
       comment: "Denominator for collection effectiveness: total billed"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_ar_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -277,6 +280,7 @@ AS $$
       expr: SUM(CAST(payment_amount AS DOUBLE))
       comment: "Denominator for deduction rate: total payments"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_cogs_allocation`
 WITH METRICS
@@ -352,6 +356,7 @@ AS $$
       comment: "Average total cost per allocation"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_journal_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -398,6 +403,7 @@ AS $$
       expr: COUNT(DISTINCT gl_account_id)
       comment: "Distinct count of GL accounts touched by journal entries"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_journal_entry_line`
 WITH METRICS
@@ -457,6 +463,7 @@ AS $$
       expr: AVG(CAST(amount_company_code_currency AS DOUBLE))
       comment: "Average line item amount in company currency"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`finance_standard_cost`
 WITH METRICS
@@ -525,7 +532,7 @@ AS $$
       expr: COUNT(DISTINCT standard_cost_id)
       comment: "Distinct count of standard cost records"
     - name: "sku_count"
-      expr: COUNT(DISTINCT primary_standard_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Distinct count of SKUs with standard costs"
     - name: "avg_standard_cost"
       expr: AVG(CAST(total_standard_cost AS DOUBLE))

@@ -61,7 +61,7 @@ AS $$
       expr: ROUND(SUM(CAST(actual_expenditure_amount AS DOUBLE)) / NULLIF(SUM(CAST(actual_metreage AS DOUBLE)), 0), 2)
       comment: "Average cost per metre drilled - key unit economics metric for drilling efficiency"
     - name: "total_hse_incidents"
-      expr: COUNT(DISTINCT hse_incident_id)
+      expr: COUNT(DISTINCT incident_id)
       comment: "Count of distinct HSE incidents associated with drilling programs - critical safety performance indicator"
     - name: "programs_with_qaqc"
       expr: COUNT(DISTINCT CASE WHEN qaqc_protocol_applied = TRUE THEN drill_program_id END)
@@ -70,6 +70,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN rehabilitation_completed = TRUE THEN drill_program_id END)
       comment: "Number of programs with completed site rehabilitation - environmental compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_drill_hole`
 WITH METRICS
@@ -135,9 +136,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN hole_status = 'abandoned' THEN drill_hole_id END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of drill holes abandoned - key risk and efficiency metric"
     - name: "total_hse_incidents"
-      expr: COUNT(DISTINCT hse_incident_id)
+      expr: COUNT(DISTINCT incident_id)
       comment: "Count of HSE incidents associated with drill holes - safety performance indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_sample`
 WITH METRICS
@@ -210,6 +212,7 @@ AS $$
       comment: "Number of composite samples created"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_resource_estimate`
 WITH METRICS
 LANGUAGE YAML
@@ -274,6 +277,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN sign_off_date IS NOT NULL THEN resource_estimate_id END)
       comment: "Number of resource estimates with competent person sign-off"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_ore_reserve`
 WITH METRICS
@@ -340,6 +344,7 @@ AS $$
       comment: "Number of reserves with board approval - governance compliance metric"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_expenditure`
 WITH METRICS
 LANGUAGE YAML
@@ -398,12 +403,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN statutory_expenditure_compliance_flag = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END) / NULLIF(SUM(CAST(amount AS DOUBLE)), 0), 2)
       comment: "Percentage of expenditure meeting statutory compliance - critical for licence retention"
     - name: "expenditure_with_hse_incidents"
-      expr: SUM(CASE WHEN hse_incident_id IS NOT NULL THEN CAST(amount AS DOUBLE) ELSE 0 END)
+      expr: SUM(CASE WHEN incident_id IS NOT NULL THEN CAST(amount AS DOUBLE) ELSE 0 END)
       comment: "Total expenditure associated with HSE incidents - safety cost impact metric"
     - name: "approved_expenditure_count"
       expr: COUNT(DISTINCT CASE WHEN approval_date IS NOT NULL THEN expenditure_id END)
       comment: "Number of approved expenditure records - governance compliance metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_prospect`
 WITH METRICS
@@ -481,6 +487,7 @@ AS $$
       expr: AVG(CAST(target_depth_max_m AS DOUBLE) - CAST(target_depth_min_m AS DOUBLE))
       comment: "Average target depth range in metres - exploration complexity indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`exploration_mineralisation_intercept`
 WITH METRICS

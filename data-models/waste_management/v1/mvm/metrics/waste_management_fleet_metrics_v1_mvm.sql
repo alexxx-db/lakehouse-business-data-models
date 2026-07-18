@@ -68,6 +68,7 @@ AS $$
       comment: "Number of distinct fuel types in the fleet. Measures fleet energy diversity, relevant for sustainability strategy and fueling infrastructure investment."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_fuel_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -138,6 +139,7 @@ AS $$
       expr: COUNT(DISTINCT vehicle_id)
       comment: "Number of distinct vehicles that received fuel. Measures fleet fueling coverage and identifies vehicles not being tracked."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_accident_report`
 WITH METRICS
@@ -213,6 +215,7 @@ AS $$
       comment: "Number of distinct drivers involved in accidents. Identifies high-risk driver cohorts for targeted safety intervention."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_dot_inspection`
 WITH METRICS
 LANGUAGE YAML
@@ -287,6 +290,7 @@ AS $$
       comment: "Number of distinct drivers involved in DOT inspections. Identifies driver cohorts with elevated regulatory exposure."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_driver`
 WITH METRICS
 LANGUAGE YAML
@@ -355,6 +359,7 @@ AS $$
       comment: "Number of distinct CDL classes held across the driver workforce. Measures workforce versatility for multi-vehicle-class operations."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_hos_log`
 WITH METRICS
 LANGUAGE YAML
@@ -413,9 +418,10 @@ AS $$
       expr: MAX(CAST(cumulative_driving_hours_8day AS DOUBLE))
       comment: "Maximum cumulative driving hours recorded in the 8-day window. Identifies the highest-risk drivers approaching or exceeding HOS limits."
     - name: "distinct_drivers_with_violations"
-      expr: COUNT(DISTINCT CASE WHEN hos_violation_flag = TRUE THEN primary_hos_driver_id END)
+      expr: COUNT(DISTINCT CASE WHEN hos_violation_flag = TRUE THEN driver_id END)
       comment: "Number of distinct drivers with at least one HOS violation. Measures the breadth of HOS compliance issues across the driver population."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_telematics_event`
 WITH METRICS
@@ -488,6 +494,7 @@ AS $$
       comment: "Number of distinct vehicles generating telematics data. Measures telematics device coverage across the fleet — gaps indicate untracked vehicles."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_maintenance_schedule`
 WITH METRICS
 LANGUAGE YAML
@@ -559,6 +566,7 @@ AS $$
       comment: "Number of distinct vehicles with active maintenance schedules. Measures maintenance program coverage across the fleet."
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_vehicle_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -629,6 +637,7 @@ AS $$
       expr: COUNT(DISTINCT driver_id)
       comment: "Number of distinct drivers who received vehicle assignments. Measures active driver workforce utilization."
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`fleet_pre_post_trip_inspection`
 WITH METRICS

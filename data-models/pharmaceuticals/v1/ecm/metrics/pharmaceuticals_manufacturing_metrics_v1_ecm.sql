@@ -61,7 +61,7 @@ AS $$
       expr: SUM(CASE WHEN environmental_monitoring_compliant = TRUE THEN 1 ELSE 0 END)
       comment: "Count of batches meeting environmental monitoring standards"
     - name: "distinct_batch_operators"
-      expr: COUNT(DISTINCT batch_operator_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique operators involved in batch manufacturing"
 $$;
 
@@ -367,7 +367,7 @@ AS $$
       expr: campaign_type
       comment: "Type of campaign (e.g., Commercial, Clinical, Validation)"
     - name: "status"
-      expr: status
+      expr: campaign_status
       comment: "Current campaign status"
     - name: "approval_status"
       expr: approval_status

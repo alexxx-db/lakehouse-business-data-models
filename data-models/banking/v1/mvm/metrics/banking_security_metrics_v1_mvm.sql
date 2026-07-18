@@ -81,8 +81,8 @@ AS $$
   comment: "Derivative exposure and maturity metrics."
   source: "`banking_ecm`.`security`.`derivative`"
   dimensions:
-    - name: "underlying_instrument_id"
-      expr: underlying_instrument_id
+    - name: "instrument_id"
+      expr: instrument_id
       comment: "Underlying instrument for the derivative."
     - name: "asset_class"
       expr: asset_class
@@ -101,7 +101,7 @@ AS $$
       expr: SUM(CAST(notional_amount AS DOUBLE))
       comment: "Total notional amount of derivatives, indicating exposure size."
     - name: "avg_maturity_days"
-      expr: AVG(CAST(DATEDIFF('day', trade_date, expiry_date) AS DOUBLE))
+      expr: AVG(CAST(DATEDIFF(DAY, trade_date, expiry_date) AS DOUBLE))
       comment: "Average maturity in days from trade to expiry."
     - name: "count_derivatives"
       expr: COUNT(1)

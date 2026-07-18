@@ -77,6 +77,7 @@ AS $$
       comment: "Percentage of design throughput achieved"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_metallurgical_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -156,6 +157,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of metallurgical balance records"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_plant_utility_consumption`
 WITH METRICS
@@ -237,6 +239,7 @@ AS $$
       comment: "Percentage of water recycled vs total water used"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_concentrate_batch`
 WITH METRICS
 LANGUAGE YAML
@@ -317,6 +320,7 @@ AS $$
       comment: "Number of quality-approved batches"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_reagent_consumption`
 WITH METRICS
 LANGUAGE YAML
@@ -381,9 +385,10 @@ AS $$
       expr: COUNT(1)
       comment: "Number of reagent consumption records"
     - name: "distinct_reagent_count"
-      expr: COUNT(DISTINCT supply_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct reagents consumed"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_operational_exception`
 WITH METRICS
@@ -455,6 +460,7 @@ AS $$
       expr: COUNT(DISTINCT root_cause_code)
       comment: "Number of distinct root causes"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_flotation_event`
 WITH METRICS
@@ -532,6 +538,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of flotation events"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`processing_process_water_balance`
 WITH METRICS

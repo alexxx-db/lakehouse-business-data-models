@@ -1193,7 +1193,7 @@ AS $$
     - name: "Cycle Type"
       expr: cycle_type
     - name: "Description"
-      expr: description
+      expr: qualification_cycle_description
     - name: "End Date"
       expr: end_date
     - name: "Evaluation Date"

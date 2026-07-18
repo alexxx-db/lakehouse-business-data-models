@@ -163,7 +163,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: budget_period_description
     - name: "Duration Days"
       expr: duration_days
     - name: "End Date"
@@ -281,7 +281,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: competency_model_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -322,7 +322,7 @@ AS $$
     - name: "Assessment Required"
       expr: assessment_required
     - name: "Category"
-      expr: category
+      expr: course_category
     - name: "Certification Awarded"
       expr: certification_awarded
     - name: "Certification Name"
@@ -346,7 +346,7 @@ AS $$
     - name: "Delivery Method"
       expr: delivery_method
     - name: "Description"
-      expr: description
+      expr: course_description
     - name: "Difficulty Level"
       expr: difficulty_level
     - name: "Effective End Date"
@@ -397,7 +397,7 @@ AS $$
     - name: "Department Type"
       expr: department_type
     - name: "Description"
-      expr: description
+      expr: department_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -413,7 +413,7 @@ AS $$
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
     - name: "Name"
-      expr: name
+      expr: department_name
     - name: "Requires Seasonal Staffing"
       expr: requires_seasonal_staffing
     - name: "Safety Certification Required"
@@ -493,9 +493,9 @@ AS $$
     - name: "Career Path Type"
       expr: career_path_type
     - name: "Category"
-      expr: category
+      expr: job_family_category
     - name: "Code"
-      expr: code
+      expr: job_family_code
     - name: "Commission Eligible"
       expr: commission_eligible
     - name: "Compensation Grade Maximum"
@@ -509,7 +509,7 @@ AS $$
     - name: "Critical Skill Indicator"
       expr: critical_skill_indicator
     - name: "Description"
-      expr: description
+      expr: job_family_description
     - name: "Eeo Category"
       expr: eeo_category
     - name: "Effective End Date"
@@ -1162,7 +1162,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: role_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

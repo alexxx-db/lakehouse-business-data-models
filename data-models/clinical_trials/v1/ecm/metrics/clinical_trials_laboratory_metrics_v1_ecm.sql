@@ -416,7 +416,7 @@ AS $$
   source: "`clinical_trials_ecm`.`laboratory`.`shipment_manifest`"
   dimensions:
     - name: "manifest_status"
-      expr: status
+      expr: shipment_manifest_status
       comment: "Current status of the shipment manifest (e.g., shipped, received, in-transit)."
     - name: "manifest_type"
       expr: manifest_type

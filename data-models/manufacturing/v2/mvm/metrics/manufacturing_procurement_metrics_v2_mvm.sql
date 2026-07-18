@@ -374,7 +374,7 @@ AS $$
     - name: "Delivery Terms"
       expr: delivery_terms
     - name: "Description"
-      expr: description
+      expr: rfq_description
     - name: "Evaluation Criteria"
       expr: evaluation_criteria
     - name: "Invited Supplier Count"

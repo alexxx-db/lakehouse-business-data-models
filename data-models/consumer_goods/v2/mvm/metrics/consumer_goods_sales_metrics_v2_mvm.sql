@@ -88,12 +88,13 @@ AS $$
       expr: COUNT(DISTINCT trade_account_id)
       comment: "Number of unique customers placing orders"
     - name: "unique_sales_reps"
-      expr: COUNT(DISTINCT sales_rep_id)
+      expr: COUNT(DISTINCT rep_id)
       comment: "Number of unique sales representatives with orders"
     - name: "unique_territories"
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories with orders"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_invoice`
 WITH METRICS
@@ -193,6 +194,7 @@ AS $$
       comment: "Number of unique customers invoiced"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_pos_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -288,6 +290,7 @@ AS $$
       comment: "Number of unique customer accounts with POS data"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_return_order`
 WITH METRICS
 LANGUAGE YAML
@@ -313,6 +316,7 @@ AS $$
       expr: COUNT(DISTINCT trade_account_id)
       comment: "Number of unique customers with returns"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_trade_account`
 WITH METRICS
@@ -399,6 +403,7 @@ AS $$
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories with accounts"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_pricing_agreement`
 WITH METRICS
@@ -498,6 +503,7 @@ AS $$
       comment: "Number of unique SKUs covered by agreements"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_rep`
 WITH METRICS
 LANGUAGE YAML
@@ -571,6 +577,7 @@ AS $$
       expr: COUNT(DISTINCT cost_center_id)
       comment: "Number of unique cost centers with reps"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`sales_retail_store`
 WITH METRICS

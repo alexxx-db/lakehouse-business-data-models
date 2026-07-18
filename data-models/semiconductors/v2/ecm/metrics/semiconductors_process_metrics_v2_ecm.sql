@@ -74,6 +74,7 @@ AS $$
       comment: "Total number of capability studies conducted. Baseline volume metric for capability program coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_excursion`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Count of excursions not yet closed. Tracks open risk exposure and engineering backlog."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_spc_measurement`
 WITH METRICS
 LANGUAGE YAML
@@ -219,6 +221,7 @@ AS $$
       comment: "Number of distinct fab tools with active SPC measurements. Measures SPC program coverage across the tool fleet."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_yield_loss_event`
 WITH METRICS
 LANGUAGE YAML
@@ -289,6 +292,7 @@ AS $$
       expr: COUNT(DISTINCT fabrication_wafer_lot_id)
       comment: "Number of distinct wafer lots affected by yield loss events. Measures breadth of yield impact across production."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_lot_process_run`
 WITH METRICS
@@ -364,6 +368,7 @@ AS $$
       comment: "Number of distinct fab tools utilized. Tracks tool fleet utilization breadth for capacity planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_qualification`
 WITH METRICS
 LANGUAGE YAML
@@ -435,6 +440,7 @@ AS $$
       comment: "Number of distinct customer accounts with active qualifications. Measures customer qualification pipeline breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_defect_inspection_result`
 WITH METRICS
 LANGUAGE YAML
@@ -502,6 +508,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN nuisance_filter_applied = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of inspections with nuisance filter applied. Tracks inspection recipe maturity — high rates indicate well-tuned recipes."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_ocap_action`
 WITH METRICS
@@ -571,6 +578,7 @@ AS $$
       comment: "Number of distinct fab tools with OCAP actions. Identifies tools with systemic process control issues."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_flow`
 WITH METRICS
 LANGUAGE YAML
@@ -604,7 +612,7 @@ AS $$
       expr: DATE_TRUNC('month', effective_start_date)
       comment: "Month of process flow effective start for flow lifecycle trend analysis."
     - name: "owner_org_unit"
-      expr: owner_org_unit_id
+      expr: org_unit_id
       comment: "Owner org unit FK for organizational accountability of process flows."
   measures:
     - name: "total_process_flows"
@@ -632,6 +640,7 @@ AS $$
       expr: COUNT(DISTINCT ic_catalog_id)
       comment: "Number of distinct IC products with dedicated process flows. Measures process flow coverage of the product portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_doe_experiment`
 WITH METRICS
@@ -695,6 +704,7 @@ AS $$
       comment: "Percentage of DOE experiments cancelled. High cancellation rates indicate resource constraints or poor experiment planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_spc_control_chart`
 WITH METRICS
 LANGUAGE YAML
@@ -753,6 +763,7 @@ AS $$
       expr: COUNT(DISTINCT fab_tool_id)
       comment: "Number of distinct fab tools with active SPC charts. Measures SPC tool fleet coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`process_change_notification`
 WITH METRICS

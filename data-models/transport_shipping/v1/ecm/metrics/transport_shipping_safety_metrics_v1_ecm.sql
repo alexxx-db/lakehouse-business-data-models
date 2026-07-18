@@ -74,6 +74,7 @@ AS $$
       comment: "Number of distinct facilities reporting incidents — spread indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_driver_safety_event`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Events that escalated to formal incident reports"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_corrective_action`
 WITH METRICS
 LANGUAGE YAML
@@ -210,6 +212,7 @@ AS $$
       comment: "Number of facilities with open corrective actions — risk spread indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -262,9 +265,10 @@ AS $$
       expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities audited — audit coverage metric"
     - name: "distinct_partners_audited"
-      expr: COUNT(DISTINCT audited_partner_id)
+      expr: COUNT(DISTINCT partner_id)
       comment: "Number of distinct partners audited — supply chain safety oversight"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_audit_finding`
 WITH METRICS
@@ -321,6 +325,7 @@ AS $$
       expr: COUNT(CASE WHEN corrective_action_required_flag = TRUE THEN 1 END)
       comment: "Findings requiring corrective action — remediation workload indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_environmental_incident`
 WITH METRICS
@@ -384,6 +389,7 @@ AS $$
       comment: "Incidents requiring regulatory notification — compliance burden indicator"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_facility_inspection`
 WITH METRICS
 LANGUAGE YAML
@@ -430,6 +436,7 @@ AS $$
       expr: COUNT(DISTINCT facility_id)
       comment: "Number of distinct facilities inspected — coverage metric"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_training_completion`
 WITH METRICS
@@ -480,12 +487,13 @@ AS $$
       expr: AVG(CAST(training_duration_hours AS DOUBLE))
       comment: "Average training duration — efficiency of training delivery"
     - name: "distinct_employees_trained"
-      expr: COUNT(DISTINCT primary_safety_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Distinct employees who completed training — workforce coverage metric"
     - name: "regulatory_required_completions"
       expr: COUNT(CASE WHEN regulatory_requirement_flag = TRUE THEN 1 END)
       comment: "Completions for regulatory-required training — compliance assurance"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_observation`
 WITH METRICS
@@ -549,6 +557,7 @@ AS $$
       comment: "Observations where positive recognition was given — reinforcement of safe behaviors"
 $$;
 
+
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_dg_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -604,6 +613,7 @@ AS $$
       expr: COUNT(DISTINCT hazard_class)
       comment: "Number of distinct hazard classes involved — risk diversity indicator"
 $$;
+
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`safety_osha_recordable`
 WITH METRICS

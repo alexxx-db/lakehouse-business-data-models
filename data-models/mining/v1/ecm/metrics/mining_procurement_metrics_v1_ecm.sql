@@ -56,6 +56,7 @@ AS $$
       comment: "Number of distinct vendors with purchase orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
@@ -117,9 +118,10 @@ AS $$
       expr: COUNT(DISTINCT procurement_vendor_id)
       comment: "Number of distinct vendors with goods receipts"
     - name: "material_count"
-      expr: COUNT(DISTINCT supply_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials received"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_vendor_performance`
 WITH METRICS
@@ -192,6 +194,7 @@ AS $$
       comment: "Number of distinct vendors evaluated"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_inventory_balance`
 WITH METRICS
 LANGUAGE YAML
@@ -253,12 +256,13 @@ AS $$
       expr: COUNT(DISTINCT inventory_balance_id)
       comment: "Number of distinct inventory balance records"
     - name: "material_count"
-      expr: COUNT(DISTINCT supply_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials in inventory"
     - name: "warehouse_location_count"
       expr: COUNT(DISTINCT warehouse_location_id)
       comment: "Number of distinct warehouse locations"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_sourcing_event`
 WITH METRICS
@@ -328,6 +332,7 @@ AS $$
       comment: "Average quality weighting percentage in evaluation"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_contract_amendment`
 WITH METRICS
 LANGUAGE YAML
@@ -389,6 +394,7 @@ AS $$
       expr: SUM(CASE WHEN legal_review_required_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of amendments requiring legal review"
 $$;
+
 
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_outbound_shipment`
 WITH METRICS
@@ -458,6 +464,7 @@ AS $$
       comment: "Number of distinct customers receiving shipments"
 $$;
 
+
 CREATE OR REPLACE VIEW `mining_ecm`.`_metrics`.`procurement_requisition`
 WITH METRICS
 LANGUAGE YAML
@@ -510,10 +517,10 @@ AS $$
       expr: AVG(CAST(estimated_value AS DOUBLE))
       comment: "Average estimated value per requisition"
     - name: "requisitioner_count"
-      expr: COUNT(DISTINCT requisitioner_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees creating requisitions"
     - name: "material_count"
-      expr: COUNT(DISTINCT supply_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials requisitioned"
     - name: "vendor_count"
       expr: COUNT(DISTINCT procurement_vendor_id)

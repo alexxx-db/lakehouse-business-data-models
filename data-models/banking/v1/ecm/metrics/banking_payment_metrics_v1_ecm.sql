@@ -38,6 +38,7 @@ AS $$
       comment: "Average number of days between execution and settlement"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`payment_fee`
 WITH METRICS
 LANGUAGE YAML
@@ -70,6 +71,7 @@ AS $$
       comment: "Average fee amount per record"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`payment_fx_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -84,8 +86,8 @@ AS $$
     - name: "settlement_date"
       expr: settlement_date
       comment: "Date of settlement for the FX transaction"
-    - name: "base_currency_id"
-      expr: base_currency_id
+    - name: "currency_id"
+      expr: currency_id
       comment: "Identifier of the base currency"
     - name: "quote_currency_code"
       expr: quote_currency_code
@@ -107,6 +109,7 @@ AS $$
       expr: AVG(CAST(deal_rate AS DOUBLE))
       comment: "Average FX rate applied across transactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`payment_batch`
 WITH METRICS

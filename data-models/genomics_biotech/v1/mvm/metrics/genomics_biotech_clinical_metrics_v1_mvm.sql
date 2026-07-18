@@ -65,6 +65,7 @@ AS $$
       comment: "Number of unique performing laboratories processing orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_genomic_result`
 WITH METRICS
 LANGUAGE YAML
@@ -129,6 +130,7 @@ AS $$
       expr: COUNT(DISTINCT test_order_id)
       comment: "Number of unique test orders producing genomic results"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_report`
 WITH METRICS
@@ -198,6 +200,7 @@ AS $$
       comment: "Number of unique assay versions used in reports"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_analytical_validation`
 WITH METRICS
 LANGUAGE YAML
@@ -262,6 +265,7 @@ AS $$
       expr: COUNT(DISTINCT assay_version_id)
       comment: "Number of unique assay versions that have been validated"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_assay_qc_run`
 WITH METRICS
@@ -340,6 +344,7 @@ AS $$
       comment: "Number of unique performing laboratories running QC"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_patient`
 WITH METRICS
 LANGUAGE YAML
@@ -417,6 +422,7 @@ AS $$
       comment: "Number of unique insurance providers"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_variant_interpretation`
 WITH METRICS
 LANGUAGE YAML
@@ -484,6 +490,7 @@ AS $$
       expr: COUNT(DISTINCT genomic_result_id)
       comment: "Number of unique genomic results with variant interpretations"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`clinical_specimen`
 WITH METRICS
@@ -558,6 +565,6 @@ AS $$
       expr: COUNT(DISTINCT test_order_id)
       comment: "Number of unique test orders associated with specimens"
     - name: "distinct_collection_sites"
-      expr: COUNT(DISTINCT collection_site_address_id)
+      expr: COUNT(DISTINCT address_id)
       comment: "Number of unique collection sites"
 $$;

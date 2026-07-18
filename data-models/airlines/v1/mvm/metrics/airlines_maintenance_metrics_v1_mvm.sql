@@ -86,6 +86,7 @@ AS $$
       comment: "Number of distinct aircraft with active or historical work orders in the period. Indicates fleet maintenance exposure and AMO capacity demand."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_check`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Number of distinct aircraft that underwent checks in the period. Indicates fleet maintenance exposure and AMO workload distribution."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_defect_report`
 WITH METRICS
 LANGUAGE YAML
@@ -207,6 +209,7 @@ AS $$
       comment: "Number of distinct aircraft with defect reports in the period. Measures fleet-wide defect exposure and identifies chronic problem aircraft."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_mel_deferral`
 WITH METRICS
 LANGUAGE YAML
@@ -259,6 +262,7 @@ AS $$
       expr: AVG(CAST(flight_hours_at_deferral AS DOUBLE))
       comment: "Average aircraft flight hours at the time of deferral. Used to correlate deferral rates with aircraft utilization intensity and aging."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_ad_compliance`
 WITH METRICS
@@ -315,6 +319,7 @@ AS $$
       expr: COUNT(DISTINCT aircraft_id)
       comment: "Number of distinct aircraft with AD compliance records. Measures fleet-wide AD compliance program scope."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_component`
 WITH METRICS
@@ -384,6 +389,7 @@ AS $$
       comment: "Average flight hours remaining to life limit across life-limited parts. Forward-looking airworthiness health metric — declining averages signal upcoming mandatory replacements."
 $$;
 
+
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_work_order_task`
 WITH METRICS
 LANGUAGE YAML
@@ -445,9 +451,10 @@ AS $$
       expr: COUNT(CASE WHEN task_status = 'COMPLETED' THEN 1 END)
       comment: "Number of completed tasks. Throughput metric for maintenance execution — used alongside total tasks to derive completion rate."
     - name: "distinct_technicians"
-      expr: COUNT(DISTINCT crew_technician_crew_member_id)
+      expr: COUNT(DISTINCT member_id)
       comment: "Number of distinct technicians who performed tasks in the period. Workforce utilization metric for AMO capacity and staffing analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_technical_log`
 WITH METRICS
@@ -501,6 +508,7 @@ AS $$
       expr: COUNT(DISTINCT aircraft_id)
       comment: "Number of distinct aircraft with technical log entries in the period. Measures active fleet size contributing to operational data."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_approved_maintenance_org`
 WITH METRICS
@@ -557,6 +565,7 @@ AS $$
       expr: COUNT(CASE WHEN next_audit_due_date < CURRENT_DATE() THEN 1 END)
       comment: "Number of AMOs overdue for their next scheduled audit. Regulatory compliance KPI — overdue audits are a finding risk during authority oversight inspections."
 $$;
+
 
 CREATE OR REPLACE VIEW `airlines_ecm`.`_metrics`.`maintenance_airworthiness_directive`
 WITH METRICS

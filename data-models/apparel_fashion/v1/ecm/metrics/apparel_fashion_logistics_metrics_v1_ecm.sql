@@ -88,12 +88,13 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of distinct carriers used"
     - name: "unique_origin_factories"
-      expr: COUNT(DISTINCT origin_factory_supplier_factory_id)
+      expr: COUNT(DISTINCT supplier_factory_id)
       comment: "Number of distinct origin factories shipping product"
     - name: "unique_destination_facilities"
-      expr: COUNT(DISTINCT destination_facility_distribution_center_id)
+      expr: COUNT(DISTINCT distribution_center_id)
       comment: "Number of distinct destination distribution centers receiving shipments"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_freight_invoice`
 WITH METRICS
@@ -190,6 +191,7 @@ AS $$
       comment: "Number of distinct carriers invoiced"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_customs_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -282,6 +284,7 @@ AS $$
       comment: "Number of distinct countries of origin"
 $$;
 
+
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_carrier`
 WITH METRICS
 LANGUAGE YAML
@@ -355,6 +358,7 @@ AS $$
       expr: COUNT(DISTINCT service_mode)
       comment: "Number of distinct service modes offered"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_distribution_center`
 WITH METRICS
@@ -447,6 +451,7 @@ AS $$
       expr: COUNT(DISTINCT country_code)
       comment: "Number of distinct countries with distribution centers"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_duty_calculation`
 WITH METRICS
@@ -554,6 +559,7 @@ AS $$
       expr: COUNT(DISTINCT destination_country)
       comment: "Number of distinct destination countries"
 $$;
+
 
 CREATE OR REPLACE VIEW `apparel_fashion_ecm`.`_metrics`.`logistics_return_shipment`
 WITH METRICS

@@ -28,9 +28,10 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of alarm events recorded"
     - name: "distinct_affected_service_instances"
-      expr: COUNT(DISTINCT affected_svc_instance_id)
+      expr: COUNT(DISTINCT svc_instance_id)
       comment: "Number of unique service instances impacted by alarms"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`assurance_outage_record`
 WITH METRICS
@@ -63,6 +64,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of outage records"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`assurance_sla_breach_event`
 WITH METRICS
@@ -99,6 +101,7 @@ AS $$
       comment: "Number of SLA breach events"
 $$;
 
+
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`assurance_performance_measurement`
 WITH METRICS
 LANGUAGE YAML
@@ -130,6 +133,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of performance measurement records"
 $$;
+
 
 CREATE OR REPLACE VIEW `telecommunication_ecm`.`_metrics`.`assurance_problem_record`
 WITH METRICS

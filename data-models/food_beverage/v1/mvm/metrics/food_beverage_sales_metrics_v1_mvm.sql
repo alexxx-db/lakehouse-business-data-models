@@ -80,6 +80,7 @@ AS $$
       comment: "Number of unique delivery locations served"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_invoice`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +155,7 @@ AS $$
       comment: "Number of unique billing locations"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_pos_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -225,6 +227,7 @@ AS $$
       comment: "Number of unique customer receipts (basket count)"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_contract`
 WITH METRICS
 LANGUAGE YAML
@@ -286,12 +289,13 @@ AS $$
       expr: AVG(CAST(fee_per_store AS DOUBLE))
       comment: "Average fee per store for distribution contracts"
     - name: "unique_customers_contracted"
-      expr: COUNT(DISTINCT retailer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique retail customers with active contracts"
     - name: "unique_skus_contracted"
       expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs covered by contracts"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_rebate_agreement`
 WITH METRICS
@@ -348,9 +352,10 @@ AS $$
       expr: AVG(CAST(threshold_quantity AS DOUBLE))
       comment: "Average volume threshold quantity to qualify for rebates"
     - name: "unique_customers_with_rebates"
-      expr: COUNT(DISTINCT customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customers with rebate agreements"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_distribution_point`
 WITH METRICS
@@ -414,6 +419,7 @@ AS $$
       comment: "Number of unique SKUs tracked for distribution metrics"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_quota`
 WITH METRICS
 LANGUAGE YAML
@@ -469,12 +475,13 @@ AS $$
       expr: ROUND(100.0 * (SUM(CAST(stretch_target_value AS DOUBLE)) - SUM(CAST(target_value AS DOUBLE))) / NULLIF(SUM(CAST(target_value AS DOUBLE)), 0), 2)
       comment: "Percentage uplift from base target to stretch target"
     - name: "unique_sales_reps_with_quota"
-      expr: COUNT(DISTINCT sales_rep_id)
+      expr: COUNT(DISTINCT rep_id)
       comment: "Number of unique sales representatives with assigned quotas"
     - name: "unique_territories_with_quota"
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories with assigned quotas"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_rep`
 WITH METRICS
@@ -534,6 +541,7 @@ AS $$
       expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories covered by the sales force"
 $$;
+
 
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_store`
 WITH METRICS
@@ -597,6 +605,7 @@ AS $$
       comment: "Number of unique sales territories containing stores"
 $$;
 
+
 CREATE OR REPLACE VIEW `food_beverage_ecm`.`_metrics`.`sales_broker`
 WITH METRICS
 LANGUAGE YAML
@@ -637,7 +646,7 @@ AS $$
       expr: AVG(CAST(commission_rate AS DOUBLE))
       comment: "Average commission rate across all brokers"
     - name: "unique_territories_covered"
-      expr: COUNT(DISTINCT coverage_territory_id)
+      expr: COUNT(DISTINCT territory_id)
       comment: "Number of unique territories covered by the broker network"
     - name: "unique_accounts_served"
       expr: COUNT(DISTINCT account_id)

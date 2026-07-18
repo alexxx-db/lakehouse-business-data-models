@@ -11,8 +11,8 @@ AS $$
     - name: "payment_product_id"
       expr: payment_product_id
       comment: "Identifier of the payment product used"
-    - name: "origin_country_id"
-      expr: origin_country_id
+    - name: "country_id"
+      expr: country_id
       comment: "Country where payment originated"
     - name: "destination_country_code"
       expr: destination_country_code
@@ -37,6 +37,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of cross‑border payment records"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`fx_conversion_audit`
 WITH METRICS
@@ -79,6 +80,7 @@ AS $$
       comment: "Total number of conversion audit records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`fx_liquidity_position`
 WITH METRICS
 LANGUAGE YAML
@@ -90,8 +92,8 @@ AS $$
     - name: "currency_id"
       expr: currency_id
       comment: "Currency of the liquidity position"
-    - name: "owner_employee_id"
-      expr: owner_employee_id
+    - name: "employee_id"
+      expr: employee_id
       comment: "Employee responsible for the position"
     - name: "event_type"
       expr: event_type
@@ -114,6 +116,7 @@ AS $$
       comment: "Number of liquidity breaches recorded"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`fx_exposure`
 WITH METRICS
 LANGUAGE YAML
@@ -128,8 +131,8 @@ AS $$
     - name: "exposure_status"
       expr: exposure_status
       comment: "Current status of the exposure"
-    - name: "risk_limit_id"
-      expr: risk_limit_id
+    - name: "limit_id"
+      expr: limit_id
       comment: "Identifier of the associated risk limit"
     - name: "snapshot_date"
       expr: DATE_TRUNC('day', snapshot_timestamp)
@@ -148,6 +151,7 @@ AS $$
       expr: AVG(CAST(risk_limit_utilization_pct AS DOUBLE))
       comment: "Average percentage of risk limit utilization"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`fx_rate`
 WITH METRICS

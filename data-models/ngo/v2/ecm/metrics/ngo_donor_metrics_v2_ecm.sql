@@ -61,7 +61,7 @@ AS $$
       expr: AVG(CAST(amount AS DOUBLE))
       comment: "Average gift size. Key indicator of donor generosity trends and effectiveness of ask strategies."
     - name: "unique_donor_count"
-      expr: COUNT(DISTINCT primary_gift_constituent_id)
+      expr: COUNT(DISTINCT constituent_id)
       comment: "Number of unique donors who made gifts. Measures donor base breadth and acquisition/retention effectiveness."
     - name: "matching_gift_revenue"
       expr: SUM(CASE WHEN matching_gift_flag = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
@@ -76,6 +76,7 @@ AS $$
       expr: AVG(CAST(net_amount AS DOUBLE))
       comment: "Average net gift amount after fees. Benchmarks true per-gift revenue yield across payment channels."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_pledge`
 WITH METRICS
@@ -145,6 +146,7 @@ AS $$
       comment: "Sum of most recent installment payments received. Provides a near-term revenue pulse for pledge collections."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -210,6 +212,7 @@ AS $$
       comment: "Number of currently active campaigns. Monitors organizational fundraising capacity and workload."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_appeal`
 WITH METRICS
 LANGUAGE YAML
@@ -268,6 +271,7 @@ AS $$
       expr: SUM(CAST(ask_amount AS DOUBLE))
       comment: "Total solicitation ask value across all appeals. Represents the full revenue ambition of the direct marketing portfolio."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_major_gift_opportunity`
 WITH METRICS
@@ -337,6 +341,7 @@ AS $$
       comment: "Number of unique constituents with major gift opportunities. Measures breadth of major donor cultivation portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_fundraising_event`
 WITH METRICS
 LANGUAGE YAML
@@ -396,6 +401,7 @@ AS $$
       comment: "Average fundraising goal per event. Benchmarks event ambition and capacity planning."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_prospect`
 WITH METRICS
 LANGUAGE YAML
@@ -454,6 +460,7 @@ AS $$
       expr: COUNT(DISTINCT constituent_id)
       comment: "Number of unique constituent prospects. Measures breadth of the prospect identification program."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_stewardship_activity`
 WITH METRICS
@@ -523,6 +530,7 @@ AS $$
       comment: "Number of activities where impact stories were shared. Measures stewardship quality and best practice adherence."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_portfolio_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -582,6 +590,7 @@ AS $$
       comment: "Number of portfolio assignments with submitted proposals. Tracks solicitation activity and pipeline conversion progress."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_wealth_screening`
 WITH METRICS
 LANGUAGE YAML
@@ -609,7 +618,7 @@ AS $$
       expr: YEAR(wealth_screening_date)
       comment: "Year of screening for data freshness analysis and refresh cycle planning."
     - name: "net_worth_range"
-      expr: net_worth_range
+      expr: "CASE WHEN estimated_net_worth IS NULL THEN 'Unknown' WHEN CAST(estimated_net_worth AS DOUBLE) >= 10000000 THEN '$10M+' WHEN CAST(estimated_net_worth AS DOUBLE) >= 1000000 THEN '$1M-$10M' WHEN CAST(estimated_net_worth AS DOUBLE) >= 100000 THEN '$100K-$1M' ELSE 'Under $100K' END"
       comment: "Net worth range band for prospect pool capacity distribution analysis."
   measures:
     - name: "total_screening_count"
@@ -637,6 +646,7 @@ AS $$
       expr: AVG(CAST(real_estate_value AS DOUBLE))
       comment: "Average real estate holdings value across screened prospects. Key wealth indicator for capacity rating calibration."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_planned_giving`
 WITH METRICS
@@ -696,9 +706,10 @@ AS $$
       expr: COUNT(CASE WHEN legacy_society_member = TRUE THEN 1 END)
       comment: "Number of legacy society members. Measures legacy program engagement and stewardship community size."
     - name: "unique_planned_donors"
-      expr: COUNT(DISTINCT primary_planned_donor_constituent_id)
+      expr: COUNT(DISTINCT constituent_id)
       comment: "Number of unique donors with planned gift commitments. Measures breadth of legacy donor relationships."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_soft_credit`
 WITH METRICS
@@ -749,12 +760,13 @@ AS $$
       expr: AVG(CAST(amount AS DOUBLE))
       comment: "Average soft credit amount per record. Benchmarks typical attribution value per solicitor touchpoint."
     - name: "unique_credited_constituents"
-      expr: COUNT(DISTINCT credited_constituent_id)
+      expr: COUNT(DISTINCT constituent_id)
       comment: "Number of unique individuals receiving soft credit. Measures breadth of solicitor and relationship manager contributions."
     - name: "recognition_eligible_amount"
       expr: SUM(CASE WHEN recognition_eligible_flag = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
       comment: "Total soft credit amount eligible for recognition reporting. Informs officer recognition and incentive program management."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_ngo_v1`.`_metrics`.`donor_constituent`
 WITH METRICS

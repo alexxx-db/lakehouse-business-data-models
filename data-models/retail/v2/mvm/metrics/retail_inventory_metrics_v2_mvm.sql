@@ -9,13 +9,13 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`stock_position`"
   dimensions:
     - name: "inventory_node_id"
-      expr: stock_inventory_node_id
+      expr: inventory_node_id
       comment: "Inventory node (store, DC, warehouse) where stock is held"
     - name: "sku_id"
-      expr: stock_sku_id
+      expr: sku_id
       comment: "Stock keeping unit identifier"
     - name: "vendor_id"
-      expr: position_vendor_id
+      expr: vendor_id
       comment: "Vendor supplying the SKU"
     - name: "position_status"
       expr: position_status
@@ -85,12 +85,13 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN is_dead_stock = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of positions flagged as dead stock"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT stock_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs in stock positions"
     - name: "distinct_node_count"
-      expr: COUNT(DISTINCT stock_inventory_node_id)
+      expr: COUNT(DISTINCT inventory_node_id)
       comment: "Number of unique inventory nodes holding stock"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_stock_ledger`
 WITH METRICS
@@ -101,16 +102,16 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`stock_ledger`"
   dimensions:
     - name: "sku_id"
-      expr: stock_sku_id
+      expr: sku_id
       comment: "Stock keeping unit identifier"
     - name: "inventory_node_id"
-      expr: ledger_inventory_node_id
+      expr: inventory_node_id
       comment: "Inventory node where transaction occurred"
     - name: "location_id"
-      expr: stock_location_id
+      expr: location_id
       comment: "Store or facility location"
     - name: "vendor_id"
-      expr: stock_vendor_id
+      expr: vendor_id
       comment: "Vendor associated with the stock movement"
     - name: "transaction_type"
       expr: transaction_type
@@ -186,12 +187,13 @@ AS $$
       expr: SUM(CASE WHEN reversal_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of reversal transactions"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT stock_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs involved in transactions"
     - name: "distinct_node_count"
-      expr: COUNT(DISTINCT ledger_inventory_node_id)
+      expr: COUNT(DISTINCT inventory_node_id)
       comment: "Number of unique inventory nodes with transactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_cycle_count`
 WITH METRICS
@@ -202,13 +204,13 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`cycle_count`"
   dimensions:
     - name: "sku_id"
-      expr: cycle_sku_id
+      expr: sku_id
       comment: "Stock keeping unit being counted"
     - name: "inventory_node_id"
-      expr: cycle_inventory_node_id
+      expr: inventory_node_id
       comment: "Inventory node where count was performed"
     - name: "location_id"
-      expr: cycle_location_id
+      expr: location_id
       comment: "Store or facility location"
     - name: "count_type"
       expr: count_type
@@ -272,12 +274,13 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of cycle counts performed"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT cycle_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs cycle counted"
     - name: "distinct_node_count"
-      expr: COUNT(DISTINCT cycle_inventory_node_id)
+      expr: COUNT(DISTINCT inventory_node_id)
       comment: "Number of unique inventory nodes with cycle counts"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_goods_receipt`
 WITH METRICS
@@ -288,13 +291,13 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`goods_receipt`"
   dimensions:
     - name: "sku_id"
-      expr: goods_sku_id
+      expr: sku_id
       comment: "Stock keeping unit received"
     - name: "vendor_id"
-      expr: goods_vendor_id
+      expr: vendor_id
       comment: "Vendor supplying the goods"
     - name: "inventory_node_id"
-      expr: goods_inventory_node_id
+      expr: inventory_node_id
       comment: "Inventory node receiving the goods"
     - name: "location_id"
       expr: location_id
@@ -379,12 +382,13 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of goods receipts"
     - name: "distinct_vendor_count"
-      expr: COUNT(DISTINCT goods_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors with receipts"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT goods_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs received"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_replenishment_order`
 WITH METRICS
@@ -395,13 +399,13 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`replenishment_order`"
   dimensions:
     - name: "sku_id"
-      expr: replenishment_sku_id
+      expr: sku_id
       comment: "Stock keeping unit being replenished"
     - name: "vendor_id"
-      expr: replenishment_vendor_id
+      expr: vendor_id
       comment: "Vendor supplying the replenishment"
     - name: "destination_node_id"
-      expr: destination_node_inventory_node_id
+      expr: inventory_node_id
       comment: "Destination inventory node for replenishment"
     - name: "location_id"
       expr: location_id
@@ -477,15 +481,16 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of replenishment orders"
     - name: "distinct_vendor_count"
-      expr: COUNT(DISTINCT replenishment_vendor_id)
+      expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors with replenishment orders"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT replenishment_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs replenished"
     - name: "distinct_destination_count"
-      expr: COUNT(DISTINCT destination_node_inventory_node_id)
+      expr: COUNT(DISTINCT inventory_node_id)
       comment: "Number of unique destination nodes receiving replenishment"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_adjustment`
 WITH METRICS
@@ -585,6 +590,7 @@ AS $$
       comment: "Number of unique inventory nodes with adjustments"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_retail_v1`.`_metrics`.`inventory_stock_transfer`
 WITH METRICS
 LANGUAGE YAML
@@ -594,19 +600,19 @@ AS $$
   source: "`vibe_retail_v1`.`inventory`.`stock_transfer`"
   dimensions:
     - name: "sku_id"
-      expr: stock_sku_id
+      expr: sku_id
       comment: "Stock keeping unit being transferred"
     - name: "source_node_id"
       expr: primary_stock_inventory_node_id
       comment: "Source inventory node"
     - name: "destination_node_id"
-      expr: destination_node_inventory_node_id
+      expr: inventory_node_id
       comment: "Destination inventory node"
     - name: "location_id"
       expr: location_id
       comment: "Store or facility location"
     - name: "vendor_id"
-      expr: transfer_vendor_id
+      expr: vendor_id
       comment: "Vendor associated with the transfer"
     - name: "transfer_status"
       expr: transfer_status
@@ -670,12 +676,12 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of stock transfers"
     - name: "distinct_sku_count"
-      expr: COUNT(DISTINCT stock_sku_id)
+      expr: COUNT(DISTINCT sku_id)
       comment: "Number of unique SKUs transferred"
     - name: "distinct_source_node_count"
       expr: COUNT(DISTINCT primary_stock_inventory_node_id)
       comment: "Number of unique source nodes"
     - name: "distinct_destination_node_count"
-      expr: COUNT(DISTINCT destination_node_inventory_node_id)
+      expr: COUNT(DISTINCT inventory_node_id)
       comment: "Number of unique destination nodes"
 $$;

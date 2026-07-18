@@ -56,6 +56,7 @@ AS $$
       comment: "Number of advertisers with GDPR consent on file"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_brand`
 WITH METRICS
 LANGUAGE YAML
@@ -114,6 +115,7 @@ AS $$
       expr: AVG(CAST(sov_target_pct AS DOUBLE))
       comment: "Average share of voice target percentage across brands"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_agency_relationship`
 WITH METRICS
@@ -183,6 +185,7 @@ AS $$
       comment: "Average commission rate percentage across relationships"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_revenue_target`
 WITH METRICS
 LANGUAGE YAML
@@ -251,6 +254,7 @@ AS $$
       comment: "Average percentage of target covered by contracted scope of work"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_nps_response`
 WITH METRICS
 LANGUAGE YAML
@@ -316,6 +320,7 @@ AS $$
       comment: "Average rating for specific relationship aspects"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_onboarding`
 WITH METRICS
 LANGUAGE YAML
@@ -374,6 +379,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN analytics_dashboard_created_flag = TRUE THEN client_onboarding_id END)
       comment: "Number of onboardings with analytics dashboard created"
 $$;
+
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_interaction`
 WITH METRICS
@@ -437,6 +443,7 @@ AS $$
       comment: "Average NPS score captured during interactions"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_competitive_conflict`
 WITH METRICS
 LANGUAGE YAML
@@ -499,6 +506,7 @@ AS $$
       comment: "Number of conflicts with information barriers implemented"
 $$;
 
+
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`client_account_team`
 WITH METRICS
 LANGUAGE YAML
@@ -554,7 +562,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN client_facing_flag = TRUE THEN account_team_id END)
       comment: "Number of client-facing assignments"
     - name: "unique_workers_assigned"
-      expr: COUNT(DISTINCT primary_account_worker_id)
+      expr: COUNT(DISTINCT worker_id)
       comment: "Number of unique workers assigned to accounts"
     - name: "total_fte_allocation"
       expr: SUM(CAST(fte_allocation_pct AS DOUBLE))

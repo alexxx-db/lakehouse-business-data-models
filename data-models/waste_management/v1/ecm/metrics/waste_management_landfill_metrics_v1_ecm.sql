@@ -62,6 +62,7 @@ AS $$
       comment: "Number of airspace measurements recorded"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_capacity_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -126,6 +127,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of capacity plans"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_cell`
 WITH METRICS
@@ -195,6 +197,7 @@ AS $$
       comment: "Number of cells with gas collection systems installed"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_compaction_record`
 WITH METRICS
 LANGUAGE YAML
@@ -262,6 +265,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of compaction records"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_tonnage_receipt`
 WITH METRICS
@@ -343,6 +347,7 @@ AS $$
       comment: "Number of unique vehicles delivering waste"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_leachate_collection`
 WITH METRICS
 LANGUAGE YAML
@@ -413,6 +418,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of leachate collection events"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_lfg_monitoring`
 WITH METRICS
@@ -485,6 +491,7 @@ AS $$
       comment: "Number of LFG monitoring events"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_groundwater_sample`
 WITH METRICS
 LANGUAGE YAML
@@ -550,6 +557,7 @@ AS $$
       comment: "Number of unique monitoring wells sampled"
 $$;
 
+
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_special_waste_approval`
 WITH METRICS
 LANGUAGE YAML
@@ -608,9 +616,10 @@ AS $$
       expr: COUNT(DISTINCT customer_account_id)
       comment: "Number of unique customers requesting special waste approvals"
     - name: "unique_generator_count"
-      expr: COUNT(DISTINCT generator_epa_id_registration_id)
+      expr: COUNT(DISTINCT epa_id_registration_id)
       comment: "Number of unique waste generators"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_regulatory_inspection`
 WITH METRICS
@@ -676,9 +685,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN follow_up_inspection_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Follow-up inspection requirement rate, compliance effectiveness metric"
     - name: "unique_site_count"
-      expr: COUNT(DISTINCT landfill_site_id)
+      expr: COUNT(DISTINCT site_id)
       comment: "Number of unique sites inspected"
 $$;
+
 
 CREATE OR REPLACE VIEW `waste_management_ecm`.`_metrics`.`landfill_site`
 WITH METRICS

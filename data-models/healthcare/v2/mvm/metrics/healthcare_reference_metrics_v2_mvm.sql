@@ -64,7 +64,7 @@ AS $$
     - name: "Age Range Low"
       expr: age_range_low
     - name: "Category"
-      expr: category
+      expr: cpt_code_category
     - name: "Clinical Family"
       expr: clinical_family
     - name: "Cpt Code"
@@ -190,13 +190,13 @@ AS $$
     - name: "Clinical Family"
       expr: clinical_family
     - name: "Code"
-      expr: code
+      expr: drg_code
     - name: "Complication Level"
       expr: complication_level
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: drg_description
     - name: "Drg Type"
       expr: drg_type
     - name: "Effective Date"
@@ -265,11 +265,11 @@ AS $$
     - name: "Bilateral Surgery Indicator"
       expr: bilateral_surgery_indicator
     - name: "Category"
-      expr: category
+      expr: hcpcs_code_category
     - name: "Co Surgeon Indicator"
       expr: co_surgeon_indicator
     - name: "Code"
-      expr: code
+      expr: hcpcs_code_code
     - name: "Code Type"
       expr: code_type
     - name: "Coverage Indicator"
@@ -330,7 +330,7 @@ AS $$
     - name: "Billable Flag"
       expr: billable_flag
     - name: "Category"
-      expr: category
+      expr: icd_code_category
     - name: "Cc Flag"
       expr: cc_flag
     - name: "Chapter"
@@ -338,7 +338,7 @@ AS $$
     - name: "Chapter Code"
       expr: chapter_code
     - name: "Code"
-      expr: code
+      expr: icd_code_code
     - name: "Code Type"
       expr: code_type
     - name: "Created Timestamp"

@@ -79,9 +79,10 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN resale_flag = TRUE THEN ticket_order_id END)
       comment: "Number of resale orders. Tracks secondary market activity volume for revenue share and compliance monitoring."
     - name: "unique_buyers"
-      expr: COUNT(DISTINCT primary_ticket_fan_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Number of distinct fans who placed at least one order. Measures audience reach and fan acquisition."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_ticket_order_line`
 WITH METRICS
@@ -166,6 +167,7 @@ AS $$
       comment: "Sum of original face values for resale tickets. Enables price uplift calculation vs. resale sale price."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_ticket_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -239,6 +241,7 @@ AS $$
       expr: AVG(CAST(gross_amount AS DOUBLE))
       comment: "Average gross payment amount per transaction. Benchmarks transaction size trends for yield and fraud monitoring."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_refund`
 WITH METRICS
@@ -314,6 +317,7 @@ AS $$
       comment: "Total refund value triggered by event cancellations or postponements. Key liability metric for event risk management."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_gate_scan`
 WITH METRICS
 LANGUAGE YAML
@@ -381,12 +385,13 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_ada_accessible_entry = TRUE THEN gate_scan_id END)
       comment: "Number of scans through ADA-accessible entry points. Supports accessibility compliance and capacity planning."
     - name: "unique_fans_admitted"
-      expr: COUNT(DISTINCT primary_gate_fan_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Number of distinct fans admitted via gate scan. Measures actual unique attendance for event reporting."
     - name: "unique_events_scanned"
-      expr: COUNT(DISTINCT primary_gate_event_fixture_id)
+      expr: COUNT(DISTINCT fixture_id)
       comment: "Number of distinct events with gate scan activity. Tracks operational coverage of the scanning system."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_resale`
 WITH METRICS
@@ -461,6 +466,7 @@ AS $$
       expr: AVG(CAST(revenue_share_rate AS DOUBLE))
       comment: "Average revenue share rate applied to resale transactions. Monitors contractual revenue share compliance."
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_ticket_inventory`
 WITH METRICS
@@ -539,6 +545,7 @@ AS $$
       comment: "Number of seats eligible for resale. Measures secondary market supply capacity."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_season_ticket_account`
 WITH METRICS
 LANGUAGE YAML
@@ -613,6 +620,7 @@ AS $$
       comment: "Number of accounts with delinquent payment plans. Identifies collection risk and revenue at risk from non-payment."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_group_sale`
 WITH METRICS
 LANGUAGE YAML
@@ -684,6 +692,7 @@ AS $$
       comment: "Number of cancelled group sales. Elevated cancellations signal pipeline risk and revenue leakage."
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`ticketing_ticket_transfer`
 WITH METRICS
 LANGUAGE YAML
@@ -742,7 +751,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN gdpr_consent_flag = FALSE THEN ticket_transfer_id END)
       comment: "Number of transfers without GDPR consent. Compliance KPI — non-zero values in regulated markets require immediate remediation."
     - name: "unique_senders"
-      expr: COUNT(DISTINCT primary_ticket_fan_profile_id)
+      expr: COUNT(DISTINCT fan_profile_id)
       comment: "Number of distinct fans who initiated ticket transfers. Measures fan sharing engagement breadth."
     - name: "unique_recipients"
       expr: COUNT(DISTINCT tertiary_ticket_recipient_fan_fan_profile_id)

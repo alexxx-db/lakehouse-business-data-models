@@ -119,7 +119,7 @@ AS $$
       expr: charge_type
       comment: "Type of charge (e.g., professional, facility, pharmacy)"
     - name: "category"
-      expr: category
+      expr: charge_category
       comment: "Charge category grouping"
     - name: "place_of_service_code"
       expr: place_of_service_code
@@ -183,10 +183,10 @@ AS $$
       expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with charges"
     - name: "distinct_clinician_count"
-      expr: COUNT(DISTINCT charge_clinician_id)
+      expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique clinicians generating charges"
     - name: "distinct_service_location_count"
-      expr: COUNT(DISTINCT service_provider_location_id)
+      expr: COUNT(DISTINCT location_id)
       comment: "Number of unique service locations"
     - name: "billable_charge_count"
       expr: SUM(CASE WHEN is_billable = TRUE THEN 1 ELSE 0 END)
@@ -223,7 +223,7 @@ AS $$
       expr: channel
       comment: "Payment channel (e.g., mail, online portal, in-person)"
     - name: "category"
-      expr: category
+      expr: payment_category
       comment: "Payment category grouping"
     - name: "source"
       expr: source
@@ -272,7 +272,7 @@ AS $$
       expr: AVG(CAST(amount AS DOUBLE))
       comment: "Average payment amount per transaction"
     - name: "distinct_patient_count"
-      expr: COUNT(DISTINCT payment_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients making payments"
     - name: "distinct_guarantor_count"
       expr: COUNT(DISTINCT guarantor_id)
@@ -370,7 +370,7 @@ AS $$
       expr: AVG(CAST(household_income AS DOUBLE))
       comment: "Average household income for accounts with financial data"
     - name: "distinct_patient_count"
-      expr: COUNT(DISTINCT primary_patient_mpi_record_id)
+      expr: COUNT(DISTINCT mpi_record_id)
       comment: "Number of unique patients with accounts"
     - name: "distinct_guarantor_count"
       expr: COUNT(DISTINCT guarantor_id)
@@ -404,7 +404,7 @@ AS $$
       expr: adjustment_status
       comment: "Current status of the adjustment"
     - name: "category"
-      expr: category
+      expr: adjustment_category
       comment: "Adjustment category grouping"
     - name: "reason_code"
       expr: reason_code

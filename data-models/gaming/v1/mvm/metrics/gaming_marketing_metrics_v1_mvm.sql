@@ -71,6 +71,7 @@ AS $$
       comment: "Number of distinct ad networks used"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_user_acquisition`
 WITH METRICS
 LANGUAGE YAML
@@ -132,7 +133,7 @@ AS $$
       expr: AVG(CASE WHEN is_organic = true THEN 1.0 ELSE 0.0 END)
       comment: "Percentage of installs that are organic"
     - name: "paying_user_count"
-      expr: COUNT(DISTINCT CASE WHEN first_payment_id IS NOT NULL THEN player_account_id END)
+      expr: COUNT(DISTINCT CASE WHEN payment_id IS NOT NULL THEN player_account_id END)
       comment: "Number of users who made their first payment"
     - name: "unique_campaigns"
       expr: COUNT(DISTINCT campaign_id)
@@ -141,6 +142,7 @@ AS $$
       expr: COUNT(DISTINCT ad_network_id)
       comment: "Number of distinct ad networks used"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_retention_cohort`
 WITH METRICS
@@ -225,6 +227,7 @@ AS $$
       comment: "Number of distinct cohorts"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_campaign_budget`
 WITH METRICS
 LANGUAGE YAML
@@ -289,6 +292,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of budget line items"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_launch_event`
 WITH METRICS
@@ -364,6 +368,7 @@ AS $$
       comment: "Number of launch events"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_influencer_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -379,6 +384,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of influencer campaigns"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_player_segment`
 WITH METRICS
@@ -450,6 +456,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of player segments"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`marketing_audience`
 WITH METRICS

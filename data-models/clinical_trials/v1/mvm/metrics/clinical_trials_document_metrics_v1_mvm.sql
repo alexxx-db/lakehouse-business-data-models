@@ -95,6 +95,7 @@ AS $$
       comment: "Number of distinct study sites assessed — measures site-level TMF oversight coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_inspection_readiness`
 WITH METRICS
 LANGUAGE YAML
@@ -162,12 +163,13 @@ AS $$
       expr: COUNT(CASE WHEN inspection_outcome = 'Warning Letter' THEN 1 END)
       comment: "Number of inspections resulting in a Warning Letter — critical risk metric; any non-zero value triggers executive escalation."
     - name: "distinct_studies_inspected"
-      expr: COUNT(DISTINCT primary_inspection_etmf_vault_study_id)
+      expr: COUNT(DISTINCT study_id)
       comment: "Number of distinct studies with inspection readiness records — measures breadth of inspection oversight program."
     - name: "distinct_sites_inspected"
       expr: COUNT(DISTINCT study_site_id)
       comment: "Number of distinct sites with inspection readiness records — measures site-level inspection coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_workflow`
 WITH METRICS
@@ -249,6 +251,7 @@ AS $$
       comment: "Average workflow cycle time in days from initiation to completion — key efficiency KPI for document review and approval processes; drives SLA target-setting."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_site_file`
 WITH METRICS
 LANGUAGE YAML
@@ -326,6 +329,7 @@ AS $$
       comment: "Number of distinct study sites with site files — measures site-level document management coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_regulatory_binder`
 WITH METRICS
 LANGUAGE YAML
@@ -400,6 +404,7 @@ AS $$
       comment: "Average variance in days between planned and actual submission date — measures submission planning accuracy; positive values indicate delays that may impact approval timelines."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_distribution`
 WITH METRICS
 LANGUAGE YAML
@@ -467,6 +472,7 @@ AS $$
       expr: COUNT(DISTINCT recipient_organization)
       comment: "Number of distinct recipient organisations — measures the reach and complexity of the document distribution network."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_signature`
 WITH METRICS
@@ -542,6 +548,7 @@ AS $$
       comment: "Number of distinct studies with signature activity — measures breadth of signature compliance program coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_archival_record`
 WITH METRICS
 LANGUAGE YAML
@@ -615,6 +622,7 @@ AS $$
       expr: COUNT(DISTINCT archive_facility_name)
       comment: "Number of distinct archive facilities in use — measures archive infrastructure footprint and vendor management scope."
 $$;
+
 
 CREATE OR REPLACE VIEW `clinical_trials_ecm`.`_metrics`.`document_sop`
 WITH METRICS

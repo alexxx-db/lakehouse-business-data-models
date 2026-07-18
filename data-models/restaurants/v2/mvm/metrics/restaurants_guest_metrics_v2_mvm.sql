@@ -103,7 +103,7 @@ AS $$
       expr: complaint_status
       comment: "Current status of complaint (open, resolved, escalated) for case management and SLA tracking."
     - name: "category"
-      expr: category
+      expr: complaint_category
       comment: "Complaint category (food quality, service, cleanliness, etc.) for root cause analysis."
     - name: "severity_level"
       expr: severity_level
@@ -184,7 +184,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total survey volume for feedback program scale and engagement tracking."
     - name: "unique_surveyed_guests"
-      expr: COUNT(DISTINCT primary_satisfaction_guest_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Unique guests providing feedback for voice-of-customer reach measurement."
     - name: "completed_surveys"
       expr: SUM(CASE WHEN completion_status = 'completed' THEN 1 ELSE 0 END)

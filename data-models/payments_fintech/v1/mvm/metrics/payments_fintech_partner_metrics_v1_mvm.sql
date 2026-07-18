@@ -154,6 +154,6 @@ AS $$
       expr: COUNT(1)
       comment: "Number of partners currently active"
     - name: "global_partner_count"
-      expr: SUM(CAST((COUNT_IF(is_global_partner = TRUE)) AS DOUBLE))
+      expr: COUNT_IF(is_global_partner = TRUE)
       comment: "Number of partners designated as global"
 $$;

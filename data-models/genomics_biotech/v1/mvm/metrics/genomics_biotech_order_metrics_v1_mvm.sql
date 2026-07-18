@@ -80,6 +80,7 @@ AS $$
       comment: "Number of orders subject to export control regulations"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_line`
 WITH METRICS
 LANGUAGE YAML
@@ -157,6 +158,7 @@ AS $$
       comment: "Number of unique SKUs ordered"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_delivery`
 WITH METRICS
 LANGUAGE YAML
@@ -225,6 +227,7 @@ AS $$
       comment: "Number of unique carriers used"
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_quotation`
 WITH METRICS
 LANGUAGE YAML
@@ -292,7 +295,7 @@ AS $$
       expr: AVG(CAST(total_quoted_value AS DOUBLE))
       comment: "Average value per quotation"
     - name: "distinct_customer_count"
-      expr: COUNT(DISTINCT customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customers receiving quotations"
     - name: "rejected_quotation_count"
       expr: SUM(CASE WHEN quotation_status = 'Rejected' THEN 1 ELSE 0 END)
@@ -301,6 +304,7 @@ AS $$
       expr: SUM(CASE WHEN approval_required_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of quotations requiring special approval"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_return_authorization`
 WITH METRICS
@@ -372,9 +376,10 @@ AS $$
       expr: SUM(CASE WHEN temperature_excursion_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of returns due to temperature excursions"
     - name: "distinct_customer_count"
-      expr: COUNT(DISTINCT customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customers with returns"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_credit_memo`
 WITH METRICS
@@ -446,9 +451,10 @@ AS $$
       expr: SUM(CASE WHEN revenue_reversal_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of credits resulting in revenue reversal"
     - name: "distinct_customer_count"
-      expr: COUNT(DISTINCT customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customers receiving credits"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_shipment`
 WITH METRICS
@@ -532,6 +538,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_name)
       comment: "Number of unique carriers used"
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`order_status_event`
 WITH METRICS

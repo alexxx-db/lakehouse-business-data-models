@@ -41,6 +41,7 @@ AS $$
       comment: "Number of intercompany journal entries"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`ledger_journal_entry_line`
 WITH METRICS
 LANGUAGE YAML
@@ -64,8 +65,8 @@ AS $$
     - name: "instrument_id"
       expr: instrument_id
       comment: "Financial instrument identifier"
-    - name: "banking_channel_id"
-      expr: banking_channel_id
+    - name: "channel_id"
+      expr: channel_id
       comment: "Banking channel used"
     - name: "posting_date"
       expr: posting_date
@@ -99,6 +100,7 @@ AS $$
       expr: COUNT(DISTINCT gl_account_id)
       comment: "Number of unique GL accounts referenced"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`ledger_trial_balance`
 WITH METRICS
@@ -159,6 +161,7 @@ AS $$
       comment: "Count of intercompany balance rows"
 $$;
 
+
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`ledger_intercompany_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -170,8 +173,8 @@ AS $$
     - name: "accounting_period_id"
       expr: accounting_period_id
       comment: "Accounting period of the transaction"
-    - name: "originating_legal_entity_id"
-      expr: originating_legal_entity_id
+    - name: "legal_entity_id"
+      expr: legal_entity_id
       comment: "Legal entity that originated the transaction"
     - name: "counterparty_legal_entity_id"
       expr: primary_intercompany_counterparty_legal_entity_id
@@ -205,6 +208,7 @@ AS $$
       expr: SUM(CASE WHEN reversal_flag THEN 1 ELSE 0 END)
       comment: "Count of reversed intercompany transactions"
 $$;
+
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`ledger_gl_account`
 WITH METRICS

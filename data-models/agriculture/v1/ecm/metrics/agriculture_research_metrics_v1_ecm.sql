@@ -32,6 +32,7 @@ AS $$
       comment: "Sum of economic threshold values across trials (USD)"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`research_yield_measurement`
 WITH METRICS
 LANGUAGE YAML
@@ -43,8 +44,8 @@ AS $$
     - name: "trial_id"
       expr: trial_id
       comment: "Identifier of the trial associated with the measurement"
-    - name: "research_variety_id"
-      expr: research_variety_id
+    - name: "variety_id"
+      expr: variety_id
       comment: "Variety being measured"
     - name: "crop_species"
       expr: crop_species
@@ -66,6 +67,7 @@ AS $$
       expr: SUM(CAST(adjusted_yield_mt_ha AS DOUBLE))
       comment: "Total adjusted yield (metric tons per hectare)"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`research_input_usage`
 WITH METRICS
@@ -108,6 +110,7 @@ AS $$
       comment: "Total number of input usage records"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`research_accession`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +151,7 @@ AS $$
       expr: SUM(CASE WHEN gmo_status = 'GMO' THEN 1 ELSE 0 END)
       comment: "Count of accessions flagged as GMO"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`research_biotech_submission`
 WITH METRICS

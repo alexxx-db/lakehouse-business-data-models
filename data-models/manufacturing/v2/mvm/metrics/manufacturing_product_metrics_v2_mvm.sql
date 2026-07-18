@@ -174,7 +174,7 @@ AS $$
     - name: "Certification Requirements"
       expr: certification_requirements
     - name: "Code"
-      expr: code
+      expr: family_code
     - name: "Competitive Positioning"
       expr: competitive_positioning
     - name: "Created Timestamp"
@@ -186,7 +186,7 @@ AS $$
     - name: "Data Source System"
       expr: data_source_system
     - name: "Description"
-      expr: description
+      expr: family_description
     - name: "Distribution Channel"
       expr: distribution_channel
     - name: "Effective End Date"
@@ -239,7 +239,7 @@ AS $$
     - name: "Actual Eol Date"
       expr: actual_eol_date
     - name: "Code"
-      expr: code
+      expr: lifecycle_stage_code
     - name: "Customer Communication Status"
       expr: customer_communication_status
     - name: "Customer Notification Date"

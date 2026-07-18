@@ -62,6 +62,7 @@ AS $$
       comment: "Number of unique accrediting bodies involved, indicating regulatory complexity"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -133,6 +134,7 @@ AS $$
       comment: "Percentage of audits requiring follow-up, key metric for audit effectiveness and institutional risk"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_audit_finding`
 WITH METRICS
 LANGUAGE YAML
@@ -203,6 +205,7 @@ AS $$
       expr: COUNT(DISTINCT audit_id)
       comment: "Number of unique audits with findings, indicating breadth of compliance issues"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_training_completion`
 WITH METRICS
@@ -284,6 +287,7 @@ AS $$
       comment: "Number of unique training programs completed, indicating program diversity"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_corrective_action`
 WITH METRICS
 LANGUAGE YAML
@@ -364,6 +368,7 @@ AS $$
       comment: "Number of unique organizational units responsible for corrective actions, indicating breadth of accountability"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_ferpa_disclosure`
 WITH METRICS
 LANGUAGE YAML
@@ -438,6 +443,7 @@ AS $$
       comment: "Number of unique recipient organizations, indicating third-party data sharing scope"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_ipeds_submission`
 WITH METRICS
 LANGUAGE YAML
@@ -509,6 +515,7 @@ AS $$
       comment: "Number of unique survey components submitted, indicating reporting breadth"
 $$;
 
+
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_regulatory_requirement`
 WITH METRICS
 LANGUAGE YAML
@@ -576,9 +583,10 @@ AS $$
       expr: COUNT(DISTINCT regulatory_body)
       comment: "Number of unique regulatory bodies, indicating regulatory complexity and oversight breadth"
     - name: "distinct_responsible_units"
-      expr: COUNT(DISTINCT responsible_org_unit_id)
+      expr: COUNT(DISTINCT org_unit_id)
       comment: "Number of unique organizational units responsible for requirements, indicating accountability distribution"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_risk_assessment`
 WITH METRICS
@@ -659,9 +667,10 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN control_effectiveness = 'Effective' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of risks with effective controls, critical metric for risk management program effectiveness"
     - name: "distinct_risk_owners"
-      expr: COUNT(DISTINCT risk_owner_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of unique risk owners, indicating accountability distribution across organization"
 $$;
+
 
 CREATE OR REPLACE VIEW `education_ecm`.`_metrics`.`compliance_title_ix_case`
 WITH METRICS
@@ -739,6 +748,6 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN interim_measures_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of cases with interim measures, metric for proactive student safety response"
     - name: "distinct_complainants"
-      expr: COUNT(DISTINCT primary_title_profile_id)
+      expr: COUNT(DISTINCT profile_id)
       comment: "Number of unique complainants, indicating breadth of individuals reporting misconduct"
 $$;

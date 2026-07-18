@@ -38,6 +38,7 @@ AS $$
       comment: "Percentage of payroll rows where the three-fourths guarantee was met"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_labor_compliance`
 WITH METRICS
 LANGUAGE YAML
@@ -70,6 +71,7 @@ AS $$
       comment: "Percentage of records compliant with AEWR"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_benefit_enrollment`
 WITH METRICS
 LANGUAGE YAML
@@ -99,6 +101,7 @@ AS $$
       comment: "Average annual premium per employee"
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_time_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -111,7 +114,7 @@ AS $$
       expr: DATE_TRUNC('day', work_date)
       comment: "Date of the time entry"
     - name: "employee_id"
-      expr: primary_time_employee_id
+      expr: employee_id
       comment: "Employee identifier"
     - name: "shift_type"
       expr: shift_type
@@ -130,6 +133,7 @@ AS $$
       expr: SUM(CAST(overtime_hours AS DOUBLE))
       comment: "Total overtime hours recorded"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_safety_event`
 WITH METRICS
@@ -156,6 +160,7 @@ AS $$
       expr: SUM(CAST(claim_amount AS DOUBLE))
       comment: "Total monetary claim amount associated with incidents"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_training_event`
 WITH METRICS
@@ -185,6 +190,7 @@ AS $$
       expr: SUM(CASE WHEN completion_status = 'Completed' THEN 1 ELSE 0 END)
       comment: "Number of trainings completed"
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`workforce_plan`
 WITH METRICS

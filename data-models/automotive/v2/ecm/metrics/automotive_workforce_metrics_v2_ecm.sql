@@ -74,6 +74,7 @@ AS $$
       comment: "Average employee tenure in days for retention analysis"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_time_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -147,6 +148,7 @@ AS $$
       expr: COUNT(DISTINCT employee_id)
       comment: "Count of unique employees who worked for active workforce tracking"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_payroll_result`
 WITH METRICS
@@ -234,6 +236,7 @@ AS $$
       comment: "Count of unique employees paid for active payroll headcount"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_absence_record`
 WITH METRICS
 LANGUAGE YAML
@@ -248,8 +251,8 @@ AS $$
     - name: "absence_month"
       expr: DATE_TRUNC('MONTH', start_date)
       comment: "Absence month for monthly absenteeism analysis"
-    - name: "absence_employee_id"
-      expr: absence_employee_id
+    - name: "employee_id"
+      expr: employee_id
       comment: "Employee identifier for individual absence tracking"
     - name: "absence_type"
       expr: absence_type
@@ -280,7 +283,7 @@ AS $$
       expr: COUNT(absence_record_id)
       comment: "Count of absence records for absenteeism frequency"
     - name: "unique_employees_absent"
-      expr: COUNT(DISTINCT absence_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Count of unique employees with absences for absenteeism prevalence"
     - name: "avg_absence_duration_days"
       expr: AVG(CAST(duration_days AS DOUBLE))
@@ -292,6 +295,7 @@ AS $$
       expr: COUNT(CASE WHEN shift_impact_flag = TRUE THEN absence_record_id END)
       comment: "Count of absences impacting shifts for production capacity risk"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_safety_incident`
 WITH METRICS
@@ -363,6 +367,7 @@ AS $$
       expr: COUNT(DISTINCT safety_employee_id)
       comment: "Count of unique employees injured for safety exposure"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_training_record`
 WITH METRICS
@@ -438,6 +443,7 @@ AS $$
       comment: "Average training hours per record for training intensity"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_performance_review`
 WITH METRICS
 LANGUAGE YAML
@@ -452,8 +458,8 @@ AS $$
     - name: "review_month"
       expr: DATE_TRUNC('MONTH', review_date)
       comment: "Review month for monthly performance review activity"
-    - name: "performance_employee_id"
-      expr: performance_employee_id
+    - name: "employee_id"
+      expr: employee_id
       comment: "Employee identifier for individual performance tracking"
     - name: "reviewer_employee_id"
       expr: reviewer_employee_id
@@ -481,7 +487,7 @@ AS $$
       expr: COUNT(performance_review_id)
       comment: "Count of performance reviews for review completion tracking"
     - name: "unique_employees_reviewed"
-      expr: COUNT(DISTINCT performance_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Count of unique employees reviewed for review coverage"
     - name: "avg_overall_rating"
       expr: AVG(CAST(overall_rating AS DOUBLE))
@@ -511,6 +517,7 @@ AS $$
       expr: COUNT(CASE WHEN promotion_recommendation IS NOT NULL AND promotion_recommendation != 'None' THEN performance_review_id END)
       comment: "Count of promotion recommendations for talent pipeline"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_labor_cost_allocation`
 WITH METRICS
@@ -589,6 +596,7 @@ AS $$
       comment: "Total overtime labor cost for premium cost tracking"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_headcount_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -653,6 +661,7 @@ AS $$
       expr: COUNT(headcount_plan_id)
       comment: "Count of headcount plans for planning activity"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_automotive_v1`.`_metrics`.`workforce_talent_requisition`
 WITH METRICS

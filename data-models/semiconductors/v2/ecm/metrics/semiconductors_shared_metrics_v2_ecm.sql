@@ -6,7 +6,7 @@ LANGUAGE YAML
 AS $$
   version: 1.1
   comment: "Operational and sustainability KPIs for semiconductor fabrication facilities. Covers environmental footprint, capacity, audit compliance, and facility lifecycle status to support executive steering of fab portfolio decisions."
-  source: "`vibe_semiconductors_v1`.`shared`.`fab`"
+  source: "`vibe_semiconductors_v1`.`equipment`.`fab`"
   dimensions:
     - name: "fab_type"
       expr: fab_type

@@ -98,6 +98,7 @@ AS $$
       comment: "Total bonus virtual currency awarded as promotions"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_royalty_report`
 WITH METRICS
 LANGUAGE YAML
@@ -168,6 +169,7 @@ AS $$
       expr: SUM(CASE WHEN report_status = 'disputed' THEN 1 ELSE 0 END)
       comment: "Count of disputed royalty reports"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_virtual_currency_ledger`
 WITH METRICS
@@ -264,6 +266,7 @@ AS $$
       comment: "Count of transactions flagged for fraud"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_battle_pass_entitlement`
 WITH METRICS
 LANGUAGE YAML
@@ -325,7 +328,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of battle pass entitlements"
     - name: "unique_players"
-      expr: COUNT(DISTINCT primary_battle_player_account_id)
+      expr: COUNT(DISTINCT player_account_id)
       comment: "Count of unique players with battle pass entitlements"
     - name: "premium_entitlement_count"
       expr: SUM(CASE WHEN is_premium_active = TRUE THEN 1 ELSE 0 END)
@@ -346,6 +349,7 @@ AS $$
       expr: AVG(CAST(tier_skip_spend_amount AS DOUBLE))
       comment: "Average tier skip spending per entitlement"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_offer_campaign`
 WITH METRICS
@@ -415,6 +419,7 @@ AS $$
       comment: "Count of recurring campaigns"
 $$;
 
+
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_ip_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -476,6 +481,7 @@ AS $$
       expr: COUNT(DISTINCT licensed_ip_id)
       comment: "Count of unique licensed IPs"
 $$;
+
 
 CREATE OR REPLACE VIEW `gaming_ecm`.`_metrics`.`licensing_mtx_catalog`
 WITH METRICS

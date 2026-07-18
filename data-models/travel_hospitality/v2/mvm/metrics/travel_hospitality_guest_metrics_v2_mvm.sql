@@ -130,8 +130,8 @@ AS $$
     - name: "gender"
       expr: gender
       comment: "Guest gender — used for demographic segmentation in marketing and service personalization."
-    - name: "creation_property_id"
-      expr: creation_property_id
+    - name: "property_id"
+      expr: property_id
       comment: "Property where the guest profile was first created — identifies acquisition source property."
     - name: "loyalty_enrollment_month"
       expr: DATE_TRUNC('MONTH', loyalty_enrollment_date)
@@ -150,10 +150,10 @@ AS $$
       expr: SUM(CASE WHEN profile_status = 'ACTIVE' THEN 1 ELSE 0 END)
       comment: "Total number of active guest profiles. Baseline CRM size metric — tracks guest base growth and churn."
     - name: "total_loyalty_enrolled_profiles"
-      expr: SUM(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 ELSE 0 END)
+      expr: SUM(CASE WHEN member_id IS NOT NULL THEN 1 ELSE 0 END)
       comment: "Number of profiles enrolled in the loyalty program. Measures loyalty program penetration across the guest base."
     - name: "loyalty_enrollment_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN loyalty_member_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      expr: ROUND(100.0 * SUM(CASE WHEN member_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of guest profiles enrolled in the loyalty program. Key loyalty acquisition KPI — low rates indicate enrollment conversion gaps."
     - name: "email_opt_in_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN email_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
@@ -421,7 +421,7 @@ AS $$
       expr: fulfillment_status
       comment: "Whether the preference was fulfilled during the stay — key operational quality dimension for personalization effectiveness."
     - name: "category"
-      expr: category
+      expr: preference_category
       comment: "High-level preference category — enables rolled-up analysis across preference types."
     - name: "property_id"
       expr: property_id
@@ -489,7 +489,7 @@ AS $$
       expr: segment_status
       comment: "Current status of the segment assignment (e.g. active, superseded, expired) — used to filter to current assignments."
     - name: "category"
-      expr: category
+      expr: segment_category
       comment: "High-level segment category — enables rolled-up segment performance analysis."
     - name: "assignment_method"
       expr: assignment_method

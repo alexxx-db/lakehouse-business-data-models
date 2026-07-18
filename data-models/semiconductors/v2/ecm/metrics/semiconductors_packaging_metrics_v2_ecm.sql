@@ -50,6 +50,7 @@ AS $$
       comment: "Peak DPPM observed — flags worst-quality events for escalation and corrective action prioritization."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_assembly_defect`
 WITH METRICS
 LANGUAGE YAML
@@ -111,9 +112,10 @@ AS $$
       expr: COUNT(CASE WHEN hold_flag = TRUE THEN 1 END)
       comment: "Number of defect records associated with lots currently on hold — quantifies WIP at risk and drives hold resolution urgency."
     - name: "distinct_lots_with_defects"
-      expr: COUNT(DISTINCT primary_assembly_lot_id)
+      expr: COUNT(DISTINCT assembly_lot_id)
       comment: "Number of distinct assembly lots affected by defects — measures breadth of quality impact across the production population."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_assembly_lot`
 WITH METRICS
@@ -176,6 +178,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN lot_status NOT IN ('complete', 'scrapped', 'cancelled') THEN assembly_lot_id END)
       comment: "Number of distinct lots currently active in the packaging pipeline — WIP inventory count for capacity and delivery planning."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_assembly_order`
 WITH METRICS
@@ -245,6 +248,7 @@ AS $$
       comment: "Average net cost per assembly order — unit economics KPI for standard cost validation and pricing model calibration."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_package_qualification`
 WITH METRICS
 LANGUAGE YAML
@@ -306,6 +310,7 @@ AS $$
       expr: COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END)
       comment: "Number of qualifications meeting compliance requirements — regulatory readiness KPI for export control and customer compliance reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_reliability_stress_test`
 WITH METRICS
@@ -369,6 +374,7 @@ AS $$
       comment: "Number of distinct IC catalog products covered by reliability stress tests — measures breadth of reliability qualification coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_osat_vendor`
 WITH METRICS
 LANGUAGE YAML
@@ -425,6 +431,7 @@ AS $$
       comment: "Number of AEC-Q100 qualified vendors — automotive supply chain readiness KPI; directly impacts ability to serve automotive customers."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_line`
 WITH METRICS
 LANGUAGE YAML
@@ -477,6 +484,7 @@ AS $$
       expr: AVG(CAST(energy_consumption_kwh AS DOUBLE))
       comment: "Average energy consumption per packaging line in kWh — sustainability and cost KPI for energy efficiency benchmarking and ESG reporting."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_material_lot`
 WITH METRICS
@@ -543,6 +551,7 @@ AS $$
       comment: "Number of distinct suppliers providing material lots — supply base concentration KPI for single-source risk management."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`packaging_inspection_result`
 WITH METRICS
 LANGUAGE YAML
@@ -601,6 +610,6 @@ AS $$
       expr: COUNT(CASE WHEN is_spc_control = TRUE THEN 1 END)
       comment: "Number of inspections under SPC control — measures process control coverage; low coverage signals quality system gaps."
     - name: "distinct_lots_inspected"
-      expr: COUNT(DISTINCT primary_assembly_lot_id)
+      expr: COUNT(DISTINCT assembly_lot_id)
       comment: "Number of distinct assembly lots inspected — measures inspection coverage breadth across the production population."
 $$;

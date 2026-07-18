@@ -74,6 +74,7 @@ AS $$
       comment: "Number of distinct restaurant units that received a health inspection — measures compliance coverage breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_food_safety_audit`
 WITH METRICS
 LANGUAGE YAML
@@ -148,6 +149,7 @@ AS $$
       comment: "Number of distinct restaurant units audited — measures audit coverage breadth across the portfolio."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_audit_finding`
 WITH METRICS
 LANGUAGE YAML
@@ -200,6 +202,7 @@ AS $$
       expr: COUNT(DISTINCT food_safety_audit_id)
       comment: "Number of distinct audits that generated at least one finding — measures audit failure breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_allergen_incident`
 WITH METRICS
@@ -271,9 +274,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of allergen incidents handled in compliance with food safety protocols."
     - name: "distinct_units_with_incidents"
-      expr: COUNT(DISTINCT allergen_restaurant_unit_id)
+      expr: COUNT(DISTINCT unit_id)
       comment: "Number of distinct restaurant units with allergen incidents — measures geographic risk spread."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_food_recall`
 WITH METRICS
@@ -327,9 +331,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN is_voluntary = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of recalls that were voluntary — measures proactive safety culture vs. regulatory-forced action."
     - name: "distinct_suppliers_with_recalls"
-      expr: COUNT(DISTINCT food_procurement_supplier_id)
+      expr: COUNT(DISTINCT supplier_id)
       comment: "Number of distinct suppliers involved in recall events — supplier risk concentration metric."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_corrective_action`
 WITH METRICS
@@ -402,6 +407,7 @@ AS $$
       comment: "Count of corrective actions past their target completion date — measures remediation backlog risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_temperature_log`
 WITH METRICS
 LANGUAGE YAML
@@ -469,9 +475,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN data_quality_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of temperature readings with data quality issues — monitoring reliability metric."
     - name: "distinct_equipment_monitored"
-      expr: COUNT(DISTINCT temperature_equipment_asset_id)
+      expr: COUNT(DISTINCT equipment_asset_id)
       comment: "Number of distinct equipment assets being temperature-monitored — HACCP coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_illness_report`
 WITH METRICS
@@ -529,6 +536,7 @@ AS $$
       comment: "Number of distinct restaurant units with illness reports — geographic risk spread metric."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_food_safety_training`
 WITH METRICS
 LANGUAGE YAML
@@ -584,9 +592,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN compliance_status = 'Compliant' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of training records in compliant status — regulatory training adherence rate."
     - name: "distinct_employees_trained"
-      expr: COUNT(DISTINCT food_employee_id)
+      expr: COUNT(DISTINCT employee_id)
       comment: "Number of distinct employees with food safety training records — workforce coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_inspection_violation`
 WITH METRICS
@@ -647,6 +656,7 @@ AS $$
       comment: "Number of distinct health inspections that generated violations — measures inspection failure breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_critical_control_point`
 WITH METRICS
 LANGUAGE YAML
@@ -705,6 +715,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN average_deviation_value > 0 THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of CCPs with recorded deviations — headline HACCP program failure rate."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_receiving_inspection`
 WITH METRICS
@@ -774,6 +785,7 @@ AS $$
       comment: "Number of distinct suppliers with receiving inspections — supply chain safety coverage breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_food_safety_certification`
 WITH METRICS
 LANGUAGE YAML
@@ -836,6 +848,7 @@ AS $$
       comment: "Number of distinct employees holding food safety certifications — workforce certification coverage."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_pest_control_log`
 WITH METRICS
 LANGUAGE YAML
@@ -888,6 +901,7 @@ AS $$
       expr: COUNT(DISTINCT pest_unit_id)
       comment: "Number of distinct restaurant units receiving pest control services — facility coverage breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`foodsafety_recall_unit_response`
 WITH METRICS

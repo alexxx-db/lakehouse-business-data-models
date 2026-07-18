@@ -321,7 +321,7 @@ AS $$
       expr: AVG(CAST(cost_estimate_gross AS DOUBLE))
       comment: "Average gross cost estimate per requisition. Benchmarks typical procurement transaction size and identifies outliers requiring additional approval scrutiny."
     - name: "distinct_materials_requested"
-      expr: COUNT(DISTINCT material_master_id)
+      expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct materials being requisitioned. Indicates procurement complexity and potential for consolidation to achieve volume discounts."
     - name: "stock_available_requisition_count"
       expr: COUNT(CASE WHEN is_stock_available = TRUE THEN 1 END)
@@ -348,8 +348,8 @@ AS $$
     - name: "unit_of_measure"
       expr: unit_of_measure
       comment: "Unit of measure for quantity variance metrics."
-    - name: "warehouse_code"
-      expr: warehouse_code
+    - name: "warehouse_id"
+      expr: warehouse_id
       comment: "Warehouse code for location-level inventory accuracy analysis."
     - name: "location_code"
       expr: location_code
@@ -498,7 +498,7 @@ AS $$
       expr: AVG(CAST(humidity_recorded AS DOUBLE))
       comment: "Average humidity recorded during testing. Tracks environmental test conditions for quality process compliance."
     - name: "distinct_materials_tested"
-      expr: COUNT(DISTINCT material_master_id)
+      expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct materials with conformance certificates. Indicates breadth of quality testing coverage across the material portfolio."
 $$;
 

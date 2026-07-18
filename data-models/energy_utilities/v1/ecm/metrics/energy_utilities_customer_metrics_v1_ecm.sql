@@ -149,7 +149,7 @@ AS $$
   source: "`energy_utilities_ecm`.`customer`.`field_order`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: field_order_status
       comment: "Current status of the field order"
     - name: "service_type"
       expr: service_type

@@ -8,8 +8,8 @@ AS $$
   comment: "Key ATC capacity metrics for transmission planning and reliability"
   source: "`energy_utilities_ecm`.`transmission`.`atc_calculation`"
   dimensions:
-    - name: "atc_path_id"
-      expr: atc_path_id
+    - name: "path_id"
+      expr: path_id
       comment: "Identifier of the transmission path associated with the ATC calculation"
     - name: "calculation_type"
       expr: calculation_type
@@ -38,6 +38,7 @@ AS $$
       comment: "Number of ATC calculation records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_congestion_event`
 WITH METRICS
 LANGUAGE YAML
@@ -46,8 +47,8 @@ AS $$
   comment: "Financial and operational impact of transmission congestion events"
   source: "`energy_utilities_ecm`.`transmission`.`congestion_event`"
   dimensions:
-    - name: "congestion_path_id"
-      expr: congestion_path_id
+    - name: "path_id"
+      expr: path_id
       comment: "Path identifier where congestion occurred"
     - name: "rto_iso_region"
       expr: rto_iso_region
@@ -72,6 +73,7 @@ AS $$
       expr: AVG(CAST(congestion_cost_usd AS DOUBLE))
       comment: "Average cost per congestion event"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_path`
 WITH METRICS
@@ -104,6 +106,7 @@ AS $$
       expr: AVG(CAST(average_loss_factor_percent AS DOUBLE))
       comment: "Average loss factor percentage across paths"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_outage`
 WITH METRICS
@@ -140,6 +143,7 @@ AS $$
       comment: "Total megawatts of load shed due to outages"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_service_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -171,6 +175,7 @@ AS $$
       expr: AVG(CAST(energy_charge_rate_usd_per_mwh AS DOUBLE))
       comment: "Average energy charge rate per MWh"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`transmission_planning_study`
 WITH METRICS

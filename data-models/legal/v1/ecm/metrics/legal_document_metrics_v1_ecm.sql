@@ -1417,7 +1417,7 @@ AS $$
     - name: "Deduplication Method"
       expr: deduplication_method
     - name: "Description"
-      expr: description
+      expr: review_protocol_description
     - name: "Effective Date"
       expr: effective_date
     - name: "Expiration Date"
@@ -1557,7 +1557,7 @@ AS $$
     - name: "Deduplication Applied"
       expr: deduplication_applied
     - name: "Description"
-      expr: description
+      expr: review_set_description
     - name: "Email Threading Applied"
       expr: email_threading_applied
     - name: "Modified Timestamp"
@@ -1756,7 +1756,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: workspace_description
     - name: "Destruction Eligible Date"
       expr: destruction_eligible_date
     - name: "Document Management System"

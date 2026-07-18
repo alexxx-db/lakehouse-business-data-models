@@ -80,6 +80,7 @@ AS $$
       comment: "Percentage of engagements with completed orientation"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`onboarding_task_assignment`
 WITH METRICS
 LANGUAGE YAML
@@ -154,6 +155,7 @@ AS $$
       comment: "Percentage of tasks that have been escalated"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`onboarding_lms_enrollment`
 WITH METRICS
 LANGUAGE YAML
@@ -197,7 +199,7 @@ AS $$
       expr: COUNT(DISTINCT profile_id)
       comment: "Distinct count of workers enrolled in courses"
     - name: "total_courses_enrolled"
-      expr: COUNT(DISTINCT course_id)
+      expr: COUNT(DISTINCT lms_course_id)
       comment: "Distinct count of courses with active enrollments"
     - name: "course_completion_rate"
       expr: ROUND(100.0 * SUM(CASE WHEN enrollment_status = 'Completed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
@@ -230,6 +232,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN attempt_number = '1' AND pass_fail_status = 'Pass' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN attempt_number = '1' AND pass_fail_status IN ('Pass', 'Fail') THEN 1 ELSE 0 END), 0), 2)
       comment: "Percentage of learners who passed on their first attempt"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`onboarding_offboarding_record`
 WITH METRICS
@@ -317,6 +320,7 @@ AS $$
       comment: "Percentage of offboardings that resulted in unemployment claims"
 $$;
 
+
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`onboarding_document_collection`
 WITH METRICS
 LANGUAGE YAML
@@ -381,6 +385,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN exempt_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of tax forms claiming exempt status"
 $$;
+
 
 CREATE OR REPLACE VIEW `staffing_hr_ecm`.`_metrics`.`onboarding_orientation_session`
 WITH METRICS

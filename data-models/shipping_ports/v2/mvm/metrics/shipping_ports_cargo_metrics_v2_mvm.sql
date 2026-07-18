@@ -39,7 +39,7 @@ AS $$
       expr: shipping_line_id
       comment: "Shipping line owning or operating the container"
     - name: "current_port_location"
-      expr: current_port_location_id
+      expr: port_location_id
       comment: "Current port location of the container"
     - name: "terminal_zone"
       expr: terminal_zone_id
@@ -86,6 +86,7 @@ AS $$
       comment: "Percentage of refrigerated containers for power infrastructure planning"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_shipment`
 WITH METRICS
 LANGUAGE YAML
@@ -128,7 +129,7 @@ AS $$
       expr: gate_out_date
       comment: "Date cargo exited the terminal"
     - name: "pol_port_location"
-      expr: pol_port_location_id
+      expr: port_location_id
       comment: "Port of loading location"
     - name: "commodity_code"
       expr: commodity_code_id
@@ -177,6 +178,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_reefer = TRUE THEN shipment_id END)
       comment: "Count of refrigerated shipments for cold chain infrastructure planning"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_demurrage_detention`
 WITH METRICS
@@ -257,6 +259,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(waiver_amount AS DOUBLE)) / NULLIF(SUM(CAST(total_charge_amount AS DOUBLE)), 0), 2)
       comment: "Percentage of charges waived indicating revenue leakage and policy effectiveness"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_handling_order`
 WITH METRICS
@@ -362,6 +365,7 @@ AS $$
       comment: "Average terminal delay per order for operational efficiency improvement"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_move`
 WITH METRICS
 LANGUAGE YAML
@@ -462,6 +466,7 @@ AS $$
       expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN exception_code IS NOT NULL THEN move_id END) / NULLIF(COUNT(DISTINCT move_id), 0), 2)
       comment: "Percentage of moves with exceptions indicating operational efficiency and process quality"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_manifest`
 WITH METRICS
@@ -564,6 +569,7 @@ AS $$
       comment: "Count of manifests requiring customs inspection for resource planning"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_shipping_ports_v1`.`_metrics`.`cargo_bill_of_lading`
 WITH METRICS
 LANGUAGE YAML
@@ -600,7 +606,7 @@ AS $$
       expr: shipping_line_id
       comment: "Shipping line issuing the bill of lading"
     - name: "pol_port_location"
-      expr: pol_port_location_id
+      expr: port_location_id
       comment: "Port of loading location"
     - name: "commodity_code"
       expr: commodity_code_id

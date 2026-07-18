@@ -216,7 +216,7 @@ AS $$
     - name: "Billing Timing"
       expr: billing_timing
     - name: "Code"
-      expr: code
+      expr: cycle_code
     - name: "Created By User"
       expr: created_by_user
     - name: "Created Timestamp"
@@ -230,7 +230,7 @@ AS $$
     - name: "Day"
       expr: day
     - name: "Description"
-      expr: description
+      expr: cycle_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

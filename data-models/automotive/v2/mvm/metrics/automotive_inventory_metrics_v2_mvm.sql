@@ -292,7 +292,7 @@ AS $$
     - name: "Customs Tariff Code"
       expr: customs_tariff_code
     - name: "Description"
-      expr: description
+      expr: sku_master_description
     - name: "Ean13"
       expr: ean13
     - name: "Effective From"
@@ -531,7 +531,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: storage_location_description
     - name: "Effective From"
       expr: effective_from
     - name: "Effective Until"
@@ -588,13 +588,13 @@ AS $$
     - name: "Close Date"
       expr: close_date
     - name: "Code"
-      expr: code
+      expr: warehouse_code
     - name: "Country"
       expr: country
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: warehouse_description
     - name: "Effective From"
       expr: effective_from
     - name: "Effective Until"
@@ -606,7 +606,7 @@ AS $$
     - name: "Manager Phone"
       expr: manager_phone
     - name: "Name"
-      expr: name
+      expr: warehouse_name
     - name: "Open Date"
       expr: open_date
     - name: "Operating Hours"

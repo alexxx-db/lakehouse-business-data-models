@@ -228,7 +228,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: event_description
     - name: "End Date"
       expr: end_date
     - name: "Event Number"
@@ -244,7 +244,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: event_name
     - name: "Post Event Analysis Completed Flag"
       expr: post_event_analysis_completed_flag
     - name: "Post Event Analysis Date"
@@ -572,7 +572,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: trade_calendar_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

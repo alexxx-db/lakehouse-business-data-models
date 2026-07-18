@@ -44,6 +44,7 @@ AS $$
       comment: "Number of settlement records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_cycle`
 WITH METRICS
 LANGUAGE YAML
@@ -87,6 +88,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of settlement cycles"
 $$;
+
 
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_instruction`
 WITH METRICS
@@ -132,6 +134,7 @@ AS $$
       comment: "Number of settlement instructions"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_merchant_payout`
 WITH METRICS
 LANGUAGE YAML
@@ -149,8 +152,8 @@ AS $$
     - name: "merchant_id"
       expr: merchant_id
       comment: "Identifier of the merchant receiving the payout"
-    - name: "settlement_cycle_id"
-      expr: settlement_cycle_id
+    - name: "cycle_id"
+      expr: cycle_id
       comment: "Settlement cycle linked to the payout"
     - name: "currency_id"
       expr: currency_id
@@ -176,6 +179,7 @@ AS $$
       comment: "Number of merchant payout records"
 $$;
 
+
 CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`settlement_net_position`
 WITH METRICS
 LANGUAGE YAML
@@ -190,8 +194,8 @@ AS $$
     - name: "net_position_source"
       expr: net_position_source
       comment: "Source system or origin of the net position"
-    - name: "settlement_cycle_id"
-      expr: settlement_cycle_id
+    - name: "cycle_id"
+      expr: cycle_id
       comment: "Associated settlement cycle"
     - name: "currency_id"
       expr: currency_id

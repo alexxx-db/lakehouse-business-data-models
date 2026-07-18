@@ -74,7 +74,7 @@ AS $$
   source: "`transport_shipping_ecm`.`fleet`.`trip`"
   dimensions:
     - name: "trip_status"
-      expr: status
+      expr: trip_status
       comment: "Current status of the trip (planned, in-progress, completed, cancelled)"
     - name: "cargo_type"
       expr: cargo_type
@@ -571,6 +571,6 @@ AS $$
       expr: COUNT(1)
       comment: "Total HOS log entries for compliance completeness tracking"
     - name: "distinct_drivers_logged"
-      expr: COUNT(DISTINCT primary_hos_driver_profile_id)
+      expr: COUNT(DISTINCT driver_profile_id)
       comment: "Number of distinct drivers with HOS logs"
 $$;

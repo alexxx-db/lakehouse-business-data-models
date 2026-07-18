@@ -585,7 +585,7 @@ AS $$
   source: "`pharmaceuticals_ecm`.`finance`.`payment_run`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: payment_run_status
       comment: "Current payment run status (scheduled, executed, reconciled)"
     - name: "run_type"
       expr: run_type
@@ -764,7 +764,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of royalty agreements"
     - name: "unique_licensor_count"
-      expr: COUNT(DISTINCT licensor_business_partner_id)
+      expr: COUNT(DISTINCT business_partner_id)
       comment: "Number of unique licensors/licensees"
 $$;
 
@@ -913,7 +913,7 @@ AS $$
       expr: wbs_element_type
       comment: "Type of WBS element (project, phase, work package)"
     - name: "status"
-      expr: status
+      expr: wbs_element_status
       comment: "Current WBS element status (active, closed, on-hold)"
     - name: "wbs_level"
       expr: wbs_level

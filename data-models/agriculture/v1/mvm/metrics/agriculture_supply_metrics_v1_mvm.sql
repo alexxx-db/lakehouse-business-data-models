@@ -83,6 +83,7 @@ AS $$
       comment: "Number of distinct carriers used — carrier diversification KPI; low counts indicate single-source risk, high counts may indicate fragmented spend."
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_freight_booking`
 WITH METRICS
 LANGUAGE YAML
@@ -159,6 +160,7 @@ AS $$
       expr: COUNT(DISTINCT carrier_id)
       comment: "Number of distinct carriers engaged across bookings — carrier diversification KPI for supply chain resilience and spend concentration risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_carrier`
 WITH METRICS
@@ -237,6 +239,7 @@ AS $$
       comment: "Average cargo insurance coverage amount across carriers — risk management KPI ensuring carrier insurance levels are adequate relative to commodity values being transported."
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_delivery_event`
 WITH METRICS
 LANGUAGE YAML
@@ -308,6 +311,7 @@ AS $$
       comment: "Number of distinct shipments with at least one delivery event recorded — traceability coverage KPI; gaps indicate shipments without adequate tracking visibility."
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_lot_trace`
 WITH METRICS
 LANGUAGE YAML
@@ -375,9 +379,10 @@ AS $$
       expr: COUNT(DISTINCT commodity_id)
       comment: "Number of distinct commodities with active lot traceability records — traceability program breadth KPI for FSMA compliance coverage assessment."
     - name: "distinct_origin_fields_traced"
-      expr: COUNT(DISTINCT origin_field_id)
+      expr: COUNT(DISTINCT field_id)
       comment: "Number of distinct origin fields represented in lot traces — farm-to-fork traceability depth KPI; broader field coverage reduces recall scope and improves food safety response speed."
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_transport_order`
 WITH METRICS
@@ -447,6 +452,7 @@ AS $$
       comment: "Number of distinct carriers assigned to transport orders — carrier diversification KPI for supply chain resilience and spend concentration risk management."
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_freight_rate`
 WITH METRICS
 LANGUAGE YAML
@@ -512,6 +518,7 @@ AS $$
       comment: "Number of distinct carriers with negotiated rates — rate card coverage KPI for carrier diversification and competitive rate benchmarking."
 $$;
 
+
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_shipment_line`
 WITH METRICS
 LANGUAGE YAML
@@ -570,6 +577,7 @@ AS $$
       expr: COUNT(DISTINCT commodity_id)
       comment: "Number of distinct commodities shipped — product mix KPI for supply chain diversification and commodity portfolio analysis."
 $$;
+
 
 CREATE OR REPLACE VIEW `agriculture_ecm`.`_metrics`.`supply_route`
 WITH METRICS

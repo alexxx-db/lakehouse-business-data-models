@@ -164,7 +164,7 @@ AS $$
       expr: geographic_scope
       comment: "Geographic scope of the policy"
     - name: "status"
-      expr: status
+      expr: risk_policy_status
       comment: "Current status of the policy"
     - name: "effective_year"
       expr: DATE_TRUNC('year', effective_from)

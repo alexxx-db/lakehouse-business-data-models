@@ -23,8 +23,8 @@ AS $$
     - name: "currency_code"
       expr: currency_code
       comment: "Currency of the cash call amounts"
-    - name: "venture_partner_id"
-      expr: venture_partner_id
+    - name: "partner_id"
+      expr: partner_id
       comment: "Partner associated with the cash call"
   measures:
     - name: "total_call_amount"
@@ -173,7 +173,7 @@ AS $$
       expr: jurisdiction
       comment: "Legal jurisdiction of the joint venture"
     - name: "status"
-      expr: status
+      expr: joint_venture_status
       comment: "Current operational status"
     - name: "sec_disclosure_flag"
       expr: sec_disclosure_flag
@@ -213,8 +213,8 @@ AS $$
     - name: "currency_code"
       expr: currency_code
       comment: "Currency used for AFE amounts"
-    - name: "venture_partner_id"
-      expr: venture_partner_id
+    - name: "partner_id"
+      expr: partner_id
       comment: "Partner associated with the AFE"
   measures:
     - name: "total_approved_amount"

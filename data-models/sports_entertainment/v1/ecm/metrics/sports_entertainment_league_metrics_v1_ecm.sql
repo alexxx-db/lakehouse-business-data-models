@@ -56,6 +56,7 @@ AS $$
       comment: "Average luxury tax liability among franchises that owe tax"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`league_game_result`
 WITH METRICS
 LANGUAGE YAML
@@ -114,6 +115,7 @@ AS $$
       expr: COUNT(DISTINCT venue_id)
       comment: "Number of unique venues hosting games"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`league_trade_transaction`
 WITH METRICS
@@ -176,9 +178,10 @@ AS $$
       expr: COUNT(CASE WHEN transaction_status = 'voided' THEN 1 END)
       comment: "Number of voided trade transactions"
     - name: "unique_acquiring_franchises"
-      expr: COUNT(DISTINCT primary_trade_acquiring_franchise_id)
+      expr: COUNT(DISTINCT franchise_id)
       comment: "Number of unique franchises acquiring assets"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`league_disciplinary_action`
 WITH METRICS
@@ -254,6 +257,7 @@ AS $$
       comment: "Percentage of actions that were appealed"
 $$;
 
+
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`league_draft`
 WITH METRICS
 LANGUAGE YAML
@@ -315,6 +319,7 @@ AS $$
       expr: COUNT(DISTINCT league_id)
       comment: "Number of unique leagues conducting drafts"
 $$;
+
 
 CREATE OR REPLACE VIEW `sports_entertainment_ecm`.`_metrics`.`league_standing`
 WITH METRICS

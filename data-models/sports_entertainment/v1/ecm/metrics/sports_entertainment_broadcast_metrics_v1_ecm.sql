@@ -537,7 +537,7 @@ AS $$
     - name: "Blackout Rules Enabled"
       expr: blackout_rules_enabled
     - name: "Code"
-      expr: code
+      expr: distributor_code
     - name: "Content Delivery Network"
       expr: content_delivery_network
     - name: "Contract End Date"
@@ -1512,7 +1512,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: subscription_plan_description
     - name: "Dvr Enabled"
       expr: dvr_enabled
     - name: "Dvr Storage Hours"

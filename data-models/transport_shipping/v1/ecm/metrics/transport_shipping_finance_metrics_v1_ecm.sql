@@ -617,7 +617,7 @@ AS $$
       expr: is_renewable
       comment: "Whether the lease has renewal options"
     - name: "status"
-      expr: status
+      expr: lease_contract_status
       comment: "Current contract status (e.g., active, expired, terminated)"
   measures:
     - name: "total_lease_liability"

@@ -68,6 +68,7 @@ AS $$
       comment: "Number of inactive accounts. Drives win-back campaign prioritization."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_credit_profile`
 WITH METRICS
 LANGUAGE YAML
@@ -129,6 +130,7 @@ AS $$
       expr: SUM(CAST(credit_limit_adjustment_amount AS DOUBLE))
       comment: "Total net credit limit adjustments. Indicates whether the portfolio is being tightened or expanded."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_design_win`
 WITH METRICS
@@ -201,6 +203,7 @@ AS $$
       comment: "Number of design wins requiring NRE investment. Informs R&D resource allocation and deal profitability."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_design_registration`
 WITH METRICS
 LANGUAGE YAML
@@ -259,6 +262,7 @@ AS $$
       expr: SUM(CAST(CASE WHEN registration_status = 'Approved' THEN nre_budget_amount ELSE 0 END AS DOUBLE))
       comment: "Total NRE budget for approved registrations only. Represents committed engineering investment."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_price_agreement`
 WITH METRICS
@@ -325,6 +329,7 @@ AS $$
       comment: "Number of price-locked agreements. Indicates revenue predictability and exposure to spot price volatility."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_engagement_activity`
 WITH METRICS
 LANGUAGE YAML
@@ -386,9 +391,10 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN risk_flag = TRUE THEN engagement_activity_id END)
       comment: "Number of risk-flagged engagements. Drives compliance review and relationship risk mitigation actions."
     - name: "unique_accounts_engaged"
-      expr: COUNT(DISTINCT primary_engagement_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of distinct accounts with engagement activity. Measures breadth of active customer coverage."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_qualification_status`
 WITH METRICS
@@ -445,6 +451,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN ppap_status = 'Approved' THEN qualification_status_id END)
       comment: "Number of PPAP-approved qualifications. Required for automotive production launch authorization."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_distributor_agreement`
 WITH METRICS
@@ -505,6 +512,7 @@ AS $$
       comment: "Number of exclusive distribution agreements. Informs territory conflict management and channel strategy."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_sample_request`
 WITH METRICS
 LANGUAGE YAML
@@ -551,6 +559,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN fulfillment_status = 'Fulfilled' THEN customer_sample_request_id END)
       comment: "Number of fulfilled sample requests. Measures supply chain responsiveness to pre-sales demand."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`customer_segment`
 WITH METRICS

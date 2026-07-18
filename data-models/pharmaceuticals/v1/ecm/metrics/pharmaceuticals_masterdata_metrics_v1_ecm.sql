@@ -493,7 +493,7 @@ AS $$
       expr: event_type
       comment: "Type of M&A event (merger, acquisition, divestiture, joint venture, etc.)"
     - name: "status"
-      expr: status
+      expr: merger_acquisition_event_status
       comment: "Current status of the M&A event"
     - name: "integration_status"
       expr: integration_status
@@ -524,10 +524,10 @@ AS $$
       expr: COUNT(DISTINCT merger_acquisition_event_id)
       comment: "Total number of M&A events in the portfolio"
     - name: "completed_ma_events"
-      expr: COUNT(DISTINCT CASE WHEN status = 'Completed' THEN merger_acquisition_event_id END)
+      expr: COUNT(DISTINCT CASE WHEN merger_acquisition_event_status = 'Completed' THEN merger_acquisition_event_id END)
       comment: "Number of completed M&A transactions"
     - name: "pending_ma_events"
-      expr: COUNT(DISTINCT CASE WHEN status = 'Pending' THEN merger_acquisition_event_id END)
+      expr: COUNT(DISTINCT CASE WHEN merger_acquisition_event_status = 'Pending' THEN merger_acquisition_event_id END)
       comment: "Number of pending M&A transactions"
     - name: "total_transaction_value"
       expr: SUM(CAST(transaction_value_amount AS DOUBLE))

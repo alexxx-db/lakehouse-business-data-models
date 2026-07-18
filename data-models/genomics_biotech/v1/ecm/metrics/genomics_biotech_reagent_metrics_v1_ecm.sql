@@ -38,6 +38,7 @@ AS $$
       comment: "Number of inventory balance records."
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`reagent_dispensing_event`
 WITH METRICS
 LANGUAGE YAML
@@ -76,6 +77,7 @@ AS $$
       comment: "Number of events compliant with cold chain requirements."
 $$;
 
+
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`reagent_inventory_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -97,7 +99,7 @@ AS $$
       expr: primary_inventory_storage_location_id
       comment: "Primary storage location before transaction."
     - name: "destination_location_id"
-      expr: destination_location_storage_location_id
+      expr: storage_location_id
       comment: "Destination storage location after transaction."
   measures:
     - name: "total_transactions"
@@ -110,6 +112,7 @@ AS $$
       expr: SUM(CAST(total_transaction_value AS DOUBLE))
       comment: "Total monetary value of transactions."
 $$;
+
 
 CREATE OR REPLACE VIEW `genomics_biotech_ecm`.`_metrics`.`reagent_recall_event`
 WITH METRICS

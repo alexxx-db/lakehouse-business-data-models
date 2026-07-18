@@ -83,6 +83,7 @@ AS $$
       comment: "Number of unique customer accounts with opportunities"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_order_intake`
 WITH METRICS
 LANGUAGE YAML
@@ -160,6 +161,7 @@ AS $$
       comment: "Number of unique customers placing orders"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_quote`
 WITH METRICS
 LANGUAGE YAML
@@ -231,6 +233,7 @@ AS $$
       comment: "Number of unique customers receiving quotes"
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_quote_line`
 WITH METRICS
 LANGUAGE YAML
@@ -298,9 +301,10 @@ AS $$
       expr: AVG(CAST(commission_percent AS DOUBLE))
       comment: "Average commission percentage for sales reps across line items"
     - name: "unique_products"
-      expr: COUNT(DISTINCT primary_quote_sku_master_id)
+      expr: COUNT(DISTINCT sku_master_id)
       comment: "Number of unique products quoted"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_rep`
 WITH METRICS
@@ -372,6 +376,7 @@ AS $$
       expr: COUNT(CASE WHEN is_key_account_manager = TRUE THEN 1 END)
       comment: "Number of reps designated as key account managers"
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`sales_contract`
 WITH METRICS

@@ -92,6 +92,7 @@ AS $$
       comment: "Count of tax-exempt owners"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_capital_contribution`
 WITH METRICS
 LANGUAGE YAML
@@ -175,6 +176,7 @@ AS $$
       comment: "Count of unique owners who made contributions"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_distribution`
 WITH METRICS
 LANGUAGE YAML
@@ -257,6 +259,7 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN distribution_status = 'Disbursed' THEN owner_distribution_id END)
       comment: "Count of distributions that have been disbursed"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_ownership_interest`
 WITH METRICS
@@ -347,6 +350,7 @@ AS $$
       comment: "Count of unique owners holding ownership interests"
 $$;
 
+
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_ownership_transfer`
 WITH METRICS
 LANGUAGE YAML
@@ -423,9 +427,10 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN capital_gains_flag = TRUE THEN ownership_transfer_id END)
       comment: "Count of transfers that triggered capital gains"
     - name: "unique_transferor_owners"
-      expr: COUNT(DISTINCT primary_ownership_transferor_owner_id)
+      expr: COUNT(DISTINCT owner_id)
       comment: "Count of unique owners who transferred ownership"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_kyc_profile`
 WITH METRICS
@@ -536,6 +541,7 @@ AS $$
       expr: COUNT(DISTINCT owner_id)
       comment: "Count of unique owners with KYC profiles"
 $$;
+
 
 CREATE OR REPLACE VIEW `real_estate_ecm`.`_metrics`.`owner_tax_record`
 WITH METRICS

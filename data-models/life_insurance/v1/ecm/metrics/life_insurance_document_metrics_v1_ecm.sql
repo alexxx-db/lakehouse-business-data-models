@@ -307,9 +307,9 @@ AS $$
     - name: "Approval Required Flag"
       expr: approval_required_flag
     - name: "Category"
-      expr: category
+      expr: document_type_category
     - name: "Code"
-      expr: code
+      expr: document_type_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Customer Facing Flag"
@@ -317,7 +317,7 @@ AS $$
     - name: "Default Mime Type"
       expr: default_mime_type
     - name: "Description"
-      expr: description
+      expr: document_type_description
     - name: "Disclosure Type"
       expr: disclosure_type
     - name: "E Delivery Eligible Flag"
@@ -331,7 +331,7 @@ AS $$
     - name: "Imaging Required Flag"
       expr: imaging_required_flag
     - name: "Name"
-      expr: name
+      expr: document_type_name
     - name: "Nigo Tracking Enabled Flag"
       expr: nigo_tracking_enabled_flag
   measures:

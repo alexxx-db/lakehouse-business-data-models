@@ -71,6 +71,7 @@ AS $$
       comment: "Number of distinct technology nodes running concurrently — high node diversity increases changeover complexity and scheduling overhead."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fab_yield_record`
 WITH METRICS
 LANGUAGE YAML
@@ -132,6 +133,7 @@ AS $$
       expr: COUNT(DISTINCT fabrication_wafer_lot_id)
       comment: "Number of distinct wafer lots with yield measurements — used to assess yield measurement coverage across WIP."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_equipment_run`
 WITH METRICS
@@ -207,6 +209,7 @@ AS $$
       comment: "Number of distinct fab tools used — measures tool fleet utilization breadth and identifies underutilized assets."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_lot_hold`
 WITH METRICS
 LANGUAGE YAML
@@ -265,9 +268,10 @@ AS $$
       expr: ROUND(100.0 * COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of holds that were escalated — a rising escalation rate signals deteriorating first-response resolution capability."
     - name: "distinct_lots_held"
-      expr: COUNT(DISTINCT primary_fabrication_wafer_lot_id)
+      expr: COUNT(DISTINCT fabrication_wafer_lot_id)
       comment: "Number of distinct wafer lots that experienced holds — measures breadth of WIP disruption across the lot population."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_lot_disposition`
 WITH METRICS
@@ -324,6 +328,7 @@ AS $$
       expr: COUNT(DISTINCT fabrication_wafer_lot_id)
       comment: "Number of distinct wafer lots requiring disposition — measures breadth of quality impact across the lot population."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_process_step`
 WITH METRICS
@@ -390,6 +395,7 @@ AS $$
       comment: "Number of active steps without approved status — unapproved active steps represent a process control compliance risk."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_process_flow`
 WITH METRICS
 LANGUAGE YAML
@@ -445,6 +451,7 @@ AS $$
       expr: COUNT(DISTINCT technology_node)
       comment: "Number of distinct technology nodes covered by process flows — measures technology portfolio breadth."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_technology_node`
 WITH METRICS
@@ -510,6 +517,7 @@ AS $$
       expr: AVG(CAST(nre_cost_estimate_usd AS DOUBLE))
       comment: "Average NRE cost estimate per technology node — used to benchmark node development investment and set customer NRE pricing."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fab_run_card`
 WITH METRICS
@@ -579,6 +587,7 @@ AS $$
       comment: "Number of distinct customer accounts with active run cards — measures customer concentration and fab utilization breadth."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_spc_control_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -631,6 +640,7 @@ AS $$
       expr: COUNT(DISTINCT fabrication_technology_node_id)
       comment: "Number of distinct technology nodes with SPC control plans — gaps in node coverage represent uncontrolled process risk."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_mask_set`
 WITH METRICS
@@ -685,6 +695,7 @@ AS $$
       comment: "Number of distinct IC design projects with mask sets — measures design-to-mask conversion rate and NRE pipeline."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_wafer_start`
 WITH METRICS
 LANGUAGE YAML
@@ -737,12 +748,13 @@ AS $$
       expr: COUNT(DISTINCT ic_catalog_id)
       comment: "Number of distinct IC products started — measures product mix in the fab loading plan."
     - name: "distinct_customers_with_starts"
-      expr: COUNT(DISTINCT sales_order_id)
+      expr: COUNT(DISTINCT order_id)
       comment: "Number of distinct sales orders driving wafer starts — measures customer demand breadth and order-to-start conversion."
     - name: "avg_resistivity_ohm_cm"
       expr: AVG(CAST(resistivity_ohm_cm AS DOUBLE))
       comment: "Average substrate resistivity in ohm-cm — used to validate substrate specification compliance across starts."
 $$;
+
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fab_facility`
 WITH METRICS
@@ -803,6 +815,7 @@ AS $$
       comment: "Average energy consumption per square foot of fab area — energy intensity KPI for sustainability benchmarking and efficiency improvement."
 $$;
 
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_lot_move`
 WITH METRICS
 LANGUAGE YAML
@@ -858,7 +871,7 @@ AS $$
       expr: AVG(CAST(measurement_value AS DOUBLE))
       comment: "Average in-line measurement value at move — used for process centering and SPC trending analysis."
     - name: "distinct_lots_moved"
-      expr: COUNT(DISTINCT primary_fabrication_wafer_lot_id)
+      expr: COUNT(DISTINCT fabrication_wafer_lot_id)
       comment: "Number of distinct wafer lots that had moves — measures WIP breadth and lot flow coverage."
     - name: "distinct_tools_used"
       expr: COUNT(DISTINCT fab_tool_id)

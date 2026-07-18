@@ -35,6 +35,7 @@ AS $$
       comment: "Count of AMI events flagged as confirmed theft"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`metering_mdm_usage_transaction`
 WITH METRICS
 LANGUAGE YAML
@@ -70,6 +71,7 @@ AS $$
       comment: "Number of MDM usage transaction records"
 $$;
 
+
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`metering_interval_reading`
 WITH METRICS
 LANGUAGE YAML
@@ -82,7 +84,7 @@ AS $$
       expr: DATE_TRUNC('day', interval_start_timestamp)
       comment: "Day of the interval reading"
     - name: "meter_id"
-      expr: interval_meter_id
+      expr: meter_id
       comment: "Identifier of the meter that produced the reading"
     - name: "channel_number"
       expr: channel_number
@@ -98,6 +100,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of interval reading records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`metering_net_energy_metering`
 WITH METRICS
@@ -127,6 +130,7 @@ AS $$
       expr: COUNT(1)
       comment: "Number of net energy metering records"
 $$;
+
 
 CREATE OR REPLACE VIEW `energy_utilities_ecm`.`_metrics`.`metering_tou_rate_program`
 WITH METRICS
