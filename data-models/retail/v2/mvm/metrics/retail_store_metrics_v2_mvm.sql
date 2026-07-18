@@ -60,7 +60,7 @@ AS $$
     - name: "Clustering Methodology"
       expr: clustering_methodology
     - name: "Code"
-      expr: code
+      expr: cluster_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
@@ -184,7 +184,7 @@ AS $$
     - name: "Clienteling Service Flag"
       expr: clienteling_service_flag
     - name: "Code"
-      expr: code
+      expr: format_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
@@ -343,7 +343,7 @@ AS $$
     - name: "Climate Zone"
       expr: climate_zone
     - name: "Code"
-      expr: code
+      expr: region_code
     - name: "Comp Sales Base Year"
       expr: comp_sales_base_year
     - name: "Country Code"

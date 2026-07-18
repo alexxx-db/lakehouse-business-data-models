@@ -65,7 +65,6 @@ AS $$
       comment: "Number of unique operators involved in batch manufacturing"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_production_order`
 WITH METRICS
 LANGUAGE YAML
@@ -137,7 +136,6 @@ AS $$
       comment: "Count of orders using Quality by Design principles"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_deviation`
 WITH METRICS
 LANGUAGE YAML
@@ -202,7 +200,6 @@ AS $$
       expr: COUNT(DISTINCT equipment_id)
       comment: "Number of unique equipment items involved in deviations - maintenance prioritization"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_equipment`
 WITH METRICS
@@ -271,7 +268,6 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique equipment vendors for supplier diversity analysis"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_site`
 WITH METRICS
@@ -353,7 +349,6 @@ AS $$
       comment: "Number of countries with manufacturing presence - geographic diversification"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_campaign`
 WITH METRICS
 LANGUAGE YAML
@@ -372,7 +367,7 @@ AS $$
       expr: campaign_type
       comment: "Type of campaign (e.g., Commercial, Clinical, Validation)"
     - name: "status"
-      expr: status
+      expr: campaign_status
       comment: "Current campaign status"
     - name: "approval_status"
       expr: approval_status
@@ -436,7 +431,6 @@ AS $$
       expr: SUM(CASE WHEN quality_by_design_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Count of campaigns using Quality by Design principles"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_process_validation`
 WITH METRICS
@@ -505,7 +499,6 @@ AS $$
       expr: SUM(CASE WHEN pat_implementation = TRUE THEN 1 ELSE 0 END)
       comment: "Count of validations with PAT implementation"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`manufacturing_cmo_oversight`
 WITH METRICS

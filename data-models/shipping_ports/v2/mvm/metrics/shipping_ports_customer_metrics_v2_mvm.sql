@@ -420,7 +420,7 @@ AS $$
     - name: "Acknowledged Timestamp"
       expr: acknowledged_timestamp
     - name: "Category"
-      expr: category
+      expr: service_request_category
     - name: "Channel"
       expr: channel
     - name: "Closed Timestamp"

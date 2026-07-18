@@ -110,7 +110,6 @@ AS $$
       comment: "Number of claims subject to RAC audit - compliance risk metric"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_denial`
 WITH METRICS
 LANGUAGE YAML
@@ -123,7 +122,7 @@ AS $$
       expr: denial_type
       comment: "Type of denial (e.g., technical, clinical, authorization)"
     - name: "category"
-      expr: category
+      expr: denial_category
       comment: "Denial category for grouping and analysis"
     - name: "carc_code"
       expr: carc_code
@@ -208,7 +207,6 @@ AS $$
       expr: COUNT(DISTINCT clinician_id)
       comment: "Number of unique providers with denials - provider performance metric"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_prior_authorization`
 WITH METRICS
@@ -317,7 +315,6 @@ AS $$
       comment: "Number of unique providers requesting authorizations"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_remittance`
 WITH METRICS
 LANGUAGE YAML
@@ -410,7 +407,6 @@ AS $$
       comment: "Number of unique providers receiving payments"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_appeal`
 WITH METRICS
 LANGUAGE YAML
@@ -426,7 +422,7 @@ AS $$
       expr: appeal_type
       comment: "Type of appeal (e.g., reconsideration, redetermination, ALJ hearing)"
     - name: "level"
-      expr: level
+      expr: appeal_level
       comment: "Appeal level (e.g., first level, second level, external review)"
     - name: "outcome_code"
       expr: outcome_code
@@ -523,7 +519,6 @@ AS $$
       expr: COUNT(DISTINCT claim_id)
       comment: "Number of unique claims with appeals"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_eligibility`
 WITH METRICS

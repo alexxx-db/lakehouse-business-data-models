@@ -48,7 +48,7 @@ AS $$
       expr: recurring_flag
       comment: "Flag indicating whether holiday recurs annually, used for multi-year forecasting"
     - name: "holiday_status"
-      expr: status
+      expr: holiday_calendar_status
       comment: "Current status of holiday record (e.g., active, cancelled, pending) for operational validity"
   measures:
     - name: "total_holidays"

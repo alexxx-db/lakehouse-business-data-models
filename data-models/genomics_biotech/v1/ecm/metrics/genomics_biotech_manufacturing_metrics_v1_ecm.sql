@@ -44,7 +44,7 @@ AS $$
       expr: campaign_type
       comment: "Type of manufacturing campaign (e.g., pilot, full-scale)."
     - name: "campaign_status"
-      expr: status
+      expr: manufacturing_campaign_status
       comment: "Current status of the campaign."
   measures:
     - name: "campaign_count"
@@ -76,7 +76,7 @@ AS $$
       expr: equipment_type
       comment: "Category of equipment (e.g., bioreactor, centrifuge)."
     - name: "equipment_status"
-      expr: status
+      expr: equipment_status
       comment: "Operational status of the equipment."
     - name: "manufacturer"
       expr: manufacturer

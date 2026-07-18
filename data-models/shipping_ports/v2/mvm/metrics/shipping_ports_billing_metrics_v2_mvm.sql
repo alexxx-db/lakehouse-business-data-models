@@ -216,7 +216,7 @@ AS $$
     - name: "Assigned Date"
       expr: assigned_date
     - name: "Category"
-      expr: category
+      expr: dispute_category
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Credit Note Reference"

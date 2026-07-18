@@ -130,7 +130,7 @@ AS $$
     - name: "Mooring Fitting Types"
       expr: mooring_fitting_types
     - name: "Name"
-      expr: name
+      expr: berth_name
     - name: "Next Maintenance Date"
       expr: next_maintenance_date
     - name: "Operational Status"
@@ -203,7 +203,7 @@ AS $$
     - name: "Chart Reference"
       expr: chart_reference
     - name: "Code"
-      expr: code
+      expr: channel_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Dredging Authority"
@@ -302,7 +302,7 @@ AS $$
     - name: "City"
       expr: city
     - name: "Code"
-      expr: code
+      expr: facility_code
     - name: "Commissioning Date"
       expr: commissioning_date
     - name: "Contact Email"
@@ -397,7 +397,7 @@ AS $$
     - name: "City"
       expr: city
     - name: "Code"
-      expr: code
+      expr: port_code
     - name: "Contact Email"
       expr: contact_email
     - name: "Contact Phone"
@@ -498,7 +498,7 @@ AS $$
     - name: "Daily Throughput Capacity"
       expr: daily_throughput_capacity
     - name: "Description"
-      expr: description
+      expr: port_gate_description
     - name: "Emergency Access Flag"
       expr: emergency_access_flag
     - name: "Gate Code"
@@ -721,7 +721,7 @@ AS $$
     - name: "City"
       expr: city
     - name: "Code"
-      expr: code
+      expr: warehouse_code
     - name: "Construction Year"
       expr: construction_year
     - name: "Contact Email"

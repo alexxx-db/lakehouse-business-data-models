@@ -62,7 +62,6 @@ AS $$
       comment: "Number of unique vendors with payables"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_accounts_receivable`
 WITH METRICS
 LANGUAGE YAML
@@ -128,7 +127,6 @@ AS $$
       comment: "Number of unique customers with receivables"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_budget`
 WITH METRICS
 LANGUAGE YAML
@@ -190,7 +188,6 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of budget line items"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_cogs_entry`
 WITH METRICS
@@ -263,7 +260,6 @@ AS $$
       comment: "Total number of COGS entries"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_fixed_asset`
 WITH METRICS
 LANGUAGE YAML
@@ -319,7 +315,6 @@ AS $$
       expr: AVG(CAST(DATEDIFF(CURRENT_DATE(), acquisition_date) AS DOUBLE) / 365.25)
       comment: "Average age of asset base in years (capital refresh urgency metric)"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_general_ledger`
 WITH METRICS
@@ -385,7 +380,6 @@ AS $$
       expr: COUNT(DISTINCT gl_account_number)
       comment: "Number of unique GL accounts with activity"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_intercompany_transaction`
 WITH METRICS
@@ -455,7 +449,6 @@ AS $$
       comment: "Number of unique intercompany trading relationships"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_journal_entry`
 WITH METRICS
 LANGUAGE YAML
@@ -521,7 +514,6 @@ AS $$
       comment: "Number of unique journal entry documents"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_milestone_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -584,7 +576,6 @@ AS $$
       comment: "Number of unique projects with milestone payments"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_payment_run`
 WITH METRICS
 LANGUAGE YAML
@@ -594,7 +585,7 @@ AS $$
   source: "`pharmaceuticals_ecm`.`finance`.`payment_run`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: payment_run_status
       comment: "Current payment run status (scheduled, executed, reconciled)"
     - name: "run_type"
       expr: run_type
@@ -646,7 +637,6 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(error_count AS DOUBLE)) / NULLIF(SUM(CAST(payment_count AS DOUBLE)), 0), 2)
       comment: "Payment error rate as percentage of total payments (quality metric)"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_rd_capitalization`
 WITH METRICS
@@ -713,7 +703,6 @@ AS $$
       comment: "Impairment as percentage of capitalized amount (R&D success rate proxy)"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_royalty_agreement`
 WITH METRICS
 LANGUAGE YAML
@@ -779,7 +768,6 @@ AS $$
       comment: "Number of unique licensors/licensees"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_tax_posting`
 WITH METRICS
 LANGUAGE YAML
@@ -844,7 +832,6 @@ AS $$
       expr: COUNT(DISTINCT tax_jurisdiction_code)
       comment: "Number of unique tax jurisdictions with activity"
 $$;
-
 
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_transfer_price`
 WITH METRICS
@@ -914,7 +901,6 @@ AS $$
       comment: "Number of unique country pairs with transfer pricing"
 $$;
 
-
 CREATE OR REPLACE VIEW `pharmaceuticals_ecm`.`_metrics`.`finance_wbs_element`
 WITH METRICS
 LANGUAGE YAML
@@ -927,7 +913,7 @@ AS $$
       expr: wbs_element_type
       comment: "Type of WBS element (project, phase, work package)"
     - name: "status"
-      expr: status
+      expr: wbs_element_status
       comment: "Current WBS element status (active, closed, on-hold)"
     - name: "wbs_level"
       expr: wbs_level

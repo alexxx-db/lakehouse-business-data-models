@@ -163,7 +163,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: budget_period_description
     - name: "Duration Days"
       expr: duration_days
     - name: "End Date"
@@ -281,7 +281,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: competency_model_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -322,7 +322,7 @@ AS $$
     - name: "Assessment Required"
       expr: assessment_required
     - name: "Category"
-      expr: category
+      expr: course_category
     - name: "Certification Awarded"
       expr: certification_awarded
     - name: "Certification Name"
@@ -397,7 +397,7 @@ AS $$
     - name: "Department Type"
       expr: department_type
     - name: "Description"
-      expr: description
+      expr: department_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -493,7 +493,7 @@ AS $$
     - name: "Career Path Type"
       expr: career_path_type
     - name: "Category"
-      expr: category
+      expr: job_family_category
     - name: "Code"
       expr: code
     - name: "Commission Eligible"
@@ -1162,7 +1162,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: role_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

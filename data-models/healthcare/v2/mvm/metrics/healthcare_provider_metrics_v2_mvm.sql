@@ -499,7 +499,7 @@ AS $$
     - name: "Board Certification Required"
       expr: board_certification_required
     - name: "Category"
-      expr: category
+      expr: specialty_category
     - name: "Cms Enrollment Specialty Type"
       expr: cms_enrollment_specialty_type
     - name: "Cms Specialty Code"

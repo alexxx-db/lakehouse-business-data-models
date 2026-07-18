@@ -44,7 +44,6 @@ AS $$
       comment: "Average cash call amount per record"
 $$;
 
-
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_cash_call_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -82,7 +81,6 @@ AS $$
       expr: AVG(CAST(payment_amount AS DOUBLE))
       comment: "Average payment amount per record"
 $$;
-
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_lifting_entitlement`
 WITH METRICS
@@ -122,7 +120,6 @@ AS $$
       comment: "Number of lifting entitlement records"
 $$;
 
-
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_partner`
 WITH METRICS
 LANGUAGE YAML
@@ -161,7 +158,6 @@ AS $$
       comment: "Average credit limit across partners"
 $$;
 
-
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_joint_venture`
 WITH METRICS
 LANGUAGE YAML
@@ -177,7 +173,7 @@ AS $$
       expr: jurisdiction
       comment: "Legal jurisdiction of the joint venture"
     - name: "status"
-      expr: status
+      expr: joint_venture_status
       comment: "Current operational status"
     - name: "sec_disclosure_flag"
       expr: sec_disclosure_flag
@@ -196,7 +192,6 @@ AS $$
       expr: AVG(CAST(partner_equity_percent AS DOUBLE))
       comment: "Average equity percentage held by partners"
 $$;
-
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_afe`
 WITH METRICS
@@ -235,7 +230,6 @@ AS $$
       expr: AVG(CAST(approval_threshold_amount AS DOUBLE))
       comment: "Average approval threshold amount across AFEs"
 $$;
-
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_cost_recovery`
 WITH METRICS
@@ -277,7 +271,6 @@ AS $$
       expr: COUNT(1)
       comment: "Number of cost recovery records"
 $$;
-
 
 CREATE OR REPLACE VIEW `oil_gas_ecm`.`_metrics`.`venture_royalty_obligation`
 WITH METRICS

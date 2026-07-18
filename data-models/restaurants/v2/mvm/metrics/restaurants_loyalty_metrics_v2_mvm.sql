@@ -174,7 +174,7 @@ AS $$
     - name: "Bonus Points Value"
       expr: bonus_points_value
     - name: "Code"
-      expr: code
+      expr: offer_code
     - name: "Created By User"
       expr: created_by_user
     - name: "Created Timestamp"
@@ -286,7 +286,7 @@ AS $$
     - name: "Birthday Bonus Points"
       expr: birthday_bonus_points
     - name: "Code"
-      expr: code
+      expr: program_code
     - name: "Country Codes"
       expr: country_codes
     - name: "Created Timestamp"
@@ -410,7 +410,7 @@ AS $$
     - name: "Availability Start Date"
       expr: availability_start_date
     - name: "Code"
-      expr: code
+      expr: reward_code
     - name: "Combinable With Other Offers"
       expr: combinable_with_other_offers
     - name: "Created Timestamp"
@@ -477,7 +477,7 @@ AS $$
     - name: "Birthday Reward Eligible"
       expr: birthday_reward_eligible
     - name: "Code"
-      expr: code
+      expr: tier_code
     - name: "Color Code"
       expr: color_code
     - name: "Created Timestamp"

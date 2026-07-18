@@ -66,7 +66,7 @@ AS $$
     - name: "Barcode"
       expr: barcode
     - name: "Code"
-      expr: code
+      expr: coupon_code
     - name: "Coupon Status"
       expr: coupon_status
     - name: "Coupon Type"

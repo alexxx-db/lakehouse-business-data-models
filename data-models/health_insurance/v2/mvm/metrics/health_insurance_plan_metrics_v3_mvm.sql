@@ -258,7 +258,7 @@ AS $$
   source: "`vibe_health_insurance_v1`.`plan`.`benefit`"
   dimensions:
     - name: "category"
-      expr: category
+      expr: benefit_category
       comment: "Benefit category"
     - name: "coverage_type"
       expr: coverage_type

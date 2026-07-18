@@ -432,7 +432,7 @@ AS $$
       expr: vendor_item_status
       comment: "Current status of vendor item (active, discontinued, pending, inactive)"
     - name: "category"
-      expr: category
+      expr: vendor_item_category
       comment: "Product category of vendor item"
     - name: "preferred_vendor_flag"
       expr: preferred_vendor_flag

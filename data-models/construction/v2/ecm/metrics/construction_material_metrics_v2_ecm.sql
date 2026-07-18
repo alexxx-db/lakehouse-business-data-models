@@ -59,7 +59,6 @@ AS $$
       comment: "Number of distinct materials tracked in inventory. Indicates portfolio breadth and complexity of inventory management."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_goods_issue`
 WITH METRICS
 LANGUAGE YAML
@@ -127,7 +126,6 @@ AS $$
       expr: COUNT(CASE WHEN inspection_required = TRUE THEN 1 END)
       comment: "Number of goods issues requiring inspection (typically hazardous or regulated materials). Tracks compliance burden and inspection resource demand."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_wastage`
 WITH METRICS
@@ -197,7 +195,6 @@ AS $$
       comment: "Number of distinct materials generating wastage. High diversity indicates systemic over-ordering or poor material planning across the project."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_stock_movement`
 WITH METRICS
 LANGUAGE YAML
@@ -266,7 +263,6 @@ AS $$
       comment: "Average gross value per stock movement. Benchmarks transaction size and identifies anomalous high-value receipts requiring additional scrutiny."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_requisition`
 WITH METRICS
 LANGUAGE YAML
@@ -332,64 +328,6 @@ AS $$
       comment: "Number of requisitions where stock is already available in warehouse. High ratio indicates over-requisitioning and poor inventory visibility."
 $$;
 
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_physical_inventory`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Physical inventory count accuracy and variance metrics. Tracks discrepancies between system book quantities and physical counts, driving inventory accuracy improvement and loss prevention."
-  source: "`vibe_construction_v1`.`material`.`physical_inventory`"
-  dimensions:
-    - name: "physical_inventory_status"
-      expr: physical_inventory_status
-      comment: "Status of the physical inventory count (e.g., in-progress, completed, posted) for count cycle management."
-    - name: "count_type"
-      expr: count_type
-      comment: "Type of inventory count (e.g., cycle count, full count, spot check) for methodology analysis."
-    - name: "recount_flag"
-      expr: recount_flag
-      comment: "Flag indicating a recount was required, signaling initial count discrepancies."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for quantity variance metrics."
-    - name: "warehouse_code"
-      expr: warehouse_code
-      comment: "Warehouse code for location-level inventory accuracy analysis."
-    - name: "location_code"
-      expr: location_code
-      comment: "Storage location code for granular accuracy tracking within warehouses."
-  measures:
-    - name: "total_inventory_counts"
-      expr: COUNT(1)
-      comment: "Total number of physical inventory count records. Baseline metric for count activity volume and coverage."
-    - name: "total_counted_quantity"
-      expr: SUM(CAST(counted_quantity AS DOUBLE))
-      comment: "Total physical quantity counted. Compared against system book quantity to compute overall inventory accuracy."
-    - name: "total_system_book_quantity"
-      expr: SUM(CAST(system_book_quantity AS DOUBLE))
-      comment: "Total system-recorded quantity at time of count. Denominator for inventory accuracy rate calculations."
-    - name: "total_variance_quantity"
-      expr: SUM(CAST(variance_quantity AS DOUBLE))
-      comment: "Total quantity variance (counted minus book). Positive variance indicates unrecorded receipts; negative indicates losses, theft, or recording errors."
-    - name: "total_variance_value"
-      expr: SUM(CAST(variance_value AS DOUBLE))
-      comment: "Total financial value of inventory variance. The primary financial risk metric for inventory — large variances trigger audit and loss investigation."
-    - name: "recount_required_count"
-      expr: COUNT(CASE WHEN recount_flag = TRUE THEN 1 END)
-      comment: "Number of count records requiring a recount. High recount rates indicate counting process quality issues or systemic inventory discrepancies."
-    - name: "avg_variance_quantity"
-      expr: AVG(CAST(variance_quantity AS DOUBLE))
-      comment: "Average quantity variance per count record. Benchmarks typical discrepancy size and tracks improvement over time."
-    - name: "avg_variance_value"
-      expr: AVG(CAST(variance_value AS DOUBLE))
-      comment: "Average financial variance per count record. Used to prioritize high-value discrepancy investigation and set materiality thresholds."
-    - name: "zero_variance_count"
-      expr: COUNT(CASE WHEN variance_quantity = 0 THEN 1 END)
-      comment: "Number of count records with zero variance (perfect accuracy). Used to compute inventory accuracy rate — target is typically 95%+ for construction materials."
-$$;
-
-
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_mto_line`
 WITH METRICS
 LANGUAGE YAML
@@ -452,7 +390,6 @@ AS $$
       comment: "Average estimated unit price across MTO lines. Used for cost benchmarking and identifying lines where actual prices deviate significantly from estimates."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_conformance_certificate`
 WITH METRICS
 LANGUAGE YAML
@@ -508,7 +445,6 @@ AS $$
       expr: COUNT(DISTINCT master_id)
       comment: "Number of distinct materials with conformance certificates. Indicates breadth of quality testing coverage across the material portfolio."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_hazmat_register`
 WITH METRICS
@@ -571,7 +507,6 @@ AS $$
       expr: COUNT(CASE WHEN is_environmentally_hazardous = TRUE THEN 1 END)
       comment: "Number of environmentally hazardous material entries. Drives environmental risk management and spill response planning."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_stock_transfer`
 WITH METRICS

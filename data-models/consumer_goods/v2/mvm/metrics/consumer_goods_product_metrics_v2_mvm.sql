@@ -9,7 +9,7 @@ AS $$
   source: "`vibe_consumer_goods_v1`.`product`.`sku`"
   dimensions:
     - name: "sku_code"
-      expr: code
+      expr: sku_code
       comment: "SKU identifier code"
     - name: "product_name"
       expr: product_name
@@ -107,7 +107,7 @@ AS $$
   source: "`vibe_consumer_goods_v1`.`product`.`brand`"
   dimensions:
     - name: "brand_name"
-      expr: name
+      expr: brand_name
       comment: "Brand name"
     - name: "brand_status"
       expr: brand_status
@@ -184,7 +184,7 @@ AS $$
   source: "`vibe_consumer_goods_v1`.`product`.`formulation`"
   dimensions:
     - name: "formulation_code"
-      expr: code
+      expr: formulation_code
       comment: "Formulation identifier code"
     - name: "formulation_name"
       expr: name

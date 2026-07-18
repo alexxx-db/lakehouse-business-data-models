@@ -497,7 +497,7 @@ AS $$
   source: "`apparel_fashion_ecm`.`production`.`fabric_roll`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: fabric_roll_status
       comment: "Current status of the fabric roll"
     - name: "grade"
       expr: grade

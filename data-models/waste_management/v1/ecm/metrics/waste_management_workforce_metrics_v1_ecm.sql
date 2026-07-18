@@ -269,7 +269,7 @@ AS $$
   source: "`waste_management_ecm`.`workforce`.`cost_center`"
   dimensions:
     - name: "Category"
-      expr: category
+      expr: cost_center_category
     - name: "Closure Reason"
       expr: closure_reason
     - name: "Cost Center Code"
@@ -328,7 +328,7 @@ AS $$
     - name: "Department Type"
       expr: department_type
     - name: "Description"
-      expr: description
+      expr: department_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

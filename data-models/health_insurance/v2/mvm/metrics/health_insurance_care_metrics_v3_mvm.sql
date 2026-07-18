@@ -62,7 +62,6 @@ AS $$
       comment: "Count of enrollments with high risk scores (>=2.0), requiring intensive care management"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_plan`
 WITH METRICS
 LANGUAGE YAML
@@ -103,7 +102,6 @@ AS $$
       expr: COUNT(CASE WHEN privacy_consent_flag = TRUE THEN 1 END)
       comment: "Count of care plans with member privacy consent (numerator for consent rate calculation)"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_condition_registry`
 WITH METRICS
@@ -164,7 +162,6 @@ AS $$
       comment: "Count of currently active conditions requiring clinical attention and resources"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_coordinator`
 WITH METRICS
 LANGUAGE YAML
@@ -205,7 +202,6 @@ AS $$
       expr: SUM(CAST(caseload_weight AS DOUBLE))
       comment: "Sum of all coordinator caseload weights, representing total care management capacity demand"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_gap`
 WITH METRICS
@@ -272,7 +268,6 @@ AS $$
       comment: "Average target value for quality measures associated with gaps, representing performance benchmarks"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_hedis_measure`
 WITH METRICS
 LANGUAGE YAML
@@ -325,7 +320,6 @@ AS $$
       expr: AVG(CAST(measure_target_value AS DOUBLE))
       comment: "Average target value across all measures, representing organizational quality performance goals"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_hedis_result`
 WITH METRICS
@@ -391,7 +385,6 @@ AS $$
       expr: AVG(CAST(measure_score AS DOUBLE))
       comment: "Average measure score across all results, representing overall quality performance level"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_member_risk_tier`
 WITH METRICS
@@ -464,7 +457,6 @@ AS $$
       comment: "Sum of all risk factor weights, representing total population risk burden for resource planning"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_plan_goal`
 WITH METRICS
 LANGUAGE YAML
@@ -524,7 +516,6 @@ AS $$
       comment: "Average risk score associated with goals, indicating complexity of goal achievement"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_health_insurance_v1`.`_metrics`.`care_program`
 WITH METRICS
 LANGUAGE YAML
@@ -534,7 +525,7 @@ AS $$
   source: "`vibe_health_insurance_v1`.`care`.`program`"
   dimensions:
     - name: "program_name"
-      expr: name
+      expr: program_name
       comment: "Name of the care management program"
     - name: "program_code"
       expr: code

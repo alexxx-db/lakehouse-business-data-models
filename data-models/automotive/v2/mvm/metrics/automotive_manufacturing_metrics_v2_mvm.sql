@@ -216,7 +216,7 @@ AS $$
     - name: "City"
       expr: city
     - name: "Code"
-      expr: code
+      expr: plant_code
     - name: "Commissioning Date"
       expr: commissioning_date
     - name: "Company Code"
@@ -539,7 +539,7 @@ AS $$
     - name: "Change Reason"
       expr: change_reason
     - name: "Code"
-      expr: code
+      expr: routing_code
     - name: "Compliance Standard"
       expr: compliance_standard
     - name: "Created Timestamp"
@@ -637,7 +637,7 @@ AS $$
     - name: "Capacity Category"
       expr: capacity_category
     - name: "Category"
-      expr: category
+      expr: work_center_category
     - name: "Code"
       expr: code
     - name: "Commissioning Date"

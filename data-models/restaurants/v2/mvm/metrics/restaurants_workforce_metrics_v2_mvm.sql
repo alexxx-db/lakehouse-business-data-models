@@ -488,7 +488,7 @@ AS $$
       expr: classification
       comment: "Position classification (exempt, non-exempt, etc.)"
     - name: "level"
-      expr: level
+      expr: position_level
       comment: "Position level or grade"
     - name: "position_status"
       expr: position_status
@@ -547,7 +547,7 @@ AS $$
   source: "`vibe_restaurants_v1`.`workforce`.`department`"
   dimensions:
     - name: "name"
-      expr: name
+      expr: department_name
       comment: "Department name"
     - name: "department_type"
       expr: department_type

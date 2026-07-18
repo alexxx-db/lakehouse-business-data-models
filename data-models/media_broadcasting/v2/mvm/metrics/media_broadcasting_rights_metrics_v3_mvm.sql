@@ -247,7 +247,7 @@ AS $$
     - name: "Clearance Workflow Status"
       expr: clearance_workflow_status
     - name: "Code"
-      expr: code
+      expr: holdback_code
     - name: "Conflict Resolution Notes"
       expr: conflict_resolution_notes
     - name: "Created Timestamp"
@@ -651,7 +651,7 @@ AS $$
     - name: "Broadcast Standard"
       expr: broadcast_standard
     - name: "Code"
-      expr: code
+      expr: territory_code
     - name: "Content Rating System"
       expr: content_rating_system
     - name: "Coppa Applicable Flag"

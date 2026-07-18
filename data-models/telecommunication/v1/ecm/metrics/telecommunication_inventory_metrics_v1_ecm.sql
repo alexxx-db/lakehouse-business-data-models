@@ -44,7 +44,7 @@ AS $$
       expr: provider_name
       comment: "Network provider delivering the circuit"
     - name: "circuit_status"
-      expr: status
+      expr: circuit_status
       comment: "Current status of the circuit"
     - name: "activation_month"
       expr: DATE_TRUNC('month', activation_timestamp)

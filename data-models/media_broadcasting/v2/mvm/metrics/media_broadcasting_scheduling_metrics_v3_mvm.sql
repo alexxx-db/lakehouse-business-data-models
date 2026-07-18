@@ -131,7 +131,7 @@ AS $$
     - name: "Blackout Eligible"
       expr: blackout_eligible
     - name: "Code"
-      expr: code
+      expr: daypart_code
     - name: "Content Rating Restriction"
       expr: content_rating_restriction
     - name: "Coppa Restricted"
@@ -196,7 +196,7 @@ AS $$
     - name: "Broadcast Date"
       expr: broadcast_date
     - name: "Code"
-      expr: code
+      expr: epg_entry_code
     - name: "Distribution Window"
       expr: distribution_window
     - name: "Duration Seconds"

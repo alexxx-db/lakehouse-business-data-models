@@ -68,7 +68,6 @@ AS $$
       comment: "Count of guests consented to SMS for SMS campaign audience sizing."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_visit`
 WITH METRICS
 LANGUAGE YAML
@@ -92,7 +91,6 @@ AS $$
       comment: "Average visit frequency per guest for loyalty and retention assessment."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_complaint`
 WITH METRICS
 LANGUAGE YAML
@@ -105,7 +103,7 @@ AS $$
       expr: complaint_status
       comment: "Current status of complaint (open, resolved, escalated) for case management and SLA tracking."
     - name: "category"
-      expr: category
+      expr: complaint_category
       comment: "Complaint category (food quality, service, cleanliness, etc.) for root cause analysis."
     - name: "severity_level"
       expr: severity_level
@@ -145,7 +143,6 @@ AS $$
       expr: ROUND(CAST(COUNT(1) AS DOUBLE) / NULLIF(COUNT(DISTINCT complaint_profile_id), 0), 2)
       comment: "Average complaints per complaining guest for repeat-issue identification and service recovery effectiveness."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_satisfaction_survey`
 WITH METRICS
@@ -199,7 +196,6 @@ AS $$
       expr: SUM(CASE WHEN consent_given = TRUE THEN 1 ELSE 0 END)
       comment: "Count of surveys with consent for follow-up for actionable feedback pool sizing."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_preference`
 WITH METRICS
@@ -290,7 +286,6 @@ AS $$
       comment: "Count of active preferences for data currency and personalization effectiveness."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_consent_record`
 WITH METRICS
 LANGUAGE YAML
@@ -370,7 +365,6 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN marketing_consent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of records with marketing consent for consent program effectiveness and regulatory compliance assessment."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`guest_interaction`
 WITH METRICS

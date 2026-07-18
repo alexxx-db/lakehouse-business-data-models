@@ -641,23 +641,3 @@ AS $$
       expr: COUNT(DISTINCT advertiser_id)
       comment: "Number of distinct advertisers with genre buy agreements. Measures advertiser base breadth for genre monetization."
 $$;
-
-CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`content_billing_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "NOTE: Per VREQ-037, content.billing_line is designated for migration to the billing domain. This minimal metric view is provided for current-state tracking. Tracks billing line records by cost center allocation. Used by finance teams for cost attribution and financial reporting."
-  source: "`vibe_media_broadcasting_v1`.`content`.`billing_line`"
-  dimensions:
-    - name: "finance_cost_center_id"
-      expr: finance_cost_center_id
-      comment: "Cost center to which the billing line is allocated. Used to segment billing volume by cost center for financial reporting."
-  measures:
-    - name: "total_billing_lines"
-      expr: COUNT(1)
-      comment: "Total number of billing lines. Baseline measure for billing transaction volume by cost center."
-    - name: "distinct_cost_center_count"
-      expr: COUNT(DISTINCT finance_cost_center_id)
-      comment: "Number of distinct cost centers with billing line allocations. Used to assess cost center coverage and financial reporting completeness."
-$$;

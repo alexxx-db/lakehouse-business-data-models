@@ -90,7 +90,7 @@ AS $$
     - name: "Customer Impact Flag"
       expr: customer_impact_flag
     - name: "Description"
-      expr: description
+      expr: capa_description
     - name: "Effectiveness Verification Method"
       expr: effectiveness_verification_method
     - name: "Effectiveness Verification Result"
@@ -459,7 +459,7 @@ AS $$
     - name: "Approval Date"
       expr: approval_date
     - name: "Category"
-      expr: category
+      expr: specification_category
     - name: "Coa Inclusion Flag"
       expr: coa_inclusion_flag
     - name: "Created Timestamp"

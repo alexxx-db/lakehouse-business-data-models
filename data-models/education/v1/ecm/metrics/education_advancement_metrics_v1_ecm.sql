@@ -763,7 +763,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: award_catalog_description
     - name: "Display Order"
       expr: display_order
     - name: "Effective End Date"
@@ -2339,7 +2339,7 @@ AS $$
     - name: "Currency Code"
       expr: currency_code
     - name: "Description"
-      expr: description
+      expr: stewardship_plan_description
     - name: "Donor Segment"
       expr: donor_segment
     - name: "Effective End Date"

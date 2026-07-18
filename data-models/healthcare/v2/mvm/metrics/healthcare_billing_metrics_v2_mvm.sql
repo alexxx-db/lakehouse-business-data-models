@@ -104,7 +104,6 @@ AS $$
       comment: "Count of invoices that have been appealed"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`billing_charge`
 WITH METRICS
 LANGUAGE YAML
@@ -120,7 +119,7 @@ AS $$
       expr: charge_type
       comment: "Type of charge (e.g., professional, facility, pharmacy)"
     - name: "category"
-      expr: category
+      expr: charge_category
       comment: "Charge category grouping"
     - name: "place_of_service_code"
       expr: place_of_service_code
@@ -203,7 +202,6 @@ AS $$
       comment: "Count of charges for implantable devices"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`billing_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -225,7 +223,7 @@ AS $$
       expr: channel
       comment: "Payment channel (e.g., mail, online portal, in-person)"
     - name: "category"
-      expr: category
+      expr: payment_category
       comment: "Payment category grouping"
     - name: "source"
       expr: source
@@ -289,7 +287,6 @@ AS $$
       expr: SUM(CASE WHEN unapplied_amount > 0 THEN 1 ELSE 0 END)
       comment: "Count of payments with unapplied amounts"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`billing_patient_account`
 WITH METRICS
@@ -392,7 +389,6 @@ AS $$
       comment: "Count of accounts with financial assistance applications"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`billing_adjustment`
 WITH METRICS
 LANGUAGE YAML
@@ -408,7 +404,7 @@ AS $$
       expr: adjustment_status
       comment: "Current status of the adjustment"
     - name: "category"
-      expr: category
+      expr: adjustment_category
       comment: "Adjustment category grouping"
     - name: "reason_code"
       expr: reason_code
@@ -478,7 +474,6 @@ AS $$
       expr: SUM(CASE WHEN bad_debt_referral_date IS NOT NULL THEN 1 ELSE 0 END)
       comment: "Count of adjustments referred to bad debt"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`billing_coding_assignment`
 WITH METRICS

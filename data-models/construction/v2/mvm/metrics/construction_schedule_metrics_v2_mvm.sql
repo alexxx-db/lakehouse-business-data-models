@@ -27,7 +27,7 @@ AS $$
       expr: DATE_TRUNC('MONTH', actual_start_date)
       comment: "Month of actual activity start for time-series analysis"
     - name: "activity_code"
-      expr: code
+      expr: activity_code
       comment: "Activity code identifier"
   measures:
     - name: "total_activities"

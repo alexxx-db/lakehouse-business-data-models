@@ -173,7 +173,7 @@ AS $$
       expr: priority
       comment: "Priority assigned to the wave"
     - name: "status"
-      expr: status
+      expr: pick_wave_status
       comment: "Current status of the wave"
     - name: "is_automated"
       expr: is_automated

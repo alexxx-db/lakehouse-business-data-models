@@ -64,7 +64,7 @@ AS $$
     - name: "Age Range Low"
       expr: age_range_low
     - name: "Category"
-      expr: category
+      expr: cpt_code_category
     - name: "Clinical Family"
       expr: clinical_family
     - name: "Cpt Code"
@@ -190,7 +190,7 @@ AS $$
     - name: "Clinical Family"
       expr: clinical_family
     - name: "Code"
-      expr: code
+      expr: drg_code
     - name: "Complication Level"
       expr: complication_level
     - name: "Created Timestamp"
@@ -265,7 +265,7 @@ AS $$
     - name: "Bilateral Surgery Indicator"
       expr: bilateral_surgery_indicator
     - name: "Category"
-      expr: category
+      expr: hcpcs_code_category
     - name: "Co Surgeon Indicator"
       expr: co_surgeon_indicator
     - name: "Code"
@@ -330,7 +330,7 @@ AS $$
     - name: "Billable Flag"
       expr: billable_flag
     - name: "Category"
-      expr: category
+      expr: icd_code_category
     - name: "Cc Flag"
       expr: cc_flag
     - name: "Chapter"

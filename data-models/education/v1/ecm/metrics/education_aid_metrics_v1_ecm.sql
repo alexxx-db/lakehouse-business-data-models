@@ -404,7 +404,7 @@ AS $$
     - name: "Application Open Date"
       expr: application_open_date
     - name: "Code"
-      expr: code
+      expr: award_year_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"

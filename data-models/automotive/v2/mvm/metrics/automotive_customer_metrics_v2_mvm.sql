@@ -15,7 +15,7 @@ AS $$
     - name: "Case Type"
       expr: case_type
     - name: "Category"
-      expr: category
+      expr: case_category
     - name: "Closed Timestamp"
       expr: closed_timestamp
     - name: "Customer Satisfaction Score"
@@ -457,7 +457,7 @@ AS $$
   source: "`vibe_automotive_v1`.`customer`.`preference`"
   dimensions:
     - name: "Category"
-      expr: category
+      expr: preference_category
     - name: "Channel"
       expr: channel
     - name: "Created Timestamp"

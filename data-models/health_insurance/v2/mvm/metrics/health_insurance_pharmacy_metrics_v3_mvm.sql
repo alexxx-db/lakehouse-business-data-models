@@ -297,7 +297,7 @@ AS $$
   source: "`vibe_health_insurance_v1`.`pharmacy`.`formulary`"
   dimensions:
     - name: "Category"
-      expr: category
+      expr: formulary_category
     - name: "Change Notification Date"
       expr: change_notification_date
     - name: "Cms Formulary Code"

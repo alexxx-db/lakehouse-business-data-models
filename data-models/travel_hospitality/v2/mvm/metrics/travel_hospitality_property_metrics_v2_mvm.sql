@@ -160,7 +160,7 @@ AS $$
       expr: is_seasonal
       comment: "Flags facilities with seasonal operating windows, impacting staffing and revenue availability planning."
     - name: "category"
-      expr: category
+      expr: facility_category
       comment: "Broader category grouping of the facility for portfolio-level amenity analysis."
   measures:
     - name: "total_facilities"

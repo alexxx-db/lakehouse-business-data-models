@@ -71,7 +71,6 @@ AS $$
       comment: "Number of unique requisitions being filled"
 $$;
 
-
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_candidate`
 WITH METRICS
 LANGUAGE YAML
@@ -84,7 +83,7 @@ AS $$
       expr: candidate_type
       comment: "Type of candidate (internal, external, referral)"
     - name: "status"
-      expr: status
+      expr: candidate_status
       comment: "Current status of candidate in pipeline"
     - name: "source"
       expr: source
@@ -130,7 +129,6 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN willing_to_relocate = TRUE THEN candidate_id END)
       comment: "Number of candidates willing to relocate"
 $$;
-
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_capacity_plan`
 WITH METRICS
@@ -190,7 +188,6 @@ AS $$
       expr: AVG(CAST(utilization_target_pct AS DOUBLE))
       comment: "Average utilization target percentage"
 $$;
-
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_payroll_record`
 WITH METRICS
@@ -272,7 +269,6 @@ AS $$
       comment: "Average hours worked per payroll record"
 $$;
 
-
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_performance_review`
 WITH METRICS
 LANGUAGE YAML
@@ -341,7 +337,6 @@ AS $$
       comment: "Number of employees identified as succession candidates"
 $$;
 
-
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_resource_allocation`
 WITH METRICS
 LANGUAGE YAML
@@ -400,7 +395,6 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN billable_flag = FALSE THEN resource_allocation_id END)
       comment: "Number of non-billable resource allocations"
 $$;
-
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_timesheet`
 WITH METRICS
@@ -463,7 +457,6 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN is_amended = TRUE THEN timesheet_id END)
       comment: "Number of timesheets that were amended"
 $$;
-
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_engagement`
 WITH METRICS
@@ -529,7 +522,6 @@ AS $$
       expr: COUNT(DISTINCT CASE WHEN usage_rights_included = TRUE THEN talent_engagement_id END)
       comment: "Number of engagements including usage rights"
 $$;
-
 
 CREATE OR REPLACE VIEW `advertising_ecm`.`_metrics`.`talent_worker`
 WITH METRICS

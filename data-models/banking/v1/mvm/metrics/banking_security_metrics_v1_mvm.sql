@@ -38,7 +38,6 @@ AS $$
       comment: "Baseline count of fixed income records."
 $$;
 
-
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_equity`
 WITH METRICS
 LANGUAGE YAML
@@ -74,7 +73,6 @@ AS $$
       comment: "Baseline count of equity records."
 $$;
 
-
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_derivative`
 WITH METRICS
 LANGUAGE YAML
@@ -103,13 +101,12 @@ AS $$
       expr: SUM(CAST(notional_amount AS DOUBLE))
       comment: "Total notional amount of derivatives, indicating exposure size."
     - name: "avg_maturity_days"
-      expr: AVG(CAST(DATEDIFF('day', trade_date, expiry_date) AS DOUBLE))
+      expr: AVG(CAST(DATEDIFF(DAY, trade_date, expiry_date) AS DOUBLE))
       comment: "Average maturity in days from trade to expiry."
     - name: "count_derivatives"
       expr: COUNT(1)
       comment: "Baseline count of derivative records."
 $$;
-
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_price`
 WITH METRICS
@@ -145,7 +142,6 @@ AS $$
       expr: COUNT(1)
       comment: "Baseline count of price records."
 $$;
-
 
 CREATE OR REPLACE VIEW `banking_ecm`.`_metrics`.`security_credit_rating`
 WITH METRICS

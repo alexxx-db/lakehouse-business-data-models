@@ -423,7 +423,7 @@ AS $$
       expr: referral_type
       comment: "Type of referral (e.g. internal, external, emergency) — informs referral pathway design and partner coordination."
     - name: "category"
-      expr: category
+      expr: referral_category
       comment: "Service category of the referral (e.g. health, legal, shelter, GBV) — drives sector-specific referral pathway analysis."
     - name: "priority_level"
       expr: priority_level

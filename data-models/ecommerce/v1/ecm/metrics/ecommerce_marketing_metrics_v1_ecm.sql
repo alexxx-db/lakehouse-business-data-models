@@ -80,7 +80,7 @@ AS $$
       expr: geo_target
       comment: "Geographic targeting criteria"
     - name: "status"
-      expr: status
+      expr: campaign_execution_status
       comment: "Execution status"
   measures:
     - name: "total_actual_spend"

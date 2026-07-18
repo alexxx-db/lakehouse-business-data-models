@@ -84,7 +84,7 @@ AS $$
     - name: "Average Ticket Time Seconds"
       expr: average_ticket_time_seconds
     - name: "Category"
-      expr: category
+      expr: channel_category
     - name: "Channel Type"
       expr: channel_type
     - name: "Code"
@@ -212,7 +212,7 @@ AS $$
     - name: "Channel Restriction"
       expr: channel_restriction
     - name: "Code"
-      expr: code
+      expr: discount_code
     - name: "Currency Code"
       expr: currency_code
     - name: "Daypart Restriction"
@@ -734,7 +734,7 @@ AS $$
     - name: "Authority Name"
       expr: authority_name
     - name: "Code"
-      expr: code
+      expr: tax_code
     - name: "Cost Center Code"
       expr: cost_center_code
     - name: "Country Code"

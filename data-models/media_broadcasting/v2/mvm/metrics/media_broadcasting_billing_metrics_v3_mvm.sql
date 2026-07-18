@@ -216,7 +216,7 @@ AS $$
     - name: "Billing Timing"
       expr: billing_timing
     - name: "Code"
-      expr: code
+      expr: cycle_code
     - name: "Created By User"
       expr: created_by_user
     - name: "Created Timestamp"

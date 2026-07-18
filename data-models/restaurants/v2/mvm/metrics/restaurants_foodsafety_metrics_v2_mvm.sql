@@ -369,7 +369,7 @@ AS $$
   source: "`vibe_restaurants_v1`.`foodsafety`.`critical_control_point`"
   dimensions:
     - name: "ccp_name"
-      expr: name
+      expr: critical_control_point_name
       comment: "Name of the critical control point"
     - name: "ccp_code"
       expr: code

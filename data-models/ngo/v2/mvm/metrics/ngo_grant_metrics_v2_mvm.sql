@@ -488,7 +488,7 @@ AS $$
       expr: donor_condition_type
       comment: "Type of donor condition (e.g. Financial, Programmatic, Reporting) — used to categorize compliance obligations."
     - name: "category"
-      expr: category
+      expr: donor_condition_category
       comment: "Category of the donor condition — used for grouping and prioritization of compliance actions."
     - name: "priority_level"
       expr: priority_level

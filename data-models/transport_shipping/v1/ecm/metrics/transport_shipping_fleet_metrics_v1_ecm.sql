@@ -65,7 +65,6 @@ AS $$
       comment: "Count of distinct assets with utilisation records for fleet size tracking"
 $$;
 
-
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_trip`
 WITH METRICS
 LANGUAGE YAML
@@ -75,7 +74,7 @@ AS $$
   source: "`transport_shipping_ecm`.`fleet`.`trip`"
   dimensions:
     - name: "trip_status"
-      expr: status
+      expr: trip_status
       comment: "Current status of the trip (planned, in-progress, completed, cancelled)"
     - name: "cargo_type"
       expr: cargo_type
@@ -127,7 +126,6 @@ AS $$
       expr: AVG(CAST(gross_amount AS DOUBLE))
       comment: "Average revenue per trip for yield management"
 $$;
-
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_fuel_transaction`
 WITH METRICS
@@ -184,7 +182,6 @@ AS $$
       expr: COUNT(1)
       comment: "Number of fuel transactions for activity volume tracking"
 $$;
-
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_maintenance_order`
 WITH METRICS
@@ -251,7 +248,6 @@ AS $$
       comment: "Number of distinct assets requiring maintenance"
 $$;
 
-
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_driver_performance`
 WITH METRICS
 LANGUAGE YAML
@@ -311,7 +307,6 @@ AS $$
       comment: "Number of distinct drivers evaluated in the period"
 $$;
 
-
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_incident`
 WITH METRICS
 LANGUAGE YAML
@@ -361,7 +356,6 @@ AS $$
       expr: COUNT(DISTINCT driver_profile_id)
       comment: "Number of distinct drivers involved in incidents for targeted intervention"
 $$;
-
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_asset_assignment`
 WITH METRICS
@@ -425,7 +419,6 @@ AS $$
       comment: "Total cost of asset assignments for financial management"
 $$;
 
-
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_toll_record`
 WITH METRICS
 LANGUAGE YAML
@@ -475,7 +468,6 @@ AS $$
       expr: COUNT(DISTINCT transport_asset_id)
       comment: "Number of distinct assets incurring tolls"
 $$;
-
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_asset_cost_record`
 WITH METRICS
@@ -532,7 +524,6 @@ AS $$
       expr: COUNT(1)
       comment: "Number of cost records for activity tracking"
 $$;
-
 
 CREATE OR REPLACE VIEW `transport_shipping_ecm`.`_metrics`.`fleet_hos_log`
 WITH METRICS

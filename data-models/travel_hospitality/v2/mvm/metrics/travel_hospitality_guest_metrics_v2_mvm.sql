@@ -98,7 +98,6 @@ AS $$
       comment: "Count of distinct loyalty member guests with stays. Proxy for repeat/loyal guest volume — key retention KPI."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_profile`
 WITH METRICS
 LANGUAGE YAML
@@ -182,7 +181,6 @@ AS $$
       comment: "Total guest profile count including all statuses. Baseline denominator for profile health and consent rate calculations."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_communication_consent`
 WITH METRICS
 LANGUAGE YAML
@@ -253,7 +251,6 @@ AS $$
       expr: COUNT(1)
       comment: "Total consent records across all statuses. Baseline denominator for consent rate calculations and audit completeness checks."
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_corporate_account`
 WITH METRICS
@@ -335,7 +332,6 @@ AS $$
       comment: "Number of corporate accounts eligible for loyalty program benefits. Tracks loyalty program penetration in the corporate segment — low rates indicate enrollment opportunity."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_vip_designation`
 WITH METRICS
 LANGUAGE YAML
@@ -407,7 +403,6 @@ AS $$
       comment: "Number of active VIP designations expiring within 30 days. Enables proactive renewal outreach — prevents inadvertent downgrade of high-value guests due to expired designations."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_preference`
 WITH METRICS
 LANGUAGE YAML
@@ -426,7 +421,7 @@ AS $$
       expr: fulfillment_status
       comment: "Whether the preference was fulfilled during the stay — key operational quality dimension for personalization effectiveness."
     - name: "category"
-      expr: category
+      expr: preference_category
       comment: "High-level preference category — enables rolled-up analysis across preference types."
     - name: "property_id"
       expr: property_id
@@ -479,7 +474,6 @@ AS $$
       comment: "Percentage of preference records with explicit guest consent. Measures GDPR-compliant preference data coverage — preferences without consent cannot be used for personalization."
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_travel_hospitality_v1`.`_metrics`.`guest_segment`
 WITH METRICS
 LANGUAGE YAML
@@ -495,7 +489,7 @@ AS $$
       expr: segment_status
       comment: "Current status of the segment assignment (e.g. active, superseded, expired) — used to filter to current assignments."
     - name: "category"
-      expr: category
+      expr: segment_category
       comment: "High-level segment category — enables rolled-up segment performance analysis."
     - name: "assignment_method"
       expr: assignment_method

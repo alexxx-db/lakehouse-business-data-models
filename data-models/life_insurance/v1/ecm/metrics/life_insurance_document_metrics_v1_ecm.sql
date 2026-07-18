@@ -307,7 +307,7 @@ AS $$
     - name: "Approval Required Flag"
       expr: approval_required_flag
     - name: "Category"
-      expr: category
+      expr: document_type_category
     - name: "Code"
       expr: code
     - name: "Created Timestamp"

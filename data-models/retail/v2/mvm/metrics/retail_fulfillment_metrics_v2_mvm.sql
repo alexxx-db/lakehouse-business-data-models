@@ -64,7 +64,7 @@ AS $$
     - name: "Carrier Type"
       expr: carrier_type
     - name: "Code"
-      expr: code
+      expr: carrier_code
     - name: "Contact Email"
       expr: contact_email
     - name: "Contact Name"

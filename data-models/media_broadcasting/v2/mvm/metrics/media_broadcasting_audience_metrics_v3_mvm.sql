@@ -420,7 +420,7 @@ AS $$
     - name: "Adobe Segment Code"
       expr: adobe_segment_code
     - name: "Code"
-      expr: code
+      expr: panel_code
     - name: "Country Code"
       expr: country_code
     - name: "Created Timestamp"
@@ -592,7 +592,7 @@ AS $$
     - name: "Approved Timestamp"
       expr: approved_timestamp
     - name: "Category"
-      expr: category
+      expr: segment_category
     - name: "Code"
       expr: code
     - name: "Created Timestamp"

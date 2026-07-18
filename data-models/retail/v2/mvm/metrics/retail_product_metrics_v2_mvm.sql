@@ -111,7 +111,7 @@ AS $$
     - name: "Brand Type"
       expr: brand_type
     - name: "Code"
-      expr: code
+      expr: brand_code
     - name: "Country Of Origin Code"
       expr: country_of_origin_code
     - name: "Created Timestamp"
@@ -522,7 +522,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: sku_description
     - name: "Dimension Unit Of Measure"
       expr: dimension_unit_of_measure
     - name: "Discontinuation Date"
@@ -593,7 +593,7 @@ AS $$
     - name: "Class"
       expr: class
     - name: "Code"
-      expr: code
+      expr: uom_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"

@@ -86,7 +86,6 @@ AS $$
       comment: "Number of terminated contracts"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_residual_payment`
 WITH METRICS
 LANGUAGE YAML
@@ -163,7 +162,6 @@ AS $$
       expr: SUM(CASE WHEN audit_report_flag = TRUE THEN 1 ELSE 0 END)
       comment: "Number of residual payments subject to audit"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_appearance_schedule`
 WITH METRICS
@@ -248,7 +246,6 @@ AS $$
       comment: "Number of appearances requiring guild notification"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_compensation_structure`
 WITH METRICS
 LANGUAGE YAML
@@ -331,7 +328,6 @@ AS $$
       expr: COUNT(DISTINCT contract_id)
       comment: "Number of unique contracts with defined compensation structures"
 $$;
-
 
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_profile`
 WITH METRICS
@@ -428,7 +424,6 @@ AS $$
       comment: "Number of unique talent agencies representing talent in the system"
 $$;
 
-
 CREATE OR REPLACE VIEW `vibe_media_broadcasting_v1`.`_metrics`.`talent_role`
 WITH METRICS
 LANGUAGE YAML
@@ -438,7 +433,7 @@ AS $$
   source: "`vibe_media_broadcasting_v1`.`talent`.`role`"
   dimensions:
     - name: "category"
-      expr: category
+      expr: role_category
       comment: "Category of the role (lead, supporting, guest, background, stunt)"
     - name: "role_status"
       expr: role_status
