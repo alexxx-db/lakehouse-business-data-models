@@ -372,7 +372,7 @@ AS $$
       expr: critical_control_point_name
       comment: "Name of the critical control point"
     - name: "ccp_code"
-      expr: code
+      expr: critical_control_point_code
       comment: "Code identifier for the critical control point"
     - name: "critical_control_point_status"
       expr: critical_control_point_status

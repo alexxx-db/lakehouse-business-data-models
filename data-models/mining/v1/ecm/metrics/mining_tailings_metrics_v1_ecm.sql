@@ -799,7 +799,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: destination_facility_description
     - name: "Facility Code"
       expr: facility_code
     - name: "Facility Name"

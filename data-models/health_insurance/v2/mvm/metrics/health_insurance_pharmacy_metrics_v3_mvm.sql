@@ -303,11 +303,11 @@ AS $$
     - name: "Cms Formulary Code"
       expr: cms_formulary_code
     - name: "Code"
-      expr: code
+      expr: formulary_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: formulary_description
     - name: "Drug Count"
       expr: drug_count
     - name: "Drug Utilization Review Ind"

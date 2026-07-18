@@ -184,7 +184,7 @@ AS $$
     - name: "Daypart Restriction"
       expr: daypart_restriction
     - name: "Description"
-      expr: description
+      expr: offer_description
     - name: "Discount Type"
       expr: discount_type
     - name: "Distribution Channel"
@@ -294,7 +294,7 @@ AS $$
     - name: "Currency Name"
       expr: currency_name
     - name: "Description"
-      expr: description
+      expr: program_description
     - name: "End Date"
       expr: end_date
     - name: "Enrollment Bonus Points"
@@ -418,7 +418,7 @@ AS $$
     - name: "Daypart Restriction"
       expr: daypart_restriction
     - name: "Description"
-      expr: description
+      expr: reward_description
     - name: "Discount Type"
       expr: discount_type
     - name: "Featured Flag"
@@ -434,7 +434,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: reward_name
     - name: "Partner Name"
       expr: partner_name
   measures:
@@ -483,7 +483,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: tier_description
     - name: "Early Access Lto"
       expr: early_access_lto
     - name: "Effective End Date"

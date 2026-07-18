@@ -64,7 +64,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: cluster_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
@@ -188,7 +188,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: format_description
     - name: "Dsd Receiving Flag"
       expr: dsd_receiving_flag
     - name: "Effective End Date"

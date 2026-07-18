@@ -500,7 +500,7 @@ AS $$
       expr: platform_name
       comment: "Platform name"
     - name: "platform_code"
-      expr: code
+      expr: platform_code
       comment: "Platform code"
     - name: "platform_type"
       expr: platform_type

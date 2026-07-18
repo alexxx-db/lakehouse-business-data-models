@@ -346,7 +346,7 @@ AS $$
     - name: "Delivery Method"
       expr: delivery_method
     - name: "Description"
-      expr: description
+      expr: course_description
     - name: "Difficulty Level"
       expr: difficulty_level
     - name: "Effective End Date"
@@ -413,7 +413,7 @@ AS $$
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
     - name: "Name"
-      expr: name
+      expr: department_name
     - name: "Requires Seasonal Staffing"
       expr: requires_seasonal_staffing
     - name: "Safety Certification Required"
@@ -495,7 +495,7 @@ AS $$
     - name: "Category"
       expr: job_family_category
     - name: "Code"
-      expr: code
+      expr: job_family_code
     - name: "Commission Eligible"
       expr: commission_eligible
     - name: "Compensation Grade Maximum"
@@ -509,7 +509,7 @@ AS $$
     - name: "Critical Skill Indicator"
       expr: critical_skill_indicator
     - name: "Description"
-      expr: description
+      expr: job_family_description
     - name: "Eeo Category"
       expr: eeo_category
     - name: "Effective End Date"

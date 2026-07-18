@@ -196,7 +196,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: drg_description
     - name: "Drg Type"
       expr: drg_type
     - name: "Effective Date"
@@ -269,7 +269,7 @@ AS $$
     - name: "Co Surgeon Indicator"
       expr: co_surgeon_indicator
     - name: "Code"
-      expr: code
+      expr: hcpcs_code_code
     - name: "Code Type"
       expr: code_type
     - name: "Coverage Indicator"
@@ -338,7 +338,7 @@ AS $$
     - name: "Chapter Code"
       expr: chapter_code
     - name: "Code"
-      expr: code
+      expr: icd_code_code
     - name: "Code Type"
       expr: code_type
     - name: "Created Timestamp"

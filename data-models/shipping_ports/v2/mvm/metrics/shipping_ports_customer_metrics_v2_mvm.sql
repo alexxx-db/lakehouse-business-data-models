@@ -434,7 +434,7 @@ AS $$
     - name: "Customer Satisfaction Score"
       expr: customer_satisfaction_score
     - name: "Description"
-      expr: description
+      expr: service_request_description
     - name: "Escalation Flag"
       expr: escalation_flag
     - name: "Escalation Reason"

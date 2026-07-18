@@ -246,7 +246,7 @@ AS $$
   source: "`sports_entertainment_ecm`.`workforce`.`requisition`"
   dimensions:
     - name: "status"
-      expr: status
+      expr: requisition_status
       comment: "Requisition status (open, filled, cancelled, on-hold) for pipeline stage analysis"
     - name: "requisition_type"
       expr: requisition_type
@@ -283,13 +283,13 @@ AS $$
       expr: COUNT(DISTINCT requisition_id)
       comment: "Total requisition count for hiring demand volume"
     - name: "open_requisitions"
-      expr: COUNT(DISTINCT CASE WHEN status = 'Open' THEN requisition_id END)
+      expr: COUNT(DISTINCT CASE WHEN requisition_status = 'Open' THEN requisition_id END)
       comment: "Count of open requisitions for active hiring pipeline size"
     - name: "filled_requisitions"
-      expr: COUNT(DISTINCT CASE WHEN status = 'Filled' THEN requisition_id END)
+      expr: COUNT(DISTINCT CASE WHEN requisition_status = 'Filled' THEN requisition_id END)
       comment: "Count of filled requisitions for hiring success rate calculation"
     - name: "cancelled_requisitions"
-      expr: COUNT(DISTINCT CASE WHEN status = 'Cancelled' THEN requisition_id END)
+      expr: COUNT(DISTINCT CASE WHEN requisition_status = 'Cancelled' THEN requisition_id END)
       comment: "Count of cancelled requisitions for demand volatility tracking"
     - name: "total_openings"
       expr: SUM(CAST(number_of_openings AS DOUBLE))

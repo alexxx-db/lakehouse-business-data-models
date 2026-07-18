@@ -528,13 +528,13 @@ AS $$
       expr: program_name
       comment: "Name of the care management program"
     - name: "program_code"
-      expr: code
+      expr: program_code
       comment: "Standardized code for the care program"
     - name: "program_type"
       expr: program_type
       comment: "Type of care program (disease management, case management, wellness, transitional care, etc.)"
     - name: "category"
-      expr: category
+      expr: program_category
       comment: "Category of the care program (chronic care, preventive, behavioral health, etc.)"
     - name: "program_status"
       expr: program_status

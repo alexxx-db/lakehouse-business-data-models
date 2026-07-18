@@ -444,7 +444,7 @@ AS $$
     - name: "Mrc Accreditation Status"
       expr: mrc_accreditation_status
     - name: "Name"
-      expr: name
+      expr: panel_name
     - name: "Nielsen Panel Code"
       expr: nielsen_panel_code
     - name: "Notes"
@@ -594,7 +594,7 @@ AS $$
     - name: "Category"
       expr: segment_category
     - name: "Code"
-      expr: code
+      expr: segment_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Data Source"
@@ -604,7 +604,7 @@ AS $$
     - name: "Definition Logic"
       expr: definition_logic
     - name: "Description"
-      expr: description
+      expr: segment_description
     - name: "Effective From"
       expr: effective_from
     - name: "Effective Until"

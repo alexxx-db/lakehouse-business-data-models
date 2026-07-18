@@ -187,7 +187,7 @@ AS $$
       expr: formulation_code
       comment: "Formulation identifier code"
     - name: "formulation_name"
-      expr: name
+      expr: formulation_name
       comment: "Formulation name"
     - name: "formulation_type"
       expr: formulation_type

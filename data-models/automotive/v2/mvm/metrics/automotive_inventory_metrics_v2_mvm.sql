@@ -594,7 +594,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: warehouse_description
     - name: "Effective From"
       expr: effective_from
     - name: "Effective Until"
@@ -606,7 +606,7 @@ AS $$
     - name: "Manager Phone"
       expr: manager_phone
     - name: "Name"
-      expr: name
+      expr: warehouse_name
     - name: "Open Date"
       expr: open_date
     - name: "Operating Hours"

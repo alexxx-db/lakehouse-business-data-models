@@ -147,7 +147,7 @@ AS $$
     - name: "Daypart Type"
       expr: daypart_type
     - name: "Description"
-      expr: description
+      expr: daypart_description
     - name: "Duration Minutes"
       expr: duration_minutes
     - name: "Effective From"

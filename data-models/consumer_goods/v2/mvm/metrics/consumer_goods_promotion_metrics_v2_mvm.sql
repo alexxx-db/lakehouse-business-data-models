@@ -244,7 +244,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: event_name
     - name: "Post Event Analysis Completed Flag"
       expr: post_event_analysis_completed_flag
     - name: "Post Event Analysis Date"

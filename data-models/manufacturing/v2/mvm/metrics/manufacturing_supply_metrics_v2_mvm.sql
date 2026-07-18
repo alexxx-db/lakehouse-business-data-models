@@ -629,7 +629,7 @@ AS $$
     - name: "Manager Phone"
       expr: manager_phone
     - name: "Name"
-      expr: name
+      expr: supply_plant_name
     - name: "Next Maintenance Date"
       expr: next_maintenance_date
   measures:

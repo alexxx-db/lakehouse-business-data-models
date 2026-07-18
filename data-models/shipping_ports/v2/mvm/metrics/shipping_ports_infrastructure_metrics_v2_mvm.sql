@@ -217,7 +217,7 @@ AS $$
     - name: "Last Updated Timestamp"
       expr: last_updated_timestamp
     - name: "Name"
-      expr: name
+      expr: channel_name
     - name: "Navigational Aids Description"
       expr: navigational_aids_description
     - name: "Next Scheduled Survey Date"

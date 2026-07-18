@@ -230,7 +230,7 @@ AS $$
     - name: "Day"
       expr: day
     - name: "Description"
-      expr: description
+      expr: cycle_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

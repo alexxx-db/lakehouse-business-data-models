@@ -408,7 +408,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: award_year_description
     - name: "Disbursement End Date"
       expr: disbursement_end_date
     - name: "Disbursement Start Date"

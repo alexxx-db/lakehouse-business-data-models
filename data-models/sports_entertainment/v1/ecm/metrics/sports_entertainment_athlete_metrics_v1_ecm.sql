@@ -446,7 +446,7 @@ AS $$
       expr: agency_type
       comment: "Type of agency"
     - name: "status"
-      expr: status
+      expr: agency_status
       comment: "Current status of the agency"
     - name: "certification_status"
       expr: certification_status

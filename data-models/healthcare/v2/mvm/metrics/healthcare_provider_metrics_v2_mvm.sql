@@ -505,13 +505,13 @@ AS $$
     - name: "Cms Specialty Code"
       expr: cms_specialty_code
     - name: "Code"
-      expr: code
+      expr: specialty_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Dea Registration Required"
       expr: dea_registration_required
     - name: "Description"
-      expr: description
+      expr: specialty_description
     - name: "Display Order"
       expr: display_order
     - name: "Effective Date"

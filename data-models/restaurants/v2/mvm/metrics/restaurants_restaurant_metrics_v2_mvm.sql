@@ -12,7 +12,7 @@ AS $$
       expr: brand_name
       comment: "Brand name for segmentation and reporting"
     - name: "brand_category"
-      expr: category
+      expr: brand_category
       comment: "Brand category (e.g., QSR, Fast Casual, Fine Dining) for competitive analysis"
     - name: "brand_segment"
       expr: segment

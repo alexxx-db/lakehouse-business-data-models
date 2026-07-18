@@ -117,7 +117,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: brand_description
     - name: "Discontinuation Date"
       expr: discontinuation_date
     - name: "Is Exclusive"
@@ -597,7 +597,7 @@ AS $$
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Description"
-      expr: description
+      expr: uom_description
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"

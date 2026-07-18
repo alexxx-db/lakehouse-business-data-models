@@ -372,7 +372,7 @@ AS $$
     - name: "Modified Timestamp"
       expr: modified_timestamp
     - name: "Name"
-      expr: name
+      expr: campaign_name
     - name: "Notes"
       expr: notes
     - name: "Priority Level"

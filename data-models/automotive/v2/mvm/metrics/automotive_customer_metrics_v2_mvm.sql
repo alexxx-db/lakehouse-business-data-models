@@ -23,7 +23,7 @@ AS $$
     - name: "Dealer Code"
       expr: dealer_code
     - name: "Description"
-      expr: description
+      expr: case_description
     - name: "Dynamics Case Reference"
       expr: dynamics_case_reference
     - name: "Escalation Level"

@@ -276,7 +276,7 @@ AS $$
     - name: "Member Notification Method"
       expr: member_notification_method
     - name: "Name"
-      expr: name
+      expr: participation_status_name
     - name: "Network Tier Code"
       expr: network_tier_code
     - name: "Next Recredentialing Date"
@@ -415,7 +415,7 @@ AS $$
     - name: "Certifying Board Name"
       expr: certifying_board_name
     - name: "Code"
-      expr: code
+      expr: specialty_code
     - name: "Credentialing Effective Date"
       expr: credentialing_effective_date
     - name: "Credentialing End Date"

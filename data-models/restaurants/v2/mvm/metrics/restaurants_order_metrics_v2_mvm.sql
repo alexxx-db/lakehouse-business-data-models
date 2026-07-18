@@ -88,7 +88,7 @@ AS $$
     - name: "Channel Type"
       expr: channel_type
     - name: "Code"
-      expr: code
+      expr: channel_code
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Deactivation Date"
@@ -96,7 +96,7 @@ AS $$
     - name: "Default Daypart"
       expr: default_daypart
     - name: "Description"
-      expr: description
+      expr: channel_description
     - name: "Display Order"
       expr: display_order
     - name: "Fulfillment Mode"
@@ -110,7 +110,7 @@ AS $$
     - name: "Kds Routing Enabled"
       expr: kds_routing_enabled
     - name: "Name"
-      expr: name
+      expr: channel_name
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -228,7 +228,7 @@ AS $$
     - name: "Loyalty Points Redeemed"
       expr: loyalty_points_redeemed
     - name: "Name"
-      expr: name
+      expr: discount_name
     - name: "Reason"
       expr: reason
     - name: "Scope"
