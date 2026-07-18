@@ -1,5 +1,94 @@
 -- Metric views for domain: shared | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`shared_fab`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Operational and sustainability KPIs for semiconductor fabrication facilities. Covers environmental footprint, capacity, audit compliance, and facility lifecycle status to support executive steering of fab portfolio decisions."
+  source: "`vibe_semiconductors_v1`.`equipment`.`fab`"
+  dimensions:
+    - name: "fab_type"
+      expr: fab_type
+      comment: "Type of fabrication facility (e.g. logic, memory, foundry) used to segment KPIs by fab category."
+    - name: "fab_status"
+      expr: fab_status
+      comment: "Operational status of the fab (e.g. active, shutdown, under construction) for lifecycle filtering."
+    - name: "technology_node_nm"
+      expr: technology_node_nm
+      comment: "Technology node name (e.g. 5nm, 7nm) enabling KPI segmentation by process generation."
+    - name: "primary_product_family"
+      expr: primary_product_family
+      comment: "Primary product family manufactured at the fab, used to align fab metrics with product portfolio."
+    - name: "environmental_compliance_status"
+      expr: environmental_compliance_status
+      comment: "Environmental compliance status of the fab, critical for ESG reporting and regulatory risk segmentation."
+    - name: "is_critical_facility"
+      expr: is_critical_facility
+      comment: "Flag indicating whether the fab is classified as a critical facility, used to prioritize investment and risk management."
+    - name: "security_clearance_level"
+      expr: security_clearance_level
+      comment: "Security clearance level of the fab, relevant for defense/government contract compliance segmentation."
+    - name: "owner_company"
+      expr: owner_company
+      comment: "Company owning the fab, enabling multi-entity or JV portfolio analysis."
+    - name: "last_audit_date"
+      expr: DATE_TRUNC('month', last_audit_date)
+      comment: "Month of the last audit, used to track audit recency trends over time."
+    - name: "start_date_year"
+      expr: YEAR(start_date)
+      comment: "Year the fab became operational, enabling cohort analysis of fab vintage vs. performance."
+  measures:
+    - name: "active_fab_count"
+      expr: COUNT(CASE WHEN fab_status = 'active' THEN fab_id END)
+      comment: "Number of currently active fabrication facilities. Executives use this to assess operational capacity footprint and make investment decisions about new fab construction or consolidation."
+    - name: "total_annual_power_mwh"
+      expr: SUM(CAST(annual_power_mwh AS DOUBLE))
+      comment: "Total annual power consumption in MWh across all fabs. A primary ESG and cost KPI — rising power consumption triggers energy efficiency programs and impacts operating cost forecasts."
+    - name: "avg_annual_power_mwh_per_fab"
+      expr: AVG(CAST(annual_power_mwh AS DOUBLE))
+      comment: "Average annual power consumption per fab in MWh. Used to benchmark individual fabs against the portfolio average and identify energy outliers for remediation."
+    - name: "total_annual_water_m3"
+      expr: SUM(CAST(annual_water_m3 AS DOUBLE))
+      comment: "Total annual water consumption in cubic meters across all fabs. Critical ESG metric — semiconductor fabs are major water consumers and this KPI drives water stewardship programs and regulatory compliance."
+    - name: "avg_annual_water_m3_per_fab"
+      expr: AVG(CAST(annual_water_m3 AS DOUBLE))
+      comment: "Average annual water consumption per fab in cubic meters. Benchmarks water efficiency across the fab portfolio to identify high-consumption facilities for targeted reduction initiatives."
+    - name: "total_carbon_footprint_tons"
+      expr: SUM(CAST(carbon_footprint_tons AS DOUBLE))
+      comment: "Total carbon footprint in metric tons across all fabs. A board-level ESG KPI directly tied to net-zero commitments, carbon credit obligations, and regulatory disclosure requirements."
+    - name: "avg_carbon_footprint_tons_per_fab"
+      expr: AVG(CAST(carbon_footprint_tons AS DOUBLE))
+      comment: "Average carbon footprint per fab in metric tons. Used to identify high-emission facilities and prioritize decarbonization capital expenditure."
+    - name: "avg_audit_score"
+      expr: AVG(CAST(audit_score AS DOUBLE))
+      comment: "Average audit score across fabs. A governance KPI — declining audit scores signal compliance risk and trigger corrective action programs before regulatory penalties occur."
+    - name: "min_audit_score"
+      expr: MIN(audit_score)
+      comment: "Minimum audit score across the fab portfolio. Identifies the worst-performing facility from a compliance standpoint, enabling targeted remediation before audit failures escalate."
+    - name: "total_fab_area_sqft"
+      expr: SUM(CAST(total_area_sqft AS DOUBLE))
+      comment: "Total physical footprint of all fabs in square feet. Used in capacity planning, real estate portfolio management, and capital allocation decisions for expansion or consolidation."
+    - name: "avg_fab_area_sqft"
+      expr: AVG(CAST(total_area_sqft AS DOUBLE))
+      comment: "Average fab size in square feet. Benchmarks facility scale across the portfolio to inform standardization and modular expansion strategies."
+    - name: "critical_facility_count"
+      expr: COUNT(CASE WHEN is_critical_facility = TRUE THEN fab_id END)
+      comment: "Number of fabs classified as critical facilities. Drives business continuity planning, insurance coverage decisions, and priority maintenance scheduling."
+    - name: "non_compliant_fab_count"
+      expr: COUNT(CASE WHEN environmental_compliance_status != 'compliant' THEN fab_id END)
+      comment: "Number of fabs not in environmental compliance. A risk KPI — non-compliant fabs face regulatory fines, operational shutdowns, and reputational damage; executives use this to prioritize remediation spend."
+    - name: "carbon_intensity_per_sqft"
+      expr: SUM(CAST(carbon_footprint_tons AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Carbon footprint per square foot of fab area (tons/sqft). A normalized ESG efficiency metric that enables fair comparison across fabs of different sizes and drives green building investment decisions."
+    - name: "power_intensity_per_sqft"
+      expr: SUM(CAST(annual_power_mwh AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Annual power consumption per square foot of fab area (MWh/sqft). Normalizes energy efficiency across fabs of different sizes, enabling identification of energy-inefficient facilities for capital improvement."
+    - name: "water_intensity_per_sqft"
+      expr: SUM(CAST(annual_water_m3 AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Annual water consumption per square foot of fab area (m3/sqft). Normalized water efficiency metric used in ESG benchmarking and water stewardship program prioritization."
+$$;
+
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`shared_location`
 WITH METRICS
 LANGUAGE YAML

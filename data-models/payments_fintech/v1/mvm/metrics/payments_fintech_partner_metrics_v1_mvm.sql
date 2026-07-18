@@ -122,3 +122,38 @@ AS $$
       expr: SUM(CAST(penalty_amount AS DOUBLE))
       comment: "Total penalty amount incurred for SLA breaches"
 $$;
+
+CREATE OR REPLACE VIEW `payments_fintech_ecm`.`_metrics`.`partner_ecosystem_partner`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Strategic overview of ecosystem partners for executive risk and coverage decisions"
+  source: "`payments_fintech_ecm`.`partner`.`ecosystem_partner`"
+  dimensions:
+    - name: "operational_status"
+      expr: operational_status
+      comment: "Current operational status of the partner"
+    - name: "registration_jurisdiction"
+      expr: registration_jurisdiction
+      comment: "Jurisdiction where the partner is registered"
+    - name: "is_approved_for_cross_border"
+      expr: is_approved_for_cross_border
+      comment: "Indicates if partner is approved for cross‑border transactions"
+    - name: "onboarding_month"
+      expr: DATE_TRUNC('month', onboarding_date)
+      comment: "Month the partner was onboarded"
+  measures:
+    - name: "total_partners"
+      expr: COUNT(1)
+      comment: "Total number of ecosystem partners"
+    - name: "avg_risk_score"
+      expr: AVG(CAST(risk_score AS DOUBLE))
+      comment: "Average risk score across partners, indicating overall risk exposure"
+    - name: "active_partner_count"
+      expr: COUNT(1)
+      comment: "Number of partners currently active"
+    - name: "global_partner_count"
+      expr: COUNT_IF(is_global_partner = TRUE)
+      comment: "Number of partners designated as global"
+$$;

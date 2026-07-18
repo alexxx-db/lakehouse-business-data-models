@@ -328,6 +328,62 @@ AS $$
       comment: "Number of requisitions where stock is already available in warehouse. High ratio indicates over-requisitioning and poor inventory visibility."
 $$;
 
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_physical_inventory`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Physical inventory count accuracy and variance metrics. Tracks discrepancies between system book quantities and physical counts, driving inventory accuracy improvement and loss prevention."
+  source: "`vibe_construction_v1`.`material`.`physical_inventory`"
+  dimensions:
+    - name: "physical_inventory_status"
+      expr: physical_inventory_status
+      comment: "Status of the physical inventory count (e.g., in-progress, completed, posted) for count cycle management."
+    - name: "count_type"
+      expr: count_type
+      comment: "Type of inventory count (e.g., cycle count, full count, spot check) for methodology analysis."
+    - name: "recount_flag"
+      expr: recount_flag
+      comment: "Flag indicating a recount was required, signaling initial count discrepancies."
+    - name: "unit_of_measure"
+      expr: unit_of_measure
+      comment: "Unit of measure for quantity variance metrics."
+    - name: "warehouse_id"
+      expr: warehouse_id
+      comment: "Warehouse code for location-level inventory accuracy analysis."
+    - name: "location_code"
+      expr: location_code
+      comment: "Storage location code for granular accuracy tracking within warehouses."
+  measures:
+    - name: "total_inventory_counts"
+      expr: COUNT(1)
+      comment: "Total number of physical inventory count records. Baseline metric for count activity volume and coverage."
+    - name: "total_counted_quantity"
+      expr: SUM(CAST(counted_quantity AS DOUBLE))
+      comment: "Total physical quantity counted. Compared against system book quantity to compute overall inventory accuracy."
+    - name: "total_system_book_quantity"
+      expr: SUM(CAST(system_book_quantity AS DOUBLE))
+      comment: "Total system-recorded quantity at time of count. Denominator for inventory accuracy rate calculations."
+    - name: "total_variance_quantity"
+      expr: SUM(CAST(variance_quantity AS DOUBLE))
+      comment: "Total quantity variance (counted minus book). Positive variance indicates unrecorded receipts; negative indicates losses, theft, or recording errors."
+    - name: "total_variance_value"
+      expr: SUM(CAST(variance_value AS DOUBLE))
+      comment: "Total financial value of inventory variance. The primary financial risk metric for inventory — large variances trigger audit and loss investigation."
+    - name: "recount_required_count"
+      expr: COUNT(CASE WHEN recount_flag = TRUE THEN 1 END)
+      comment: "Number of count records requiring a recount. High recount rates indicate counting process quality issues or systemic inventory discrepancies."
+    - name: "avg_variance_quantity"
+      expr: AVG(CAST(variance_quantity AS DOUBLE))
+      comment: "Average quantity variance per count record. Benchmarks typical discrepancy size and tracks improvement over time."
+    - name: "avg_variance_value"
+      expr: AVG(CAST(variance_value AS DOUBLE))
+      comment: "Average financial variance per count record. Used to prioritize high-value discrepancy investigation and set materiality thresholds."
+    - name: "zero_variance_count"
+      expr: COUNT(CASE WHEN variance_quantity = 0 THEN 1 END)
+      comment: "Number of count records with zero variance (perfect accuracy). Used to compute inventory accuracy rate — target is typically 95%+ for construction materials."
+$$;
+
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`material_mto_line`
 WITH METRICS
 LANGUAGE YAML

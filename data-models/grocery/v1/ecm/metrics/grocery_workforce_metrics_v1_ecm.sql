@@ -1,5 +1,72 @@
 -- Metric views for domain: workforce | Business: Grocery | Version: 1 | Generated on: 2026-05-04 18:32:13
 
+CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_associate_headcount`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Core headcount and tenure metrics for workforce planning"
+  source: "`grocery_ecm`.`workforce`.`associate`"
+  dimensions:
+    - name: "department_code"
+      expr: department_code
+      comment: "Department code of the associate"
+    - name: "store_location_id"
+      expr: store_location_id
+      comment: "Store location where the associate works"
+    - name: "employment_status"
+      expr: employment_status
+      comment: "Current employment status (e.g., Active, Terminated)"
+    - name: "gender"
+      expr: gender
+      comment: "Gender of the associate"
+    - name: "ethnicity"
+      expr: ethnicity
+      comment: "Ethnicity of the associate"
+    - name: "veteran_status"
+      expr: veteran_status
+      comment: "Veteran status of the associate"
+    - name: "union_member"
+      expr: union_member
+      comment: "Whether the associate is a union member"
+    - name: "hire_year"
+      expr: YEAR(hire_date)
+      comment: "Year the associate was hired"
+  measures:
+    - name: "total_headcount"
+      expr: COUNT(DISTINCT associate_id)
+      comment: "Number of active associates (headcount)"
+$$;
+
+CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_associate_tenure_and_compensation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tenure, compensation, and turnover indicators"
+  source: "`grocery_ecm`.`workforce`.`associate`"
+  dimensions:
+    - name: "department_code"
+      expr: department_code
+      comment: "Department code"
+    - name: "store_location_id"
+      expr: store_location_id
+      comment: "Store location ID"
+    - name: "employment_status"
+      expr: employment_status
+      comment: "Current employment status"
+  measures:
+    - name: "average_tenure_days"
+      expr: AVG(DATEDIFF(current_date(), hire_date))
+      comment: "Average tenure in days for associates"
+    - name: "average_pay_rate"
+      expr: AVG(CAST(pay_rate AS DOUBLE))
+      comment: "Average base pay rate across associates"
+    - name: "termination_count"
+      expr: SUM(CASE WHEN termination_date IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of associates who have terminated"
+$$;
+
 CREATE OR REPLACE VIEW `grocery_ecm`.`_metrics`.`workforce_time_entry_overtime`
 WITH METRICS
 LANGUAGE YAML
