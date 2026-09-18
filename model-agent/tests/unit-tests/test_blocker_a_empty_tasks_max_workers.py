@@ -1,15 +1,17 @@
-"""Blocker-A (upstream PR #43): empty task lists must not crash the parallel-execution helpers.
+"""Blocker-A: empty task lists must not crash the parallel-execution helpers.
 
 When a smart-worker stage is handed an empty task list, ``actual_workers``
 collapses to ``min(max_workers, 0) == 0`` and the pool factory is asked for a
 ``ThreadPoolExecutor(max_workers=0)``, which the stdlib rejects with
-``ValueError: max_workers must be greater than 0``.
+``ValueError: max_workers must be greater than 0``. This surfaced at
+``step_create_logical_schema`` when a stage legitimately had zero tasks to run.
 
-Two independent guards fix it, both exercised here against the real notebook
-code (loaded by conftest into ``agent_helpers``):
+Two independent guards fix it; both are exercised here against the real
+notebook code (loaded by conftest into ``agent_helpers``):
 
   1. ``run_parallel_smart_workers`` returns ``[]`` immediately for empty tasks.
-  2. ``guarded_thread_pool_executor`` floors ``max_workers`` at 1.
+  2. ``guarded_thread_pool_executor`` floors ``max_workers`` at 1, defending
+     every other caller when the global LLM pool is not active.
 
 Both assertions raise ``ValueError`` on the pre-fix code and pass on the fix.
 """
@@ -17,10 +19,12 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
+import pytest
+
 
 @contextmanager
 def _global_pool_disabled():
-    """Force ``_GLOBAL_LLM_POOL`` size to 0 so the factory takes the plain
+    """Force the ``_GLOBAL_LLM_POOL`` size to 0 so the factory takes the plain
     ``ThreadPoolExecutor`` branch (the branch the bug lived in), then restore."""
     import agent_helpers as ah
 
