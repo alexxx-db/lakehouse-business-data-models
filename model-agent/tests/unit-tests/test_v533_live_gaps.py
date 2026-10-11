@@ -6,6 +6,8 @@
 """
 import copy
 import io
+import json
+import re
 import sys
 import types
 from pathlib import Path
@@ -983,3 +985,218 @@ def test_a_field_limited_target_is_shown_to_the_engine_and_the_sweep_with_its_op
     assert "roster_date (type: DATE)  [glossary: Roster Date]" in snap and snap.count("[glossary:") == 1
     whole = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew")
     assert "TABLE: crew.member" in whole
+
+
+def test_a_glossary_term_is_a_business_term_not_a_placeholder_or_a_sentence():
+    """Live b7 309339185517965: the verification sweep replaced 127 'GlossaryTerm_<column>' placeholders with description
+    sentences ('Unique surrogate identifier for a cost center record, used as the primary key ...'), and the fence, the
+    coverage verifier and the static gates all accepted them as glossary terms."""
+    defect = ah._v533_glossary_term_defect
+    assert defect("GlossaryTerm_cost_center_id") == "placeholder" and defect("TODO") == "placeholder"
+    assert defect("Unique surrogate identifier for a cost center record, used as the primary key for the cost_center entity.") == "sentence"
+    assert defect("Portion of the total budget that has been formally allocated to specific campaigns line items or cost centers") == "sentence"
+    for good in ("Currency Code", "Customer Lifetime Value (CLTV) Band", "Quantity Before Adjustment (Stock on Hand)",
+                 "California Consumer Privacy Act (CCPA) / California Privacy Rights Act (CPRA) Sale Opt-Out Flag", "", None):
+        assert defect(good) is None, good
+    assert ah._vibe_scope_bad_value("business_glossary_term", "Date on which the payment was initiated.")
+    assert not ah._vibe_scope_bad_value("description", "Date on which the payment was initiated.")
+    assert ah._vibe_scope_bad_value("description", "TODO") and not ah._vibe_scope_bad_value("business_glossary_term", "Payment Date")
+    assert ah._v533_attr_glossary_value({"business_glossary_term": "Date on which the payment was initiated.",
+                                         "tags": {"dbx_business_glossary_term": "Payment Date"}}) == "Payment Date"
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    for value, kinds in (("Date on which the roster applies.", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1})):
+        cur = copy.deepcopy(base)
+        next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+        assert fence.check(cur).summary()["by_kind"] == kinds, value
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    req = _Req("Add a business glossary term to every column that has none.", "VREQ-001", ["*"])
+    rows = [{"domain": "d", "product": "p", "attribute": f"a{i}", "business_glossary_term": f"Term {i}"} for i in range(9)]
+    rows.append({"domain": "d", "product": "p", "attribute": "a9", "business_glossary_term": "Date on which the payment was initiated."})
+    assert orch._verify_bulk_coverage(req, [], [], rows)["evidence"].split(" coverage ")[1].startswith("9/10")
+
+
+def test_the_static_analysis_reports_glossary_terms_that_are_placeholders_or_sentences_and_requeues_them():
+    """Live b7 309339185517965: lane 2 carried 416 'GlossaryTerm_<column>' values and then 127 sentences, and
+    missing_glossary_tag passed because it only checks that a glossary tag exists."""
+    from test_v368_qgate_suite import _clean_model, _requeue_ns, _run_sa
+    d, p, a = _clean_model()
+    cats, _ = _run_sa(d, p, a)
+    assert "invalid_glossary_term" not in cats
+    a = [dict(r) for r in a]
+    a[1]["business_glossary_term"] = "GlossaryTerm_amount"
+    a[4]["business_glossary_term"] = "Gross weight of the shipment in kilograms as measured at origin."
+    a[0]["business_glossary_term"] = "Deal Identifier"
+    _cats, issues = _run_sa(d, p, a)
+    issue = next(i for i in issues if i["category"] == "invalid_glossary_term")
+    assert issue["details"]["count"] == 2 and issue["details"]["by_reason"] == {"placeholder": 1, "sentence": 1}
+    assert issue["details"]["attributes"] == ["sales.deal.amount", "logistics.shipment.weight"]
+    ns = _requeue_ns([{"category": "invalid_glossary_term", "severity": "warning", "message": "x", "details": {"entity": "finance.invoice.vendor_name"}}])
+    wv = {"domains": [{"name": "finance"}], "products": [{"domain": "finance", "product": "invoice"}],
+          "attributes": [{"domain": "finance", "product": "invoice", "attribute": "vendor_name"}], "_unfulfilled_for_next_vibe": []}
+    assert ns["_v366_sa_findings_requeue"](wv, {}, h.LOG) == 1
+
+
+def test_the_fallback_refuses_a_glossary_term_that_is_a_sentence_or_a_placeholder():
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+    row["business_glossary_term"] = ""
+
+    def mutation(value):
+        return [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster.roster_date", "field": "business_glossary_term",
+                 "new_value": value}]
+    for value in ("Date on which the crew roster applies.", "GlossaryTerm_roster_date"):
+        assert ah._llm_fallback_apply_mutations(mutation(value), d, p, a, [], h.LOG) == 0
+        assert row["business_glossary_term"] == "", value
+    assert ah._llm_fallback_apply_mutations(mutation("Roster Date"), d, p, a, [], h.LOG) == 1
+    assert row["business_glossary_term"] == "Roster Date"
+
+
+def test_the_verification_sweep_plans_batches_from_the_tables_it_names_and_fits_them(monkeypatch):
+    """Live b7 309339185517965: the classifier chose per_domain but listed ten finance tables; the per-domain branch matched
+    the table refs against domain names, found none and ran every domain, starting with campaign, so the LLM never saw a
+    finance table. Live a19 284506174299098: batch=single sent the whole model, cut at 60,000 characters."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+
+    def plan(strategy, affected):
+        return ah._llm_fallback_plan_batches(strategy, affected, d, p, a, h.LOG)
+    assert [b["label"] for b in plan("per_domain", ["crew.roster", "crew.member"])] == ["domain:crew"]
+    assert [b["label"] for b in plan("per_domain", [])] == ["domain:crew", "domain:flight", "domain:fleet"]
+    assert [b["label"] for b in plan("per_product", ["crew"])] == ["domain:crew"]
+    assert [b["label"] for b in plan("per_product", ["crew.roster", "crew"])] == ["domain:crew"]
+    assert [(b["domain_filter"], b["product_filter"]) for b in plan("per_product", ["crew.roster", "fleet.aircraft"])] == [
+        ("crew", "roster"), ("fleet", "aircraft")]
+    assert plan("single", ["crew.roster", "fleet"]) == [{"domain_filter": None, "refs": [("crew", "roster"), ("fleet", None)],
+                                                         "label": "entities:crew.roster,fleet"}]
+    assert plan("single", ["crew.roster", "nowhere"]) == [{"domain_filter": None, "label": "all"}]
+    assert plan("single", []) == [{"domain_filter": None, "label": "all"}]
+    monkeypatch.setattr(ah, "_LLM_FALLBACK_BATCH_CHARS", 160)
+    fitted = plan("per_domain", ["crew"])
+    assert len(fitted) > 1 and all(b["label"].startswith("domain:crew#") for b in fitted)
+    assert sorted(t for b in fitted for t in b["product_filter"]) == ["base", "member", "roster"]
+    for b in fitted:
+        size = len(ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter=b["product_filter"]))
+        assert size <= 160 or len(b["product_filter"]) == 1, (b, size)
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    assert [b["product_filter"] for b in plan("per_domain", ["crew"])] == [["roster"]], "only tables the run may change are sent"
+
+
+def test_the_verification_sweep_shows_the_llm_only_the_named_table_with_its_glossary_terms():
+    """Live a18 492254310643790 and a19 284506174299098: 'the table does not appear in the provided model-state snapshot'."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+
+    class _Agent:
+        def __init__(self, strategy, affected):
+            self.prompts = []
+            self.classification = {"scope": "attribute", "affected_entities": affected, "batch_strategy": strategy, "operation_type": "mutate",
+                                   "validation_hint": {"check_type": "none", "target_description": "", "expected_outcome": ""}}
+
+        def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+            self.prompts.append((prompt_name, prompt))
+            if prompt_name == "LLM_FALLBACK_CLASSIFY_PROMPT":
+                return json.dumps(self.classification)
+            return json.dumps({"summary": "filled", "mutations": [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster.roster_date",
+                                                                   "field": "business_glossary_term", "new_value": "Roster Date"}]})
+    action = {"action": "set_property", "scope": "crew.roster", "name": "glossary", "target_state": "every column has a term", "reason": "vibe"}
+    for strategy, shown in (("single", {"crew.roster"}), ("per_product", {"crew.roster"}), ("per_domain", {"crew.member", "crew.roster", "crew.base"})):
+        row["business_glossary_term"] = ""
+        agent = _Agent(strategy, ["crew.roster"])
+        ctx = {"logger": h.LOG, "domains_data": d, "products_data": p, "attributes_data": a, "config": {}}
+        assert ah._llm_fallback_handler(action, ctx, agent, "Give every column of crew.roster a glossary term.")
+        executes = [prompt for name, prompt in agent.prompts if name == "LLM_FALLBACK_EXECUTE_PROMPT"]
+        assert len(executes) == 1, strategy
+        state = executes[0].split("CURRENT MODEL STATE", 1)[1].split("CROSS-DOMAIN FK TARGETS", 1)
+        assert len(state) == 2, f"{strategy}: the FK target registry follows the snapshot"
+        assert set(re.findall(r"TABLE: (\w+\.\w+)", state[0])) == shown, strategy
+        assert "business_glossary_term = the business term for the column in Title Case" in executes[0]
+        assert row["business_glossary_term"] == "Roster Date", strategy
+
+
+def _roster_glossary_fence():
+    base = h.base_model()
+    roster = base["model"]["domains"][0]["products"][1]
+    roster["attributes"].append(dict(copy.deepcopy(next(a for a in roster["attributes"] if a["name"] == "roster_date")), name="shift_code", type="STRING"))
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    cur = copy.deepcopy(base)
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    return text, cur
+
+
+def test_every_scoring_path_reads_a_field_limited_target_with_the_deterministic_verdict():
+    """Live a19 284506174299098: the physical ground-truth audit scored 'give every column of customer.survey_campaign that
+    has no business glossary term one' from model-wide glossary coverage (1015/2855, 35%), because its rows carry the
+    glossary term only as a column tag; validate then sent the requirement to the LLM audit, which reported the table
+    'byte-identical', and the run closed it as failed with 2 of the 4 columns filled."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    text, cur = _roster_glossary_fence()
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    phys = [{"domain": "crew", "product": "roster", "attribute": "roster_id", "foreign_key_to": "", "data_type": "bigint", "tags": {}},
+            {"domain": "crew", "product": "roster", "attribute": "member_id", "foreign_key_to": "crew.member.member_id", "data_type": "bigint"},
+            {"domain": "crew", "product": "roster", "attribute": "roster_date", "foreign_key_to": "", "data_type": "date",
+             "tags": {"dbx_business_glossary_term": "Roster Date"}},
+            {"domain": "crew", "product": "roster", "attribute": "shift_code", "foreign_key_to": "", "data_type": "string",
+             "tags": {"dbx_business_glossary_term": "Code of the shift the roster covers."}}]
+    products = [{"domain": "crew", "product": "roster", "primary_key": "roster_id"}]
+    verdict = orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)
+    assert verdict["status"] == "partial" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2"), verdict
+    phys[3]["tags"] = {"dbx_business_glossary_term": "Shift Code"}
+    assert orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)["status"] == "fulfilled"
+
+    class _AuditLLM:
+        calls = 0
+
+        def _call_ai_query(self, **_kw):
+            _AuditLLM.calls += 1
+            return json.dumps({"verification_results": [{"requirement_id": "VREQ-001", "status": "failed", "evidence": "byte-identical"}],
+                               "remediation_actions": [], "summary": {}})
+    full = ah.VibeOrchestrator({"logger": h.LOG, "config": {}, "vibe_modelling_instructions": text, "operation": h.VOV})
+    req = ah.VibeRequirement(id="VREQ-001", original_text=text, intent="glossary", scope="table", scope_targets=["crew.roster"],
+                             verification_strategy="llm_verify")
+    full.manifest = ah.VibeManifest(raw_text=text, requirements=[req])
+    assert full.is_enabled
+    full.ai_agent = _AuditLLM()
+    full._llm_verify_enabled = True
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    full.widgets_values.update({"domains": d, "products": p, "attributes": a})
+    full.validate()
+    assert req.status == "partial" and req.evidence.startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2"), (req.status, req.evidence)
+    assert _AuditLLM.calls == 0, "a deterministic open-field verdict is not handed to the LLM audit"
+    req.verification_strategy = "state_diff"
+    assert full._verify_requirement(req, d, p, a)["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2")
+
+
+def test_a_partly_met_set_target_requirement_is_partial_not_failed():
+    text, cur = _roster_glossary_fence()
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew.roster", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}},
+          "_vibe_input_map": {"items": {"i1": {"target": "crew.roster", "spans": [(0, 10)]}}, "vreqs": {"VREQ-0001": {"item_ids": ["i1"]}}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "partial"
+    assert [(o["status"], o["vreq_ids"]) for o in wv["_vibe_input_outcomes"]] == [("partial", ["VREQ-0001"])]
+    assert wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "partial"})])[0] == "partial"
+    assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "deferred"})])[0] == "failed"
