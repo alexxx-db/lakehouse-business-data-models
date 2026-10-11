@@ -311,8 +311,8 @@ def test_parallel_merge_gate_rejects_a_leaking_merge(monkeypatch):
         return merged
 
     monkeypatch.setattr(ah, "_merge_partial", _leaky_merge)
-    vibe = ("**PRIORITY 1 — enrich_description: crew.member** — add a crew control description\n"
-            "**PRIORITY 2 — enrich_description: crew.base** — add a crew base description\n")
+    vibe = ("**PRIORITY 1 — enrich_tags: crew.member** — tag the crew member table for crew control\n"
+            "**PRIORITY 2 — enrich_tags: crew.base** — tag the crew base table for crew control\n")
     result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=True, priority_reapply_loops=1)
     statuses = _statuses(result)
     assert "scope_fence_violation" in statuses["P001"] and "scope_fence_violation" in statuses["P002"]
@@ -323,8 +323,8 @@ def test_parallel_merge_gate_rejects_a_leaking_merge(monkeypatch):
 
 def test_parallel_merge_applies_clean_in_scope_handlers():
     _fence()
-    vibe = ("**PRIORITY 1 — enrich_description: crew.member** — add a crew control description\n"
-            "**PRIORITY 2 — enrich_description: crew.base** — add a crew base description\n")
+    vibe = ("**PRIORITY 1 — enrich_tags: crew.member** — tag the crew member table for crew control\n"
+            "**PRIORITY 2 — enrich_tags: crew.base** — tag the crew base table for crew control\n")
     result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=True, priority_reapply_loops=1)
     statuses = _statuses(result)
     assert "applied" in statuses["P001"] and "applied" in statuses["P002"]

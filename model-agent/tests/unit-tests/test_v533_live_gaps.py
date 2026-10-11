@@ -591,8 +591,8 @@ def test_a_named_table_whose_only_changes_are_metadata_keeps_its_rows(monkeypatc
     """Decision 2A: a named table whose description or column glossary changed was replaced, which drops its rows; it now
     stays in place and the change deploys as COMMENT and tag statements."""
     base = h.base_model()
-    vreqs = [ah.RawVREQ(vreq_id="VREQ-0001", intent="Improve the description of fleet.aircraft", target="fleet.aircraft",
-                        source_quote="Improve the description of fleet.aircraft", source_chunk_id="c1"),
+    vreqs = [ah.RawVREQ(vreq_id="VREQ-0001", intent="Improve the description and the glossary terms of fleet.aircraft", target="fleet.aircraft",
+                        source_quote="Improve the description and the glossary terms of fleet.aircraft", source_chunk_id="c1"),
              ah.RawVREQ(vreq_id="VREQ-0002", intent="In crew.roster add a column rest_hours", target="crew.roster.rest_hours",
                         source_quote="In crew.roster add a column rest_hours", source_chunk_id="c1")]
     spec, wide = ah._vibe_scope_requested_spec(vreqs, base)
@@ -861,3 +861,55 @@ def test_the_verification_sweep_changes_to_named_products_are_kept_until_review(
     next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] = "Changed later"
     ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
     assert next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Day"
+
+
+def test_a_templated_glossary_term_is_a_placeholder():
+    """Live b5 583010004363545: the verification sweep filled 202 finance glossary terms with 'GlossaryTerm_<column>'."""
+    for value in ("GlossaryTerm_cost_center_id", "Glossary Term: allocation method", "term_billable_flag", "TODO", "<value>"):
+        assert ah._v381_is_placeholder_tag_value(value), value
+    for value in ("Cost Center", "Terminal Identifier", "Term Length", "Billable Flag"):
+        assert not ah._v381_is_placeholder_tag_value(value), value
+    findings = ah._v381_verify_tag_semantics([], [], [{"domain": "finance", "product": "cost_center", "attribute": "cost_center_id",
+                                                        "business_glossary_term": "GlossaryTerm_cost_center_id"}])
+    assert findings == ["[SA:tag_placeholder_value] finance.cost_center.cost_center_id: business glossary term has placeholder value 'GlossaryTerm_cost_center_id'"]
+
+
+def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fields_there():
+    """Decision 4A (live b5 583010004363545): 'Add a business glossary term to every column of the finance domain that has
+    none' opened the whole finance domain, so the verification sweep also dropped 3 FK columns and 3 tables were replaced."""
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    vreq = ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew", source_quote=text, source_chunk_id="c1")
+    spec, wide = ah._vibe_scope_requested_spec([vreq], base)
+    assert wide == [] and spec.products == frozenset() and spec.whole_domains == frozenset() and spec.entries == ("crew",)
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+    assert ("attributes", "business_glossary_term") in spec.fill_only_fields and spec.open_field_vreqs == ("VREQ-0001",)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = attr["name"].replace("_", " ").title()
+    dropped = roster["attributes"].pop()
+    next(a for a in cur["model"]["domains"][2]["products"][0]["attributes"] if a["name"] == "tail_number")["business_glossary_term"] = ""
+    kinds = fence.check(cur).summary()["by_kind"]
+    assert kinds.get("P6") == len(roster["attributes"]) and kinds.get("frozen_attr_removed") == 1 and kinds.get("frozen_attr_changed") == 1
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    fence.restore_flat(d, p, a, mv, "test")
+    crew_roster = [r for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert any(r["attribute"] == dropped["name"] for r in crew_roster), "the dropped column came back"
+    assert next(r for r in a if r["attribute"] == "tail_number")["business_glossary_term"] == "Tail Number"
+    from test_v406_verifier_false_negatives import _Req
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew"]), d, p, a)
+    assert verdict["status"] in ("fulfilled", "partial") and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3]")
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0}}
+    for r in a:
+        if r["domain"] == "crew" and not r.get("business_glossary_term"):
+            r["business_glossary_term"] = r["attribute"].replace("_", " ").title()
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 100.0
