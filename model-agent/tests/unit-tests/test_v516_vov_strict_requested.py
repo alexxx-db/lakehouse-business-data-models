@@ -87,13 +87,17 @@ def test_the_spec_lists_exactly_the_named_products():
 
 
 def test_a_domain_level_target_puts_the_whole_domain_in_scope():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rewrite the customer domain description")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain")], {"model": _model()})
     assert spec.whole_domains == {"customer"} and spec.products == frozenset()
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rewrite the customer domain description")], {"model": _model()})
+    assert spec.whole_domains == frozenset() and spec.open_field_targets == {("customer", "", "domains", "description")}, "decision 4A"
 
 
 def test_a_bare_name_resolves_to_every_product_that_carries_it():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "describe campaign better")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "rework campaign")], {"model": _model()})
     assert spec.products == _keys(("customer", "campaign"), ("product", "campaign"))
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "describe campaign better")], {"model": _model()})
+    assert {(d, p) for d, p, _lv, _f in spec.open_field_targets} == _keys(("customer", "campaign"), ("product", "campaign")), "decision 4A"
 
 
 def test_an_unknown_bare_name_is_allowed_as_a_new_entity_anywhere():
@@ -560,13 +564,13 @@ def test_a_one_part_target_that_names_a_domain_stays_a_domain_for_the_spec_only(
     model = {"model": _model_with_namesake_product()}
     assert ah._vov_qualify_target("customer", model) == "customer.customer"
     assert ah._vov_qualify_target("customer", model, prefer_domain=True) == "customer"
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rewrite the customer domain description")], model)
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain")], model)
     assert spec.whole_domains == {"customer"}
 
 
 def test_a_product_attribute_target_admits_the_product_and_no_phantom_domain():
-    vreqs = [_vreq("VREQ-0001", "session.browser", "rewrite the description of browser so it lists the allowed values"),
-             _vreq("VREQ-0002", "customer.session.browser", "rewrite the description of browser so it lists the allowed values")]
+    vreqs = [_vreq("VREQ-0001", "session.browser", "change browser so it lists the allowed values"),
+             _vreq("VREQ-0002", "customer.session.browser", "change browser so it lists the allowed values")]
     spec, wide = ah._vibe_scope_requested_spec(vreqs, {"model": _model()})
     assert wide == []
     assert spec.products == _keys(("customer", "session"))
