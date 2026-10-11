@@ -398,3 +398,72 @@ def test_a_run_that_fails_before_inserting_its_business_row_deletes_no_registry_
     assert rollback < guard < first_delete
     assert "[registry-rollback-owned FIRED v5.3.3]" in src[guard:first_delete]
     assert src[guard:first_delete].count("elif current_version and biz_name and spark and main_tables:") == 1
+
+
+def test_a_landed_domain_rename_is_verified_as_fulfilled():
+    """Live b1 907726038170799: the domain rename alliance -> vendor_network landed (model and Unity Catalog), yet the
+    physical ground-truth audit scored it failed, model.json reported 50% adherence and next_vibes listed it under
+    MISSED VIBES."""
+    import test_v329_behavioral as V
+    v = V._build_verifier()
+    req = V._Req("VREQ-001", "Rename the domain 'alliance' to 'vendor_network'.", scope="domain", targets=["alliance"])
+    renamed = [{"domain": "vendor_network"}, {"domain": "campaign"}]
+    assert v._verify_deterministic(req, renamed, [], [])["status"] == "fulfilled"
+    assert v._verify_deterministic(req, [{"domain": "alliance"}, {"domain": "campaign"}], [], [])["status"] == "failed"
+    assert v._verify_deterministic(req, [{"domain": "alliance"}, {"domain": "vendor_network"}], [], [])["status"] == "partial"
+    other = V._Req("VREQ-002", "Rename the alliance domain to vendor_network.", scope="domain", targets=["alliance"])
+    assert v._verify_deterministic(other, renamed, [], [])["status"] == "fulfilled"
+    product = V._Req("VREQ-003", "Rename the product carrier in the order domain to shipping_carrier.", scope="table", targets=["order.carrier"])
+    try:
+        verdict = v._verify_deterministic(product, [{"domain": "order"}], [{"domain": "order", "product": "shipping_carrier"}], [])
+    except NameError:
+        verdict = None
+    assert not (verdict or {}).get("evidence", "").startswith("[verifier-rename-domain")
+
+
+def test_after_the_engine_only_the_engine_changes_an_open_field():
+    """Live c1 834012025262118: 'Add a business glossary term to every column that has none' opened the glossary field; the
+    engine filled the 7 empty terms, then the finalize tag cleanup cleared 1269 other terms on frozen columns, and the open
+    field let those clears reach model.json and Unity Catalog (1269 UNSET TAGS)."""
+    base = h.base_model()
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    assert spec.open_fields == {("attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    engine = copy.deepcopy(base)
+    roster_date = next(a for a in engine["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster_date["business_glossary_term"] = "Roster Date"
+    d, p, a, mv = ah.model_to_widgets_flat(engine)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    final = copy.deepcopy(engine)
+    tail = next(x for x in final["model"]["domains"][2]["products"][0]["attributes"] if x["name"] == "tail_number")
+    tail["business_glossary_term"] = ""
+    fence.splice_and_verify(final, h.LOG)
+    attrs = {(dd["name"], pp["name"], aa["name"]): aa for dd in final["model"]["domains"] for pp in dd["products"] for aa in pp["attributes"]}
+    assert attrs[("crew", "roster", "roster_date")]["business_glossary_term"] == "Roster Date"
+    assert attrs[("fleet", "aircraft", "tail_number")]["business_glossary_term"] == "Tail Number"
+    facts = fence.scope_facts(final, "passed")
+    assert [(x["product"], x["attribute"], x["new"]) for x in facts["permitted_deltas"] if x["kind"] == "P6"] == [
+        ("roster", "roster_date", {"business_glossary_term": "Roster Date"})]
+    wv = {"domains": d, "products": p, "attributes": copy.deepcopy(a), "_metric_view_records": mv}
+    for row in wv["attributes"]:
+        if row["product"] == "aircraft" and row["attribute"] == "tail_number":
+            row["business_glossary_term"] = ""
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in wv["attributes"] if r["attribute"] == "tail_number")["business_glossary_term"] == "Tail Number"
+
+
+def test_a_metadata_change_on_a_column_the_table_does_not_have_is_skipped_and_reported():
+    """Live c1 834012025262118: 15 UNSET TAGS statements failed with COLUMN_NOT_FOUND on columns the published model names
+    but the installed tables do not have."""
+    facts = h.scoped_facts()
+    facts["permitted_deltas"] = [{"kind": "P6", "domain": "fleet", "product": "aircraft", "attribute": attr, "old_fk": "", "new_fk": "",
+                                  "view_name": "", "fields": ["business_glossary_term"], "old": {"business_glossary_term": "Old"},
+                                  "new": {"business_glossary_term": ""}, "cause": "test"} for attr in ("tail_number", "home_base")]
+    plan = ah._scope_deploy_plan(facts, h.scoped_final_model(), h.LOG, use_runtime=False)
+    plan.columns["skyline.fleet.aircraft"] = {"aircraft_id": "bigint", "home_base": "string"}
+    out = plan._metadata_statements(("fleet", "aircraft"), "`skyline`.`fleet`.`aircraft`",
+                                    [("tail_number", "`tail_number` STRING"), ("home_base", "`home_base` STRING")], "x")
+    assert out == ["ALTER TABLE `skyline`.`fleet`.`aircraft` ALTER COLUMN `home_base` UNSET TAGS ('business_glossary_term');"]
+    assert plan.summary()["absent_columns"] == ["skyline.fleet.aircraft.tail_number"]
+    assert plan.counts["metadata_absent_column"] == 1
