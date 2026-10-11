@@ -893,7 +893,7 @@ def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fiel
     cur = copy.deepcopy(base)
     roster = cur["model"]["domains"][0]["products"][1]
     for attr in roster["attributes"]:
-        attr["business_glossary_term"] = attr["name"].replace("_", " ").title()
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
     dropped = roster["attributes"].pop()
     next(a for a in cur["model"]["domains"][2]["products"][0]["attributes"] if a["name"] == "tail_number")["business_glossary_term"] = ""
     kinds = fence.check(cur).summary()["by_kind"]
@@ -912,7 +912,7 @@ def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fiel
           "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0}}
     for r in a:
         if r["domain"] == "crew" and not r.get("business_glossary_term"):
-            r["business_glossary_term"] = r["attribute"].replace("_", " ").title()
+            r["business_glossary_term"] = "Crew " + r["attribute"].replace("_", " ").title()
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
     assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 100.0
 
@@ -956,7 +956,7 @@ def test_each_clause_opens_its_own_field_and_a_target_less_verdict_uses_the_open
     roster = cur["model"]["domains"][0]["products"][1]
     roster["description"] = "Who flies which duty on which day."
     for attr in roster["attributes"]:
-        attr["business_glossary_term"] = attr["name"].replace("_", " ").title()
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
     d, p, a, mv = ah.model_to_widgets_flat(cur)
     from test_v406_verifier_false_negatives import _Req
     for targets in (["*"], ["roster"], ["crew.roster"]):
@@ -985,6 +985,14 @@ def test_a_field_limited_target_is_shown_to_the_engine_and_the_sweep_with_its_op
     assert "roster_date (type: DATE)  [glossary: Roster Date]" in snap and snap.count("[glossary:") == 1
     whole = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew")
     assert "TABLE: crew.member" in whole
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    frozen, shown = ah._vibe_scope_digest_marks(base)
+    assert {("crew", "member"), ("crew", "roster"), ("crew", "base")} <= frozen & shown
+    assert ("fleet", "maintenance") in frozen and ("fleet", "maintenance") not in shown
+    assert "crew (every table): attributes.business_glossary_term" in ah.get_vibe_scope_runtime().prompt_block()
 
 
 def test_a_glossary_term_is_a_business_term_not_a_placeholder_or_a_sentence():
@@ -1011,7 +1019,8 @@ def test_a_glossary_term_is_a_business_term_not_a_placeholder_or_a_sentence():
                                                          source_chunk_id="c1")], base)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
-    for value, kinds in (("Date on which the roster applies.", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1})):
+    for value, kinds in (("Date on which the roster applies.", {"frozen_attr_changed": 1}), ("Roster Date", {"frozen_attr_changed": 1}),
+                         ("Crew Roster Date", {"P6": 1})):
         cur = copy.deepcopy(base)
         next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
         assert fence.check(cur).summary()["by_kind"] == kinds, value
@@ -1138,7 +1147,7 @@ def _roster_glossary_fence():
                                                          source_chunk_id="c1")], base)
     ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
     cur = copy.deepcopy(base)
-    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
     return text, cur
 
 
@@ -1154,13 +1163,13 @@ def test_every_scoring_path_reads_a_field_limited_target_with_the_deterministic_
     phys = [{"domain": "crew", "product": "roster", "attribute": "roster_id", "foreign_key_to": "", "data_type": "bigint", "tags": {}},
             {"domain": "crew", "product": "roster", "attribute": "member_id", "foreign_key_to": "crew.member.member_id", "data_type": "bigint"},
             {"domain": "crew", "product": "roster", "attribute": "roster_date", "foreign_key_to": "", "data_type": "date",
-             "tags": {"dbx_business_glossary_term": "Roster Date"}},
+             "tags": {"dbx_business_glossary_term": "Crew Roster Date"}},
             {"domain": "crew", "product": "roster", "attribute": "shift_code", "foreign_key_to": "", "data_type": "string",
              "tags": {"dbx_business_glossary_term": "Code of the shift the roster covers."}}]
     products = [{"domain": "crew", "product": "roster", "primary_key": "roster_id"}]
     verdict = orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)
     assert verdict["status"] == "partial" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2"), verdict
-    phys[3]["tags"] = {"dbx_business_glossary_term": "Shift Code"}
+    phys[3]["tags"] = {"dbx_business_glossary_term": "Crew Shift Code"}
     assert orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)["status"] == "fulfilled"
 
     class _AuditLLM:
@@ -1200,3 +1209,46 @@ def test_a_partly_met_set_target_requirement_is_partial_not_failed():
     assert wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
     assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "partial"})])[0] == "partial"
     assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "deferred"})])[0] == "failed"
+
+
+def test_a_glossary_fill_survives_the_serialization_cleanup_and_templates_are_placeholders():
+    """Live b8 640584420933318: the sweep replaced 211 'GlossaryTerm_<column>' values with real terms, but the model.json
+    serializer fills every blank term with the column name in Title Case and the VOV reviewer finalization (P12) then clears
+    every term that equals its column name, so 75 terms such as 'Annual Budget Amount' became blank and the fence accepted
+    the blanks. The snapshot also showed the 125 sentence values as terms, so the sweep left them, and 'Finance Column:
+    <column>' templates and the agent's own 'Primary Key for <table>' terms passed as real terms."""
+    defect = ah._v533_glossary_term_defect
+    assert defect("Finance Column: budget_owner_name") == "placeholder" and defect("Primary Key for guest_visit") == "placeholder"
+    assert defect("Unique surrogate identifier for a cost center record, used as the primary key for the cost_center entity.") == "sentence"
+    assert defect("Preferred Store Identifier (PREFERRED_STORE_ID)") is None
+    assert ah._v533_glossary_is_column_name("Annual Budget Amount", "annual_budget_amount")
+    assert not ah._v533_glossary_is_column_name("Cost Center Annual Budget Amount", "annual_budget_amount")
+    assert ah._vibe_scope_bad_value("business_glossary_term", "Annual Budget Amount", "annual_budget_amount")
+    assert ah._v533_identifier_term("guest_visit", "Identifier") == "Guest Visit Identifier"
+    src = open(conftest.NOTEBOOK_PATH, encoding="utf-8").read()
+    assert "Primary Key for {" not in src and "Reference to {best_target" not in src and "Reference to {forced_target" not in src
+    base = h.base_model()
+    roster = base["model"]["domains"][0]["products"][1]
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = "GlossaryTerm_" + attr["name"]
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    for value, kinds in (("", {"frozen_attr_changed": 1}), ("Roster Date", {"frozen_attr_changed": 1}), ("Crew Duty Date", {"P6": 1})):
+        cur = copy.deepcopy(base)
+        next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+        assert fence.check(cur).summary()["by_kind"] == kinds, repr(value)
+    cleaned = copy.deepcopy(base)
+    attrs = cleaned["model"]["domains"][0]["products"][1]["attributes"]
+    attrs[0]["business_glossary_term"], attrs[1]["business_glossary_term"] = attrs[0]["name"].replace("_", " ").title(), "Crew Duty Date"
+    ah._v441_reviewer_finalization(cleaned, "Give every column of crew.roster a glossary term.", h.LOG)
+    assert attrs[0]["business_glossary_term"] == "" and attrs[1]["business_glossary_term"] == "Crew Duty Date"
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    rows = {r["attribute"]: r for r in a if r["domain"] == "crew" and r["product"] == "roster"}
+    names = list(rows)
+    rows[names[0]]["business_glossary_term"] = "Date on which the crew roster applies."
+    rows[names[1]]["business_glossary_term"] = "Crew Duty Date"
+    snap = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter="roster")
+    assert snap.count("[glossary:") == 1 and "[glossary: Crew Duty Date]" in snap and "GlossaryTerm_" not in snap

@@ -35,6 +35,10 @@ def _bind_verify_requirement(path):
     src = _full_src(path)
     ns = {"re": re, **pk_suffix_globals()}
     exec(_extract_fn(src, "_verify_requirement"), ns)
+    if "def _vibe_scope_open_field_verdict(" in src:
+        ns["_VIBE_SCOPE_RUNTIME"] = None
+        for name in ("get_vibe_scope_runtime", "_vibe_scope_open_field_verdict"):
+            exec(re.search(rf"(?ms)^def {name}\(.*?(?=^\S)", src).group(0), ns)
     if "def _verify_domain_structural_op(self" in src:
         for name in ("_v337_negated_before", "_v337_extract_domain_rename", "_v337_extract_domain_merge",
                      "_v337_extract_bulk_move", "_v407_resolve_dp"):

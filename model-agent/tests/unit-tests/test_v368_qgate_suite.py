@@ -191,6 +191,9 @@ def _load_bulk_coverage():
     ns = {"re": _re}
     exec(_re.search(r"^_V381_PLACEHOLDER_VALUES = .*$", src, _re.M).group(0), ns)
     exec(_re.search(r"^def _v381_is_placeholder_tag_value\(.*?(?=^\S)", src, _re.M | _re.S).group(0), ns)
+    for name in ("_v533_glossary_term_defect", "_v533_attr_glossary_value"):
+        if f"def {name}(" in src:
+            exec(_re.search(rf"^def {name}\(.*?(?=^\S)", src, _re.M | _re.S).group(0), ns)
     exec(compile(seg, "nb", "exec"), ns)
     return ns["_verify_bulk_coverage"]
 
