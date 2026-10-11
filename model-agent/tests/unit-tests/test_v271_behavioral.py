@@ -229,6 +229,8 @@ def _make_verifier_self():
     import json as _json
     fn_src = _slice_method_source("_verify_bulk_coverage")
     ns = {"re": re, "defaultdict": defaultdict, "json": _json}
+    exec(re.search(r"^_V381_PLACEHOLDER_VALUES = .*$", SRC, re.M).group(0), ns)
+    exec(re.search(r"^def _v381_is_placeholder_tag_value\(.*?(?=^\S)", SRC, re.M | re.S).group(0), ns)
     exec(compile(fn_src, "<_verify_bulk_coverage>", "exec"), ns)
     fs = SimpleNamespace(config={}, logger=_ListLogger())
     fs._verify_bulk_coverage = ns["_verify_bulk_coverage"].__get__(fs)

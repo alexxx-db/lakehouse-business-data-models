@@ -189,6 +189,8 @@ def _load_bulk_coverage():
     assert target is not None, "_verify_bulk_coverage method must exist (g3 shipped)"
     seg = textwrap.dedent("".join(lines[target.lineno - 1:target.end_lineno]))
     ns = {"re": _re}
+    exec(_re.search(r"^_V381_PLACEHOLDER_VALUES = .*$", src, _re.M).group(0), ns)
+    exec(_re.search(r"^def _v381_is_placeholder_tag_value\(.*?(?=^\S)", src, _re.M | _re.S).group(0), ns)
     exec(compile(seg, "nb", "exec"), ns)
     return ns["_verify_bulk_coverage"]
 

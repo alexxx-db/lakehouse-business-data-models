@@ -279,13 +279,16 @@ def test_a_set_target_requirement_opens_only_the_fields_it_names():
     spec, wide = ah._vibe_scope_requested_spec([_wide("Make sure every table in the model has a non-empty description.")], base)
     assert wide == [] and spec.mode == "requested" and spec.entries == ()
     assert spec.open_fields == {("products", "description")} and spec.open_field_vreqs == ("VREQ-0001",)
+    assert spec.fill_only_fields == {("products", "description")}
+    spec, _wide_list = ah._vibe_scope_requested_spec([_wide("Rewrite every table description in plain business English.")], base)
+    assert spec.open_fields == {("products", "description")} and spec.fill_only_fields == frozenset()
     spec, wide = ah._vibe_scope_requested_spec([_wide("Add an audit column to every table.")], base)
     assert spec is None and wide == ["VREQ-0001: *"]
 
 
 def _field_fence():
     base = h.base_model()
-    spec, _wide_list = ah._vibe_scope_requested_spec([_wide("Make sure every table in the model has a non-empty description.")], base)
+    spec, _wide_list = ah._vibe_scope_requested_spec([_wide("Rewrite every table description in plain business English.")], base)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
     return base, fence
@@ -346,7 +349,7 @@ def test_in_a_scoped_run_a_set_target_opens_fields_only_inside_the_scope():
     base = h.base_model()
     fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "fleet"), base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
-    ah._vibe_scope_narrow_scoped(fence, [_wide("Make sure every table has a non-empty description.")], base)
+    ah._vibe_scope_narrow_scoped(fence, [_wide("Rewrite every table description in plain business English.")], base)
     assert fence.spec.named_only and fence.spec.open_fields == {("products", "description")}
     cur = _described(base)
     cur["model"]["domains"][1]["products"][0]["description"] = "rewritten outside the scope"
@@ -467,3 +470,92 @@ def test_a_metadata_change_on_a_column_the_table_does_not_have_is_skipped_and_re
     assert out == ["ALTER TABLE `skyline`.`fleet`.`aircraft` ALTER COLUMN `home_base` UNSET TAGS ('business_glossary_term');"]
     assert plan.summary()["absent_columns"] == ["skyline.fleet.aircraft.tail_number"]
     assert plan.counts["metadata_absent_column"] == 1
+
+
+def test_a_column_introduced_with_named_or_called_is_verified_by_its_name():
+    """Live a7 954014908148594: 'add a new column named anniversary_plan_id with type BIGINT' landed in model.json and in
+    Unity Catalog, yet the verifier read the column name as 'named', did not see an add verb, fell back to the count diff
+    ('No model changes detected') and scored it failed: 50% adherence in model.json and the requirement in MISSED VIBES."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    orch._step_snapshots = {"step_interpret_model_instructions_before": {
+        "domains": {"customer": {}}, "products": {"customer.household": {}}, "product_attributes": {"customer.household": ["household_id", "x"]}}}
+    with_col = [{"domain": "customer", "product": "household", "attribute": "household_id", "foreign_key_to": ""},
+                {"domain": "customer", "product": "household", "attribute": "anniversary_plan_id", "foreign_key_to": ""}]
+    without = [with_col[0], {"domain": "customer", "product": "household", "attribute": "x", "foreign_key_to": ""}]
+    prods = [{"domain": "customer", "product": "household"}]
+    domains = [{"domain": "customer"}]
+    text = "In the product customer.household (within the customer domain), add a new column named anniversary_plan_id with type BIGINT."
+    req = _Req(text, "VREQ-001", ["customer.household"])
+    assert orch._verify_deterministic(req, domains, prods, with_col)["status"] == "fulfilled"
+    assert orch._verify_deterministic(req, domains, prods, without)["status"] == "failed"
+    called = _Req("Add a BIGINT column called anniversary_plan_id to customer.household.", "VREQ-002")
+    assert orch._verify_deterministic(called, domains, prods, with_col)["status"] == "fulfilled"
+    assert orch._verify_deterministic(called, domains, prods, without)["status"] == "failed"
+    removal = _Req("In customer.household, remove the column named anniversary_plan_id.", "VREQ-003", ["customer.household"])
+    assert orch._verify_deterministic(removal, domains, prods, with_col)["status"] == "failed"
+    assert orch._verify_deterministic(removal, domains, prods, without)["status"] == "fulfilled"
+    assert ah._v337_extract_col_rename("In order.order_note, rename the column named note_lang to note_language.") == ("note_lang", "note_language")
+
+
+def test_a_placeholder_glossary_term_is_not_coverage_and_is_reported():
+    """Live c1 834012025262118: the engine filled the empty glossary terms with 'TODO' and the coverage verifier counted
+    every glossary tag key as covered whatever its value."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    req = _Req("Add a business glossary term to every column that has none.", "VREQ-001", ["*"])
+    real = [{"domain": "d", "product": "p", "attribute": f"a{i}", "tags": f"dbx_business_glossary_term=Term {i}"} for i in range(9)]
+    todo = real + [{"domain": "d", "product": "p", "attribute": "a9", "tags": "dbx_business_glossary_term=TODO"}]
+    assert orch._verify_bulk_coverage(req, [], [], real + [{"domain": "d", "product": "p", "attribute": "a9", "tags": "dbx_business_glossary_term=Last"}])["status"] == "fulfilled"
+    assert orch._verify_bulk_coverage(req, [], [], todo)["evidence"].split(" coverage ")[1].startswith("9/10")
+    by_field = [{"domain": "d", "product": "p", "attribute": "a0", "business_glossary_term": "TBD"},
+                {"domain": "d", "product": "p", "attribute": "a1", "business_glossary_term": "Order Date"}]
+    assert orch._verify_bulk_coverage(req, [], [], by_field)["evidence"].split(" coverage ")[1].startswith("1/2")
+    findings = ah._v381_verify_tag_semantics([], [], [{"domain": "menu", "product": "menu_modifier_group", "attribute": "menu_id", "business_glossary_term": "TODO"},
+                                                    {"domain": "menu", "product": "menu_modifier_group", "attribute": "name", "business_glossary_term": "Modifier Group Name"}])
+    assert findings == ["[SA:tag_placeholder_value] menu.menu_modifier_group.menu_id: business glossary term has placeholder value 'TODO'"]
+
+
+def test_a_requirement_about_empty_values_changes_only_empty_values():
+    """Live a9 116734783973928: for 'Make sure every table in the model has a non-empty description' the verification-sweep
+    corrective rewrote 83 descriptions that were already filled."""
+    base = h.base_model()
+    base["model"]["domains"][0]["products"][1]["description"] = ""
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Make sure every table in the model has a non-empty description.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = _described(base)
+    cur["model"]["domains"][0]["products"][1]["description"] = "Who flies which duty on which day."
+    result = fence.check(cur)
+    assert result.summary()["by_kind"] == {"P6": 1, "frozen_product_changed": 1}
+    assert [v["path"] for v in result.violations] == ["fleet.aircraft"]
+    fence.splice_and_verify(cur, h.LOG)
+    assert cur["model"]["domains"][0]["products"][1]["description"] == "Who flies which duty on which day."
+    assert cur["model"]["domains"][2]["products"][0]["description"] == base["model"]["domains"][2]["products"][0]["description"]
+
+
+def test_open_fields_settle_at_the_review_checkpoint():
+    """The verification-sweep corrective applies set-target requirements after the engine; what it sets by the review checkpoint
+    is kept, and a later pass cannot change it."""
+    base = h.base_model()
+    roster = next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster["business_glossary_term"] = ""
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Date"
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Rota Day"
+    ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Date"
+    final = ah.widgets_flat_to_model(d, p, a, mv)
+    final = {"model": final} if "model" not in final else final
+    next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] = ""
+    fence.splice_and_verify(final, h.LOG)
+    assert next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] == "Roster Date"
