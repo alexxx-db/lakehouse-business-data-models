@@ -706,3 +706,52 @@ def test_every_function_that_logs_without_a_logger_argument_has_the_vov_logger()
                 free.append(fn.name)
     assert "_apply_handler_with_retry" in free and module_logger
     assert isinstance(ah.__dict__.get("logger"), logging.Logger) and ah.__dict__["logger"].name == "vov2-pipeline"
+
+
+def test_the_mutation_engine_sets_glossary_terms_and_stewards_as_fields_not_tags():
+    """Live c3 135313671686372: the verification-sweep corrective could not set business_glossary_term, since the mutation
+    engine knew neither the field nor told the LLM about it; a modify of it became a 'business_glossary_term=...' tag and
+    the LLM fell back to placeholder terms."""
+    import logging
+    domains = [{"domain": "order"}]
+    products = [{"domain": "order", "product": "sales_order", "description": "Orders", "tags": "", "steward": ""}]
+    attributes = [{"domain": "order", "product": "sales_order", "attribute": "order_date", "type": "DATE", "tags": "", "business_glossary_term": "", "steward": ""}]
+    mutations = [{"entity_type": "attribute", "operation": "modify", "entity_ref": "order.sales_order.order_date", "field": "business_glossary_term", "new_value": "Order Date"},
+                 {"entity_type": "attribute", "operation": "modify", "entity_ref": "order.sales_order.order_date.steward", "new_value": "sales_ops"},
+                 {"entity_type": "product", "operation": "modify", "entity_ref": "order.sales_order", "field": "steward", "new_value": "order_desk"}]
+    ah._llm_fallback_apply_mutations(mutations, domains, products, attributes, [], logging.getLogger("t533"))
+    assert attributes[0]["business_glossary_term"] == "Order Date" and attributes[0]["steward"] == "sales_ops" and attributes[0]["tags"] == ""
+    assert products[0]["steward"] == "order_desk" and products[0]["tags"] == ""
+    assert "business_glossary_term, steward" in h.notebook_concat_source()
+
+
+def test_a_set_target_requirement_that_changed_no_open_field_is_not_counted_applied():
+    """Live c3 135313671686372: every glossary value the corrective wrote was a placeholder, the fence put them all back,
+    yet the in-scope adherence said 100% while the verifiers said 0%."""
+    def _wv(base, status="applied"):
+        d, p, a, mv = ah.model_to_widgets_flat(base)
+        return {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+                "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": "glossary", "target": "*", "source_quote": ""}],
+                "_vov_vreq_status": {"VREQ-0001": {"status": status, "reason": ""}},
+                "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+
+    text = "Add a business glossary term to every column that has none."
+    base = h.base_model()
+    next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "TODO"
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    fence.splice_and_verify(copy.deepcopy(base), h.LOG)
+    wv = _wv(base)
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "noop_failed" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    filled = h.base_model()
+    for attr in (a for d in filled["model"]["domains"] for p in d["products"] for a in p["attributes"]):
+        attr["business_glossary_term"] = attr.get("business_glossary_term") or attr["name"].replace("_", " ").title()
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], filled)
+    fence = ah.build_vibe_scope_fence(spec, filled, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    fence.splice_and_verify(copy.deepcopy(filled), h.LOG)
+    wv = _wv(filled)
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == [], "a requirement the base already satisfies stays applied"
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied"
