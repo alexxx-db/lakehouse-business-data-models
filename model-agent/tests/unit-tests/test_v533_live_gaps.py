@@ -687,3 +687,22 @@ def test_requirements_that_name_different_tables_are_never_duplicates():
     same = [vreqs[0], ah.RawVREQ(vreq_id="VREQ-0009", intent=vreqs[0].intent, target=vreqs[0].target, source_quote=vreqs[0].source_quote,
                                  source_chunk_id="c2")]
     assert [len(c) for c in ah.cluster_vreqs(same)] == [2]
+
+
+def test_every_function_that_logs_without_a_logger_argument_has_the_vov_logger():
+    """Live a13 940565594073673: the sandbox repair passed a free name 'logger' that _apply_handler_with_retry never defined;
+    the NameError halted the run. Eight other VOV runtime functions logged through the same free name inside try blocks,
+    so their log lines were dropped."""
+    import ast
+    import logging
+    tree = ast.parse(h.notebook_concat_source())
+    module_logger = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "logger" for t in n.targets) for n in tree.body)
+    free = []
+    for node in tree.body:
+        fns = [node] if isinstance(node, ast.FunctionDef) else [b for b in getattr(node, "body", []) if isinstance(b, ast.FunctionDef)] if isinstance(node, ast.ClassDef) else []
+        for fn in fns:
+            bound = {a.arg for a in fn.args.args + fn.args.kwonlyargs} | {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+            if "logger" not in bound and any(isinstance(n, ast.Name) and n.id == "logger" for n in ast.walk(fn)):
+                free.append(fn.name)
+    assert "_apply_handler_with_retry" in free and module_logger
+    assert isinstance(ah.__dict__.get("logger"), logging.Logger) and ah.__dict__["logger"].name == "vov2-pipeline"
