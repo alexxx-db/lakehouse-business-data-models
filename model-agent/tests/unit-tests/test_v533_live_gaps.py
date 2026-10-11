@@ -1019,7 +1019,7 @@ def test_a_glossary_term_is_a_business_term_not_a_placeholder_or_a_sentence():
                                                          source_chunk_id="c1")], base)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
-    for value, kinds in (("Date on which the roster applies.", {"frozen_attr_changed": 1}), ("Roster Date", {"frozen_attr_changed": 1}),
+    for value, kinds in (("Date on which the roster applies.", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1}),
                          ("Crew Roster Date", {"P6": 1})):
         cur = copy.deepcopy(base)
         next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
@@ -1212,18 +1212,18 @@ def test_a_partly_met_set_target_requirement_is_partial_not_failed():
 
 
 def test_a_glossary_fill_survives_the_serialization_cleanup_and_templates_are_placeholders():
-    """Live b8 640584420933318: the sweep replaced 211 'GlossaryTerm_<column>' values with real terms, but the model.json
-    serializer fills every blank term with the column name in Title Case and the VOV reviewer finalization (P12) then clears
-    every term that equals its column name, so 75 terms such as 'Annual Budget Amount' became blank and the fence accepted
-    the blanks. The snapshot also showed the 125 sentence values as terms, so the sweep left them, and 'Finance Column:
-    <column>' templates and the agent's own 'Primary Key for <table>' terms passed as real terms."""
+    """Live b8 640584420933318: the sweep replaced 211 'GlossaryTerm_<column>' values with real terms, but the VOV reviewer
+    finalization (P12) cleared every term equal to its column name on every run, so 75 terms such as 'Annual Budget Amount'
+    became blank and the fence accepted the blanks. The snapshot also showed the 125 sentence values as terms, so the sweep
+    left them, and 'Finance Column: <column>' templates and the agent's own 'Primary Key for <table>' terms passed as real
+    terms."""
     defect = ah._v533_glossary_term_defect
     assert defect("Finance Column: budget_owner_name") == "placeholder" and defect("Primary Key for guest_visit") == "placeholder"
     assert defect("Unique surrogate identifier for a cost center record, used as the primary key for the cost_center entity.") == "sentence"
     assert defect("Preferred Store Identifier (PREFERRED_STORE_ID)") is None
     assert ah._v533_glossary_is_column_name("Annual Budget Amount", "annual_budget_amount")
     assert not ah._v533_glossary_is_column_name("Cost Center Annual Budget Amount", "annual_budget_amount")
-    assert ah._vibe_scope_bad_value("business_glossary_term", "Annual Budget Amount", "annual_budget_amount")
+    assert not ah._vibe_scope_bad_value("business_glossary_term", "Annual Budget Amount")
     assert ah._v533_identifier_term("guest_visit", "Identifier") == "Guest Visit Identifier"
     src = open(conftest.NOTEBOOK_PATH, encoding="utf-8").read()
     assert "Primary Key for {" not in src and "Reference to {best_target" not in src and "Reference to {forced_target" not in src
@@ -1236,7 +1236,7 @@ def test_a_glossary_fill_survives_the_serialization_cleanup_and_templates_are_pl
                                                          source_chunk_id="c1")], base)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
-    for value, kinds in (("", {"frozen_attr_changed": 1}), ("Roster Date", {"frozen_attr_changed": 1}), ("Crew Duty Date", {"P6": 1})):
+    for value, kinds in (("", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1}), ("Crew Duty Date", {"P6": 1})):
         cur = copy.deepcopy(base)
         next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
         assert fence.check(cur).summary()["by_kind"] == kinds, repr(value)
@@ -1244,6 +1244,8 @@ def test_a_glossary_fill_survives_the_serialization_cleanup_and_templates_are_pl
     attrs = cleaned["model"]["domains"][0]["products"][1]["attributes"]
     attrs[0]["business_glossary_term"], attrs[1]["business_glossary_term"] = attrs[0]["name"].replace("_", " ").title(), "Crew Duty Date"
     ah._v441_reviewer_finalization(cleaned, "Give every column of crew.roster a glossary term.", h.LOG)
+    assert attrs[0]["business_glossary_term"] == attrs[0]["name"].replace("_", " ").title() and attrs[1]["business_glossary_term"] == "Crew Duty Date"
+    ah._v441_reviewer_finalization(cleaned, "Clean up the auto-generated glossary terms of crew.roster.", h.LOG)
     assert attrs[0]["business_glossary_term"] == "" and attrs[1]["business_glossary_term"] == "Crew Duty Date"
     d, p, a, _mv = ah.model_to_widgets_flat(base)
     rows = {r["attribute"]: r for r in a if r["domain"] == "crew" and r["product"] == "roster"}
@@ -1252,3 +1254,85 @@ def test_a_glossary_fill_survives_the_serialization_cleanup_and_templates_are_pl
     rows[names[1]]["business_glossary_term"] = "Crew Duty Date"
     snap = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter="roster")
     assert snap.count("[glossary:") == 1 and "[glossary: Crew Duty Date]" in snap and "GlossaryTerm_" not in snap
+
+
+def test_the_serializer_and_the_attribute_factory_never_invent_a_glossary_term():
+    """Decision 5A (live b8 640584420933318): the model.json serializer wrote the column name in Title Case into every empty
+    glossary term, about 20% of the terms in base models, and the attribute factory wrote 'Product - Column', so coverage
+    counted terms nobody wrote; every VOV then cleared every term equal to its column name, real ones included."""
+    assert ah._modeljson_attr_obj({"attribute": "currency_code", "business_glossary_term": ""})["business_glossary_term"] == ""
+    assert ah._modeljson_attr_obj({"attribute": "currency_code", "business_glossary_term": " Settlement Currency "})["business_glossary_term"] == "Settlement Currency"
+    assert ah.make_attribute_dict("b", "crew", "roster", "shift_code")["business_glossary_term"] == ""
+    assert ah.make_attribute_dict("b", "crew", "roster", "roster_id", glossary="Crew Roster Identifier")["business_glossary_term"] == "Crew Roster Identifier"
+    assert ah._v533_vibe_asks_glossary_cleanup("Clean up the auto-generated glossary terms.")
+    assert ah._v533_vibe_asks_glossary_cleanup("Remove the noise glossary tags")
+    assert not ah._v533_vibe_asks_glossary_cleanup("Add a business glossary term to every column that has none.")
+    assert not ah._v533_vibe_asks_glossary_cleanup("Remove the foreign key on campaign_id.")
+
+
+def test_a_set_or_empty_requirement_target_falls_back_to_the_target_its_vibe_item_names():
+    """Live b9 399314237946296: the vibe item was anchored 'target=finance', but the extractor gave the requirement a set
+    target, so the fence opened the glossary field on every frozen record and named nothing."""
+    base = h.base_model()
+    vibe = ("## Domain: crew\n- (high) [crew] Add a business glossary term to every column of the crew domain that has none. "
+            "<!-- vi:7f8dd164-a4ab-400a-be44-54b04e4b8dc2 target=crew -->\n")
+    stripped, items = ah._vibe_input_strip(vibe)
+    input_map = {"sha": ah._vibe_input_sha(stripped), "chars": len(stripped), "items": items, "vreqs": {}}
+    quote = "[crew] Add a business glossary term to every column of the crew domain that has none."
+    vreqs = [ah.RawVREQ(vreq_id="VREQ-0001", intent="In the crew domain, add a glossary term to every column that has none.", target=target,
+                        source_quote=quote, source_chunk_id="c1") for target in ("*", "", "crew domain")]
+    vreqs.append(ah.RawVREQ(vreq_id="VREQ-0002", intent="Describe crew.roster.", target="crew.roster", source_quote=quote, source_chunk_id="c1"))
+    out = ah._vov_normalize_vreq_targets(vreqs, base, h.LOG, input_map=input_map, vibe_text=stripped)
+    assert [v.target for v in out] == ["crew", "crew", "crew", "crew.roster"]
+    assert [v.target for v in ah._vov_normalize_vreq_targets(vreqs[:1], base, h.LOG)] == ["*"], "no vibe item, no change"
+    spec, _w = ah._vibe_scope_requested_spec(out[:1], base)
+    assert spec.entries == ("crew",) and spec.open_fields == frozenset()
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+    assert ah._vov_target_is_wide("*") and ah._vov_target_is_wide("") and ah._vov_target_is_wide("crew domain")
+    assert not ah._vov_target_is_wide("crew.*") and not ah._vov_target_is_wide("crew.roster")
+
+
+def test_the_engine_cannot_call_an_open_field_requirement_already_satisfied_while_values_are_missing():
+    """Live b9 399314237946296: the engine's handler returned an empty diff with 'already satisfied: ... targets the frozen
+    out-of-scope finance domain', and the empty diff was counted as applied, so no corrective ran and nothing changed."""
+    from test_v514_vibe_scope_vov_engine import _CannedLLM
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    noop = "def mutator(model, data):\n    return model\n"
+    summary = "already satisfied: the table is frozen and no operation may add glossary terms"
+    batch = ah.Batch(batch_id="B1", vreq_ids=("VREQ-0001",), intent_summary=text, target_entities=(("crew", "roster"),),
+                     data_payload=({"intent": text, "target": "crew.roster", "source_quote": text},))
+    handler = ah.Handler(batch_id="B1", mutator_src=noop, verifier_src="", expected_changes_summary=summary, target_entities=(("crew", "roster"),))
+    model = copy.deepcopy(base)
+    invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
+    llm = _CannedLLM(mutator=noop, summary=summary)
+    new_model, outcome = ah._apply_handler_with_retry(handler, batch, model, invariants, llm, 3, (), (), 60.0)
+    assert new_model is None and outcome.status == "noop_failed" and "already satisfied" in outcome.diagnostic, outcome
+    assert fence.open_fields_needed(ah._vibe_scope_index(model)) == 3
+    for attr in model["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    assert fence.open_fields_needed(ah._vibe_scope_index(model)) == 0
+    invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
+    done, outcome = ah._apply_handler_with_retry(handler, batch, model, invariants, llm, 3, (), (), 60.0)
+    assert outcome.status == "applied", "a requirement whose values are all present is already satisfied"
+
+
+def test_model_json_carries_the_in_scope_adherence_after_the_final_outcomes():
+    """Live b9 399314237946296: model.json said adherence_in_scope_pct 100.0 while the final outcomes failed the only
+    requirement, because the scope facts are a copy taken before the final outcomes ran."""
+    text, cur = _roster_glossary_fence()
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    outcomes = {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew.roster", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}}, "_vibe_scope_outcomes": outcomes,
+          "_vibe_scope_facts": {"mode": "requested", "outcomes": json.loads(json.dumps(outcomes))}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vibe_scope_facts"]["outcomes"]["adherence_in_scope_pct"] == 0.0
+    assert wv["_vibe_scope_facts"]["outcomes"] is not wv["_vibe_scope_outcomes"]

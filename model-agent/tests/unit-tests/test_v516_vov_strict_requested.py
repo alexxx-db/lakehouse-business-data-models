@@ -259,7 +259,7 @@ def _pipeline_body():
 def test_both_extraction_paths_start_the_requested_fence_before_triage():
     body = _pipeline_body()
     raw = body.index("_vibe_scope_start_requested(list(deduped) + list(_anchored_vreqs), scope_base_model or initial_model, logger, initial_model)")
-    assert body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger)") < raw
+    assert body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger") < raw
     assert raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
     prio = body.index("_vibe_scope_start_requested(list(deduped) + list(_user_free) + list(_anchored_vreqs), scope_base_model or initial_model, logger, initial_model)")
     assert prio < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")

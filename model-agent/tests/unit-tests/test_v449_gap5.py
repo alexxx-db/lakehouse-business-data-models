@@ -55,6 +55,8 @@ def _load_parser_and_finalizer():
     ns = {"re": re, **pk_predicate_globals(), **vov_ledger_globals()}
     exec(_slice_def(_cell_defining(cells, "_vov_named_create_targets"), "_vov_named_create_targets"), ns)
     exec(_slice_def(_cell_defining(cells, "_v441_reviewer_finalization"), "_v441_reviewer_finalization"), ns)
+    for name in ("_v533_glossary_is_column_name", "_v533_vibe_asks_glossary_cleanup"):
+        exec(_slice_def(_cell_defining(cells, name), name), ns)
     return ns
 
 

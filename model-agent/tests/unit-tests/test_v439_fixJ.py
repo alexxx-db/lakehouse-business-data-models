@@ -99,7 +99,7 @@ P3_BLOCK = (
 
 def _expander_ns():
     return slice_functions(
-        ["_v436_expand_vreq_to_priorities"],
+        ["_v436_expand_vreq_to_priorities", "_v533_vibe_asks_glossary_cleanup"],
         concat_source(), extra_globals={"re": re})
 
 

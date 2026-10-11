@@ -28,7 +28,7 @@ class _V:
 
 def _expander():
     src = concat_source()
-    ns = slice_functions(["_v436_expand_vreq_to_priorities"], src, extra_globals={"re": re})
+    ns = slice_functions(["_v436_expand_vreq_to_priorities", "_v533_vibe_asks_glossary_cleanup"], src, extra_globals={"re": re})
     return ns["_v436_expand_vreq_to_priorities"]
 
 

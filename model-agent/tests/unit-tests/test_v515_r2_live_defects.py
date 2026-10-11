@@ -127,10 +127,10 @@ def _pipeline_body():
 
 def test_both_extraction_paths_normalize_targets_before_scope_triage():
     body = _pipeline_body()
-    raw = body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger)")
+    raw = body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger")
     assert body.index("_v292_audit_extraction_completeness(vibe_text, deduped") < raw
     assert raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
-    user = body.index("_user_free = _vov_normalize_vreq_targets(_vov_extract_user_free_text(vibe_text, llm, parallel, logger), model, logger)")
+    user = body.index("_user_free = _vov_normalize_vreq_targets(_vov_extract_user_free_text(vibe_text, llm, parallel, logger), model, logger")
     assert user < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")
 
 

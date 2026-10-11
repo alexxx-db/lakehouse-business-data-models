@@ -30,7 +30,7 @@ class _V:
 def _expander_ns():
     src = concat_source()
     return slice_functions(
-        ["_v436_expand_vreq_to_priorities", "_v437_priority_to_v337_op"],
+        ["_v436_expand_vreq_to_priorities", "_v437_priority_to_v337_op", "_v533_vibe_asks_glossary_cleanup"],
         src, extra_globals={"re": re})
 
 

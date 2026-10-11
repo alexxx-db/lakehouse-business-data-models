@@ -31,7 +31,7 @@ class _Log:
 
 
 def _finalize_ns():
-    return slice_functions(["_v441_reviewer_finalization"], concat_source(),
+    return slice_functions(["_v441_reviewer_finalization", "_v533_glossary_is_column_name", "_v533_vibe_asks_glossary_cleanup"], concat_source(),
                            extra_globals={"re": re, **pk_predicate_globals(), **vov_ledger_globals()})
 
 
@@ -229,10 +229,13 @@ def test_p9_silo_guard_repoints_to_master_not_reversed_fk():
 
 
 # ============================================================ P12
+P12_DIRECTIVE = "REVIEWER-PRIORITY 12 - glossary_and_regex_tag_cleanup: clean up the auto-generated glossary terms and redundant value_regex tags.\n"
+
+
 def test_p12_clears_junk_keeps_genuine_and_pii():
     ns = _finalize_ns()
     dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
+    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT + P12_DIRECTIVE, _Log())
     prof = _prod(_cust(dm), "profile")
     email = _attr(prof, "email")
     status = _attr(prof, "status_code")
@@ -247,6 +250,18 @@ def test_p12_clears_junk_keeps_genuine_and_pii():
     assert all(t.get("key") != "dbx_value_regex" for t in status.get("tag_set", []))
     # genuine glossary term (NOT a title-cased column name) kept
     assert region.get("business_glossary_term", "") == "Customer Home Region"
+
+
+def test_p12_keeps_glossary_terms_when_the_vibe_asks_for_no_cleanup():
+    """Live b8 640584420933318: P12 cleared every glossary term equal to its column name on every VOV, including 75 real
+    terms the run had just written for 'add a business glossary term to every column that has none'."""
+    ns = _finalize_ns()
+    dm = _base_model()
+    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
+    prof = _prod(_cust(dm), "profile")
+    assert _attr(prof, "email").get("business_glossary_term", "") == "Email"
+    assert any(t.get("key") == "dbx_business_glossary_term" for t in _attr(prof, "email").get("tag_set", []))
+    assert _attr(prof, "status_code").get("value_regex", "") == "", "the value_regex cleanup does not depend on the vibe"
 
 
 # ============================================================ P11

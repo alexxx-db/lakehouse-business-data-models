@@ -47,7 +47,7 @@ class _Log:
 
 
 def _expander_ns():
-    return slice_functions(["_v436_expand_vreq_to_priorities"], concat_source(),
+    return slice_functions(["_v436_expand_vreq_to_priorities", "_v533_vibe_asks_glossary_cleanup"], concat_source(),
                            extra_globals={"re": re})
 
 
@@ -128,7 +128,7 @@ def test_p6_split_applier_materializes_child_tables():
 def _handler_ns():
     return slice_functions(
         ["_v251_apply_priority_deterministic", "_v251_model_root",
-         "_v251_find_attribute_row", "_v251_find_product"],
+         "_v251_find_attribute_row", "_v251_find_product", "_v533_glossary_is_column_name"],
         concat_source(), extra_globals={"re": re, "copy": copy})
 
 
