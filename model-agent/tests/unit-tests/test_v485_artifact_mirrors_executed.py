@@ -63,6 +63,7 @@ def run_block(statements, failed=(), fallback=None, domains=("retail",)):
         ),
     }
     from notebook_source_util import slice_function_source
+    exec(compile(slice_function_source("_vibe_scope_write_preserved_metric_views"), "<_vibe_scope_write_preserved_metric_views>", "exec"), ns)
     exec(compile(slice_function_source("_write_metric_sql_artifacts"), "<_write_metric_sql_artifacts>", "exec"), ns)
     exec(compile(rewrite_block(), "<rewrite_block>", "exec"), ns)
     return written, ns["widgets_values"]

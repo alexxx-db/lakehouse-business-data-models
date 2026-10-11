@@ -245,7 +245,7 @@ def test_the_files_are_written_from_the_substituted_statement_list():
     block = body[_gate_index(body):]
     assert "for _stmt in metric_view_statements:" in block, (
         "the rewrite no longer iterates the substituted list")
-    assert "_write_metric_sql_artifacts(widgets_values, config, business_name, _surviving_stmts, _vs_mv_kept, logger)" in block
+    assert "_write_metric_sql_artifacts(widgets_values, config, business_name, _surviving_stmts, _vs_mv_kept, logger," in block
     helper = _slice_function(_source(), "_write_metric_sql_artifacts")
     assert "for _stmt in _surviving_stmts:" in helper
     assert "_surviving_by_domain.setdefault(_domain_key, []).append(_stmt)" in helper

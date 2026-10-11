@@ -382,3 +382,19 @@ def test_requirements_a_later_corrective_applied_count_as_applied():
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == []
     src = h.notebook_concat_source()
     assert "_vov_reconcile_final_outcomes(widgets_values, logger)\n        _vi_outcomes = _vibe_input_model_json_outcomes(widgets_values)" in src
+
+
+def test_a_run_that_fails_before_inserting_its_business_row_deletes_no_registry_row():
+    """Live e5 203035110094916 (refused at setup) and a1 769409395543761 ran at the same time on one business: e5 computed
+    the same next version, never inserted its row, and its failure rollback deleted a1's v26 business row, so the next run
+    reused v26 and overwrote a1's artifacts."""
+    src = h.notebook_concat_source()
+    insert = src.index("_vibe_writer.insert_business_row({")
+    owned = src.index('widgets_values["_registry_row_owned"] = True', insert)
+    assert owned < src.index("_vibe_writer.initialize_session()", insert)
+    rollback = src.index("# ROLLBACK: Delete all metamodel records for this failed run (all-or-nothing)")
+    guard = src.index('and not widgets_values.get("_registry_row_owned"):', rollback)
+    first_delete = src.index("DELETE FROM {main_tables['ATTRIBUTE']}", rollback)
+    assert rollback < guard < first_delete
+    assert "[registry-rollback-owned FIRED v5.3.3]" in src[guard:first_delete]
+    assert src[guard:first_delete].count("elif current_version and biz_name and spark and main_tables:") == 1

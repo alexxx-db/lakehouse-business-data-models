@@ -75,10 +75,18 @@ def test_a_whole_named_domain_stays_open():
 
 
 def test_a_requirement_without_a_target_keeps_the_scope_open():
-    fence, returned, log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the descriptions")])
+    fence, returned, log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
     assert returned is None and not fence.spec.named_only
     assert not fence.is_frozen_product("crew", "pairing")
     assert any("[vibe-scope-named-off FIRED v5.3.0]" in m for m in log.lines)
+
+
+def test_a_requirement_without_a_target_that_names_a_field_opens_only_that_field():
+    fence, returned, log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the descriptions")])
+    assert returned is fence and fence.spec.named_only
+    assert fence.spec.open_fields == {("domains", "description"), ("products", "description"), ("attributes", "description")}
+    assert fence.is_frozen_product("crew", "pairing")
+    assert any("[vibe-scope-open-fields FIRED v5.3.3]" in m for m in log.lines)
 
 
 def test_metric_views_of_unnamed_in_scope_products_are_frozen():
@@ -177,7 +185,7 @@ def test_the_metric_view_oracle_freezes_views_of_unnamed_in_scope_products():
     assert fence.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
     assert not fence.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "member"})
     assert not fence.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "crew_member"})
-    wide, _returned, _log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the descriptions")])
+    wide, _returned, _log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
     assert not wide.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
 
 
@@ -195,7 +203,7 @@ def test_schema_tags_follow_the_domain_record_rule():
     assert not _crew_plan(raw).keep_statement(stmt)
     _fence, _returned, _log, raw = _scoped([_vreq("VREQ-0001", "crew", "Add an audit_status column to every product in the crew domain")])
     assert _crew_plan(raw).keep_statement(stmt)
-    _fence, _returned, _log, raw = _scoped([_vreq("VREQ-0001", "", "Improve the descriptions")])
+    _fence, _returned, _log, raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
     assert _crew_plan(raw).keep_statement(stmt)
 
 
@@ -209,7 +217,7 @@ def test_the_install_plan_oracle_keeps_the_named_only_rule():
     assert oracle.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
     assert not oracle.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "crew_member"})
     assert oracle.is_frozen_metric_view({"owner_domain": "flight", "owner_product": "scheduled_flight"})
-    wide, _returned, _log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the descriptions")])
+    wide, _returned, _log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
     plain = ah._vibe_scope_deploy_oracle(json.loads(json.dumps(wide.report(), default=str)), use_runtime=False)
     assert not plain.spec.named_only and not plain.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
 
