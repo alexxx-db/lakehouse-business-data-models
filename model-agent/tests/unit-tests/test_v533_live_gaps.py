@@ -242,7 +242,8 @@ def test_an_all_domains_keep_tables_run_marks_its_model_json_as_a_delta_on_its_b
     _vibe_scope block, so neither install path could tell the artifact needed its base version."""
     import test_v514_vibe_scope_parse as PS
     new = copy.deepcopy(PS.RAW)
-    next(p for d in new["model"]["domains"] if d["name"] == "flight" for p in d["products"] if p["name"] == "scheduled_flight")["description"] = "x"
+    next(p for d in new["model"]["domains"] if d["name"] == "flight" for p in d["products"] if p["name"] == "scheduled_flight")["attributes"].append(
+        {"name": "gate_code", "type": "STRING"})
     wv = {"business_context_raw": copy.deepcopy(PS.RAW), "operation": h.VOV, "base_version_for_review": "7", "model_scope": "mvm",
           "config": {"TARGET_CATALOG": "cat", "MODEL_SCOPE": "mvm"}}
     assert ah._vibe_scope_model_json_facts(new["model"], dict(wv), h.LOG) is None
@@ -584,3 +585,63 @@ def test_a_run_with_no_metric_view_to_deploy_still_writes_the_kept_views(monkeyp
     views = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_metrics_v2_mvm.sql"])
     assert [ah._extract_metric_view_name_from_statement(s) for s in views] == ["asset_utilization"]
     assert "preserved from the base version" in res["files"]["skyline_air_fleet_metrics_v2_mvm.sql"]
+
+
+def test_a_named_table_whose_only_changes_are_metadata_keeps_its_rows(monkeypatch):
+    """Decision 2A: a named table whose description or column glossary changed was replaced, which drops its rows; it now
+    stays in place and the change deploys as COMMENT and tag statements."""
+    base = h.base_model()
+    vreqs = [ah.RawVREQ(vreq_id="VREQ-0001", intent="Improve the description of fleet.aircraft", target="fleet.aircraft",
+                        source_quote="Improve the description of fleet.aircraft", source_chunk_id="c1"),
+             ah.RawVREQ(vreq_id="VREQ-0002", intent="In crew.roster add a column rest_hours", target="crew.roster.rest_hours",
+                        source_quote="In crew.roster add a column rest_hours", source_chunk_id="c1")]
+    spec, wide = ah._vibe_scope_requested_spec(vreqs, base)
+    assert wide == [] and spec.mode == "requested"
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    final = _described(base)
+    craft = final["model"]["domains"][2]["products"][0]
+    next(a for a in craft["attributes"] if a["name"] == "tail_number")["business_glossary_term"] = "Registration Mark"
+    final["model"]["domains"][0]["products"][1]["attributes"].append(
+        {"name": "rest_hours", "type": "INT", "tags": "", "column_name": "rest_hours", "foreign_key_to": "", "description": "Rest hours"})
+    fence.splice_and_verify(final, h.LOG)
+    facts = fence.scope_facts(final, "passed")
+    assert facts["changed_in_scope_products"] == ["crew.roster"]
+    assert "fleet.aircraft" in facts["preserved_products"]
+    assert sorted((d["product"], d["attribute"], tuple(d["fields"])) for d in facts["permitted_deltas"] if d["kind"] == "P6") == [
+        ("aircraft", "", ("description",)), ("aircraft", "tail_number", ("business_glossary_term",))]
+    root = dict(final, _vibe_scope=facts)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization"])
+    wv = h.flat_widgets(root, spark=spark, facts=facts, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    ddl = [s.rstrip(";") for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "COMMENT", "DROP"))]
+    assert [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE")] == [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE `skyline`.`crew`.`roster`")]
+    assert not [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE `skyline`.`fleet`.`aircraft`")]
+    assert "COMMENT ON TABLE `skyline`.`fleet`.`aircraft` IS 'Every aircraft the airline operates, with its home base and tail number.'" in ddl
+
+
+def test_a_rewrite_requirement_on_open_fields_is_verified_from_the_changed_values():
+    """Live a11 619920396866994: 'Rewrite the description of every table' changed 84 descriptions (deployed as 84 COMMENT ON
+    TABLE), yet no deterministic verifier covered a rewrite, the LLM judge read the fence text as a refusal and model.json
+    reported 0% adherence."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    base = h.base_model()
+    text = "Rewrite the description of every table in plain business English, one short sentence each."
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    req = _Req(text, "VREQ-001", ["*"])
+    assert orch._verify_deterministic(req, d, p, a)["status"] == "failed"
+    for row in p:
+        row["description"] = f"{row['product']} in plain English."
+    verdict = orch._verify_deterministic(req, d, p, a)
+    assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith(f"[verifier-open-fields FIRED v5.3.3] {len(p)}/{len(p)}")
+    for row in p[1:]:
+        row["description"] = next(x for x in ah.model_to_widgets_flat(base)[1] if x["product"] == row["product"])["description"]
+    assert orch._verify_deterministic(req, d, p, a)["status"] == "partial"
+    assert ah._vibe_scope_open_field_verdict(_Req("Make sure every table has a non-empty description.", "VREQ-002", ["*"]), d, p, a) is None
+    ah.set_vibe_scope_runtime(None)
+    assert ah._vibe_scope_open_field_verdict(req, d, p, a) is None

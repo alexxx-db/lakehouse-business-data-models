@@ -217,6 +217,7 @@ def _exec_verifier():
         "defaultdict": defaultdict,
         "apply_convention": lambda name, conv: name,
         "config": {},
+        "_vibe_scope_open_field_verdict": lambda *a, **k: None,
     }
     exec(compile(fn_src, "<_verify_deterministic>", "exec"), ns)
     return ns["_verify_deterministic"]

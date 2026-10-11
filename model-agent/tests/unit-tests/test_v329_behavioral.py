@@ -55,7 +55,7 @@ def _build_verifier():
         "    return None\n"
     )
     cls += textwrap.indent(method, "  ")
-    ns = {"logging": logging, "re": re}
+    ns = {"logging": logging, "re": re, "_vibe_scope_open_field_verdict": lambda *a, **k: None}
     exec(cls, ns, ns)
     return ns["_V"]()
 

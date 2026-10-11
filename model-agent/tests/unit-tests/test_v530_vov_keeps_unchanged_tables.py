@@ -78,6 +78,7 @@ def _product(model, domain, name):
 def _changed_model():
     new = copy.deepcopy(PS.RAW)
     _product(new, "flight", "scheduled_flight")["description"] = "rewritten by the vibe"
+    _product(new, "flight", "scheduled_flight")["attributes"].append({"name": "gate_code", "type": "STRING"})
     crew = next(d for d in new["model"]["domains"] if d["name"] == "crew")
     crew["products"] = [p for p in crew["products"] if p["name"] != "absence"]
     crew["products"].append({"name": "crew_shift", "primary_key": "crew_shift_id", "attributes": [{"name": "crew_shift_id", "type": "BIGINT"}]})
@@ -164,3 +165,21 @@ def test_a_schema_the_business_does_not_own_or_that_still_holds_a_table_is_kept(
     _tables, schemas = ah._vibe_scope_drop_removed_elsewhere(spark, plan, resolver, copy.deepcopy(PS.RAW), new, _schemas(new, resolver),
                                                              {"_schema_ownership": {"owned": {"cat.crew": ["v1"]}}}, _Log())
     assert schemas == [] and not any(s.startswith("DROP SCHEMA") for s in spark.drops())
+
+
+def test_a_table_whose_only_changes_are_metadata_keeps_its_rows_without_a_fence():
+    """Decision 2A: metadata-only changes deploy as COMMENT and tag statements, so the table and its rows stay."""
+    new = copy.deepcopy(PS.RAW)
+    flight = _product(new, "flight", "scheduled_flight")
+    flight["description"] = "rewritten by the vibe"
+    column = next(a for a in flight["attributes"] if a["name"] != flight["primary_key"] and not a.get("foreign_key_to"))
+    column["description"] = "explained by the vibe"
+    facts = _facts(new)
+    assert facts["changed_in_scope_products"] == [] and "flight.scheduled_flight" in facts["preserved_products"]
+    assert sorted((d["attribute"], tuple(d["fields"])) for d in facts["permitted_deltas"]) == [
+        ("", ("description",)), (column["name"], ("description",))]
+    plan = ah._scope_deploy_plan(facts, new["model"], _Log())
+    assert plan.state("flight", "scheduled_flight") == "preserve"
+    grown = copy.deepcopy(new)
+    _product(grown, "flight", "scheduled_flight")["attributes"].append({"name": "gate_code", "type": "STRING"})
+    assert _facts(grown)["changed_in_scope_products"] == ["flight.scheduled_flight"]
