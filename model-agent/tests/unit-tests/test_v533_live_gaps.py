@@ -645,3 +645,27 @@ def test_a_rewrite_requirement_on_open_fields_is_verified_from_the_changed_value
     assert ah._vibe_scope_open_field_verdict(_Req("Make sure every table has a non-empty description.", "VREQ-002", ["*"]), d, p, a) is None
     ah.set_vibe_scope_runtime(None)
     assert ah._vibe_scope_open_field_verdict(req, d, p, a) is None
+
+
+def test_a_placeholder_is_never_an_open_field_value():
+    """Live c2 933723576430631: for 'Add a business glossary term to every column that has none' the engine filled all 1269
+    empty terms with 'TODO'; the fence accepted them as P6 and the deploy set 1269 TODO glossary tags in Unity Catalog."""
+    base = h.base_model()
+    roster = next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster["business_glossary_term"] = ""
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    for value, kinds in (("TODO", {"frozen_attr_changed": 1}), ("N/A", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1})):
+        cur = copy.deepcopy(base)
+        next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+        assert fence.check(cur).summary()["by_kind"] == kinds, value
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "TODO"
+    fence.restore_flat(d, p, a, mv, "test")
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == ""
+    roster["business_glossary_term"] = "TBD"
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    assert fence.check(cur).summary()["by_kind"] == {"P6": 1}, "a placeholder in the base counts as no value for a fill-only requirement"
