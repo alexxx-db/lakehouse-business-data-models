@@ -755,3 +755,43 @@ def test_a_set_target_requirement_that_changed_no_open_field_is_not_counted_appl
     wv = _wv(filled)
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == [], "a requirement the base already satisfies stays applied"
     assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied"
+
+
+def test_an_fk_removal_is_scored_on_the_final_model_and_follows_renames():
+    """Live a14 909307094667756: 'remove the foreign key on campaign_id' landed nowhere; on two tables a pass renamed the
+    column to survey_campaign_id and kept the FK, yet the verifier scored 'FK removed' because campaign_id was gone, and the
+    in-scope adherence said 100%."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    text = "In product.collection, remove the foreign key on the column campaign_id; it points to customer.survey_campaign by mistake."
+    req = _Req(text, "VREQ-001", ["product.collection.campaign_id"])
+    prods = [{"domain": "product", "product": "collection"}]
+    renamed = [{"domain": "product", "product": "collection", "attribute": "collection_id", "foreign_key_to": ""},
+               {"domain": "product", "product": "collection", "attribute": "survey_campaign_id", "foreign_key_to": "customer.survey_campaign.survey_campaign_id"}]
+    assert orch._verify_deterministic(req, [{"domain": "product"}], prods, renamed)["status"] == "failed"
+    removed = [renamed[0], {"domain": "product", "product": "collection", "attribute": "campaign_id", "foreign_key_to": ""}]
+    assert orch._verify_deterministic(req, [{"domain": "product"}], prods, removed)["status"] == "fulfilled"
+
+    base = h.base_model()
+    sched = base["model"]["domains"][1]["products"][0]
+    column = next(a for a in sched["attributes"] if a.get("foreign_key_to"))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=f"In flight.scheduled_flight remove the foreign key on {column['name']}",
+                                                         target=f"flight.scheduled_flight.{column['name']}", source_quote="", source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    final = copy.deepcopy(base)
+    moved = next(a for a in final["model"]["domains"][1]["products"][0]["attributes"] if a["name"] == column["name"])
+    moved["name"] = moved["column_name"] = "assigned_" + column["name"]
+    ah._vov_note_attribute_rename("flight", "scheduled_flight", column["name"], moved["name"], "pass:test")
+    d, p, a, mv = ah.model_to_widgets_flat(final)
+    raw = [{"vreq_id": "VREQ-0001", "intent": f"In flight.scheduled_flight remove the foreign key on {column['name']}",
+            "target": f"flight.scheduled_flight.{column['name']}", "source_quote": ""}]
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a, "_vov_2_raw_vreqs": raw,
+          "_vov_vreq_status": {"VREQ-0001": {"status": "applied", "reason": ""}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "failed" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    next(r for r in a if r["attribute"] == moved["name"])["foreign_key_to"] = ""
+    wv["_vov_vreq_status"] = {"VREQ-0001": {"status": "applied", "reason": ""}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == []
