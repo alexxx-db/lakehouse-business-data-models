@@ -1336,3 +1336,34 @@ def test_model_json_carries_the_in_scope_adherence_after_the_final_outcomes():
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
     assert wv["_vibe_scope_facts"]["outcomes"]["adherence_in_scope_pct"] == 0.0
     assert wv["_vibe_scope_facts"]["outcomes"] is not wv["_vibe_scope_outcomes"]
+
+
+def test_only_the_clause_about_empty_values_is_fill_only():
+    """Found while planning live run a21: in 'Improve the description of the table X and give each of its columns that has no
+    business glossary term one' the empty-values phrase made the description fill-only too, so the description could not
+    change, and the verifier would have counted the unchanged description as filled."""
+    text = "Improve the description of the table crew.roster and give each of its columns that has no business glossary term one."
+    assert ah._vibe_scope_fill_fields_for(text) == {("attributes", "business_glossary_term")}
+    assert ah._vibe_scope_fill_fields_for("Give every column a glossary term. Only change columns that have none.") == {
+        ("attributes", "business_glossary_term")}
+    assert ah._vibe_scope_fill_fields_for("Rewrite every table description.") == frozenset()
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    assert spec.fill_only_fields == {("attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    from test_v406_verifier_false_negatives import _Req
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew.roster"]), d, p, a)
+    assert verdict["status"] == "partial" and "filled or changed" in verdict["evidence"], "the unchanged description is not counted"
+    roster["description"] = "Which crew member flies which duty on which day."
+    assert fence.check(cur).summary()["by_kind"] == {"P6": 4}
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    assert ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew.roster"]), d, p, a)["status"] == "fulfilled"
