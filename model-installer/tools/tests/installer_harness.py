@@ -812,7 +812,7 @@ class FakeFiles(object):
     def get_metadata(self, path):
         self.calls.append(("get_metadata", path))
         size = len(self.store[path]) if self.reported_size is None else self.reported_size
-        return type("Metadata", (), {"content_length": size})()
+        return type("Metadata", (), {"content_length": str(size)})()
 
 
 def redirect_volumes(monkeypatch, root):
