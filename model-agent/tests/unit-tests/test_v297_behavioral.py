@@ -179,3 +179,16 @@ def _load_nested_from(fn_name, source):
     ns = {"re": re}
     exec(compile(_slice_nested_function(fn_name, source), "push_v2", "exec"), ns)
     return ns[fn_name]
+
+
+def test_mv_guard_ignores_the_word_source_in_prose():
+    """Live f2 444847181138070: an agent install dropped product's inventory_dos_wos_snapshot view because a column
+    comment read 'Source system that generated the snapshot record.'"""
+    guard = _mv_guard()
+    view = ('source: "`cat`.`product`.`dos_wos_snapshot`"\n'
+            '    - name: "DataSourceSystem"\n'
+            '      comment: "Source system that generated the snapshot record."\n'
+            '      comment: "Data from system logs."')
+    assert guard(view) is False
+    assert guard(view + "\nsource: system.access.audit") is True
+    assert guard('source: "`cat`.`information_schema`.`tables`"') is True
