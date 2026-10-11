@@ -913,3 +913,50 @@ def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fiel
             r["business_glossary_term"] = r["attribute"].replace("_", " ").title()
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
     assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 100.0
+
+
+def test_a_domain_wildcard_target_is_the_domain_and_an_opened_requirement_passes_triage():
+    """Live b6 813685565341565: the extractor gave the target 'finance.*'; the spec builder read '*' as an invalid name and
+    opened the glossary model-wide, then the triage judged finance frozen and rejected the requirement."""
+    base = h.base_model()
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    vreq = ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.*", source_quote=text, source_chunk_id="c1")
+    spec, wide = ah._vibe_scope_requested_spec([vreq], base)
+    assert wide == [] and spec.entries == ("crew",) and spec.open_fields == frozenset()
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq], base, h.LOG)[:3]
+    assert [v.vreq_id for v in kept] == ["VREQ-0001"] and not rejected
+    wide_spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="*", source_quote=text, source_chunk_id="c1")], base)
+    wide_fence = ah.build_vibe_scope_fence(wide_spec, base, h.VOV, h.LOG)
+    named_text = ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="crew.member, crew.roster", source_quote=text, source_chunk_id="c1")
+    kept, rejected = ah._vibe_scope_triage_vreqs(wide_fence, [named_text], base, h.LOG)[:2]
+    assert [v.vreq_id for v in kept] == ["VREQ-0002"] and not rejected, "a requirement the spec opened fields for is never rejected"
+
+
+def test_each_clause_opens_its_own_field_and_a_target_less_verdict_uses_the_open_targets():
+    """Live a17 511127613148987: 'Improve the description of the table X and give each of its columns a business glossary
+    term' also opened column descriptions, and with no concrete target on the requirement the verifier fell back to
+    model-wide glossary coverage (35%) and reported 0%."""
+    text = "Improve the description of the table crew.roster and give each of its columns a business glossary term."
+    assert ah._vibe_scope_open_fields_for(text) == {("products", "description"), ("attributes", "business_glossary_term")}
+    assert ah._vibe_scope_open_fields_for("Write a description for every domain, table and column.") == {
+        ("domains", "description"), ("products", "description"), ("attributes", "description")}
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    roster["description"] = "Who flies which duty on which day."
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = attr["name"].replace("_", " ").title()
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    from test_v406_verifier_false_negatives import _Req
+    for targets in (["*"], ["roster"], ["crew.roster"]):
+        verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", targets), d, p, a)
+        assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3]"), (targets, verdict)
