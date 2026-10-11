@@ -148,8 +148,15 @@ def test_a_full_install_of_the_scoped_model_creates_every_fk_and_view():
     assert "asset_utilization" in " ".join(rec.phase("metric_views"))
 
 
-def _shift_model(link):
+def _shift_base():
     model = h.base_model()
+    model["model"]["domains"][1]["products"][0]["attributes"].append(
+        {"name": "assigned_crew_shift_id", "type": "BIGINT", "tags": "", "column_name": "assigned_crew_shift_id", "foreign_key_to": "", "description": "Shift"})
+    return model
+
+
+def _shift_model(link):
+    model = _shift_base()
     crew = model["model"]["domains"][0]
     crew["products"].append({"name": "crew_shift", "subdomain": "crew_scheduling", "primary_key": "crew_shift_id", "table_name": "crew_shift",
                              "description": "Crew shift", "tags": "", "type": "entity",
@@ -157,7 +164,7 @@ def _shift_model(link):
                                              "foreign_key_to": "", "description": "Primary key"}]})
     if link:
         sched = model["model"]["domains"][1]["products"][0]
-        next(a for a in sched["attributes"] if a["name"] == "crew_shift_code")["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
+        next(a for a in sched["attributes"] if a["name"] == "assigned_crew_shift_id")["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
     return model
 
 
@@ -165,7 +172,7 @@ def test_a_p3_link_made_after_the_engine_survives_the_engine_result_restore():
     """Live R41 705242797106879: the engine created order.gift_registry, the linker then set customer.household.gift_registry_id
     (P3), and the engine-result restore at logical_schema_review cleared it because the engine baseline already held the new
     product."""
-    base = h.base_model()
+    base = _shift_base()
     fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
     fence.narrow_to_named({("crew", "crewshift")}, set(), set(), h.LOG)
@@ -175,7 +182,7 @@ def test_a_p3_link_made_after_the_engine_survives_the_engine_result_restore():
     d, p, a, mv = ah.model_to_widgets_flat(_shift_model(link=True))
     wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
     ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
-    linked = next(r for r in wv["attributes"] if r["product"] == "scheduled_flight" and r["attribute"] == "crew_shift_code")
+    linked = next(r for r in wv["attributes"] if r["product"] == "scheduled_flight" and r["attribute"] == "assigned_crew_shift_id")
     assert linked["foreign_key_to"] == "crew.crew_shift.crew_shift_id"
     assert fence.check_flat(wv["domains"], wv["products"], wv["attributes"], wv["_metric_view_records"]).summary()["by_kind"] == {"P3": 1}
 

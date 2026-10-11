@@ -35,8 +35,10 @@ def test_the_metamodel_catalog_widget_wins_over_the_installation_catalog():
 
 
 def test_an_ecm_scope_and_an_unset_version_are_named_honestly():
+    """Live e9 1024501272336642: the job error view drops anything between angle brackets, so the hint read '.../v/mvm/...'."""
     errs = [e for e in _errors(data_model_scopes="Expanded Coverage Model - ECM", model_version="") if "08. Model Vibes" in e]
-    assert "/v<latest completed version>/ecm/vibes/next_vibes.txt" in errs[0]
+    assert "/v[latest completed version]/ecm/vibes/next_vibes.txt" in errs[0]
+    assert "<" not in errs[0] and ">" not in errs[0]
 
 
 def test_non_empty_vibes_raise_no_vibes_error():

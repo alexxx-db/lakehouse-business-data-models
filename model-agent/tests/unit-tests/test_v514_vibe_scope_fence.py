@@ -163,16 +163,42 @@ def test_drop_is_dangling_until_reconcile_applies_p2():
     assert after.ok and _kinds(after) == {"P2": 2} and not after.dangling
 
 
+def _with_shift_column():
+    base = _model()
+    _product(base, "flight", "scheduled_flight")["attributes"].append({"name": "assigned_crew_shift_id", "type": "BIGINT"})
+    return base
+
+
 def test_new_in_scope_product_link_is_p3():
-    fence = _fence()
+    base = _with_shift_column()
+    fence = _fence(base=base)
     fence.record_change("create", "crew", "crew_shift", "engine:VREQ-2")
-    m = _model()
+    m = copy.deepcopy(base)
     _domain(m, "crew")["products"].append({"name": "crew_shift", "primary_key": "crew_shift_id", "subdomain": "crew_records",
                                            "attributes": [{"name": "crew_shift_id", "type": "BIGINT"}]})
-    column = next(a for a in _product(m, "flight", "scheduled_flight")["attributes"] if not a.get("foreign_key_to") and a["name"].endswith("_code"))
+    column = next(a for a in _product(m, "flight", "scheduled_flight")["attributes"] if a["name"] == "assigned_crew_shift_id")
     column["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
     result = fence.check(m)
     assert result.ok and _kinds(result) == {"P3": 1}
+
+
+def test_a_link_to_a_new_product_from_a_column_not_named_for_its_key_is_not_p3():
+    """Live a10 179605726850868: the silo relinker wired four campaign_id columns, two of them the primary keys of their own
+    campaign tables, into the new customer.survey_campaign, and the fence accepted them as P3."""
+    base = _with_shift_column()
+    fence = _fence(base=base)
+    fence.record_change("create", "crew", "crew_shift", "engine:VREQ-2")
+    m = copy.deepcopy(base)
+    _domain(m, "crew")["products"].append({"name": "crew_shift", "primary_key": "crew_shift_id", "subdomain": "crew_records",
+                                           "attributes": [{"name": "crew_shift_id", "type": "BIGINT"}]})
+    sched = _product(m, "flight", "scheduled_flight")
+    code = next(a for a in sched["attributes"] if not a.get("foreign_key_to") and a["name"].endswith("_code"))
+    code["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
+    own_pk = next(a for a in sched["attributes"] if a["name"] == sched["primary_key"])
+    own_pk["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
+    result = fence.check(m)
+    assert not result.ok and "P3" not in _kinds(result)
+    assert sorted(v["path"].rsplit(".", 1)[-1] for v in result.violations) == sorted([code["name"], own_pk["name"]])
 
 
 def test_new_fk_column_on_frozen_product_needs_p4_authorization():
@@ -402,13 +428,14 @@ def test_splice_restores_out_of_scope_subtrees_byte_for_byte():
 
 
 def test_splice_reapplies_p3_and_p4_on_spliced_frozen_products():
-    fence = _fence()
+    base = _with_shift_column()
+    fence = _fence(base=base)
     assert fence.authorize_oos_link("flight", "scheduled_flight", "crew.member.member_id", column="duty_member_id")
     fence.record_change("create", "crew", "crew_shift", "engine:VREQ-3")
-    m = _model()
+    m = copy.deepcopy(base)
     _domain(m, "crew")["products"].append({"name": "crew_shift", "primary_key": "crew_shift_id", "attributes": [{"name": "crew_shift_id", "type": "BIGINT"}]})
     sched = _product(m, "flight", "scheduled_flight")
-    unlinked = next(a for a in sched["attributes"] if not a.get("foreign_key_to") and a["name"].endswith("_code"))
+    unlinked = next(a for a in sched["attributes"] if a["name"] == "assigned_crew_shift_id")
     unlinked["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
     sched["attributes"].append({"name": "duty_member_id", "type": "BIGINT", "foreign_key_to": "crew.member.member_id"})
     sched["description"] = "leak"
