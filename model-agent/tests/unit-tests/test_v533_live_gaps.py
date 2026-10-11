@@ -669,3 +669,21 @@ def test_a_placeholder_is_never_an_open_field_value():
     cur = copy.deepcopy(base)
     next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Roster Date"
     assert fence.check(cur).summary()["by_kind"] == {"P6": 1}, "a placeholder in the base counts as no value for a fill-only requirement"
+
+
+def test_requirements_that_name_different_tables_are_never_duplicates():
+    """Live a13 940565594073673: four 'remove the foreign key on campaign_id' lines differed only in the table; the extraction
+    auditor recovered the customer.campaign line and the quote dedupe dropped it as a copy of the product.campaign one, so
+    the fence never opened customer.campaign."""
+    quotes = {t: f"In {t}, remove the foreign key on the column campaign_id; it points to customer.survey_campaign by mistake."
+              for t in ("customer.campaign", "product.campaign", "product.collection")}
+    existing = [ah.RawVREQ(vreq_id="VREQ-0003", intent="remove fk", target="product.campaign.campaign_id", source_quote=quotes["product.campaign"],
+                           source_chunk_id="c1")]
+    assert ah._v292_duplicate_of(quotes["customer.campaign"], existing) is None
+    assert ah._v292_duplicate_of(quotes["product.campaign"], existing) == "VREQ-0003"
+    vreqs = [ah.RawVREQ(vreq_id=f"VREQ-000{i}", intent="Remove the foreign key on campaign_id", target=f"{t}.campaign_id", source_quote=q,
+                        source_chunk_id="c1") for i, (t, q) in enumerate(quotes.items(), 1)]
+    assert sorted(len(c) for c in ah.cluster_vreqs(vreqs)) == [1, 1, 1]
+    same = [vreqs[0], ah.RawVREQ(vreq_id="VREQ-0009", intent=vreqs[0].intent, target=vreqs[0].target, source_quote=vreqs[0].source_quote,
+                                 source_chunk_id="c2")]
+    assert [len(c) for c in ah.cluster_vreqs(same)] == [2]

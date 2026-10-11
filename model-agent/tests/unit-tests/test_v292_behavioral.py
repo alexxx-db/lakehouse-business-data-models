@@ -44,7 +44,7 @@ def _load_real():
     nb = json.load(open(NB))
     full = "\n\n".join("".join(c["source"]) for c in nb["cells"] if c.get("cell_type") == "code")
     tree = ast.parse(full)
-    want_funcs = {"_v292_audit_extraction_completeness", "_v292_residual_signature", "_v292_duplicate_of"}
+    want_funcs = {"_v292_audit_extraction_completeness", "_v292_residual_signature", "_v292_duplicate_of", "vreq_entity_refs"}
     want_assigns = {"_V292_EXTRACTION_AUDIT_PROMPT"}
     ns = {}
     # RawVREQ is a trivial data container (not the logic under test); inject a faithful stub with
