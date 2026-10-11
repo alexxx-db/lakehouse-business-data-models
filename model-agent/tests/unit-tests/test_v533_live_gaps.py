@@ -960,3 +960,26 @@ def test_each_clause_opens_its_own_field_and_a_target_less_verdict_uses_the_open
     for targets in (["*"], ["roster"], ["crew.roster"]):
         verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", targets), d, p, a)
         assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3]"), (targets, verdict)
+
+
+def test_a_field_limited_target_is_shown_to_the_engine_and_the_sweep_with_its_open_fields():
+    """Live a18 492254310643790: the engine digest marked customer.survey_campaign frozen ('never modify'), the engine
+    no-op'd three times, and the verification sweep's per-product batch ignored its product filter, so the domain
+    snapshot was cut at 60,000 characters before survey_campaign and carried no glossary values."""
+    base = h.base_model()
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    block = fence.prompt_block()
+    assert "may change ONLY these fields on these records" in block and "crew.roster: attributes.business_glossary_term" in block
+    frozen, shown = ah._vibe_scope_digest_marks(base)
+    assert ("crew", "roster") in frozen and ("crew", "roster") in shown
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    a = [dict(r, business_glossary_term="Roster Date") if r.get("attribute") == "roster_date" else r for r in a]
+    snap = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter="roster")
+    assert "TABLE: crew.roster" in snap and "TABLE: crew.member" not in snap
+    assert "roster_date (type: DATE)  [glossary: Roster Date]" in snap and snap.count("[glossary:") == 1
+    whole = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew")
+    assert "TABLE: crew.member" in whole
