@@ -137,18 +137,19 @@ def _priority_batch(quote, target):
                     data_payload=({"intent": quote, "target": target, "source_quote": quote},))
 
 
-def test_llm_sandbox_leak_is_rejected_after_retries_with_exact_paths_in_the_trace():
+def test_llm_sandbox_leak_is_retried_with_exact_paths_then_put_back_keeping_the_in_scope_change():
     fence = _fence()
     model = _engine()
     llm = _CannedLLM(mutator=LEAKY_MUTATOR)
     invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
     new_model, outcome = ah._apply_handler_with_retry(_handler(LEAKY_MUTATOR), _describe_batch(), model, invariants, llm, 3, (), (), 600.0)
-    assert new_model is None
-    assert outcome.status == "scope_fence_violation" and outcome.attempts == 3
-    assert "frozen_product_changed fleet.aircraft" in outcome.diagnostic
+    assert outcome.status == "applied" and outcome.attempts == 3
     retries = [user for system, user in llm.prompts if "careful Python code generator" in system]
     assert len(retries) == 2
     assert all("PRIOR ATTEMPT FAILED" in user and "frozen_product_changed fleet.aircraft" in user for user in retries)
+    assert _product(new_model, "fleet", "aircraft")["description"] == _product(_ENGINE, "fleet", "aircraft")["description"]
+    assert _product(new_model, "crew", "member")["tags"] == "owner=crew_control,curated_for=member"
+    assert fence.check(new_model).ok
     assert _product(model, "fleet", "aircraft")["description"] == _product(_ENGINE, "fleet", "aircraft")["description"]
 
 
