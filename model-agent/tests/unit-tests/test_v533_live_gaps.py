@@ -795,3 +795,69 @@ def test_an_fk_removal_is_scored_on_the_final_model_and_follows_renames():
     next(r for r in a if r["attribute"] == moved["name"])["foreign_key_to"] = ""
     wv["_vov_vreq_status"] = {"VREQ-0001": {"status": "applied", "reason": ""}}
     assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == []
+
+
+def test_a_set_target_column_addition_keeps_the_fence_and_adds_only_that_column(monkeypatch):
+    """Decision 2A: 'add a column X to every table' turned the fence off, so every changed table was replaced and lost its
+    rows; now only the named column may be added to frozen tables (P7) and it deploys with ALTER TABLE ADD COLUMNS."""
+    assert ah._vibe_scope_open_columns_for("Add a column created_at (TIMESTAMP) to every table.") == {"createdat"}
+    assert ah._vibe_scope_open_columns_for("Add a load_ts TIMESTAMP column to every table.") == {"loadts"}
+    assert ah._vibe_scope_open_columns_for("Add an audit column to every table.") == frozenset()
+    assert ah._vibe_scope_open_columns_for("Drop the column load_ts from every table.") == frozenset()
+    assert ah._vibe_scope_open_columns_for("Add a column created_at to the roster table.") == frozenset()
+    base = h.base_model()
+    text = "Add a column created_at (TIMESTAMP) to every table."
+    spec, wide = ah._vibe_scope_requested_spec([_wide(text)], base)
+    assert wide == [] and spec.open_columns == {"createdat"} and spec.open_field_vreqs == ("VREQ-0001",)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    col = {"name": "created_at", "type": "TIMESTAMP", "tags": "", "column_name": "created_at", "foreign_key_to": "", "description": "Created at"}
+    for d in cur["model"]["domains"]:
+        for p in d["products"]:
+            p["attributes"].append(copy.deepcopy(col))
+    cur["model"]["domains"][2]["products"][0]["attributes"].append(dict(col, name="extra_col", column_name="extra_col"))
+    result = fence.check(cur)
+    kinds = result.summary()["by_kind"]
+    n_products = sum(len(d["products"]) for d in base["model"]["domains"])
+    assert kinds == {"P7": n_products, "frozen_attr_added": 1}
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    fence.restore_flat(d, p, a, mv, "test")
+    assert sum(1 for r in a if r["attribute"] == "created_at") == n_products and not [r for r in a if r["attribute"] == "extra_col"]
+    final = copy.deepcopy(cur)
+    final["model"]["domains"][2]["products"][0]["attributes"].pop()
+    fence.splice_and_verify(final, h.LOG)
+    facts = fence.scope_facts(final, "passed")
+    p7 = [x for x in facts["permitted_deltas"] if x["kind"] == "P7"]
+    assert len(p7) == n_products and {x["attribute"] for x in p7} == {"created_at"}
+    assert facts["changed_in_scope_products"] == []
+    from test_v406_verifier_false_negatives import _Req
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["*"]), d, p, a)
+    assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith(f"[verifier-open-columns FIRED v5.3.3] {n_products}/{n_products}")
+    root = dict(final, _vibe_scope=facts)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization"])
+    wv = h.flat_widgets(root, spark=spark, facts=facts, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    ddl = [s.rstrip(";") for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "COMMENT", "DROP"))]
+    assert not [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE")], "a column addition replaced a table"
+    assert len([s for s in ddl if s.startswith("ALTER TABLE") and "ADD COLUMNS (`created_at` TIMESTAMP" in s]) == n_products
+
+
+def test_the_verification_sweep_changes_to_named_products_are_kept_until_review():
+    """Decision 1A: a named product was frozen at its engine result after the engine, so the verification sweep's fixes to it
+    were put back (b4 116870625878074: 857 glossary mutations on the finance domain, 0 changes in the final model)."""
+    base = h.base_model()
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent="Add a glossary term to every crew column that has none",
+                                                         target="crew", source_quote="", source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+    row["business_glossary_term"] = "Roster Day"
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Day"
+    next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] = "Changed later"
+    ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
+    assert next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Day"
