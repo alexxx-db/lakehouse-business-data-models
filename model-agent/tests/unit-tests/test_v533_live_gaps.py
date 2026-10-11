@@ -566,3 +566,21 @@ def test_open_fields_settle_at_the_review_checkpoint():
     next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] = ""
     fence.splice_and_verify(final, h.LOG)
     assert next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] == "Roster Date"
+
+
+def test_a_run_with_no_metric_view_to_deploy_still_writes_the_kept_views(monkeypatch):
+    """Live a9 116734783973928 and a10 179605726850868: no metric view was in scope, the metric step returned before writing
+    metrics/, so the version folder had no file with the 85 kept views and an install into an empty catalog would create none."""
+    real = ah._vibe_scope_metric_view_deploy_set
+
+    def _all_kept(plan, statements, records, spark, logger, catalog):
+        deploy, kept, frozen = real(plan, statements, records, spark, logger, catalog)
+        return [], kept, frozen
+
+    monkeypatch.setitem(ah.__dict__, "_vibe_scope_metric_view_deploy_set", _all_kept)
+    res = _deploy(monkeypatch)
+    mv_step = res["statements"][res["marks"]["tags"]:res["marks"]["mv"]]
+    assert not [s for s in mv_step if "VIEW" in s.upper() and s.upper().startswith("CREATE")], mv_step
+    views = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_metrics_v2_mvm.sql"])
+    assert [ah._extract_metric_view_name_from_statement(s) for s in views] == ["asset_utilization"]
+    assert "preserved from the base version" in res["files"]["skyline_air_fleet_metrics_v2_mvm.sql"]
