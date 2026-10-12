@@ -23,6 +23,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from notebook_source_util import notebook_concat_source  # noqa: E402
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "v516_r0p_campaign_subset.json"
@@ -55,29 +56,36 @@ def _keys(*pairs):
     return {tuple(ah._vov285_san(x) for x in pair) for pair in pairs}
 
 
-def _vreq(vid, target, intent=""):
+def _vreq(vid, target, intent="", spec=None, model=None):
+    if spec is not None:
+        vs.register(ah, model or {"model": _model()}, dict(spec, id=vid))
     return ah.RawVREQ(vreq_id=vid, intent=intent or f"change {target}", target=target, source_quote=intent or target,
                       source_chunk_id="c1", is_user_directive=True)
 
 
-R2_VREQS = [
-    _vreq("VREQ-001", "customer.gift_card", "add a new product gift_card with one row per issued gift card"),
-    _vreq("VREQ-002", "order.order_promotion.gift_card_id", "add a foreign key column gift_card_id to order_promotion"),
-    _vreq("VREQ-003", "product.digital_asset.season_code", "add a STRING attribute season_code to digital_asset"),
-]
+def _r2():
+    return [
+        _vreq("VREQ-001", "customer.gift_card", "add a new product gift_card with one row per issued gift card",
+              vs.spec("VREQ-001", "add_product", ["customer.gift_card"])),
+        _vreq("VREQ-002", "order.order_promotion.gift_card_id", "add a foreign key column gift_card_id to order_promotion",
+              vs.spec("VREQ-002", "add_column", ["order.order_promotion.gift_card_id"], columns=[{"name": "gift_card_id", "type": ""}],
+                      fk_target="customer.gift_card.gift_card_id")),
+        _vreq("VREQ-003", "product.digital_asset.season_code", "add a STRING attribute season_code to digital_asset",
+              vs.spec("VREQ-003", "add_column", ["product.digital_asset.season_code"], columns=[{"name": "season_code", "type": "STRING"}])),
+    ]
 
 
 @pytest.fixture
 def fence():
     log = _Log()
-    built = ah._vibe_scope_start_requested(R2_VREQS, {"model": _model()}, log)
+    built = ah._vibe_scope_start_requested(_r2(), {"model": _model()}, log)
     assert built is not None
     yield built, log
     ah.set_vibe_scope_runtime(None)
 
 
 def test_the_spec_lists_exactly_the_named_products():
-    spec, wide = ah._vibe_scope_requested_spec(R2_VREQS, {"model": _model()})
+    spec, wide = ah._vibe_scope_requested_spec(_r2(), {"model": _model()})
     assert wide == []
     assert spec.mode == "requested" and spec.active
     assert spec.products == _keys(("customer", "gift_card"), ("order", "order_promotion"), ("product", "digital_asset"))
@@ -87,21 +95,28 @@ def test_the_spec_lists_exactly_the_named_products():
 
 
 def test_a_domain_level_target_puts_the_whole_domain_in_scope():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain", vs.spec("V1", "other", ["customer"]))],
+                                             {"model": _model()})
     assert spec.whole_domains == {"customer"} and spec.products == frozenset()
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rewrite the customer domain description")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rewrite the customer domain description",
+                                                   vs.spec("V1", "set_fields", ["customer"], fields=[vs.field("domains", "description")]))],
+                                             {"model": _model()})
     assert spec.whole_domains == frozenset() and spec.open_field_targets == {("customer", "", "domains", "description")}, "decision 4A"
 
 
 def test_a_bare_name_resolves_to_every_product_that_carries_it():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "rework campaign")], {"model": _model()})
+    both = ["customer.campaign", "product.campaign"]
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "rework campaign", vs.spec("V1", "other", both))], {"model": _model()})
     assert spec.products == _keys(("customer", "campaign"), ("product", "campaign"))
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "describe campaign better")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "campaign", "describe campaign better",
+                                                   vs.spec("V1", "set_fields", both, fields=[vs.field("products", "description")]))],
+                                             {"model": _model()})
     assert {(d, p) for d, p, _lv, _f in spec.open_field_targets} == _keys(("customer", "campaign"), ("product", "campaign")), "decision 4A"
 
 
 def test_an_unknown_bare_name_is_allowed_as_a_new_entity_anywhere():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "gift_card", "add a product gift_card")], {"model": _model()})
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "gift_card", "add a product gift_card", vs.spec("V1", "add_product", [".gift_card"]))],
+                                             {"model": _model()})
     assert spec.new_names == {ah._vov285_san("gift_card")} and spec.products == frozenset()
 
 
@@ -111,7 +126,7 @@ def test_a_set_or_missing_target_opens_every_base_domain_to_the_engine_only(targ
     the agent's own passes changed 88 of 90 products and the deploy replaced 89 tables. The fence now stays on: every base domain
     is open to the VOV engine, and after it every base product is frozen at its engine result."""
     log = _Log()
-    vreqs = R2_VREQS + [_vreq("VREQ-009", target, "add audit columns everywhere")]
+    vreqs = _r2() + [_vreq("VREQ-009", target, "add audit columns everywhere", vs.spec("VREQ-009", "other", [], breadth="model"))]
     spec, wide = ah._vibe_scope_requested_spec(vreqs, {"model": _model()})
     assert wide and wide[0].startswith("VREQ-009")
     base_domains = {ah._vov285_san(d["name"]) for d in _model()["domains"]}
@@ -131,7 +146,8 @@ def test_a_set_or_missing_target_opens_every_base_domain_to_the_engine_only(targ
 
 
 def test_a_move_lets_the_destination_domain_receive_the_product():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "order.order_promotion", "move product order.order_promotion to domain customer")],
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "order.order_promotion", "move product order.order_promotion to domain customer",
+                                                   vs.spec("V1", "move_product", ["order.order_promotion"], destination_domain="customer"))],
                                              {"model": _model()})
     assert "customer" in spec.domains and _keys(("order", "order_promotion")) <= spec.products
 
@@ -140,7 +156,7 @@ def test_a_scoped_run_keeps_its_own_fence_and_narrows_it_to_what_the_vibe_names(
     scoped = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "order"), {"model": _model()}, "vibe modeling of version", _Log())
     ah.set_vibe_scope_runtime(scoped)
     try:
-        assert ah._vibe_scope_start_requested(R2_VREQS, {"model": _model()}, _Log()) is scoped
+        assert ah._vibe_scope_start_requested(_r2(), {"model": _model()}, _Log()) is scoped
         assert ah.get_vibe_scope_runtime() is scoped and scoped.spec.mode == "domains" and scoped.spec.named_only
         assert scoped.spec.entries == ("order",)
     finally:
@@ -148,7 +164,8 @@ def test_a_scoped_run_keeps_its_own_fence_and_narrows_it_to_what_the_vibe_names(
 
 
 def test_a_named_rename_admits_the_new_name_and_nothing_else():
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "order.order_promotion", "Rename the order_promotion table to order_discount")],
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "order.order_promotion", "Rename the order_promotion table to order_discount",
+                                                   vs.spec("V1", "rename_product", ["order.order_promotion"], new_name="order_discount"))],
                                              {"model": _model()})
     assert _keys(("order", "order_promotion"), ("order", "order_discount")) <= spec.products
 
@@ -340,10 +357,11 @@ def test_the_sandbox_gate_verifies_with_the_batch_rename_pairs():
     assert body.index("expect_renames(_pairs)") < body.index("ok_inv, inv_diag = verify_invariants(new_model, invariants)")
 
 
-def test_a_new_product_the_text_names_is_admitted_even_under_a_misread_target():
-    vreq = _vreq("V1", "customer.campaign", "In the customer domain's loyalty_engagement area, add a new product store_credit with one row per credit")
+def test_the_classifier_target_admits_a_new_product_the_extraction_target_misread():
+    vreq = _vreq("V1", "customer.campaign", "In the customer domain's loyalty_engagement area, add a new product store_credit with one row per credit",
+                 vs.spec("V1", "add_product", ["customer.store_credit"]))
     spec, _ = ah._vibe_scope_requested_spec([vreq], {"model": _model()})
-    assert _keys(("customer", "store_credit"), ("customer", "campaign")) <= spec.products
+    assert _keys(("customer", "store_credit")) <= spec.products and not _keys(("customer", "campaign")) & spec.products
 
 
 def _engine_result():
@@ -456,7 +474,7 @@ def test_frozen_products_keep_the_base_tag_set_when_the_engine_model_has_none():
             prod["tag_set"] = [{"key": "dbx_subdomain", "value": prod.get("subdomain", ""), "kind": "key_value", "source": "derived"}]
     engine = {"model": _model()}
     log = _Log()
-    f = ah._vibe_scope_start_requested(R2_VREQS, raw, log, engine)
+    f = ah._vibe_scope_start_requested(_r2(), raw, log, engine)
     try:
         written = {"model": _model()}
         f.splice_and_verify(written, log)
@@ -538,7 +556,8 @@ def test_a_dotted_chain_yields_one_domain_product_reference(text, refs):
 
 def test_a_requirement_on_a_product_named_like_its_domain_is_not_split():
     model = _model_with_namesake_product()
-    vreqs = [_vreq("VREQ-0001", "customer.customer.loyalty_tier", "change loyalty_tier on the customer table to an INT code")]
+    vreqs = [_vreq("VREQ-0001", "customer.customer.loyalty_tier", "change loyalty_tier on the customer table to an INT code",
+                   vs.spec("VREQ-0001", "retype_column", ["customer.customer.loyalty_tier"], column_type="INT"), {"model": model})]
     log = _Log()
     fence = ah._vibe_scope_start_requested(vreqs, {"model": model}, log)
     try:
@@ -551,7 +570,8 @@ def test_a_requirement_on_a_product_named_like_its_domain_is_not_split():
 
 def test_a_finding_on_a_new_attribute_is_not_read_as_a_base_product():
     model = _model_with_namesake_product()
-    vreqs = [_vreq("VREQ-0001", "customer.customer.tier_rule", "add a column tier_rule to the customer table")]
+    vreqs = [_vreq("VREQ-0001", "customer.customer.tier_rule", "add a column tier_rule to the customer table",
+                   vs.spec("VREQ-0001", "add_column", ["customer.customer.tier_rule"], columns=[{"name": "tier_rule", "type": ""}]), {"model": model})]
     fence = ah._vibe_scope_start_requested(vreqs, {"model": model}, _Log())
     try:
         issue = _issue("customer.customer.tier_rule has no description")
@@ -578,13 +598,15 @@ def test_a_one_part_target_that_names_a_domain_stays_a_domain_for_the_spec_only(
     model = {"model": _model_with_namesake_product()}
     assert ah._vov_qualify_target("customer", model) == "customer.customer"
     assert ah._vov_qualify_target("customer", model, prefer_domain=True) == "customer"
-    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain")], model)
+    spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain", vs.spec("V1", "other", ["customer"]), model)], model)
     assert spec.whole_domains == {"customer"}
 
 
 def test_a_product_attribute_target_admits_the_product_and_no_phantom_domain():
-    vreqs = [_vreq("VREQ-0001", "session.browser", "change browser so it lists the allowed values"),
-             _vreq("VREQ-0002", "customer.session.browser", "change browser so it lists the allowed values")]
+    vreqs = [_vreq("VREQ-0001", "session.browser", "change browser so it lists the allowed values",
+                   vs.spec("VREQ-0001", "other", ["customer.session.browser"])),
+             _vreq("VREQ-0002", "customer.session.browser", "change browser so it lists the allowed values",
+                   vs.spec("VREQ-0002", "other", ["customer.session.browser"]))]
     spec, wide = ah._vibe_scope_requested_spec(vreqs, {"model": _model()})
     assert wide == []
     assert spec.products == _keys(("customer", "session"))

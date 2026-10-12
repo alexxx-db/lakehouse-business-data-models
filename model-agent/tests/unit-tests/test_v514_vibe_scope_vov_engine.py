@@ -17,6 +17,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 
 RAW = published_json()
@@ -48,12 +49,15 @@ LEAKY_MUTATOR = DESCRIBE_MUTATOR.replace(
 class _CannedLLM(ah.MockLLM):
     """MockLLM that accepts response_schema and records prompts; batches one VREQ per batch."""
 
-    def __init__(self, mutator=DESCRIBE_MUTATOR, summary="update product description"):
+    def __init__(self, mutator=DESCRIBE_MUTATOR, summary="update product description", specs=()):
         super().__init__(default={"mutator_source": mutator, "expected_changes_summary": summary})
         self.prompts = []
+        self.specs = specs if callable(specs) else list(specs)
 
     def complete_json(self, system, user, temperature=0.0, response_schema=None):
         self.prompts.append((system, user))
+        if vs.is_classifier_call(system, user):
+            return vs.reply(user, self.specs)
         if "group VREQs into BATCHES" in system:
             vreqs = json.loads(user)["vreqs"]
             return {"batches": [{
@@ -218,7 +222,8 @@ def test_v413_preapply_cross_fence_move_is_blocked_and_leaves_the_model_untouche
     fence = _fence()
     model = _engine()
     vibe = "**PRIORITY 1 — move_product: crew.absence** — move to fleet domain\n"
-    result = ah.run_vov_pipeline(vibe, model, _CannedLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = _CannedLLM(specs=[vs.spec("P001", "move_product", ["crew.absence"], destination_domain="fleet")])
+    result = ah.run_vov_pipeline(vibe, model, llm, [], [], parallel=False, priority_reapply_loops=2)
     assert "scope_rejected" in _statuses(result)["P001"] and "applied" not in _statuses(result)["P001"]
     assert _has_product(result.final_model, "crew", "absence") and not _has_product(result.final_model, "fleet", "absence")
     assert fence.check(result.final_model).ok
@@ -228,7 +233,9 @@ def test_out_of_scope_priority_is_triaged_and_in_scope_priority_lands():
     fence = _fence()
     vibe = ("**PRIORITY 1 — rename_product: fleet.aircraft** — rename to airframe\n"
             "**PRIORITY 2 — rename_product: crew.absence** — rename to crew_absence\n")
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = _CannedLLM(specs=[vs.spec("P001", "rename_product", ["fleet.aircraft"], new_name="airframe"),
+                            vs.spec("P002", "rename_product", ["crew.absence"], new_name="crew_absence")])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     statuses = _statuses(result)
     assert statuses["P001"] == ["scope_rejected"]
     assert "applied" in statuses["P002"] and not set(statuses["P002"]) & {"scope_rejected", "scope_fence_violation", "scope_dependency_conflict"}
@@ -245,7 +252,8 @@ def test_out_of_scope_priority_is_triaged_and_in_scope_priority_lands():
 def test_all_out_of_scope_vibe_reports_zero_in_scope_adherence_like_the_pipeline_coverage():
     fence = _fence()
     vibe = "**PRIORITY 1 — rename_product: fleet.aircraft** — rename to airframe\n"
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = _CannedLLM(specs=[vs.spec("P001", "rename_product", ["fleet.aircraft"], new_name="airframe")])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     contract = ah._vibe_scope_collect_outcomes(fence, result)
     assert result.coverage_pct == 0.0
     assert contract["in_scope_vreq_count"] == 0 and contract["adherence_in_scope_pct"] == 0.0
@@ -256,7 +264,8 @@ def test_all_out_of_scope_vibe_reports_zero_in_scope_adherence_like_the_pipeline
 def test_pass1_pk_retype_that_breaks_frozen_fks_is_blocked_as_dependency_conflict():
     fence = _fence()
     vibe = "**PRIORITY 1 — retype_attribute: crew.member.member_id** — retype to STRING\n"
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = _CannedLLM(specs=[vs.spec("P001", "retype_column", ["crew.member.member_id"], column_type="STRING")])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     assert "scope_dependency_conflict" in _statuses(result)["P001"] and "applied" not in _statuses(result)["P001"]
     assert _attr(result.final_model, "crew", "member", "member_id")["type"] == "BIGINT"
     assert fence.check(result.final_model).ok
@@ -282,7 +291,9 @@ def test_p4_link_on_an_out_of_scope_product_is_authorized_end_to_end():
     fence = _fence()
     base_pk = _product(_ENGINE, "crew", "base")["primary_key"]
     vibe = f"**PRIORITY 1 — connect_table: fleet.aircraft** — add column home_base_id FK to crew.base.{base_pk}\n"
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = _CannedLLM(specs=[vs.spec("P001", "add_column", ["fleet.aircraft.home_base_id"], columns=[{"name": "home_base_id", "type": ""}],
+                                    fk_target=f"crew.base.{base_pk}")])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     assert "applied" in _statuses(result)["P001"]
     assert _attr(result.final_model, "fleet", "aircraft", "home_base_id")["foreign_key_to"] == f"crew.base.{base_pk}"
     check = fence.check(result.final_model)
@@ -313,7 +324,9 @@ def test_parallel_merge_gate_rejects_a_leaking_merge(monkeypatch):
     monkeypatch.setattr(ah, "_merge_partial", _leaky_merge)
     vibe = ("**PRIORITY 1 — enrich_tags: crew.member** — tag the crew member table for crew control\n"
             "**PRIORITY 2 — enrich_tags: crew.base** — tag the crew base table for crew control\n")
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=True, priority_reapply_loops=1)
+    llm = _CannedLLM(specs=[vs.spec("P001", "set_fields", ["crew.member"], fields=[vs.field("products", "tags")]),
+                            vs.spec("P002", "set_fields", ["crew.base"], fields=[vs.field("products", "tags")])])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=True, priority_reapply_loops=1)
     statuses = _statuses(result)
     assert "scope_fence_violation" in statuses["P001"] and "scope_fence_violation" in statuses["P002"]
     assert "applied" not in statuses["P001"] + statuses["P002"]
@@ -325,7 +338,9 @@ def test_parallel_merge_applies_clean_in_scope_handlers():
     _fence()
     vibe = ("**PRIORITY 1 — enrich_tags: crew.member** — tag the crew member table for crew control\n"
             "**PRIORITY 2 — enrich_tags: crew.base** — tag the crew base table for crew control\n")
-    result = ah.run_vov_pipeline(vibe, _engine(), _CannedLLM(), [], [], parallel=True, priority_reapply_loops=1)
+    llm = _CannedLLM(specs=[vs.spec("P001", "set_fields", ["crew.member"], fields=[vs.field("products", "tags")]),
+                            vs.spec("P002", "set_fields", ["crew.base"], fields=[vs.field("products", "tags")])])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=True, priority_reapply_loops=1)
     statuses = _statuses(result)
     assert "applied" in statuses["P001"] and "applied" in statuses["P002"]
     assert _product(result.final_model, "crew", "base")["tags"] == "owner=crew_control,curated_for=base"

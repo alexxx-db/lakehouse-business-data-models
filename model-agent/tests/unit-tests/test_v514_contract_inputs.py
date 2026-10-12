@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 import test_v514_vibe_scope_parse as PS  # noqa: E402
 import test_v514_vibe_scope_passes as P  # noqa: E402
 import test_v514_vibe_scope_vov_engine as E  # noqa: E402
@@ -203,7 +204,9 @@ def test_pipeline_priority_branch_maps_each_priority_to_its_item():
            "<!-- vi:p-2 target=crew.base -->\n"
            "**PRIORITY 2 — enrich_description: crew.base** — add a crew base description\n")
     stripped, imap = _input_map(raw)
-    result = ah.run_vov_pipeline(stripped, E._engine(), E._CannedLLM(), [], [], parallel=False, priority_reapply_loops=1,
+    llm = E._CannedLLM(specs=[vs.spec("P001", "set_fields", ["crew.member"], fields=[vs.field("products", "description")]),
+                              vs.spec("P002", "set_fields", ["crew.base"], fields=[vs.field("products", "description")])])
+    result = ah.run_vov_pipeline(stripped, E._engine(), llm, [], [], parallel=False, priority_reapply_loops=1,
                                  vibe_input_map=imap)
     assert result.vibe_input_vreqs == {"P001": {"item_ids": ["p-1"], "method": "exact_quote", "merged_from": []},
                                        "P002": {"item_ids": ["p-2"], "method": "exact_quote", "merged_from": []}}
@@ -211,13 +214,27 @@ def test_pipeline_priority_branch_maps_each_priority_to_its_item():
 
 def test_pipeline_without_markers_returns_an_empty_map():
     vibe = "**PRIORITY 1 — enrich_description: crew.member** — add a crew control description\n"
-    result = ah.run_vov_pipeline(vibe, E._engine(), E._CannedLLM(), [], [], parallel=False, priority_reapply_loops=1)
+    llm = E._CannedLLM(specs=[vs.spec("P001", "set_fields", ["crew.member"], fields=[vs.field("products", "description")])])
+    result = ah.run_vov_pipeline(vibe, E._engine(), llm, [], [], parallel=False, priority_reapply_loops=1)
     assert result.vibe_input_vreqs == {}
+
+
+def _extract_spec(item):
+    intent, target = item["intent"], item["target"]
+    if intent == "add nickname attribute":
+        return vs.spec(item["id"], "add_column", ["crew.member.nickname"], columns=[{"name": "nickname", "type": "STRING"}])
+    if intent == "add audit columns":
+        return vs.spec(item["id"], "other", [target], breadth="set")
+    if intent.startswith("Preserve"):
+        return vs.spec(item["id"], "preserve", [target])
+    if item["id"].startswith("ANCHOR-"):
+        return vs.spec(item["id"], "rename_product", ["crew.roster"], new_name="duty_roster")
+    return vs.spec(item["id"], "rename_product", [target], interpretable=False, reason="names no new name")
 
 
 class _ExtractLLM(E._CannedLLM):
     def __init__(self, by_chunk):
-        super().__init__()
+        super().__init__(specs=_extract_spec)
         self.by_chunk = by_chunk
 
     def complete_json(self, system, user, temperature=0.0, response_schema=None):

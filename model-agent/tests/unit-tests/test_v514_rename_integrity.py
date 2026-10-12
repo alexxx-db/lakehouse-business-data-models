@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 import v514_feedback_util as fu  # noqa: E402
 from notebook_source_util import notebook_concat_source  # noqa: E402
@@ -78,13 +79,16 @@ HISTORY_MUTATOR = COPY_MUTATOR.replace("'crew_member'", "'member_history'")
 
 
 class _FakeLLM(ah.MockLLM):
-    def __init__(self, mutator=IN_PLACE_MUTATOR, summary="rename crew.member to crew_member in place", vreqs=None):
+    def __init__(self, mutator=IN_PLACE_MUTATOR, summary="rename crew.member to crew_member in place", vreqs=None, specs=()):
         super().__init__(default={"mutator_source": mutator, "expected_changes_summary": summary})
         self.vreqs = list(vreqs or [])
+        self.specs = specs
         self.prompts = []
 
     def complete_json(self, system, user, temperature=0.0, response_schema=None):
         self.prompts.append((system, user))
+        if vs.is_classifier_call(system, user):
+            return vs.reply(user, self.specs)
         if "group VREQs into BATCHES" in system:
             return {"batches": [{"vreq_ids": [v["vreq_id"]], "intent_summary": v["intent"],
                                  "target_entities": [str(v["target"]).split(".")[:2]],
@@ -187,7 +191,10 @@ def test_f1_batch_fallback_applies_one_intent_only_to_a_single_target():
 
 def test_f1_merged_run_applies_the_anchored_rename_before_the_priority_branch():
     vibe = USER + RENAME_FEEDBACK + AUTO + "**PRIORITY 1 — connect_table: crew.member** — add column backup_base_id (BIGINT) with FK to crew.base.base_id\n"
-    result = ah.run_vov_pipeline(vibe, _engine(), _NoLLM(), [], [], parallel=False, priority_reapply_loops=2)
+    llm = vs.SpecOnlyLLM([vs.spec("ANCHOR-001", "rename_product", ["crew.member"], new_name="crew_member"),
+                          vs.spec("P001", "add_column", ["crew.member.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
+                                  fk_target="crew.base.base_id")])
+    result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     final = result.final_model
     assert not _has(final, "crew", "member") and _has(final, "crew", "crew_member")
     assert _fks_into(final, "crew", "member") == []
@@ -202,9 +209,15 @@ def test_f1_merged_run_applies_the_anchored_rename_before_the_priority_branch():
 def test_f1_priority_branch_extracts_the_user_free_text():
     user_text = "## Domain: crew\n#### Product: member\n- (high) Link each crew member to a backup home base.\n"
     vibe = USER + user_text + AUTO + CONNECT_ROSTER
+    def _specs(item):
+        if item["target"] == "crew.roster":
+            return vs.spec(item["id"], "add_column", ["crew.roster.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
+                           fk_target="crew.base.base_id")
+        return vs.spec(item["id"], "add_column", ["crew.member.backup_home_base_id"], columns=[{"name": "backup_home_base_id", "type": "BIGINT"}],
+                       fk_target="crew.base.base_id")
     llm = _FakeLLM(vreqs=[{"vreq_id": "V1", "target": "crew.member", "severity": "high", "is_user_directive": True,
                            "intent": "connect_table: crew.member — add column backup_home_base_id (BIGINT) with FK to crew.base.base_id",
-                           "source_quote": "- (high) Link each crew member to a backup home base."}])
+                           "source_quote": "- (high) Link each crew member to a backup home base."}], specs=_specs)
     result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     added = ah._v251_find_attribute_row(result.final_model, "crew", "member", "backup_home_base_id")
     assert added is not None and added["foreign_key_to"] == "crew.base.base_id"
@@ -518,7 +531,8 @@ def test_f3_pipeline_records_a_verified_llm_rename_with_its_requirement_id():
     crew["products"].append(dict(copy.deepcopy(next(x for x in crew["products"] if x["name"] == "member")), name="crew_member"))
     llm = _FakeLLM(mutator=MERGE_MUTATOR, summary="merge member into crew_member",
                    vreqs=[{"vreq_id": "V1", "intent": "Rename crew.member to crew_member", "target": "crew.member",
-                           "source_quote": "Rename crew.member to crew_member.", "severity": "high", "is_user_directive": True}])
+                           "source_quote": "Rename crew.member to crew_member.", "severity": "high", "is_user_directive": True}],
+                   specs=[vs.spec("VREQ-0001", "rename_product", ["crew.member"], new_name="crew_member")])
     result = ah.run_vov_pipeline("Rename crew.member to crew_member.\n", model, llm, [], [], parallel=False, priority_reapply_loops=1)
     assert not _has(result.final_model, "crew", "member") and _has(result.final_model, "crew", "crew_member")
     event = next(e for e in ah.vov_rename_events() if e["kind"] == "product")

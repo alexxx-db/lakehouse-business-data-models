@@ -315,7 +315,7 @@ def test_a_move_the_directive_expander_applies_leaves_the_llm_loop(monkeypatch):
                       is_user_directive=True)
     monkeypatch.setitem(ah.__dict__, "extract_all", lambda *a, **k: [vreq])
     monkeypatch.setattr(ah, "logger", RI.LOG, raising=False)
-    llm = RI._FakeLLM()
+    llm = RI._FakeLLM(specs=[RI.vs.spec("VREQ-0001", "move_product", ["crew.roster"], destination_domain="flight")])
     result = ah.run_vov_pipeline("## crew\n- " + text + "\n", RI._engine(), llm, [], [], parallel=False, priority_reapply_loops=1)
     assert RI._has(result.final_model, "flight", "roster") and not RI._has(result.final_model, "crew", "roster")
     assert RI._statuses(result)["VREQ-0001"] == ["applied"]
