@@ -1791,3 +1791,70 @@ def test_an_open_field_requirement_on_a_table_in_scope_for_another_reason_is_sco
               "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
         ah._vov_reconcile_final_outcomes(wv, h.LOG)
         assert wv["_vov_vreq_status"]["VREQ-0002"]["status"] == expected, (new_description, wv["_vov_vreq_status"])
+
+
+def test_a_wide_requirement_in_a_subdomain_scope_opens_the_subdomain_products_and_splices_the_rest_from_the_base():
+    """Live S2 271559109433984 (Some Subdomains media.delivery_trafficking with a model-wide requirement): the scope named the
+    whole media domain, so the splice took that domain's current record wholesale and the 10 media products outside the
+    subdomain lost their tag_set and column stewards in model.json."""
+    base = h.base_model()
+    member = base["model"]["domains"][0]["products"][0]
+    member["tag_set"] = [{"key": "dbx_data_type", "value": "master_data", "kind": "key_value", "source": "derived"}]
+    member["attributes"][0]["tag_set"] = [{"key": "primary_key", "value": "", "kind": "label", "source": "derived"}]
+    member["attributes"][0]["steward"] = ""
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Subdomains", "crew.crew_scheduling"), copy.deepcopy(base), h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    text = "Make sure every foreign key in the model points to a primary key."
+    assert ah._vibe_scope_start_requested([_wide(text)], copy.deepcopy(base), h.LOG, copy.deepcopy(base)) is fence
+    assert fence.spec.whole_domains == frozenset() and ("crew", "roster") in fence.spec.products
+    assert fence.is_frozen_product("crew", "member") and not fence.is_frozen_product("crew", "roster")
+    cur = copy.deepcopy(base)
+    cmember = cur["model"]["domains"][0]["products"][0]
+    cmember["tag_set"] = None
+    cmember["attributes"][0]["tag_set"] = None
+    cmember["attributes"][0].pop("steward")
+    fence.splice_and_verify(cur, h.LOG)
+    spliced = cur["model"]["domains"][0]["products"][0]
+    assert spliced["tag_set"] == member["tag_set"] and spliced["attributes"][0]["tag_set"] == member["attributes"][0]["tag_set"]
+    assert spliced["attributes"][0].get("steward") == ""
+
+
+def test_a_field_requirement_aimed_only_outside_the_scope_is_rejected():
+    """Live S1 280806806558309 (Some Domains order): 'Improve the description of the table customer.household' was an open-field
+    requirement, so the triage kept it although customer is out of scope; the engine ran it, the fence put the change back, and
+    the feedback item was reported applied."""
+    base = h.base_model()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+
+    def raw(vid, target, text):
+        return ah.RawVREQ(vreq_id=vid, intent=text, target=target, source_quote=text, source_chunk_id="c1")
+    vreqs = [raw("VREQ-0001", "fleet.aircraft", "Improve the description of the table fleet.aircraft."),
+             raw("VREQ-0002", "crew.roster", "Improve the description of the table crew.roster."),
+             raw("VREQ-0003", "*", "Give every column that has no business glossary term one.")]
+    assert ah._vibe_scope_start_requested(vreqs, copy.deepcopy(base), h.LOG, copy.deepcopy(base)) is fence
+    assert {"VREQ-0001", "VREQ-0002", "VREQ-0003"} <= set(fence.spec.open_field_vreqs)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, vreqs, base, h.LOG)
+    assert [v.vreq_id for v in kept] == ["VREQ-0002", "VREQ-0003"], [v.vreq_id for v in kept]
+    assert [v.vreq_id for v in rejected] == ["VREQ-0001"] and [o.status for o in outcomes] == ["scope_rejected"]
+
+
+def test_an_fk_removal_scored_by_state_diff_is_checked_on_the_column():
+    """Live S1 280806806558309: the orchestrator gave 'Remove the foreign key on associate_id from the order.sales_order table' the
+    state_diff strategy, which compares domain, table and attribute counts, so the removal scored failed with 'No model changes
+    detected' although the FK was gone."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    orch._step_snapshots = {}
+    attrs = [{"domain": "order", "product": "sales_order", "attribute": "associate_id", "foreign_key_to": ""},
+             {"domain": "order", "product": "sales_order", "attribute": "location_id", "foreign_key_to": "product.location.location_id"}]
+    prods = [{"domain": "order", "product": "sales_order", "primary_key": "sales_order_id"}]
+    req = ah.VibeRequirement(id="VREQ-002", original_text="Remove the foreign key on associate_id from the order.sales_order table.", intent="x",
+                             scope="relation", scope_targets=["order.sales_order"], verification_strategy="state_diff")
+    assert orch._verify_state_diff(req, [{"domain": "order"}], prods, attrs)["status"] == "fulfilled"
+    attrs[0]["foreign_key_to"] = "order.associate.associate_id"
+    assert orch._verify_state_diff(req, [{"domain": "order"}], prods, attrs)["status"] == "failed"
+    keep = ah.VibeRequirement(id="VREQ-003", original_text="Keep every foreign key of order.sales_order.", intent="x", scope="relation",
+                              scope_targets=["order.sales_order"], verification_strategy="state_diff")
+    assert "Deterministic" not in str(orch._verify_state_diff(keep, [{"domain": "order"}], prods, attrs).get("evidence"))
