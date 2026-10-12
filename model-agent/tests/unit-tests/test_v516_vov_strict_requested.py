@@ -289,11 +289,12 @@ def _pipeline_body():
 
 def test_both_extraction_paths_start_the_requested_fence_before_triage():
     body = _pipeline_body()
-    raw = body.index("_vibe_scope_start_requested(list(deduped) + list(_anchored_vreqs), scope_base_model or initial_model, logger, initial_model)")
-    assert body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger") < raw
-    assert raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
-    prio = body.index("_vibe_scope_start_requested(list(deduped) + list(_user_free) + list(_anchored_vreqs), scope_base_model or initial_model, logger, initial_model)")
-    assert prio < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")
+    raw_classify = body.index("(deduped,), _spec_failed = _vreq_spec_classify_engine(llm, (deduped,), scope_base_model or initial_model, outcomes, logger,")
+    raw = body.index("_vibe_scope_start_requested(list(deduped), scope_base_model or initial_model, logger, initial_model)")
+    assert raw_classify < raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
+    prio_classify = body.index("(deduped, _user_free, _v438_rev_vreqs), _spec_failed = _vreq_spec_classify_engine(")
+    prio = body.index("_vibe_scope_start_requested(list(deduped) + list(_user_free), scope_base_model or initial_model, logger, initial_model)")
+    assert prio_classify < prio < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")
     assert prio < body.index("_vibe_scope_triage_priorities(_VIBE_SCOPE_RUNTIME, _parsed_priorities, model, logger)")
 
 
@@ -582,22 +583,24 @@ def test_a_finding_on_a_new_attribute_is_not_read_as_a_base_product():
         ah.set_vibe_scope_runtime(None)
 
 
-@pytest.mark.parametrize("target,text,qualified", [
-    ("session.browser", "", "customer.session.browser"),
-    ("customer.session", "", "customer.session"),
-    ("campaign.campaign_id", "", "campaign.campaign_id"),
-    ("loyalty_engagement.campaign", "", "loyalty_engagement.campaign"),
-    ("session.session_note", "create a new domain session with a product session_note", "session.session_note"),
-    ("session", "", "customer.session"),
+@pytest.mark.parametrize("raw,resolved", [
+    ({"domain": "", "product": "session", "column": "browser"}, ("customer", "session", "browser")),
+    ({"domain": "customer", "product": "session", "column": ""}, ("customer", "session", "")),
+    ({"domain": "CUSTOMER", "product": "Session", "column": "BROWSER"}, ("customer", "session", "browser")),
+    ({"domain": "", "product": "campaign", "column": ""}, ("", "campaign", "")),
+    ({"domain": "session", "product": "session_note", "column": ""}, ("session", "session_note", "")),
+    ({"domain": "", "product": "session", "column": ""}, ("customer", "session", "")),
 ])
-def test_a_target_without_its_domain_is_qualified_from_its_unique_product(target, text, qualified):
-    assert ah._vov_qualify_target(target, {"model": _model()}, text=text) == qualified
+def test_a_spec_target_takes_the_exact_catalog_names_and_the_unique_home_domain(raw, resolved):
+    target = ah._vreq_spec_target(raw, ah._vreq_spec_index({"model": _model()}))
+    assert (target["domain"], target["product"], target["column"]) == resolved
 
 
 def test_a_one_part_target_that_names_a_domain_stays_a_domain_for_the_spec_only():
     model = {"model": _model_with_namesake_product()}
-    assert ah._vov_qualify_target("customer", model) == "customer.customer"
-    assert ah._vov_qualify_target("customer", model, prefer_domain=True) == "customer"
+    idx = ah._vreq_spec_index(model)
+    assert ah._vreq_spec_target({"domain": "customer"}, idx) == {"domain": "customer", "product": "", "column": ""}
+    assert ah._vreq_spec_target({"domain": "customer", "product": "customer"}, idx)["product"] == "customer"
     spec, _ = ah._vibe_scope_requested_spec([_vreq("V1", "customer", "rework the customer domain", vs.spec("V1", "other", ["customer"]), model)], model)
     assert spec.whole_domains == {"customer"}
 

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
 from published_models import published_json  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 
 def _attr(name, fk=""):
@@ -52,32 +53,31 @@ def _vreq(target, text):
     return types.SimpleNamespace(vreq_id="VREQ-0001", target=target, intent=text, source_quote=text)
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("[vendor] Rename the domain vendor to partner.", ("vendor", "partner")),
-    ("Rename the vendor domain to partner", ("vendor", "partner")),
-    ("rename domain `vendor` to `partner`", ("vendor", "partner")),
-    ("In the vendor domain, rename the domain to partner", None),
+@pytest.mark.parametrize("spec,expected", [
+    (vs.spec("VREQ-0001", "rename_domain", ["vendor"], new_name="partner"), [("rename_domain", "vendor", "partner")]),
+    (vs.spec("VREQ-0001", "rename_domain", ["Vendor"], new_name="partner"), [("rename_domain", "vendor", "partner")]),
+    (vs.spec("VREQ-0001", "rename_domain", ["vendor"], new_name="vendor"), []),
+    (vs.spec("VREQ-0001", "rename_domain", ["vendor"]), []),
+    (vs.spec("VREQ-0001", "rename_domain", ["vendor", "media"], new_name="partner"), []),
+    (vs.spec("VREQ-0001", "merge_domains", ["vendor"], merge_into="media"), [("merge_domain", "vendor", "media")]),
+    (vs.spec("VREQ-0001", "merge_domains", ["vendor"], merge_into="media.placement"), [("merge_domain", "vendor", "media")]),
+    (vs.spec("VREQ-0001", "merge_domains", ["vendor", "campaign"], merge_into="media"),
+     [("merge_domain", "vendor", "media"), ("merge_domain", "campaign", "media")]),
+    (vs.spec("VREQ-0001", "merge_domains", ["media"], merge_into="media"), []),
 ])
-def test_a_domain_rename_never_reads_an_article_as_the_domain(text, expected):
-    assert ah._v337_extract_domain_rename(text) == expected
-
-
-@pytest.mark.parametrize("text,expected", [
-    ("[project] Merge the domain project into client, so every project product now belongs to client.", ("project", "client")),
-    ("merge domain project into the client domain", ("project", "client")),
-    ("Merge the project domain into client", ("project", "client")),
-    ("Fold project into client domain", ("project", "client")),
-    ("Merge the domain into the client domain", None),
-])
-def test_merge_the_domain_x_into_y_parses(text, expected):
-    assert ah._v337_extract_domain_merge(text) == expected
+def test_a_domain_rename_or_merge_op_comes_from_the_spec_only(spec, expected):
+    model = _model()
+    vs.register(ah, model, spec)
+    assert ah._vreq_spec_det_ops(ah.vreq_spec("VREQ-0001"), model) == expected
 
 
 def test_domain_renames_and_merges_produce_a_pending_rename_pair():
     model = _model()
     rename = _vreq("vendor", "[vendor] Rename the domain vendor to partner.")
-    merge = _vreq("vendor", "Merge the domain vendor into media, so every vendor product now belongs to media.")
-    assert ah._v413_vreq_to_det_op(rename, model) == ("rename_domain", "vendor", "partner")
+    merge = types.SimpleNamespace(vreq_id="VREQ-0002", target="vendor", intent="Merge the domain vendor into media.", source_quote="")
+    vs.register(ah, model, vs.spec("VREQ-0001", "rename_domain", ["vendor"], new_name="partner"),
+                vs.spec("VREQ-0002", "merge_domains", ["vendor"], merge_into="media"))
+    assert ah._vreq_spec_det_op(ah.vreq_spec(rename), model) == ("rename_domain", "vendor", "partner")
     assert ah._vov_rename_pairs_for_vreqs([rename, merge], model) == [("domain", "vendor", "partner"), ("domain", "vendor", "media")]
     assert ah._vov_pairs_touching([("domain", "vendor", "partner")], [("vendor", "*")]) == [("domain", "vendor", "partner")]
     assert ah._vov_pairs_touching([("domain", "vendor", "partner")], [("vendor", "supplier")]) == [("domain", "vendor", "partner")]
@@ -89,15 +89,29 @@ def test_the_fence_resolves_fk_retargets_through_a_pending_domain_rename():
     assert ("partner", "supplier", "supplier_id") in ah._vov_resolve_rename_candidates("vendor", "supplier", "supplier_id", events)
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("Move the products tracking_pixel and attribution_model from the performance domain to the media domain.", ("move_product", "performance", "tracking_pixel", "media")),
-    ("Move the product tracking_pixel to the media domain", ("move_product", "performance", "tracking_pixel", "media")),
-    ("Move the column ad_id of tracking_pixel to the media domain", None),
-    ("Move the product tracking_pixel to the nowhere domain", None),
-    ("Rewrite the description of tracking_pixel", None),
+@pytest.mark.parametrize("spec,expected", [
+    (vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel", "performance.attribution_model"], destination_domain="media"),
+     [("move_product", "performance", "tracking_pixel", "media"), ("move_product", "performance", "attribution_model", "media")]),
+    (vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel"], destination_domain="MEDIA"), [("move_product", "performance", "tracking_pixel", "media")]),
+    (vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel"], destination_domain="performance"), []),
+    (vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel"]), []),
+    (vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel", "performance"], destination_domain="media"), []),
+    (vs.spec("VREQ-0001", "other", ["performance.tracking_pixel.ad_id"]), []),
+    (vs.spec("VREQ-0001", "set_fields", ["performance.tracking_pixel"], fields=[vs.field("products", "description")]), []),
 ])
-def test_a_free_text_move_of_a_named_product_is_deterministic(text, expected):
-    assert ah._v337_classify_op("", "performance.tracking_pixel", text, "", _model()) == expected
+def test_a_move_op_comes_from_the_spec_and_covers_every_named_table_or_none(spec, expected):
+    model = _model()
+    vs.register(ah, model, spec)
+    assert ah._vreq_spec_det_ops(ah.vreq_spec("VREQ-0001"), model) == expected
+
+
+def test_a_move_into_a_domain_the_model_lacks_is_left_to_the_llm_and_creates_nothing():
+    model = _model()
+    vs.register(ah, model, vs.spec("VREQ-0001", "move_product", ["performance.tracking_pixel"], destination_domain="nowhere"))
+    op = ah._vreq_spec_det_op(ah.vreq_spec("VREQ-0001"), model)
+    assert op == ("move_product", "performance", "tracking_pixel", "nowhere")
+    before = copy.deepcopy(model)
+    assert ah._v413_apply_det_op_inplace(model, op) is None and model == before
 
 
 def _renamed(model, lose=False, stale_fk=False):
@@ -322,8 +336,9 @@ def test_a_move_the_directive_expander_applies_leaves_the_llm_loop(monkeypatch):
     assert not [system for system, _user in llm.prompts if "group VREQs into BATCHES" in system]
 
 
-def _strict_fence(vreqs):
+def _strict_fence(vreqs, *specs):
     ah.vov_ledger_reset()
+    vs.register(ah, _model(), *specs)
     fence = ah._vibe_scope_start_requested(vreqs, _model(), _Log())
     assert fence is not None and fence.spec.mode == "requested"
     return fence
@@ -341,7 +356,8 @@ def _relocated_flat():
 
 
 def test_a_renamed_domain_keeps_its_base_lineage_and_stays_protected_from_autofix():
-    fence = _strict_fence([_vreq("vendor", "[vendor] Rename the domain vendor to partner.")])
+    fence = _strict_fence([_vreq("vendor", "[vendor] Rename the domain vendor to partner.")],
+                          vs.spec("VREQ-0001", "rename_domain", ["vendor"], new_name="partner"))
     try:
         ah._vibe_scope_note_rename("domain", "vendor", "partner", "VREQ-0001")
         ah._vibe_scope_note_rename("move", "performance.attribution_model", "media.attribution_model", "VREQ-0002")
@@ -611,13 +627,37 @@ NEXT_VIBES = """**Model Quality Score: 87/100**
 """
 
 
+def _next_specs(item):
+    by_target = {
+        "campaign.ad": vs.spec(item["id"], "rename_product", ["campaign.ad"], new_name="advert"),
+        "performance.tracking_pixel": vs.spec(item["id"], "rename_column", ["performance.tracking_pixel.ad_id"], new_name="advert_id"),
+        "vendor.publisher": vs.spec(item["id"], "rename_product", ["vendor.publisher"], new_name="partner"),
+        "partner.publisher": vs.spec(item["id"], "add_column", ["partner.publisher.placement_id"], columns=[{"name": "placement_id", "type": "BIGINT"}],
+                                     fk_target="media.placement.placement_id"),
+    }
+    assert item["id"].startswith("NEXT-"), item
+    return by_target.get(item["target"])
+
+
+def _next_call(asked):
+    def _call(prompt, _schema):
+        asked.extend(vs.requested_items(prompt))
+        return vs.reply(prompt, _next_specs)
+    return _call
+
+
 def test_next_vibes_drop_a_priority_for_a_rename_this_run_applied():
     ah.vov_ledger_reset()
     model = _model()
     assert ah._v337_apply_rename_product(model["model"], "campaign", "ad", "advert") is not None
     ah._vibe_scope_note_rename("product", "campaign.ad", "campaign.advert", "VREQ-0001")
-    text, dropped = ah._vov_drop_landed_priorities(NEXT_VIBES, model)
+    vs.register(ah, model, vs.spec("P001", "rename_product", ["performance.tracking_pixel"], new_name="pixel"))
+    asked = []
+    text, dropped = ah._vov_drop_landed_priorities(NEXT_VIBES, model, _next_call(asked))
+    assert [i["id"] for i in asked] == ["NEXT-1", "NEXT-2"] and "rename to advert" in asked[0]["source_quote"]
     assert len(dropped) == 1 and "rename_product: campaign.ad" in dropped[0]
+    assert ah.vreq_spec("P001")["new_name"] == "pixel"
+    assert ah._vov_drop_landed_priorities(NEXT_VIBES, model) == (NEXT_VIBES, [])
     assert "PRIORITY 1" not in text and "PRIORITY 2" in text and "Model Quality Score" in text
     ah.vov_ledger_reset()
 
@@ -625,14 +665,14 @@ def test_next_vibes_drop_a_priority_for_a_rename_this_run_applied():
 def test_next_vibes_keep_a_rename_priority_that_did_not_land():
     ah.vov_ledger_reset()
     model = _model()
-    text, dropped = ah._vov_drop_landed_priorities(NEXT_VIBES, model)
+    text, dropped = ah._vov_drop_landed_priorities(NEXT_VIBES, model, _next_call([]))
     assert dropped == [] and text == NEXT_VIBES
     ah._vibe_scope_note_rename("product", "campaign.ad", "campaign.advert", "VREQ-0001")
-    assert ah._vov_drop_landed_priorities(NEXT_VIBES, model)[1] == [], "a recorded rename the model does not show has not landed"
+    assert ah._vov_drop_landed_priorities(NEXT_VIBES, model, _next_call([]))[1] == [], "a recorded rename the model does not show has not landed"
     ah.vov_ledger_reset()
     renamed_earlier = _model()
     next(p for d in renamed_earlier["model"]["domains"] for p in d["products"] if p["name"] == "ad")["name"] = "advert"
-    assert ah._vov_drop_landed_priorities(NEXT_VIBES, renamed_earlier)[1] == [], "a name that was already there is not this run's rename"
+    assert ah._vov_drop_landed_priorities(NEXT_VIBES, renamed_earlier, _next_call([]))[1] == [], "a name that was already there is not this run's rename"
 
 
 def test_next_vibes_drop_a_priority_that_restates_a_domain_rename_as_a_product_rename():
@@ -641,7 +681,7 @@ def test_next_vibes_drop_a_priority_that_restates_a_domain_rename_as_a_product_r
     assert ah._v337_apply_rename_domain(model["model"], "vendor", "partner") is not None
     text = ("**PRIORITY 1 \u2014 rename_product: vendor.publisher** \u2014 rename to partner because the user vibe directive renames the vendor domain to partner\n"
             "**PRIORITY 2 \u2014 connect_table: partner.publisher** \u2014 add column placement_id (BIGINT) with FK to media.placement.placement_id because publishers own placements\n")
-    kept, dropped = ah._vov_drop_landed_priorities(text, model)
+    kept, dropped = ah._vov_drop_landed_priorities(text, model, _next_call([]))
     assert len(dropped) == 1 and "vendor.publisher" in dropped[0]
     assert "PRIORITY 2" in kept and "PRIORITY 1" not in kept
     ah.vov_ledger_reset()

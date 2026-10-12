@@ -227,7 +227,7 @@ def _extract_spec(item):
         return vs.spec(item["id"], "other", [target], breadth="set")
     if intent.startswith("Preserve"):
         return vs.spec(item["id"], "preserve", [target])
-    if item["id"].startswith("ANCHOR-"):
+    if item.get("anchor") == "crew.roster" and "duty_roster" in item.get("anchor_text", ""):
         return vs.spec(item["id"], "rename_product", ["crew.roster"], new_name="duty_roster")
     return vs.spec(item["id"], "rename_product", [target], interpretable=False, reason="names no new name")
 
@@ -270,8 +270,13 @@ def test_pipeline_extraction_branch_maps_after_dedupe_collapse_and_triage():
     assert set(got) == {v.vreq_id for v in result.raw_vreqs}
     assert got[by_quote["Add a nickname column to crew member"]]["item_ids"] == ["aaaa-1"]
     assert got[by_quote["Add a nickname column to crew member"]]["method"] == "exact_quote"
-    assert "rename that roster table please" not in by_quote
-    assert got["ANCHOR-001"] == {"item_ids": ["bbbb-2"], "method": "exact_quote", "merged_from": []}
+    roster = by_quote["rename that roster table please"]
+    assert got[roster]["item_ids"] == ["bbbb-2"]
+    asked = {item["id"]: item for system, user in llm.prompts if vs.is_classifier_call(system, user) for item in vs.requested_items(user)}
+    assert asked[roster]["anchor"] == "crew.roster" and asked[roster]["anchor_text"] == ITEM_TEXT["bbbb-2"]
+    assert asked[by_quote["Add a nickname column to crew member"]]["anchor_text"] == ITEM_TEXT["aaaa-1"]
+    assert ah.vreq_spec(roster)["new_name"] == "duty_roster"
+    assert E._has_product(result.final_model, "crew", "duty_roster") and not E._has_product(result.final_model, "crew", "roster")
     audit_ids = [v.vreq_id for v in result.raw_vreqs if v.source_quote == "add audit columns"]
     assert audit_ids and all(got[vid]["item_ids"] == ["aaaa-1", "cccc-3"] for vid in audit_ids)
     assert got["V299-PRESERVE-ALL"]["item_ids"] == ["aaaa-1", "cccc-3"]

@@ -197,6 +197,7 @@ def test_deterministic_rename_of_a_frozen_product_is_scope_rejected():
     model = _engine()
     invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
     batch = _priority_batch("**PRIORITY 1 — rename_product: fleet.aircraft** — rename to airframe", "fleet.aircraft")
+    vs.register(ah, model, vs.spec("P001", "rename_product", ["fleet.aircraft"], new_name="airframe"))
     new_model, outcome = ah._apply_handler_with_retry(_handler(DESCRIBE_MUTATOR), batch, model, invariants, _CannedLLM(), 3, (), (), 60.0)
     assert new_model is None and outcome.status == "scope_rejected" and outcome.attempts == 0
     assert "fleet.aircraft" in outcome.diagnostic and outcome.diagnostic.startswith("deterministic: rename fleet.aircraft->airframe")
@@ -208,10 +209,12 @@ def test_deterministic_cross_fence_move_is_rejected_and_in_scope_rename_is_appli
     model = _engine()
     invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
     move = _priority_batch("**PRIORITY 1 — move_product: crew.absence** — move to fleet domain", "crew.absence")
+    vs.register(ah, model, vs.spec("P001", "move_product", ["crew.absence"], destination_domain="fleet"))
     new_model, outcome = ah._apply_handler_with_retry(_handler(DESCRIBE_MUTATOR), move, model, invariants, _CannedLLM(), 3, (), (), 60.0)
     assert new_model is None and outcome.status == "scope_rejected"
     assert "cross_fence_move" not in outcome.diagnostic and "fleet.absence" in outcome.diagnostic
     rename = _priority_batch("**PRIORITY 2 — rename_product: crew.member** — rename to crew_member", "crew.member")
+    vs.register(ah, model, vs.spec("P001", "rename_product", ["crew.member"], new_name="crew_member"))
     new_model, outcome = ah._apply_handler_with_retry(_handler(DESCRIBE_MUTATOR), rename, model, invariants, _CannedLLM(), 3, (), (), 60.0)
     assert outcome.status == "applied"
     result = fence.check(new_model)
@@ -278,6 +281,8 @@ def test_pass1_gate_keeps_clean_priorities_when_one_is_blocked():
         {"vreq_id": "P001", "action": "retype_attribute", "target": "crew.member.member_id", "reason": "retype to STRING"},
         {"vreq_id": "P002", "action": "rename_product", "target": "crew.absence", "reason": "rename to crew_absence"},
     ]
+    vs.register(ah, model, vs.spec("P001", "retype_column", ["crew.member.member_id"], column_type="STRING"),
+                vs.spec("P002", "rename_product", ["crew.absence"], new_name="crew_absence"))
     new_model, outcomes, residual = ah._vibe_scope_apply_pass1(priorities, model, LOG)
     by_id = {o.vreq_ids[0]: o.status for o in outcomes}
     assert by_id == {"P001": "scope_dependency_conflict", "P002": "applied"}
@@ -423,6 +428,12 @@ def test_priority_triage_in_out_and_p4():
         {"vreq_id": "P003", "action": "add_attribute", "target": "crew.member", "reason": "add column nickname"},
         {"vreq_id": "P004", "action": "connect_table", "target": "fleet.seat_map", "reason": "add column cabin_id FK to fleet.cabin_configuration.cabin_configuration_id"},
     ]
+    vs.register(ah, _engine(),
+                vs.spec("P001", "add_column", ["fleet.aircraft.home_base_id"], columns=[{"name": "home_base_id", "type": ""}], fk_target=f"crew.base.{base_pk}"),
+                vs.spec("P002", "rename_product", ["fleet.engine"], new_name="powerplant"),
+                vs.spec("P003", "add_column", ["crew.member.nickname"], columns=[{"name": "nickname", "type": ""}]),
+                vs.spec("P004", "add_column", ["fleet.seat_map.cabin_id"], columns=[{"name": "cabin_id", "type": ""}],
+                        fk_target="fleet.cabin_configuration.cabin_configuration_id"))
     kept, rejected = ah._vibe_scope_triage_priorities(fence, priorities, _engine(), LOG)
     assert [p["vreq_id"] for p in kept] == ["P001", "P003"]
     assert [(o.vreq_ids[0], o.status) for o in rejected] == [("P002", "scope_rejected"), ("P004", "scope_rejected")]

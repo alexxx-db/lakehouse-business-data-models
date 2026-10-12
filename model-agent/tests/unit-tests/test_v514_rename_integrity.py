@@ -166,44 +166,65 @@ def _vreq(intent, target, vid="V1"):
 # ---------------------------------------------------------------- F1: rule-based routing of anchored directives
 
 
-def test_f1_bare_product_target_resolves_to_a_rename_op():
+def test_f1_the_spec_alone_makes_the_rename_op():
     model = _engine()
-    assert ah._v413_vreq_to_det_op(_vreq("Rename to crew_member.", "member"), model) == ("rename_product", "crew", "member", "crew_member")
-    assert ah._v413_vreq_to_det_op(_vreq("Rename to crew_member.", "Product: member"), model) == ("rename_product", "crew", "member", "crew_member")
-    assert ah._v413_vreq_to_det_op(_vreq("Rename member to crew_member", "crew.member"), model) == ("rename_product", "crew", "member", "crew_member")
-    assert ah._v413_vreq_to_det_op(_vreq("Rename to member_key.", "crew.member.member_id"), model) == (
-        "rename_attribute", "crew", "member", "member_id", "member_key")
-    for vague in ("consider renaming columns", "Rename to", "Rename to something more meaningful", "Rename foo to bar",
-                  "Rename the column to x"):
-        assert ah._v413_vreq_to_det_op(_vreq(vague, "crew.member"), model) is None, vague
-    assert ah._v413_vreq_to_det_op(_vreq("Rename to crew_member.", "crew.no_such_table"), model) is None
+    bare = [{"domain": "", "product": "member", "column": ""}]
+    cases = [
+        (vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"), ("rename_product", "crew", "member", "crew_member")),
+        (dict(vs.spec("V1", "rename_product", new_name="crew_member"), targets=bare), ("rename_product", "crew", "member", "crew_member")),
+        (vs.spec("V1", "rename_column", ["crew.member.member_id"], new_name="member_key"), ("rename_attribute", "crew", "member", "member_id", "member_key")),
+        (vs.spec("V1", "rename_product", ["crew.member"]), None),
+        (vs.spec("V1", "rename_product", ["crew.member"], new_name="member"), None),
+        (vs.spec("V1", "rename_product", ["crew.member"], new_name="crew member"), None),
+        (vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member", interpretable=False, reason="unclear"), None),
+        (vs.spec("V1", "rename_product", ["crew.member", "crew.roster"], new_name="crew_entry"), None),
+    ]
+    for spec, expected in cases:
+        vs.register(ah, model, spec)
+        assert ah._vreq_spec_det_op(ah.vreq_spec(_vreq("any wording", "crew.member")), model) == expected, spec
+    ah.vov_ledger_reset()
+    assert ah._vreq_spec_det_op(ah.vreq_spec(_vreq("Rename to crew_member.", "crew.member")), model) is None
 
 
-def test_f1_batch_fallback_applies_one_intent_only_to_a_single_target():
+def test_f1_batch_ops_come_from_the_specs_of_its_requirements():
     model = _engine()
-    single = ah.Batch(batch_id="B1", vreq_ids=("V1",), intent_summary="Rename to crew_member.", target_entities=(("crew", "member"),),
-                      data_payload=())
-    assert ah._v337_build_ops(single, model) == ([("rename_product", "crew", "member", "crew_member")], True)
-    multi = ah.Batch(batch_id="B2", vreq_ids=("V1",), intent_summary="rename product to crew_roster_entry",
-                     target_entities=(("crew", "member"), ("crew", "roster")), data_payload=())
-    assert ah._v337_build_ops(multi, model) == ([], False)
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"),
+                vs.spec("V2", "set_fields", ["crew.roster"], fields=[vs.field("products", "description")]),
+                vs.spec("V3", "move_product", ["crew.member", "crew.roster"], destination_domain="fleet"),
+                vs.spec("V4", "rename_product", ["crew.member", "crew.roster"], new_name="crew_roster_entry"))
+
+    def batch(*ids):
+        return ah.Batch(batch_id="B1", vreq_ids=ids, intent_summary="Rename to crew_member.", target_entities=(("crew", "member"),), data_payload=())
+    assert ah._v337_build_ops(batch("V1"), model) == ([("rename_product", "crew", "member", "crew_member")], True)
+    assert ah._v337_build_ops(batch("V1", "V2"), model) == ([], False)
+    assert ah._v337_build_ops(batch("V3"), model) == ([("move_product", "crew", "member", "fleet"), ("move_product", "crew", "roster", "fleet")], True)
+    assert not ah.vreq_spec("V4")["interpretable"] and "each needs its own requirement" in ah.vreq_spec("V4")["reason"]
+    assert ah._v337_build_ops(batch("V4"), model) == ([], False)
+    assert ah._v337_build_ops(batch("V9"), model) == ([], False)
 
 
-def test_f1_merged_run_applies_the_anchored_rename_before_the_priority_branch():
+def _user_rename_llm(user_spec, priority_spec):
+    def _specs(item):
+        return user_spec(item["id"]) if item["id"].startswith("U-") else priority_spec(item["id"])
+    return _FakeLLM(vreqs=[{"vreq_id": "V1", "target": "crew.member", "severity": "medium", "is_user_directive": True,
+                            "intent": "Rename the crew member table", "source_quote": "- (medium) Rename to crew_member."}], specs=_specs)
+
+
+def test_f1_merged_run_applies_the_user_rename_before_the_priority_branch():
     vibe = USER + RENAME_FEEDBACK + AUTO + "**PRIORITY 1 — connect_table: crew.member** — add column backup_base_id (BIGINT) with FK to crew.base.base_id\n"
-    llm = vs.SpecOnlyLLM([vs.spec("ANCHOR-001", "rename_product", ["crew.member"], new_name="crew_member"),
-                          vs.spec("P001", "add_column", ["crew.member.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
-                                  fk_target="crew.base.base_id")])
+    llm = _user_rename_llm(lambda vid: vs.spec(vid, "rename_product", ["crew.member"], new_name="crew_member"),
+                           lambda vid: vs.spec(vid, "add_column", ["crew.member.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
+                                               fk_target="crew.base.base_id"))
     result = ah.run_vov_pipeline(vibe, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
     final = result.final_model
     assert not _has(final, "crew", "member") and _has(final, "crew", "crew_member")
     assert _fks_into(final, "crew", "member") == []
     added = ah._v251_find_attribute_row(final, "crew", "crew_member", "backup_base_id")
     assert added is not None and added["foreign_key_to"] == "crew.base.base_id"
+    user_id = next(v.vreq_id for v in result.raw_vreqs if v.vreq_id.startswith("U-"))
     statuses = _statuses(result)
-    assert statuses["ANCHOR-001"] == ["applied"] and "applied" in statuses["P001"]
-    assert "ANCHOR-001" in {v.vreq_id for v in result.raw_vreqs} and result.coverage_pct == 100.0
-    assert ah.vov_rename_events()[0] == {"kind": "product", "old": "crew.member", "new": "crew.crew_member", "cause": "ANCHOR-001"}
+    assert statuses[user_id] == ["applied"] and "applied" in statuses["P001"] and result.coverage_pct == 100.0
+    assert ah.vov_rename_events()[0] == {"kind": "product", "old": "crew.member", "new": "crew.crew_member", "cause": user_id}
 
 
 def test_f1_priority_branch_extracts_the_user_free_text():
@@ -235,19 +256,19 @@ def test_f1_free_text_extraction_skips_vibes_without_the_merge_sentinels():
                                           _NoLLM(), False, LOG) == []
 
 
-def test_f1_anchored_directives_need_a_named_product_heading_and_a_real_target():
-    model = _engine()
-    found = ah._vov_anchored_directives(USER + RENAME_FEEDBACK + "##### Attribute: aims_crew_code\n- Rename to aims_code\n" + AUTO
-                                        + "## Domain: crew\n#### Product: roster\n- Rename to crew_roster\n", model)
-    assert [(p["action"], p["target"], p["new_name"] or p["reason"]) for p in found] == [
-        ("rename_product", "crew.member", "crew_member"),
-        ("rename_attribute", "crew.member", "rename column aims_crew_code to aims_code")]
-    assert found[0]["source_quote"].startswith("## Domain: crew\n#### Product: member\n")
-    for text in ("## Domain: crew\n- Rename to crew_x\n", "#### Product: member\n- Rename to crew_member\n",
-                 "## Domain: crew\n#### Product: nope\n- Rename to crew_member\n",
-                 "## Domain: crew\n#### Product: member\n- consider renaming columns\n",
-                 "## Domain: crew\n#### Product: member\n- Rename roster to crew_roster\n"):
-        assert ah._vov_anchored_directives(text, model) == [], text
+def test_f1_a_rename_the_classifier_cannot_read_fails_and_is_never_applied_by_text_rules():
+    llm = _user_rename_llm(lambda vid: vs.spec(vid, "rename_product", ["crew.member"], interpretable=False, reason="names no new name"),
+                           lambda vid: vs.spec(vid, "add_column", ["crew.roster.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
+                                               fk_target="crew.base.base_id"))
+    result = ah.run_vov_pipeline(USER + RENAME_FEEDBACK + AUTO + CONNECT_ROSTER, _engine(), llm, [], [], parallel=False, priority_reapply_loops=1)
+    assert _has(result.final_model, "crew", "member") and not _has(result.final_model, "crew", "crew_member")
+    assert ah._v251_find_attribute_row(result.final_model, "crew", "roster", "backup_base_id") is not None
+    user_id = next(v.vreq_id for v in result.raw_vreqs if v.vreq_id.startswith("U-"))
+    mine = [o for o in result.outcomes if user_id in o.vreq_ids]
+    assert [o.status for o in mine] == ["failed"] and "vreq-spec-not-interpreted" in mine[0].diagnostic and "names no new name" in mine[0].diagnostic
+    assert result.coverage_pct == 50.0 and user_id in {d["vreq_id"] for d in result.deferred_vreqs}
+    assert not [e for e in ah.vov_rename_events() if e["kind"] == "product"]
+    assert not hasattr(ah, "_vov_anchored_directives")
 
 
 def test_f1_chunks_carry_their_heading_ancestry():
@@ -270,7 +291,9 @@ def test_f1_extraction_prompt_requires_fully_qualified_targets():
 def test_f2_create_without_remove_is_rejected_after_retries_with_the_rename_hint():
     model = _engine()
     feedback = _rename_batch(intent="Rename to crew_member.", target="crew.member")
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"))
     assert ah._vov_rename_pairs_for_batch(feedback, model) == PAIRS
+    ah.vov_ledger_reset()
     llm = _FakeLLM(mutator=COPY_MUTATOR)
     inv = ah.capture_invariants(model, [], [])
     new_model, outcome = ah._apply_handler_with_retry(_handler(COPY_MUTATOR), _rename_batch(), model, inv, llm, 3, (), (), 600.0, PAIRS)
@@ -326,6 +349,8 @@ def test_f2_else_loop_vetoes_an_applied_rename_that_did_not_land():
     base = _engine()
     outcomes = [ah.VReqOutcome(batch_id="B1", vreq_ids=("V1", "V2"), status="applied", diagnostic="", attempts=1)]
     vreqs = [_vreq("Rename to crew_member.", "crew.member", "V1"), _vreq("Describe crew.roster", "crew.roster", "V2")]
+    vs.register(ah, base, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"),
+                vs.spec("V2", "set_fields", ["crew.roster"], fields=[vs.field("products", "description")]))
     assert ah._vov_veto_unlanded_renames(outcomes, 0, vreqs, base, base, LOG) == 1
     assert [(o.vreq_ids, o.status) for o in outcomes] == [(("V2",), "applied"), (("V1",), "rename_postcondition_failed")]
     landed = _engine()
@@ -357,8 +382,10 @@ def _fixer(new_model):
     return fixer
 
 
-def test_f2_selffixer_rejects_a_create_only_rename_and_accepts_a_merge():
+def test_f2_selffixer_rejects_a_create_only_rename_and_accepts_a_merge(monkeypatch):
     model = _engine()
+    vs.register(ah, model, vs.spec("VREQ-0007", "rename_product", ["crew.member"], new_name="crew_member"))
+    monkeypatch.setattr(ah, "_v410_deterministic_selffix", lambda *_a, **_k: (None, "no_deterministic_action"))
     twin = copy.deepcopy(model)
     crew = _domain(twin, "crew")
     crew["products"].append(dict(copy.deepcopy(next(p for p in crew["products"] if p["name"] == "member")), name="crew_member"))
@@ -380,6 +407,20 @@ def test_f2_selffixer_rejects_a_create_only_rename_and_accepts_a_merge():
     assert ah.vov_rename_events()[0]["cause"] == "selffixer:VREQ-0007"
 
 
+def test_f2_selffixer_deterministic_rename_waits_for_the_commit_and_names_its_requirement():
+    model = _engine()
+    vs.register(ah, model, vs.spec("VREQ-0008", "rename_product", ["crew.member"], new_name="crew_member"))
+    fixer = _fixer(model)
+    work = copy.deepcopy(model)
+    ok, applied, evidence = fixer._fix_one_req(work, {"id": "VREQ-0008", "text": "Rename crew.member to crew_member", "evidence": ""}, per_req_retries=0)
+    assert ok and applied and evidence.startswith("rename_product") and _has(work, "crew", "crew_member") and not _has(work, "crew", "member")
+    assert ah.vov_rename_events() == []
+    fixer._vov_commit_renames("VREQ-0008")
+    assert [(e["kind"], e["old"], e["new"], e["cause"]) for e in ah.vov_rename_events()] == [
+        ("product", "crew.member", "crew.crew_member", "selffixer:VREQ-0008"),
+        ("attribute", "crew.crew_member.member_id", "crew.crew_member.crew_member_id", "selffixer:VREQ-0008")]
+
+
 def test_f2_rename_batches_lose_the_create_missing_rule_in_both_prompts():
     model = _engine()
     captured = []
@@ -389,6 +430,7 @@ def test_f2_rename_batches_lose_the_create_missing_rule_in_both_prompts():
             captured.append(user)
             return super().complete_json(system, user, temperature, response_schema)
 
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"))
     ah.synthesize_handler(_rename_batch(intent="Rename to crew_member.", target="crew.member"), _Capture(), model_snapshot=model)
     ah.synthesize_handler(_rename_batch(), _Capture(), model_snapshot=model, rename_pairs=PAIRS)
     plain = ah.Batch(batch_id="B2", vreq_ids=("V2",), intent_summary="add column x to crew.roster", target_entities=(("crew", "roster"),),
