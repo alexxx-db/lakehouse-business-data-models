@@ -101,13 +101,18 @@ def _run_remove_branch(ll, fk_attrs, tl, target):
                    '                _rel_needles = {tl, _rtl} | _rel_canon',
                    '                if any(kw in ll for kw in ("link", "connect", "fk", "foreign key")):\n')
     body = textwrap.indent(textwrap.dedent(block), "    ")
-    fn = ("import re\ndef _f(self, ll, fk_attrs, tl, target, req, _rtl, _rel_canon):\n"
+    fn = ("import re\ndef _f(self, ll, fk_attrs, tl, target, req, _rtl, _rel_canon, attrs_by_product):\n"
           + body + "    return {'status': 'no-branch'}\n")
     _self = types.SimpleNamespace(logger=logging.getLogger("v332test"))
     ns = {}
+    start = src.index("_VOV_FK_REMOVAL_COLUMN_RES = (")
+    exec("import re\n" + src[start:src.index("\n)\n", start) + 3], ns, ns)
     exec(fn, ns, ns)
+    attrs_by_product = {}
+    for a in fk_attrs:
+        attrs_by_product.setdefault(f"{a['domain']}.{a['product']}".lower(), []).append(a)
     return ns["_f"](_self, ll, fk_attrs, tl, target,
-                    types.SimpleNamespace(id="VREQ-009"), tl, set())
+                    types.SimpleNamespace(id="VREQ-009"), tl, set(), attrs_by_product)
 
 
 def test_remove_fk_column_level_fulfilled_when_named_column_removed():

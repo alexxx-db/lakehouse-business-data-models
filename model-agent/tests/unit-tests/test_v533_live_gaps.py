@@ -1607,14 +1607,17 @@ def test_after_the_settle_a_pass_cannot_rename_a_column_of_a_named_base_table():
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
     d, p, a, mv = ah.model_to_widgets_flat(base)
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:p075_fk_target_pk_suffix") is not None, "before the engine"
+    ah.vov_ledger_reset()
     fence.requested_snapshot(d, p, a, mv, h.LOG)
-    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:p075_fk_target_pk_suffix") is not None
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:llm_fallback_mutation") is not None, "the sweep, until it settles"
     ah.vov_ledger_reset()
     assert ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
     row = next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "member_id")
     row["attribute"] = row["column_name"] = "crew_member_id"
     assert ah._vov_note_attribute_rename("crew", "roster", "member_id", "crew_member_id", "pass:p075_fk_target_pk_suffix") is None
-    assert not [e for e in ah._VOV_LEDGER["renames"] if e["new"].endswith("crew_member_id")]
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:llm_fallback_mutation") is None, "the sweep after it settled"
+    assert not [e for e in ah._VOV_LEDGER["renames"] if e["new"].endswith(("crew_member_id", "roster_day"))]
     assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "VREQ-0002") is not None
     wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
     ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
@@ -1722,3 +1725,21 @@ def test_the_sweep_asks_once_more_by_column_when_a_batch_leaves_open_values_empt
             assert "STILL MISSING after your previous answer: crew.roster.roster_date business_glossary_term" in executes[1]
     assert ah._vibe_scope_fill_missing(None, p, a, [("crew", "roster")]) == []
     assert ah._llm_fallback_batch_refs({"domain_filter": "crew", "product_filter": ["roster"]}, p) == [("crew", "roster")]
+
+
+def test_without_a_sweep_a_pass_still_cannot_rename_a_base_column_after_the_engine():
+    """Live a25 564397793184322: no corrective sweep ran, so the run never settled, and right after the engine snapshot the p016
+    and p73i passes renamed base columns across the model (order.charge.charge_name to name, the user's new
+    order.order_note.order_note_source_code to source_code); the rename ledger accepted them and the checkpoints restored 0."""
+    base = h.base_model()
+    text = "Make sure every foreign key in the model points to a primary key."
+    fence = ah._vibe_scope_start_requested([_wide(text)], base, h.LOG, base)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    row = next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "roster_date")
+    row["attribute"] = row["column_name"] = "date"
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "date", "pass:p73i_prefix_strip") is None
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    names = [r["attribute"] for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert "roster_date" in names and "date" not in names, names
