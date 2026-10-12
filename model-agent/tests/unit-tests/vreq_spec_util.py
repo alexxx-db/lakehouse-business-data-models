@@ -29,8 +29,8 @@ def spec(vid, action, targets=(), breadth="named", **fields):
     return out
 
 
-def field(level, name):
-    return {"level": level, "field": name}
+def field(level, name, fill=False):
+    return {"level": level, "field": name, "fill_only": fill}
 
 
 def reply(user, specs):
