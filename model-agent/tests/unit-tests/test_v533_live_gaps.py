@@ -1858,3 +1858,20 @@ def test_an_fk_removal_scored_by_state_diff_is_checked_on_the_column():
     keep = ah.VibeRequirement(id="VREQ-003", original_text="Keep every foreign key of order.sales_order.", intent="x", scope="relation",
                               scope_targets=["order.sales_order"], verification_strategy="state_diff")
     assert "Deterministic" not in str(orch._verify_state_diff(keep, [{"domain": "order"}], prods, attrs).get("evidence"))
+
+
+def test_a_product_rename_follows_the_users_words_when_the_table_has_a_column_of_its_own_name():
+    """Live R1 722967603447623: 'Rename the product sales_channel to order_channel' became the extractor's 'rename the product
+    attribute sales_channel', and because order.sales_channel has a column named sales_channel the deterministic pre-apply
+    renamed that column; the product kept its name and the feedback item was reported applied."""
+    base = h.base_model()
+    roster = base["model"]["domains"][0]["products"][1]
+    roster["attributes"].append({"name": "roster", "column_name": "roster", "type": "STRING", "description": "Roster label", "foreign_key_to": "", "tags": ""})
+    def raw(intent, quote):
+        return ah.RawVREQ(vreq_id="VREQ-0001", intent=intent, target="crew.roster", source_quote=quote, source_chunk_id="c1")
+    op = ah._v413_vreq_to_det_op(raw("In the crew domain, rename the product attribute roster to duty_roster.",
+                                     "[crew.roster] Rename the product roster to duty_roster."), base)
+    assert op == ("rename_product", "crew", "roster", "duty_roster"), op
+    op = ah._v413_vreq_to_det_op(raw("Rename the column roster in crew.roster to roster_label.",
+                                     "[crew.roster] Rename the column roster in the table crew.roster to roster_label."), base)
+    assert op == ("rename_attribute", "crew", "roster", "roster", "roster_label"), op
