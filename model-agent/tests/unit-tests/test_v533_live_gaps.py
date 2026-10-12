@@ -1743,3 +1743,51 @@ def test_without_a_sweep_a_pass_still_cannot_rename_a_base_column_after_the_engi
     ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
     names = [r["attribute"] for r in a if r["domain"] == "crew" and r["product"] == "roster"]
     assert "roster_date" in names and "date" not in names, names
+
+
+def test_a_target_that_names_the_whole_model_is_wide_unless_the_model_has_such_an_entity():
+    """Live a26 323311128142849: the extractor gave 'Make sure every foreign key in the model points to a primary key' the target
+    'model', which read as the name of a new domain, so the fence admitted an entity 'model' instead of opening every base domain
+    to the engine (decision 6A)."""
+    base = h.base_model()
+    assert ah._vov_target_is_model_wide("model", base) and ah._vov_target_is_model_wide("All", base) and ah._vov_target_is_model_wide("*", base)
+    assert not ah._vov_target_is_model_wide("crew", base) and not ah._vov_target_is_model_wide("crew.roster", base)
+    named_model = copy.deepcopy(base)
+    named_model["model"]["domains"][0]["name"] = "model"
+    assert not ah._vov_target_is_model_wide("model", named_model), "a real domain named model is a target"
+    text = "Make sure every foreign key in the model points to a primary key."
+    spec, wide = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="model", source_quote=text, source_chunk_id="c1")], base)
+    assert wide == ["VREQ-0001: model"] and "model" not in spec.new_names
+    assert spec.whole_domains == {ah._vov285_san(d["name"]) for d in base["model"]["domains"]}
+    vibe = f"- (high) Give each column that has no business glossary term one. <!-- vi:5f2b0a8e-1c1d-4d55-9a37-0f1b6c8e2d11 target=crew.roster -->\n"
+    stripped, items = ah._vibe_input_strip(vibe)
+    input_map = {"sha": ah._vibe_input_sha(stripped), "chars": len(stripped), "items": items, "vreqs": {}}
+    quote = "Give each column that has no business glossary term one."
+    out = ah._vov_normalize_vreq_targets([ah.RawVREQ(vreq_id="VREQ-0002", intent="x", target="model", source_quote=quote, source_chunk_id="c1")],
+                                         base, h.LOG, input_map=input_map, vibe_text=stripped)
+    assert out[0].target == "crew.roster"
+
+
+def test_an_open_field_requirement_on_a_table_in_scope_for_another_reason_is_scored_by_its_own_verdict():
+    """Live a27 867113767175039: 'Improve the description of the table order.store_shift' changed the description, but a model-wide
+    requirement put every domain in scope (decision 6A), so the change was no P6 delta and the final-outcomes check reported
+    'no open-field change reached the final model' for it."""
+    base = h.base_model()
+    texts = [("VREQ-0001", "*", "Make sure every foreign key in the model points to a primary key."),
+             ("VREQ-0002", "crew.roster", "Improve the description of the table crew.roster.")]
+    vreqs = [ah.RawVREQ(vreq_id=v, intent=t, target=tg, source_quote=t, source_chunk_id="c1") for v, tg, t in texts]
+    for new_description, expected in (("Which crew member flies which duty on which day, and from which base.", "applied"), (None, "noop_failed")):
+        ah.set_vibe_scope_runtime(None)
+        fence = ah._vibe_scope_start_requested(vreqs, base, h.LOG, base)
+        assert "VREQ-0002" in fence.spec.open_field_vreqs and fence.spec.whole_domains
+        final = copy.deepcopy(base)
+        if new_description:
+            final["model"]["domains"][0]["products"][1]["description"] = new_description
+        fence.splice_and_verify(copy.deepcopy(final), h.LOG)
+        d, p, a, _mv = ah.model_to_widgets_flat(final)
+        wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+              "_vov_2_raw_vreqs": [{"vreq_id": v, "intent": t, "target": tg, "source_quote": t} for v, tg, t in texts],
+              "_vov_vreq_status": {"VREQ-0001": {"status": "applied", "reason": ""}, "VREQ-0002": {"status": "applied", "reason": ""}},
+              "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+        ah._vov_reconcile_final_outcomes(wv, h.LOG)
+        assert wv["_vov_vreq_status"]["VREQ-0002"]["status"] == expected, (new_description, wv["_vov_vreq_status"])
