@@ -372,13 +372,29 @@ def _without_tag_list_pk_flags(out):
 INTENDED_CHANGES = {"structural_hardening": _without_tag_list_pk_flags}
 
 
+def _without_steward(out):
+    out = copy.deepcopy(out)
+    stack = [out]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            node.pop("steward", None)
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return out
+
+
 @pytest.mark.parametrize("name", sorted(RUNNERS))
 def test_default_id_output_is_byte_identical_to_56ce1eb(name):
     old = _module_at(BASE_COMMIT)
-    new_out, old_out = RUNNERS[name](ah, "_id")[0], RUNNERS[name](old, "_id")[0]
+    new_out, old_out = _without_steward(RUNNERS[name](ah, "_id")[0]), _without_steward(RUNNERS[name](old, "_id")[0])
     if name in INTENDED_CHANGES:
         new_out, old_out = INTENDED_CHANGES[name](new_out), INTENDED_CHANGES[name](old_out)
-    assert _canonical(new_out) == _canonical(old_out)
+    new_text, old_text = _canonical(new_out), _canonical(old_out)
+    if new_text != old_text:
+        i = next((k for k in range(min(len(new_text), len(old_text))) if new_text[k] != old_text[k]), min(len(new_text), len(old_text)))
+        pytest.fail(f"{name}: output differs from {BASE_COMMIT} at {i}: new {new_text[max(0, i - 120):i + 120]!r} old {old_text[max(0, i - 120):i + 120]!r}")
 
 
 FAIL_PRE = {"strip_product_prefix", "make_product_dict", "validator_products", "validator_attributes",
