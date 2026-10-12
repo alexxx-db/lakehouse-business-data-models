@@ -202,13 +202,15 @@ After attributes are generated, the FK linking stage runs 3 sub-phases: in-domai
 | **Ambiguous FK auto-rename** | P0.16 | If two FK columns point at the same target and one is generic (e.g. `profile_id`), it's renamed with a product-hint or ordinal fallback (`customer_profile_id`, `profile_id_2`). | Auto-applied. |
 | **Protected parent-child FK** | REL-RUL-012, REL-RUL-020 | Certain parent-child FKs (e.g. `order_line → order_header`) are structurally protected and cannot be dropped by cleanup. | Hard-protected. |
 | **Cycle detection** | `qa_results["cycles_detected"]` | FK graph must be a DAG (except self-refs and cleared cycles). | Cycle-breaker picks the weakest edge and drops it, logs cycle path. |
-| **Siloed table detection** | `qa_results["siloed_tables"]` | Every non-reference product must have at least one inbound or outbound FK. | Siloed tables listed in QA result_json for operator review. |
+| **Siloed table detection** | `qa_results["siloed_tables"]` | Every non-reference product must have at least one inbound or outbound FK. A table whose links the user removed (a column with `user_removed_fk`, on either side of the removed key) is left out (agent 5.3.3). | Siloed tables listed in QA result_json for operator review. |
+| **A foreign key the user removed stays removed** | QGATE-RUL-025, `user-removed-fk-enforce` | A column with `user_removed_fk` has no FK in memory or in `model.json`. No linking pass may add one; only a requirement that links the column again clears the marker. | Any FK a pass still added is cleared before the `model.json` write, with a warning. |
 
 **Questions answered:**
 1. Will any FK actually be creatable at physical-schema time? → Type-compat gate catches it here, not at SQL failure time.
 2. Does the FK graph have cycles? → Detected + broken.
 3. Are there 2 generic FKs both pointing at the same parent from one product? → Auto-renamed.
 4. Is there a table nobody references and that references nobody? → Flagged in silos list.
+5. Did a pass link a column whose foreign key the user removed? → Cleared before the `model.json` write and logged.
 
 ---
 

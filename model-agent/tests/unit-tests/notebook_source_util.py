@@ -164,7 +164,7 @@ def exec_function_namespace(
 ) -> dict:
     """Exec a notebook function into a namespace and return it."""
     fn_src = slice_function_source(fn_name, source=source)
-    ns = {"__name__": f"_test_slice_{fn_name}"}
+    ns = {"__name__": f"_test_slice_{fn_name}", **user_removed_fk_globals()}
     if extra_globals:
         ns.update(extra_globals)
     exec(compile(fn_src, str(NOTEBOOK_PATH), "exec"), ns)
@@ -227,7 +227,7 @@ def exec_functions_namespace(
     """Exec several notebook functions into ONE shared namespace (so callees resolve
     their siblings). Slices are concatenated in the given order and exec'd together."""
     source = source or notebook_concat_source()
-    ns = {"__name__": "_test_slice_multi"}
+    ns = {"__name__": "_test_slice_multi", **user_removed_fk_globals()}
     if extra_globals:
         ns.update(extra_globals)
     blob = "\n\n".join(slice_function_source(n, source=source) for n in fn_names)
@@ -249,3 +249,16 @@ def vov_ledger_globals() -> dict:
     out = {k: v for k, v in helpers.items() if k.startswith(("_vov_", "vov_", "_VOV_"))}
     out["logging"] = logging
     return out
+
+
+USER_REMOVED_FK_HELPERS = (
+    "_USER_REMOVED_FK_REASON", "_user_removed_fk_fields", "_fk_user_removed", "_vov_clear_user_removed_fk", "_vov_flat_attr_rows",
+    "_vov_model_attr_rows", "_vov_user_unlinked_products", "_vov_key_unlinked", "_vov_apply_user_fk_markers", "_enforce_user_removed_fks",
+    "_vov_fk_snapshot", "_selffix_user_fk_markers", "_vov285_san",
+)
+
+
+def user_removed_fk_globals() -> dict:
+    import sys
+    helpers = vars(sys.modules["agent_helpers"])
+    return {name: helpers[name] for name in USER_REMOVED_FK_HELPERS}

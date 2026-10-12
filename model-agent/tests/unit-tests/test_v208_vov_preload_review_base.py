@@ -195,7 +195,10 @@ def _build_shim_namespace_with_stubs():
     import json as _json
     import logging as _logging
 
+    from notebook_source_util import user_removed_fk_globals
+
     ns = {
+        **user_removed_fk_globals(),
         "__name__": "__test_vov_shim__",
         "copy": _copy,
         "json": _json,

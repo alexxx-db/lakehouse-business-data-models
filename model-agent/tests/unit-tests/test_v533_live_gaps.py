@@ -2252,14 +2252,13 @@ def test_an_fk_the_engine_removed_is_marked_so_no_pass_re_links_it(monkeypatch):
     next(a for a in roster["attributes"] if a["name"] == "member_id")["foreign_key_to"] = ""
     sched = next(p for d in final["model"]["domains"] for p in d["products"] if p["name"] == "scheduled_flight")
     next(a for a in sched["attributes"] if a["name"] == "aircraft_id")["foreign_key_to"] = "fleet.maintenance.maintenance_id"
-    assert ah._vov_engine_removed_fk_keys(initial, final) == {("crew", "roster", "memberid")}
+    removed = ah._vov_engine_removed_fk_keys(initial, final)
+    assert removed == {("crew", "roster", "memberid"): "crew.member.member_id"}
     d, p, a, _mv = ah.model_to_widgets_flat(final)
     seen = []
     monkeypatch.setitem(ah.__dict__, "smart_worker_loop",
                         lambda **kw: (seen.append(json.dumps(kw.get("prompt_vars"), default=str)), (False, None, []))[1])
-    for x in a:
-        if (x["domain"], x["product"], x["attribute"]) == ("crew", "roster", "member_id"):
-            x["llm_fk_skip"] = True
+    assert ah._vov_apply_user_fk_markers(a, removed, h.LOG) == (["crew.roster.memberid"], [])
     ah._run_find_missing_fk_links(d, p, a, ah.build_pk_map(p, {}), h.LOG, object(), {})
     assert "crew.roster.member_id" not in "\n".join(seen) and "- crew.roster: member_id" not in "\n".join(seen)
     linked = copy.deepcopy(a)
@@ -2271,7 +2270,225 @@ def test_the_engine_writeback_marks_the_removed_fks_and_the_llm_relink_skips_fro
     src = h.notebook_concat_source()
     i = src.index("    new_domains, new_products, new_attrs, new_mvs = model_to_widgets_flat(result.final_model)")
     block = src[i:i + 2500]
-    assert "_vov_engine_removed_fk_keys(initial_model, result.final_model)" in block and '["llm_fk_skip"] = True' in block
+    mark = block.index("_vov_apply_user_fk_markers(new_attrs, _vov_engine_removed_fk_keys(initial_model, result.final_model), logger)")
+    assert mark < block.index(".requested_snapshot(new_domains, new_products, new_attrs, new_mvs, logger)")
     relink = src[src.index("def _pre_static_analysis_llm_relink("):]
     relink = relink[:relink.index("\ndef ", 10)]
     assert "_vibe_scope_pass_may_change(a_domain, a_product)" in relink
+
+
+_KPI_TARGET = "campaign.campaign_kpi_target.campaign_kpi_target_id"
+
+
+class _Rec:
+    def __init__(self):
+        self.lines = []
+
+    def info(self, msg):
+        self.lines.append(("info", msg))
+
+    def warning(self, msg):
+        self.lines.append(("warning", msg))
+
+
+def _col(name, fk="", pk=False, removed=""):
+    attr = {"name": name, "column_name": name, "type": "BIGINT", "foreign_key_to": fk, "description": f"The {name}.", "tags": "primary_key" if pk else ""}
+    if removed:
+        attr["user_removed_fk"] = removed
+    return attr
+
+
+def _unlinked_campaign(marked=True):
+    return {"model": {"domains": [{"name": "campaign", "products": [
+        {"name": "campaign_annotation", "primary_key": "campaign_annotation_id",
+         "attributes": [_col("campaign_annotation_id", pk=True), _col("campaign_kpi_target_id", removed=_KPI_TARGET if marked else ""), _col("note_text")]},
+        {"name": "campaign_kpi_target", "primary_key": "campaign_kpi_target_id",
+         "attributes": [_col("campaign_kpi_target_id", pk=True), _col("campaign_plan_id", fk="campaign.campaign_plan.campaign_plan_id")]},
+        {"name": "campaign_plan", "primary_key": "campaign_plan_id", "attributes": [_col("campaign_plan_id", pk=True)]},
+    ]}]}}
+
+
+def _product(model, name):
+    return next(p for d in model["model"]["domains"] for p in d["products"] if p["name"] == name)
+
+
+def _attr(model, product, name):
+    return next(a for a in _product(model, product)["attributes"] if a["name"] == name)
+
+
+def test_the_silo_repair_at_the_model_json_write_leaves_a_table_the_user_unlinked():
+    """Live L5 927266035211208: the user removed campaign_annotation.campaign_kpi_target_id's FK, the model.json export had
+    783 FKs, then G7 at the serialization boundary saw a siloed table and linked it again; the parity gate copied that FK
+    into memory, so v41 shipped 784 FKs while the requirement was reported applied."""
+    control = _unlinked_campaign(marked=False)
+    ah._v443_structural_hardening(control, h.LOG)
+    linked = [a["name"] for a in _product(control, "campaign_annotation")["attributes"] if a.get("foreign_key_to")]
+    assert linked, "without the marker G7 must still repair the silo, otherwise this test proves nothing"
+    model = _unlinked_campaign()
+    before = copy.deepcopy(_product(model, "campaign_annotation")["attributes"])
+    ah._v443_structural_hardening(model, h.LOG)
+    assert _product(model, "campaign_annotation")["attributes"] == before
+
+
+def test_the_silo_repair_does_not_wire_an_inbound_fk_into_a_table_the_user_unlinked():
+    def model(marked):
+        return {"model": {"domains": [{"name": "geo", "products": [
+            {"name": "region", "primary_key": "region_id", "attributes": [_col("region_id", pk=True), _col("region_name")]},
+            {"name": "city", "primary_key": "city_id", "attributes": [_col("city_id", pk=True)]},
+            {"name": "store", "primary_key": "store_id",
+             "attributes": [_col("store_id", pk=True), _col("city_id", fk="geo.city.city_id"), _col("region_id", removed="geo.region.region_id" if marked else "")]},
+        ]}]}}
+    control = model(False)
+    ah._v443_structural_hardening(control, h.LOG)
+    assert _attr(control, "store", "region_id")["foreign_key_to"] == "geo.region.region_id"
+    kept = model(True)
+    ah._v443_structural_hardening(kept, h.LOG)
+    assert _attr(kept, "store", "region_id")["foreign_key_to"] == ""
+
+
+def test_a_user_removed_fk_is_written_to_model_json_and_loaded_by_the_next_version():
+    flat = {"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "type": "BIGINT", "foreign_key_to": ""}
+    plain_keys = set(ah._modeljson_attr_obj(dict(flat)))
+    assert "user_removed_fk" not in plain_keys
+    written = ah._modeljson_attr_obj(dict(flat, user_removed_fk=_KPI_TARGET))
+    assert written["user_removed_fk"] == _KPI_TARGET and set(written) - plain_keys == {"user_removed_fk"}
+    model = _unlinked_campaign()
+    d, p, a, mv = ah.model_to_widgets_flat(model, quiet=True)
+    row = next(x for x in a if x["product"] == "campaign_annotation" and x["attribute"] == "campaign_kpi_target_id")
+    assert row["user_removed_fk"] == _KPI_TARGET and row["llm_fk_skip"] is True
+    assert row["llm_fk_skip_reason"].startswith(ah._USER_REMOVED_FK_REASON)
+    other = next(x for x in a if x["product"] == "campaign_annotation" and x["attribute"] == "note_text")
+    assert not {"user_removed_fk", "llm_fk_skip", "llm_fk_skip_reason"} & set(other)
+    nested = ah.widgets_flat_to_model(d, p, a, mv)
+    back = _attr(nested, "campaign_annotation", "campaign_kpi_target_id")
+    assert back["user_removed_fk"] == _KPI_TARGET and "llm_fk_skip" not in back
+    assert "user_removed_fk" not in _attr(nested, "campaign_annotation", "note_text")
+
+
+def test_the_engine_writeback_marks_a_removed_fk_and_clears_the_marker_when_a_requirement_links_it_again():
+    attrs = [
+        {"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "foreign_key_to": ""},
+        dict({"domain": "crew", "product": "roster", "attribute": "member_id", "foreign_key_to": "crew.member.member_id"},
+             **ah._user_removed_fk_fields("crew.member.member_id", flat=True)),
+        {"domain": "crew", "product": "roster", "attribute": "base_id", "foreign_key_to": "crew.base.base_id", "user_removed_fk": "crew.base.base_id",
+         "llm_fk_skip": True, "llm_fk_skip_reason": "KEEP_AS_IS: external code"},
+    ]
+    rec = _Rec()
+    marked, relinked = ah._vov_apply_user_fk_markers(attrs, {("campaign", "campaignannotation", "campaignkpitargetid"): _KPI_TARGET}, rec)
+    assert marked == ["campaign.campaignannotation.campaignkpitargetid"]
+    assert attrs[0]["user_removed_fk"] == _KPI_TARGET and attrs[0]["llm_fk_skip"] is True
+    assert sorted(relinked) == ["crew.roster.baseid", "crew.roster.memberid"]
+    assert not {"user_removed_fk", "llm_fk_skip", "llm_fk_skip_reason"} & set(attrs[1])
+    assert "user_removed_fk" not in attrs[2] and attrs[2]["llm_fk_skip"] is True and attrs[2]["llm_fk_skip_reason"] == "KEEP_AS_IS: external code"
+    assert [kind for kind, _ in rec.lines] == ["info", "info"]
+
+
+def test_the_model_json_write_clears_an_fk_a_pass_added_to_a_column_the_user_unlinked():
+    flat = [dict({"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "foreign_key_to": _KPI_TARGET},
+                 **ah._user_removed_fk_fields(_KPI_TARGET, flat=True)),
+            {"domain": "campaign", "product": "campaign_kpi_target", "attribute": "campaign_plan_id", "foreign_key_to": "campaign.campaign_plan.campaign_plan_id"}]
+    rec = _Rec()
+    cleared = ah._enforce_user_removed_fks(ah._vov_flat_attr_rows(flat), rec, "memory")
+    assert cleared == [f"campaign.campaign_annotation.campaign_kpi_target_id -> {_KPI_TARGET}"]
+    assert flat[0]["foreign_key_to"] == "" and flat[1]["foreign_key_to"] == "campaign.campaign_plan.campaign_plan_id"
+    assert rec.lines[0][0] == "warning" and "alias=user-removed-fk-enforce" in rec.lines[0][1]
+    model = _unlinked_campaign()
+    _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] = _KPI_TARGET
+    assert len(ah._enforce_user_removed_fks(ah._vov_model_attr_rows(model), None, "model.json")) == 1
+    assert _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] == ""
+    clean = _Rec()
+    assert ah._enforce_user_removed_fks(ah._vov_model_attr_rows(model), clean, "model.json") == [] and clean.lines[0][0] == "info"
+    src = h.notebook_concat_source()
+    step = src[src.index("def step_generate_data_model_json("):]
+    step = step[:step.index("\ndef ", 10)]
+    assert step.index('_enforce_user_removed_fks(_vov_flat_attr_rows(widgets_values.get("attributes")), logger, "memory")') < step.index(
+        'attributes_for_export = [dict(a) for a in widgets_values.get("attributes", [])]')
+    assert step.index("_v443_structural_hardening(data_model, logger)") < step.index(
+        '_enforce_user_removed_fks(_vov_model_attr_rows(data_model), logger, "model.json")') < step.index(
+        "_vibe_scope_model_json_facts(data_model, widgets_values, logger)")
+
+
+def _flat_unlinked():
+    products = [{"domain": "d", "product": "a", "primary_key": "a_id"}, {"domain": "d", "product": "b", "primary_key": "b_id"},
+                {"domain": "d", "product": "c", "primary_key": "c_id"}]
+    attrs = [{"domain": "d", "product": "a", "attribute": "a_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"},
+             dict({"domain": "d", "product": "a", "attribute": "b_id", "foreign_key_to": "", "tags": ""}, **ah._user_removed_fk_fields("d.b.b_id", flat=True)),
+             {"domain": "d", "product": "b", "attribute": "b_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"},
+             {"domain": "d", "product": "c", "attribute": "c_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"}]
+    return [{"domain": "d"}], products, attrs
+
+
+def test_the_silo_detectors_and_static_analysis_leave_out_tables_the_user_unlinked():
+    domains, products, attrs = _flat_unlinked()
+    assert ah._get_siloed_products_list(attrs, products, h.LOG) == ["d.c"]
+    assert ah._check_siloed_tables_after_cycle_break(products, attrs, h.LOG) == ["d.c"]
+    siloed = {i["details"]["table"] for i in ah.run_metamodel_static_analysis(domains, products, attrs, {}, h.LOG)["issues"] if i["category"] == "siloed_table"}
+    assert siloed == {"d.c"}
+    for a in attrs:
+        ah._vov_clear_user_removed_fk(a)
+    assert sorted(ah._get_siloed_products_list(attrs, products, h.LOG)) == ["d.a", "d.b", "d.c"]
+
+
+def test_the_flat_linkers_skip_a_column_the_user_removed_the_fk_from():
+    for marked in (False, True):
+        _domains, products, attrs = _flat_unlinked()
+        if not marked:
+            ah._vov_clear_user_removed_fk(attrs[1])
+        pk_map = ah.build_pk_map(products, {})
+        ah._run_deterministic_silo_pk_linking(["d.b"], products, attrs, pk_map, h.LOG, {})
+        assert attrs[1]["foreign_key_to"] == ("" if marked else "d.b.b_id")
+        _domains, products, attrs = _flat_unlinked()
+        if not marked:
+            ah._vov_clear_user_removed_fk(attrs[1])
+        assert ah._v458_assign_fk_if_acyclic(attrs[1], "d.b.b_id", attrs, h.LOG, "user-removed-fk-test") is (not marked)
+        assert attrs[1]["foreign_key_to"] == ("" if marked else "d.b.b_id")
+
+
+def test_every_pass_that_creates_a_link_honors_the_user_removed_marker():
+    src = h.notebook_concat_source()
+
+    def body(name):
+        start = src.index(f"def {name}(")
+        nxt = re.search(r"\n(?:def |class )", src[start + 10:])
+        return src[start:start + 10 + nxt.start()] if nxt else src[start:]
+
+    for name in ("_v443_structural_hardening", "_v441_reviewer_finalization", "_run_deterministic_silo_pk_linking", "_run_pairwise_silo_remediation",
+                 "run_in_domain_linking_parallel", "_run_deterministic_fk_linking_file_based", "_v458_assign_fk_if_acyclic", "_run_single_norm_batch",
+                 "_process_ambiguous_fk_batch"):
+        assert "_fk_user_removed(" in body(name), name
+    for name in ("_get_siloed_products_list", "_check_siloed_tables_after_cycle_break", "run_quality_assurance_checks", "run_metamodel_static_analysis",
+                 "_v443_structural_hardening"):
+        assert "_vov_user_unlinked_products(" in body(name), name
+    for name in ("_run_in_domain_linking_smart_worker", "_run_cross_domain_linking_smart_worker", "_run_find_missing_fk_links",
+                 "_post_normalization_deterministic_fk_linker", "_pre_static_analysis_llm_relink", "step_finalize_model_before_physical_schema"):
+        assert "llm_fk_skip" in body(name), name
+    for name in ("model_to_widgets_flat", "widgets_flat_to_model", "_modeljson_attr_obj"):
+        assert "_user_removed_fk_fields(" in body(name), name
+    assert src.count("_selffix_user_fk_markers(") == 3
+
+
+def test_a_selffixer_fix_cannot_link_a_column_the_user_unlinked_but_a_user_requirement_can():
+    fixer = object.__new__(ah.SelfFixer)
+    fixer.logger = h.LOG
+
+    def link(model, req, per_req_retries=2):
+        _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] = _KPI_TARGET
+        return True, True, "linked"
+
+    def unlink(model, req, per_req_retries=2):
+        _attr(model, "campaign_kpi_target", "campaign_plan_id")["foreign_key_to"] = ""
+        return True, True, "unlinked"
+
+    fixer._fix_one_req = link
+    blocked = fixer._compute_one_req(_unlinked_campaign(), {"id": "sa-siloed_table-campaign.campaign_annotation"})
+    assert blocked["ok"] is False and blocked["evidence"].startswith("blocked:")
+    user = fixer._compute_one_req(_unlinked_campaign(), {"id": "VREQ-0001"})
+    attr = _attr(user["new_model"], "campaign_annotation", "campaign_kpi_target_id")
+    assert user["ok"] is True and attr["foreign_key_to"] == _KPI_TARGET and "user_removed_fk" not in attr
+    fixer._fix_one_req = unlink
+    removed = fixer._compute_one_req(_unlinked_campaign(), {"id": "VREQ-0002"})
+    assert _attr(removed["new_model"], "campaign_kpi_target", "campaign_plan_id")["user_removed_fk"] == "campaign.campaign_plan.campaign_plan_id"
+    serial = h.notebook_concat_source()
+    serial = serial[serial.index("                    _fk_before = _vov_fk_snapshot(model)"):]
+    assert serial.index("ok, _, evidence = self._fix_one_req(model, req, per_req_retries=per_req_retries)") < serial.index(
+        "if ok and _selffix_user_fk_markers(model, _fk_before, rid, self.logger)[0]:") < serial.index('per_req[rid]["fixed"] = ok')

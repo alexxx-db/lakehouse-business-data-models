@@ -11,7 +11,7 @@ import json
 import textwrap
 from pathlib import Path
 
-from notebook_source_util import source_def_index
+from notebook_source_util import source_def_index, user_removed_fk_globals
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK_PATH = REPO_ROOT / "agent" / "dbx_vibe_modelling_agent.ipynb"
@@ -37,7 +37,7 @@ def slice_functions(fn_names, source, extra_globals=None):
     missing = [n for n in fn_names if n not in chosen]
     if missing:
         raise LookupError("module-level def(s) not found: %r" % missing)
-    ns = {"__name__": "_v435_slice"}
+    ns = {"__name__": "_v435_slice", **user_removed_fk_globals()}
     if extra_globals:
         ns.update(extra_globals)
     blob = "\n\n".join(chosen[n] for n in fn_names)
