@@ -74,11 +74,17 @@ def test_a_whole_named_domain_stays_open():
     assert fence.is_frozen_product("flight", "scheduled_flight")
 
 
-def test_a_requirement_without_a_target_keeps_the_scope_open():
-    fence, returned, log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
-    assert returned is None and not fence.spec.named_only
-    assert not fence.is_frozen_product("crew", "pairing")
-    assert any("[vibe-scope-named-off FIRED v5.3.0]" in m for m in log.lines)
+def test_a_requirement_without_a_target_opens_the_scope_to_the_engine_only():
+    """Decision 6A, live a24 298051143023142: a requirement without a target kept every in-scope product open to every pass. The
+    scope is now open to the VOV engine, and after it every base product is frozen at its engine result."""
+    fence, returned, log, raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
+    assert returned is fence and fence.spec.named_only
+    assert not fence.is_frozen_product("crew", "pairing") and not fence.is_frozen_product("crew", "member")
+    assert fence.is_frozen_product("flight", "scheduled_flight")
+    assert any("[vibe-scope-named-wide FIRED v5.3.3]" in m for m in log.lines)
+    d, p, a, mv = ah.model_to_widgets_flat(copy.deepcopy(raw))
+    _spec, baseline = fence.requested_snapshot(d, p, a, mv, log)
+    assert {("crew", "pairing"), ("crew", "member")} <= set(baseline.frozen_products)
 
 
 def test_a_requirement_without_a_target_that_names_a_field_opens_only_that_field():
@@ -219,7 +225,8 @@ def test_the_install_plan_oracle_keeps_the_named_only_rule():
     assert oracle.is_frozen_metric_view({"owner_domain": "flight", "owner_product": "scheduled_flight"})
     wide, _returned, _log, _raw = _scoped([_vreq("VREQ-0001", "", "Improve the overall model")])
     plain = ah._vibe_scope_deploy_oracle(json.loads(json.dumps(wide.report(), default=str)), use_runtime=False)
-    assert not plain.spec.named_only and not plain.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
+    assert plain.spec.named_only and not plain.is_frozen_metric_view({"owner_domain": "crew", "owner_product": "pairing"})
+    assert plain.is_frozen_metric_view({"owner_domain": "flight", "owner_product": "scheduled_flight"})
 
 
 def test_entity_changes_ignore_working_fields_model_json_does_not_store():

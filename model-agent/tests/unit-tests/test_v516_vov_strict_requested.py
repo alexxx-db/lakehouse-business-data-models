@@ -106,14 +106,28 @@ def test_an_unknown_bare_name_is_allowed_as_a_new_entity_anywhere():
 
 
 @pytest.mark.parametrize("target", ["every product", "Model-wide", "all HR products derived from DDL emp_history", ""])
-def test_a_set_or_missing_target_turns_strict_mode_off(target):
+def test_a_set_or_missing_target_opens_every_base_domain_to_the_engine_only(target):
+    """Decision 6A, live a24 298051143023142: a model-wide structural requirement that needed no change turned the fence off, and
+    the agent's own passes changed 88 of 90 products and the deploy replaced 89 tables. The fence now stays on: every base domain
+    is open to the VOV engine, and after it every base product is frozen at its engine result."""
     log = _Log()
     vreqs = R2_VREQS + [_vreq("VREQ-009", target, "add audit columns everywhere")]
     spec, wide = ah._vibe_scope_requested_spec(vreqs, {"model": _model()})
-    assert spec is None and wide and wide[0].startswith("VREQ-009")
-    assert ah._vibe_scope_start_requested(vreqs, {"model": _model()}, log) is None
-    assert ah.get_vibe_scope_runtime() is None
-    assert any("vov-strict-requested-off FIRED v5.1.6" in m for m in log.warnings)
+    assert wide and wide[0].startswith("VREQ-009")
+    base_domains = {ah._vov285_san(d["name"]) for d in _model()["domains"]}
+    assert spec.mode == "requested" and spec.whole_domains == base_domains
+    fence = ah._vibe_scope_start_requested(vreqs, {"model": _model()}, log)
+    try:
+        assert fence is not None and ah.get_vibe_scope_runtime() is fence
+        products = [(d["name"], p["name"]) for d in _model()["domains"] for p in d["products"]]
+        assert not any(fence.is_frozen_product(dn, pn) for dn, pn in products)
+        assert any("vov-strict-requested-wide FIRED v5.3.3" in m for m in log.infos)
+        assert not any("vov-strict-requested-off" in m for m in log.all())
+        d, p, a, mv = ah.model_to_widgets_flat({"model": _model()})
+        _spec, baseline = fence.requested_snapshot(d, p, a, mv, log)
+        assert {(ah._vov285_san(dn), ah._vov285_san(pn)) for dn, pn in products} <= set(baseline.frozen_products)
+    finally:
+        ah.set_vibe_scope_runtime(None)
 
 
 def test_a_move_lets_the_destination_domain_receive_the_product():
