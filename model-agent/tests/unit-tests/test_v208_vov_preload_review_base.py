@@ -221,6 +221,8 @@ def _build_shim_namespace_with_stubs():
     exec(compile(_extract_function_block(_notebook_source(), "_vibe_scope_checkpoint"), "<vibe-scope-checkpoint>", "exec"), ns)
     exec(compile(_extract_function_block(_notebook_source(), "_vibe_scope_raw_base"), "<vibe-scope-raw-base>", "exec"), ns)
     exec(compile(_extract_function_block(_notebook_source(), "_vov_record_engine_actions"), "<vov-record-engine-actions>", "exec"), ns)
+    for helper in ("_vov285_san", "_vibe_scope_model_root", "_vibe_scope_products_of", "_vov_engine_removed_fk_keys"):
+        exec(compile(_extract_function_block(_notebook_source(), helper), f"<{helper}>", "exec"), ns)
     exec(compile(model_to_flat, "<model_to_widgets_flat>", "exec"), ns)
     exec(compile(flat_to_model, "<widgets_flat_to_model>", "exec"), ns)
     exec(compile(fn_block, "<run_vov_2_against_widgets>", "exec"), ns)

@@ -15,7 +15,7 @@
     "fk_missing_parents": "39513720f9784cd5c33c8da88f6ce7ac7cc947390cb6d4909e3d38ba8d73ac22",
     "flat_projection": "7ab1482bad78c6f3f50668545b0007c8c07e417b05aadd44f3d9582b7461d277",
     "junk_domain_serialized": "84ee0bd6f7f6c5b284d4df38d716a2b25e1563b2e77183d61f6e566565608edd",
-    "model_json_export": "950413b858c083e0a4dbca7f326f41f1b3b5834a81312b0ea05dc667a8ed17de",
+    "model_json_export": "a1b8945d65ccb64844dd55adb971d14db42fce600d67c48b82548ffe9ccf9d1c",
     "mv_generation_fallback": "7d2477a6e676210cac615f28a6dec019301875a3490a43bef11ee20e22268099",
     "mv_kpi_first": "92b42eee2860c74392997e284ece37806919f85e8e2df386a8871eb6f5bd5988",
     "naming_apply_case": "36e2fbae6fec111b984b363d6315a33bf6dd96d7cbcf90c387f2bb98645d3ebf",
@@ -36,6 +36,16 @@
     "reason": "the attribute factory and the model.json serializer no longer invent a business glossary term for an attribute that has none",
     "runners": [
       "fk_missing_parents",
+      "model_json_export"
+    ]
+  },
+  "recaptured_5_3_3_location": {
+    "previous": {
+      "model_json_export": "950413b858c083e0a4dbca7f326f41f1b3b5834a81312b0ea05dc667a8ed17de"
+    },
+    "proof": "setting model.location of the new output back to the business row value reproduces the previous digest exactly",
+    "reason": "model.json records the folder it is written to in model.location instead of copying the location of an older business row",
+    "runners": [
       "model_json_export"
     ]
   },

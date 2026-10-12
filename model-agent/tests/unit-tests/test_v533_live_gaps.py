@@ -1875,3 +1875,403 @@ def test_a_product_rename_follows_the_users_words_when_the_table_has_a_column_of
     op = ah._v413_vreq_to_det_op(raw("Rename the column roster in crew.roster to roster_label.",
                                      "[crew.roster] Rename the column roster in the table crew.roster to roster_label."), base)
     assert op == ("rename_attribute", "crew", "roster", "roster", "roster_label"), op
+
+
+class _RegistrySpark(h.FakeSpark):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.saved = {}
+
+    def createDataFrame(self, data, schema=None):
+        df = super().createDataFrame(data, schema)
+        spark, original = self, df.write.saveAsTable
+
+        def save(name):
+            spark.saved.setdefault(str(name).rsplit(".", 1)[-1], []).extend(list(data))
+            return original(name)
+
+        df.write.saveAsTable = save
+        return df
+
+
+def test_registry_rows_keep_the_business_name_when_tags_need_classification(monkeypatch):
+    """Live T1 261921636092291 and T2 490876358520740: every VOV wrote a second set of _metamodel.domain and product rows
+    with business '' (3 + 90 per lane 1 version), because the tag-classification block of stage 1 overwrote business_name
+    with config.get('BUSINESS_NAME', ''), a key no code sets, before the domain and product registration."""
+    root = h.base_model()
+    for d in root["model"]["domains"]:
+        for p in d["products"]:
+            p.pop("data_type", None)
+    spark = _RegistrySpark(h.base_physical_tables())
+    wv = h.flat_widgets(root, spark=spark)
+    wv["config"].pop("BUSINESS_NAME")
+    for name, value in (("write_to_dbfs", lambda *a, **k: None), ("read_file_for_ddl", lambda *a, **k: json.dumps(root)),
+                        ("WorkspaceClient", lambda *a, **k: h.FakeWorkspace({})), ("_check_physical_deployment_clash", lambda *a, **k: None)):
+        monkeypatch.setitem(ah.__dict__, name, value)
+    ah.step_create_physical_schema_stage1(wv)
+    assert spark.saved.get("domain") and spark.saved.get("product")
+    assert {r["business"] for r in spark.saved["domain"]} == {"skyline_air"}
+    assert {r["business"] for r in spark.saved["product"]} == {"skyline_air"}
+
+
+class _SqliteSpark:
+    def __init__(self, tables):
+        import sqlite3
+        self.db = sqlite3.connect(":memory:")
+        self.columns = {}
+        for fqn, (columns, rows) in tables.items():
+            name = fqn.replace("`", "").rsplit(".", 1)[-1]
+            self.columns[name] = columns
+            self.db.execute(f"CREATE TABLE {name} ({', '.join(columns)})")
+            self.db.executemany(f"INSERT INTO {name} VALUES ({', '.join('?' for _ in columns)})", rows)
+        self.catalog = types.SimpleNamespace(tableExists=lambda fqn: fqn.replace("`", "").rsplit(".", 1)[-1] in self.columns)
+
+    def table(self, fqn):
+        return types.SimpleNamespace(columns=self.columns[fqn.replace("`", "").rsplit(".", 1)[-1]])
+
+    def sql(self, query):
+        q = re.sub(r"[A-Za-z0-9_]+\._metamodel\.`?([a-z]+)`?", r"\1", query)
+        n = self.db.execute(q).rowcount
+        return types.SimpleNamespace(collect=lambda: [(n,)])
+
+    def rows(self, name):
+        return self.db.execute(f"SELECT business, version, model_scope FROM {name} ORDER BY version, business").fetchall()
+
+
+def test_setup_deletes_only_the_registry_rows_with_a_blank_business():
+    cols = ["business", "version", "model_scope", "domain"]
+    spark = _SqliteSpark({"c._metamodel.domain": (cols, [("", "51", None, "order"), (None, "51", None, "customer"), ("  ", "52", None, "order"),
+                                                        ("Vs514 Retail", "51", "mvm", "order"), ("", "52", "mvm", "order")]),
+                          "c._metamodel.product": (cols + ["product"], [("", "51", None, "order", "refund"), ("Vs514 Retail", "51", "mvm", "order", "refund")])})
+    deleted = ah._registry_drop_blank_business_rows(spark, "c._metamodel")
+    assert deleted == {"domain": 4, "product": 1}
+    assert spark.rows("domain") == [("Vs514 Retail", "51", "mvm")]
+    assert spark.rows("product") == [("Vs514 Retail", "51", "mvm")]
+    legacy = _SqliteSpark({"c._metamodel.domain": (["business", "version", "domain"], [("", "3", "order"), ("Retail", "3", "order")])})
+    assert ah._registry_drop_blank_business_rows(legacy, "c._metamodel") == {"domain": 1}
+    assert ah._registry_drop_blank_business_rows(_SqliteSpark({}), "c._metamodel") == {}
+
+
+def test_setup_runs_the_blank_business_cleanup():
+    src = h.notebook_concat_source()
+    setup = src[src.index("def step_setup_and_clean("):]
+    setup = setup[:setup.index("\ndef ", 10)]
+    assert "_registry_drop_blank_business_rows(spark, metamodel_db)" in setup
+    assert 'config.get("BUSINESS_NAME"' not in src
+
+
+def test_a_scoped_run_keeps_its_own_model_location():
+    """Live I1 183752569345786: v53 was registered at .../v1/mvm. Every VOV model.json carried the base's model.location
+    (the v1 folder), and a scoped run would splice it back from the base because location was frozen model metadata."""
+    base = h.base_model()
+    base["model"]["location"] = "/Volumes/skyline/_metamodel/vol_root/business/skyline_air/v1/mvm"
+    base["model"]["common_business_jargons"] = "AOG, MEL"
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    cur["model"]["location"] = "/Volumes/skyline/_metamodel/vol_root/business/skyline_air/v2/mvm"
+    result = fence.check(cur)
+    assert result.ok and "model_metadata_changed" not in {v["kind"] for v in result.violations}
+    fence.splice_and_verify(cur, h.LOG)
+    assert cur["model"]["location"].endswith("/v2/mvm")
+    leak = copy.deepcopy(base)
+    leak["model"]["common_business_jargons"] = "leak"
+    assert "model_metadata_changed" in {v["kind"] for v in fence.check(leak).violations}
+
+
+def test_model_json_records_the_folder_it_is_written_to(monkeypatch):
+    import test_v514_vibe_scope_passes as passes
+    queries, uploads = [], {}
+    rows = [dict(passes._BUSINESS_ROW, version="1", location="/Volumes/c/_metamodel/vol_root/business/airlines/v1/mvm")]
+
+    class _Files:
+        def delete(self, file_path):
+            uploads.pop(file_path, None)
+
+        def upload(self, file_path, contents, overwrite=True):
+            uploads[file_path] = contents.read()
+
+    cfg = passes._cfg()
+    cfg.update({"TARGET_VOLUME": "/Volumes/c/_metamodel/vol_root/business/airlines/v2/mvm", "MAIN_METAMODEL_TABLES": {"BUSINESS": "c._metamodel.business"}})
+    d, p, a, mv = passes._flat(passes._perturbed())
+    wv = {"spark": None, "logger": passes._Log(), "config": cfg, "business_name": "airlines", "operation": passes.VOV, "current_version": "2",
+          "base_version_for_review": "1", "model_scope": "mvm", "domains": d, "products": p, "attributes": a, "metric_views": mv,
+          "_metric_view_records": [dict(x) for x in mv], "metric_view_statements": [x["sql"] for x in mv], "_run_start_time": "2026-01-01T00:00:00",
+          "_widget_raw_values": {"business_name": "airlines", "operation": passes.VOV}, "_run_start_timestamp": 0}
+    monkeypatch.setitem(ah.__dict__, "WorkspaceClient", lambda *a, **k: types.SimpleNamespace(files=_Files()))
+    monkeypatch.setitem(ah.__dict__, "execute_sql", lambda spark, query, logger=None: (queries.append(query), [dict(r) for r in rows])[1])
+    passes._with_spark_type_stand_ins(lambda: ah.step_generate_data_model_json(wv))
+    root = json.loads(uploads[f"{cfg['TARGET_VOLUME']}/model.json"])
+    assert root["model"]["location"] == cfg["TARGET_VOLUME"]
+    business_query = next(q for q in queries if "c._metamodel.business" in q and "SELECT *" in q)
+    assert "ORDER BY TRY_CAST(version AS DOUBLE) ASC" in business_query
+
+
+def test_install_registers_the_folder_the_artifact_is_in():
+    src = h.notebook_concat_source()
+    deploy = src[src.index("def _run_deploy_model("):]
+    call = deploy[deploy.index("_mm_reg = _register_model_json_in_metamodel("):][:400]
+    assert "model_folder or data_model.get('location', '')" in call
+    assert "data_model.get('location', model_folder)" not in call
+
+
+def test_uninstall_reads_the_conventions_of_the_version_it_removes():
+    src = h.notebook_concat_source()
+    i = src.index("_undeploy_biz_row = spark.sql(")
+    query = src[i:i + 400]
+    assert "AND version = '{_escape_sql(model_version)}'{scope_sql}" in query
+
+
+def _mv_record(view, owner_domain, owner_product, source, exprs):
+    dims = "\n".join(f'    - name: "{e}"\n      expr: {e}' for e in exprs)
+    sql = (f"CREATE OR REPLACE VIEW `skyline`.`_metrics`.`{view}`\nWITH METRICS\nLANGUAGE YAML\nAS $$\n  version: 1.1\n"
+           f'  source: "{source}"\n  dimensions:\n{dims}\n  measures:\n    - name: "Rows"\n      expr: COUNT(1)\n$$')
+    return {"view_name": view, "owner_domain": owner_domain, "owner_product": owner_product, "sql": sql}
+
+
+def _mv_widgets(records):
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    return {"domains": d, "products": p, "attributes": a, "_metric_view_records": records,
+            "metric_view_statements": [r["sql"] for r in records]}
+
+
+def test_a_metric_view_reading_a_table_outside_the_model_is_repointed_to_its_owner():
+    """Live T1/T2 heads: lane 1 product_buyer and product_merchandise_buyer read product.buyer and lane 2 campaign_annotation
+    read campaign.campaign_note, tables that 5.2.0 and 5.2.3 renames left behind; no gate saw it and every version since carried them."""
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`",
+                       ["base_code", "DATE_TRUNC('quarter', base_code)", "COUNT(DISTINCT base_id)"])
+    fine = _mv_record("crew_member_kpis", "crew", "member", "`skyline`.`crew`.`member`", ["full_name"])
+    wv = _mv_widgets([stale, fine])
+    assert [i["view_name"] for i in ah._metric_view_source_issues(wv["domains"], wv["products"], wv["_metric_view_records"])] == ["crew_base_kpis"]
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"] and not reported
+    assert 'source: "`skyline`.`crew`.`base`"' in wv["_metric_view_records"][0]["sql"]
+    assert wv["metric_view_statements"][0] == wv["_metric_view_records"][0]["sql"]
+    assert wv["_metric_view_records"][1]["sql"] == fine["sql"] and wv["metric_view_statements"][1] == fine["sql"]
+
+
+def test_a_metric_view_is_not_repointed_when_its_columns_or_joins_do_not_fit():
+    missing_col = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_region"])
+    joined = _mv_record("crew_roster_kpis", "crew", "roster", "`skyline`.`crew`.`crew_roster`", ["roster_date"])
+    joined["sql"] = joined["sql"].replace("  dimensions:", "  joins:\n    - name: r\n      source: skyline.crew.crew_roster\n      on: source.roster_id = r.roster_id\n  dimensions:")
+    wv = _mv_widgets([missing_col, joined])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert not repaired and sorted(i["view_name"] for i in reported) == ["crew_base_kpis", "crew_roster_kpis"]
+    assert [r["sql"] for r in wv["_metric_view_records"]] == [missing_col["sql"], joined["sql"]]
+
+
+def test_a_frozen_metric_view_reading_a_stale_table_is_left_for_next_vibes():
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(h.base_model()), h.VOV, h.LOG))
+    frozen = _mv_record("fleet_aircraft_kpis", "fleet", "aircraft", "`skyline`.`fleet`.`plane`", ["tail_number"])
+    open_view = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code"])
+    wv = _mv_widgets([frozen, open_view])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"]
+    assert [i["view_name"] for i in reported] == ["fleet_aircraft_kpis"]
+    assert wv["_metric_view_records"][0]["sql"] == frozen["sql"]
+
+
+def test_static_analysis_reports_a_metric_view_whose_source_is_not_in_the_model():
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code"])
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    issues = ah.run_metamodel_static_analysis(d, p, a, {}, h.LOG, metric_views=[stale])["issues"]
+    hits = [i for i in issues if i["category"] == "metric_view_source_missing"]
+    assert len(hits) == 1 and hits[0]["severity"] == "error" and hits[0]["details"]["source"] == "crew.crew_base"
+    assert "metric_view_source_missing" not in {i["category"] for i in ah.run_metamodel_static_analysis(d, p, a, {}, h.LOG)["issues"]}
+
+
+def test_the_pipeline_repairs_metric_view_sources_after_the_checkpoint_and_next_vibes_reports_them():
+    """Live L1 502698880027571: the repair ran before the after_metric_views checkpoint, when a scoped run's records held
+    only the views it regenerated (0); the checkpoint restored all 87 afterwards, so the repair saw none of them."""
+    src = h.notebook_concat_source()
+    i = src.index('_vibe_scope_checkpoint_widgets("after_metric_views", widgets_values, logger)')
+    assert "_repair_metric_view_sources(widgets_values, logger)" in src[i:i + 400]
+    assert "_repair_metric_view_sources(widgets_values, logger)" not in src[i - 600:i]
+    nv = src[src.index("def step_generate_next_vibes("):]
+    nv = nv[:nv.index("\ndef ", 10)]
+    assert nv.count('metric_views=widgets_values.get("_metric_view_records")') == 2
+
+
+def _base_with_two_crew_views():
+    base = h.base_model()
+    roster = next(mv for mv in base["model"]["metric_views"] if mv["view_name"] == "crew_roster_kpis")
+    member = dict(roster, view_name="crew_member_kpis", owner_product="member",
+                  sql=roster["sql"].replace("crew_roster_kpis", "crew_member_kpis").replace("`crew`.`roster`", "`crew`.`member`"))
+    base["model"]["metric_views"].append(member)
+    return base
+
+
+def test_scope_facts_list_the_in_scope_metric_views_whose_sql_did_not_change():
+    """Live T2 490876358520740 re-created client_segment and S4 227253937276118 re-created media_schedule although
+    neither view changed: the scoped deploy re-created every in-scope view."""
+    base = _base_with_two_crew_views()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    views = {mv["view_name"]: mv for mv in cur["model"]["metric_views"]}
+    views["crew_roster_kpis"]["sql"] = views["crew_roster_kpis"]["sql"].replace("`skyline`.", "`skyline_dev`.")
+    views["crew_member_kpis"]["sql"] = views["crew_member_kpis"]["sql"].replace('expr: "1"', "expr: full_name")
+    facts = fence.scope_facts(cur, "passed")
+    assert facts["unchanged_metric_views"] == ["crew_roster_kpis"]
+
+
+def test_the_scoped_deploy_keeps_an_unchanged_in_scope_view_that_is_installed():
+    base = _base_with_two_crew_views()
+    views = {mv["view_name"]: mv for mv in base["model"]["metric_views"]}
+    facts = dict(h.scoped_facts(), unchanged_metric_views=["crew_roster_kpis"])
+    plan = ah._scope_deploy_plan(facts, base, h.LOG, use_runtime=False)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "crew_member_kpis"])
+    statements = [views["crew_roster_kpis"]["sql"], views["crew_member_kpis"]["sql"]]
+    deploy, kept, _frozen = ah._vibe_scope_metric_view_deploy_set(plan, statements, list(views.values()), spark, h.LOG, h.CATALOG)
+    names = [ah._extract_metric_view_name_from_statement(s) for s in deploy]
+    assert "crew_roster_kpis" in kept and "crew_roster_kpis" not in names and "crew_member_kpis" in names
+    absent = ah._scope_deploy_plan(facts, base, h.LOG, use_runtime=False)
+    absent_spark = h.FakeSpark(h.base_physical_tables(), views=["crew_member_kpis"])
+    deploy2, kept2, _f = ah._vibe_scope_metric_view_deploy_set(absent, statements, list(views.values()), absent_spark, h.LOG, h.CATALOG)
+    assert "crew_roster_kpis" in [ah._extract_metric_view_name_from_statement(s) for s in deploy2] and "crew_roster_kpis" not in kept2
+
+
+class _CaptureAgent:
+    def __init__(self):
+        self.prompts = []
+
+    def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+        self.prompts.append(str(prompt))
+        return {"evaluations": []}
+
+
+def _crew_fence():
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(h.base_model()), h.VOV, h.LOG))
+
+
+def test_passes_may_change_only_tables_inside_the_fence():
+    assert ah._vibe_scope_pass_may_change("fleet", "aircraft")
+    _crew_fence()
+    assert not ah._vibe_scope_pass_may_change("fleet", "aircraft")
+    assert ah._vibe_scope_pass_may_change("crew", "roster")
+    assert ah._vibe_scope_pass_may_change("crew", "brand_new_product")
+
+
+def test_the_fk_semantic_gate_reviews_only_fks_of_tables_the_run_may_change():
+    """Live T1 261921636092291: MV15 evaluated 529 cross-domain FKs model-wide, removed out-of-scope FKs the fence put back,
+    and removed performance.viewability_measurement.spec_id, a P3 link the run had just made."""
+    _d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a.append({"domain": "crew", "product": "base", "attribute": "home_aircraft_id", "foreign_key_to": "fleet.aircraft.aircraft_id",
+              "type": "BIGINT", "description": "Aircraft based here"})
+    cfg = {"PROMPT_VARIABLES": {"business_config": {"business": "skyline_air"}}}
+    _crew_fence()
+    agent = _CaptureAgent()
+    ah.run_fk_semantic_correctness_gate({"ai_agent": agent}, p, copy.deepcopy(a), cfg, h.LOG)
+    joined = "\n".join(agent.prompts)
+    assert "home_aircraft_id" in joined
+    assert "duty_member_id" not in joined and "home_base_id" not in joined and '"roster_id"' not in joined
+    ah.set_vibe_scope_runtime(None)
+    unfenced = _CaptureAgent()
+    ah.run_fk_semantic_correctness_gate({"ai_agent": unfenced}, p, copy.deepcopy(a), cfg, h.LOG)
+    assert "duty_member_id" in "\n".join(unfenced.prompts)
+
+
+def test_the_missing_fk_finder_investigates_only_tables_the_run_may_change(monkeypatch):
+    """Live T1: FK_FIND_MISSING_PROMPT renamed record_batch_id to record_batch_code on 96 frozen columns and dropped two P2
+    columns; every change was refused or put back by the fence."""
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a += [{"domain": "crew", "product": "base", "attribute": "depot_id", "foreign_key_to": "", "type": "BIGINT"},
+          {"domain": "fleet", "product": "aircraft", "attribute": "record_batch_id", "foreign_key_to": "", "type": "BIGINT"}]
+    seen = []
+    monkeypatch.setitem(ah.__dict__, "smart_worker_loop",
+                        lambda **kw: (seen.append(json.dumps(kw.get("prompt_vars"), default=str)), (False, None, []))[1])
+    _crew_fence()
+    ah._run_find_missing_fk_links(d, p, a, ah.build_pk_map(p, {}), h.LOG, object(), {})
+    joined = "\n".join(seen)
+    assert "depot_id" in joined and "record_batch_id" not in joined
+
+
+def test_autofix_renames_fk_columns_only_on_tables_the_run_may_change():
+    """Live T2 490876358520740: p075 renamed 13 FK columns of frozen tables and P73-I stripped 37 prefixes; the fence refused
+    every rename (settled-rename-refused)."""
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a += [{"domain": "fleet", "product": "aircraft", "attribute": "base_ref", "foreign_key_to": "crew.base.base_id", "type": "BIGINT", "tags": ""},
+          {"domain": "crew", "product": "base", "attribute": "aircraft_ref", "foreign_key_to": "fleet.aircraft.aircraft_id", "type": "BIGINT", "tags": ""}]
+    _crew_fence()
+    ah._pre_static_analysis_autofix(d, p, a, {}, h.LOG)
+    names = {(x["domain"], x["product"], x["attribute"]) for x in a}
+    assert ("fleet", "aircraft", "base_ref") in names
+    assert ("crew", "base", "aircraft_ref") not in names
+
+
+def test_the_renaming_passes_check_the_fence_before_they_rename():
+    src = h.notebook_concat_source()
+    for cause in ("pass:p016_ambiguous_fk_rename", "pass:p73i_prefix_strip"):
+        i = src.index(f'"{cause}")')
+        assert "_vibe_scope_pass_may_change(" in src[i - 2500:i], cause
+
+
+def _relation_req(text, target):
+    return ah.VibeRequirement(id="VREQ-002", original_text=text, intent="x", scope="relation", scope_targets=[target],
+                              verification_strategy="deterministic")
+
+
+def test_the_fk_check_matches_the_named_table_exactly():
+    """Live L3 744923690951768: 'Remove the foreign key on vendor_id from product.sku' was scored failed (FK still present)
+    after the deploy dropped it, because product.sku_location.vendor_id contains 'product.sku' as a substring."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    domains = [{"domain": "product"}]
+    prods = [{"domain": "product", "product": p} for p in ("sku", "sku_location", "vendor")]
+    attrs = [{"domain": "product", "product": "sku", "attribute": "vendor_id", "foreign_key_to": ""},
+             {"domain": "product", "product": "sku_location", "attribute": "vendor_id", "foreign_key_to": "product.vendor.vendor_id"}]
+    removed = orch._verify_deterministic(_relation_req("Remove the foreign key on vendor_id from product.sku.", "product.sku"), domains, prods, attrs)
+    assert removed["status"] == "fulfilled", removed
+    link = orch._verify_deterministic(_relation_req("Link product.sku to product.vendor with a foreign key.", "product.sku"), domains, prods, attrs)
+    assert link["status"] == "failed", link
+    attrs[0]["foreign_key_to"] = "product.vendor.vendor_id"
+    assert orch._verify_deterministic(_relation_req("Link product.sku to product.vendor with a foreign key.", "product.sku"), domains, prods, attrs)["status"] == "fulfilled"
+    still = orch._verify_deterministic(_relation_req("Remove the foreign key on vendor_id from product.sku.", "product.sku.vendor_id"), domains, prods, attrs)
+    assert still["status"] == "failed", still
+
+
+def test_a_metric_view_whose_measures_reference_other_measures_by_name_is_repointed():
+    """Live L4 1107281376750990: campaign_annotation was left for next_vibes because its derived measure
+    AGG(`Annotation Count CM`) - AGG(`Annotation Count PM`) was read as the columns annotation, count, cm and pm."""
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code", "COUNT(DISTINCT `base_id`)"])
+    stale["sql"] = stale["sql"].replace('  measures:\n    - name: "Rows"\n      expr: COUNT(1)',
+                                        '  measures:\n    - name: "Rows"\n      expr: COUNT(1)\n    - name: "Base Count CM"\n      expr: COUNT(base_id)\n'
+                                        '    - name: "Growth"\n      expr: (AGG(`Base Count CM`) - AGG(`Rows`)) / NULLIF(AGG(`Rows`), 0)')
+    wv = _mv_widgets([stale])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"] and not reported
+    unknown = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["`base_region`"])
+    assert ah._repair_metric_view_sources(_mv_widgets([unknown]), h.LOG)[0] == []
+
+
+def test_an_fk_the_engine_removed_is_marked_so_no_pass_re_links_it(monkeypatch):
+    """Live L4 1107281376750990: the engine removed campaign_annotation.campaign_id's FK as asked; the deterministic linker
+    re-linked it right after (ends_with match) and the LLM re-link added campaign_kpi_target_id, an FK nobody asked for."""
+    initial = h.base_model()
+    final = copy.deepcopy(initial)
+    roster = next(p for p in final["model"]["domains"][0]["products"] if p["name"] == "roster")
+    next(a for a in roster["attributes"] if a["name"] == "member_id")["foreign_key_to"] = ""
+    sched = next(p for d in final["model"]["domains"] for p in d["products"] if p["name"] == "scheduled_flight")
+    next(a for a in sched["attributes"] if a["name"] == "aircraft_id")["foreign_key_to"] = "fleet.maintenance.maintenance_id"
+    assert ah._vov_engine_removed_fk_keys(initial, final) == {("crew", "roster", "memberid")}
+    d, p, a, _mv = ah.model_to_widgets_flat(final)
+    seen = []
+    monkeypatch.setitem(ah.__dict__, "smart_worker_loop",
+                        lambda **kw: (seen.append(json.dumps(kw.get("prompt_vars"), default=str)), (False, None, []))[1])
+    for x in a:
+        if (x["domain"], x["product"], x["attribute"]) == ("crew", "roster", "member_id"):
+            x["llm_fk_skip"] = True
+    ah._run_find_missing_fk_links(d, p, a, ah.build_pk_map(p, {}), h.LOG, object(), {})
+    assert "crew.roster.member_id" not in "\n".join(seen) and "- crew.roster: member_id" not in "\n".join(seen)
+    linked = copy.deepcopy(a)
+    ah._post_normalization_deterministic_fk_linker(d, p, linked, {}, h.LOG)
+    assert next(x for x in linked if (x["domain"], x["product"], x["attribute"]) == ("crew", "roster", "member_id"))["foreign_key_to"] == ""
+
+
+def test_the_engine_writeback_marks_the_removed_fks_and_the_llm_relink_skips_frozen_tables():
+    src = h.notebook_concat_source()
+    i = src.index("    new_domains, new_products, new_attrs, new_mvs = model_to_widgets_flat(result.final_model)")
+    block = src[i:i + 2500]
+    assert "_vov_engine_removed_fk_keys(initial_model, result.final_model)" in block and '["llm_fk_skip"] = True' in block
+    relink = src[src.index("def _pre_static_analysis_llm_relink("):]
+    relink = relink[:relink.index("\ndef ", 10)]
+    assert "_vibe_scope_pass_may_change(a_domain, a_product)" in relink

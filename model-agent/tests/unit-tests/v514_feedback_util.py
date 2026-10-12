@@ -154,6 +154,8 @@ def _where_matches(row, sql):
     biz = re.search(r"LOWER\(business\) = LOWER\('((?:[^'\\]|\\.)*)'\)", where)
     if biz and str(row.get("business") or "").lower() != re.sub(r"\\(.)", r"\1", biz.group(1)).lower():
         return False
+    if "business IS NULL OR TRIM(business) = ''" in where and str(row.get("business") or "").strip():
+        return False
     if re.search(r"\bversion IS NULL", where):
         if row.get("version") is not None:
             return False

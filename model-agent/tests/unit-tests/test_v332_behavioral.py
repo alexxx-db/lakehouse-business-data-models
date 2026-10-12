@@ -107,6 +107,8 @@ def _run_remove_branch(ll, fk_attrs, tl, target):
     ns = {}
     start = src.index("_VOV_FK_REMOVAL_COLUMN_RES = (")
     exec("import re\n" + src[start:src.index("\n)\n", start) + 3], ns, ns)
+    touches = src.index("def _fk_touches_entity(")
+    exec(src[touches:src.index("\ndef ", touches + 10)], ns, ns)
     exec(fn, ns, ns)
     attrs_by_product = {}
     for a in fk_attrs:
