@@ -196,3 +196,54 @@ def test_a_requested_report_is_a_named_metric_view_checked_deterministically():
     assert ah._verify_from_spec(spec, d, p, a, metric_views=views)["status"] == "fulfilled"
     assert ah._vreq_spec_metric_view_names() == ["daily sales by shop and product", "pre-order volumes by pickup day"]
     assert "kpi-first-spec-names FIRED v5.3.3" in SRC and "the user's requirements ask for these metric views and you MUST produce" in SRC
+
+
+def test_a_metric_view_format_always_carries_its_required_properties():
+    """Live r13c 6321050963068: all four report views failed with 'Missing required creator property currency_code' because a
+    currency format came without a code; every retry kept the format block, so each view installed as a row-count fallback."""
+    lines = ah._emit_mv_format_yaml({"type": "currency"}, 6)
+    assert "      format:" in lines and "        type: number" in lines and "currency" not in "".join(lines)
+    assert "        currency_code: EUR" in ah._emit_mv_format_yaml({"type": "currency", "currency_code": "EUR"}, 6)
+    assert "        date_format: year_month_day" in ah._emit_mv_format_yaml({"type": "date"}, 6)
+    assert ah._emit_mv_format_yaml({"type": "date_time"}, 6) == []
+    assert ah._emit_mv_format_yaml({"type": "string"}, 6) == []
+
+
+def test_a_corrective_that_only_serves_an_unread_requirement_is_skipped():
+    """Live r13a 263778452518782: the orchestrator could not read 'FK to product.retail_price.price_tier_code' (not a key), yet a
+    corrective retyped and re-pointed product.sku.price_tier_code for it, and a pass renamed that column to the retail_price_id
+    the user had dropped."""
+    model = _model()
+    vs.register(ah, model,
+                vs.spec("VREQ-003", "add_column", ["product.retail_price.price_tier_code", "product.sku.price_tier_code"],
+                        columns=[{"name": "price_tier_code", "type": "STRING"}], fk_target="product.retail_price.price_tier_code"),
+                vs.spec("VREQ-006", "drop_column", ["product.sku.list_price_ref"]),
+                vs.spec("CORR-1", "retype_column", ["product.sku.price_tier_code"], column_type="STRING"),
+                vs.spec("CORR-2", "drop_column", ["product.sku.list_price_ref"]),
+                vs.spec("CORR-3", "retype_column", ["product.sku.price_tier_code", "product.sku.list_price_ref"], column_type="STRING"))
+    assert not ah.vreq_spec("VREQ-003")["interpretable"] and ah.vreq_spec("VREQ-006")["interpretable"]
+    reqs = [{"vreq_id": "VREQ-003"}, {"vreq_id": "VREQ-006"}]
+    assert ah._vibe_corrective_serves_unread(ah.vreq_spec("CORR-1"), reqs)
+    assert not ah._vibe_corrective_serves_unread(ah.vreq_spec("CORR-2"), reqs)
+    assert not ah._vibe_corrective_serves_unread(ah.vreq_spec("CORR-3"), reqs), "a corrective that also serves a readable requirement runs"
+    assert not ah._vibe_corrective_serves_unread(ah.vreq_spec("CORR-1"), [{"vreq_id": "VREQ-006"}])
+    i = SRC.index("vibe-corrective-unread-requirement FIRED v5.3.3")
+    assert SRC.rfind("_vibe_corrective_serves_unread(_vs_spec, widgets_values.get(\"_pinned_vibe_requirements\"))", 0, i) > i - 400
+
+
+def test_a_requirement_the_base_already_meets_is_kept_by_triage_not_rejected():
+    model = _model()
+    vs.register(ah, model, vs.spec("R1", "other", ["customer"], breadth="set", policy="primary_key_everywhere"),
+                vs.spec("A1", "add_column", ["product.sku.nickname"], columns=[{"name": "nickname", "type": "STRING"}]))
+    fence = ah._vibe_scope_start_requested([_vreq("A1", "product.sku")], model, LOG, model)
+    assert fence is not None and fence.is_frozen_product("customer", "profile")
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [_vreq("R1", "customer")], model, LOG)
+    assert [v.vreq_id for v in kept] == ["R1"] and rejected == [] and outcomes == []
+    ah.set_vibe_scope_runtime(None)
+
+
+def test_track_three_results_reach_the_run():
+    i = SRC.index("track3_widgets = widgets_values.copy()")
+    block = SRC[i:SRC.index("def run_track_4", i)]
+    assert "_t3_initial = {k: id(v) for k, v in track3_widgets.items()}" in block
+    assert "track3-merge-back FIRED v5.3.3" in block and 'k != "spark" and _t3_initial.get(k) != id(v)' in block
