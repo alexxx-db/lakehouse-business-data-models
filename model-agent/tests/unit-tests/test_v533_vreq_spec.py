@@ -1129,3 +1129,56 @@ def test_the_qa_and_fk_gate_pk_fixes_leave_a_user_primary_key_alone():
     assert "(pk_name != expected_pk and _vov285_san(pk_name) != _vov285_san(_user_pk))" in src
     assert "if pk != expected_pk and _vov285_san(pk) != _vov285_san(_vreq_spec_user_pk(domain_name, name)):" in src
     assert "if _pk_like_cols and not _vreq_spec_user_pk(p_domain, p_product):" in src
+
+
+def test_keep_only_needs_a_table_and_restricts_a_shrink_to_the_named_tables():
+    idx = ah._vreq_spec_index(ah.widgets_flat_to_model(*_flat_hr()))
+    bad = ah._normalize_vreq_spec(vs.spec("S0", "keep_only", ["hr"]), idx)
+    assert bad["interpretable"] is False and bad["reason"] == "keep_only names no table"
+    flat = _flat_hr()
+    flat[1].append({"domain": "ops", "product": "roster", "primary_key": "roster_id"})
+    _register_flat(flat, vs.spec("S1", "keep_only", ["hr.employee"]), vs.spec("S2", "preserve", ["ops.roster", "ops.ghost_table"]),
+                   vs.spec("S3", "keep_only", ["ops.unknown_table"]))
+    specs = [ah.vreq_spec(s) for s in ("S1", "S2", "S3")]
+    keep = {("hr", "employee"), ("hr", "position"), ("ops", "shift")}
+    out = ah._vov_shrink_apply_reviewer_specs(keep, specs, flat[1])
+    assert out == {("hr", "employee"), ("ops", "shift"), ("ops", "roster")}
+    assert ah._vov_shrink_apply_reviewer_specs(sorted(keep), specs[2:], flat[1]) == sorted(keep)
+
+
+class _ShrinkAgent:
+    def __init__(self, specs):
+        self.specs, self.calls = specs, []
+
+    def _call_ai_query(self, **kw):
+        self.calls.append(kw["prompt_name"])
+        return json.dumps(vs.reply(kw["prompt"], self.specs))
+
+
+def test_shrink_reads_the_reviewer_directives_through_the_llm_spec():
+    text = ("REVIEWER-PRIORITY 1 — trim_hr: the hr domain should be minimal: employee only\n"
+            "REVIEWER-PRIORITY 2 — keep_ops: keep the ops roster in the MVM\n")
+    flat = _flat_hr()
+    agent = _ShrinkAgent([vs.spec("REVIEWER-1", "keep_only", ["hr.employee"]), vs.spec("REVIEWER-2", "add_column", ["ops.shift"],
+                                                                                       columns=[{"name": "x", "type": "STRING"}])])
+    specs = ah._vov_shrink_reviewer_specs(text, ah.widgets_flat_to_model(*flat), agent, logging.getLogger("t"))
+    assert [s["id"] for s in specs] == ["REVIEWER-1"] and agent.calls == ["VREQ_SPEC_PROMPT"]
+    assert ah._vov_shrink_reviewer_specs("no reviewer blocks here", ah.widgets_flat_to_model(*flat), agent) == []
+    assert agent.calls == ["VREQ_SPEC_PROMPT"]
+
+
+def test_keep_only_is_verified_and_permitted_only_inside_its_domains():
+    flat = _flat_hr()
+    _register_flat(flat, vs.spec("K1", "keep_only", ["hr.employee"]))
+    spec = ah.vreq_spec("K1")
+    d, p, a = flat
+    assert ah._verify_from_spec(spec, d, p, a)["status"] == "partial"
+    only = [r for r in p if not (r["domain"] == "hr" and r["product"] == "position")]
+    assert ah._verify_from_spec(spec, d, only, a)["status"] == "fulfilled"
+    assert ah._verify_from_spec(spec, d, [r for r in only if r["product"] != "employee"], a)["status"] == "failed"
+    assert ah.diff_within_requirement_scope({"products_removed": [["hr", "position"]]}, ["K1"])[0] is True
+    assert ah.diff_within_requirement_scope({"products_removed": [["hr", "employee"]]}, ["K1"])[0] is False
+    assert ah.diff_within_requirement_scope({"products_removed": [["ops", "shift"]]}, ["K1"])[0] is False
+    req = ah.RawVREQ(vreq_id="K1", intent="keep only employee", target="hr.employee", source_quote="keep only employee", source_chunk_id="c")
+    requested, wide = ah._vibe_scope_requested_spec([req], ah.widgets_flat_to_model(*flat))
+    assert "hr" in requested.whole_domains and ("hr", "employee") in requested.products and wide == []
