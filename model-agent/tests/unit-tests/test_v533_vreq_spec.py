@@ -1784,12 +1784,12 @@ def test_a_count_target_read_as_a_check_still_opens_its_domain_and_a_no_op_requi
                 vs.spec("Q7", "rename_product", ["ops.member"], new_name="ops_member"), vs.spec("Q8", "preserve", ["crew.member"]))
     vreq = lambda vid, target: ah.RawVREQ(vreq_id=vid, intent="x", target=target, source_quote="x", source_chunk_id="c1")
     scope, wide = ah._vibe_scope_requested_spec([vreq("Q6", "crew")], model)
-    assert "crew" in scope.whole_domains and wide == []
+    assert scope is None and wide == [], "a version run does not raise a metric view count, so the count opens nothing"
     ah.set_vibe_scope_runtime(None)
     fence = ah._vibe_scope_start_requested([vreq("Q7", "ops.member"), vreq("Q8", "crew.member")], copy.deepcopy(model), LOG, copy.deepcopy(model))
     assert fence.is_frozen_product("crew", "member")
-    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq("Q7", "ops.member"), vreq("Q8", "crew.member")], model, LOG)
-    assert [v.vreq_id for v in kept] == ["Q7", "Q8"] and rejected == [] and outcomes == []
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq("Q7", "ops.member"), vreq("Q8", "crew.member"), vreq("Q6", "crew")], model, LOG)
+    assert [v.vreq_id for v in kept] == ["Q7", "Q8", "Q6"] and rejected == [] and outcomes == [], "a count target is scored at the end, never scope rejected"
     ah.set_vibe_scope_runtime(None)
 
 
@@ -1830,6 +1830,7 @@ def test_a_subdomain_target_stands_for_every_table_of_that_subdomain():
                 dict(vs.spec("D2", "add_column", [], columns=[{"name": "review_cycle", "type": "STRING"}]),
                      targets=[{"domain": "crew", "subdomain": "nowhere"}]))
     assert [ah._vreq_spec_fqn(t) for t in ah.vreq_spec("D1")["targets"]] == ["crew.member", "crew.person"]
+    assert ah.vreq_spec("D1")["subdomains"] == ["crew.people"] and ah.vreq_spec("D2")["subdomains"] == []
     scope, wide = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="D1", intent="x", target="", source_quote="x", source_chunk_id="c1")], model)
     assert wide == [] and scope.products == {("crew", "member"), ("crew", "person")}
     assert not ah.vreq_spec("D2")["interpretable"] and ah.vreq_spec("D2")["reason"] == "the subdomain crew.nowhere is not in the model"
@@ -1865,3 +1866,42 @@ def test_the_serialize_gate_leaves_the_flat_metric_views_equal_to_the_spliced_mo
     ah._vibe_scope_serialize_gate(final, wv, LOG)
     assert wv["metric_views"] == final["model"]["metric_views"] and all(mv["view_name"] != "stale_extra" for mv in wv["metric_views"])
     ah.set_vibe_scope_runtime(None)
+
+
+
+def test_the_classifier_logs_every_target_it_expanded_from_the_catalog(caplog):
+    model = _subdomain_model()
+    reply = lambda it: (dict(vs.spec(it["id"], "add_column", [], columns=[{"name": "x", "type": "STRING"}]), targets=[{"domain": "crew", "subdomain": "people"}])
+                        if it["id"] == "E1" else vs.spec(it["id"], "retarget_fk", [], breadth="model", fk_from="crew.member", fk_target="crew.person"))
+    with caplog.at_level(logging.INFO):
+        ah.classify_vreq_specs(_Calls(_echo(reply)), [_item("E1"), _item("E2")], model, LOG)
+    lines = [r.getMessage() for r in caplog.records if "vreq-spec-expand FIRED" in r.getMessage()]
+    assert lines and "E1: crew.people -> 2 target(s)" in lines[0] and "E2: crew.member -> 1 target(s)" in lines[0], lines
+
+
+
+def test_a_count_the_base_already_meets_opens_nothing_and_an_unmet_table_count_opens_its_domain():
+    model = _tiny()
+    vs.register(ah, model, vs.spec("K7", "other", ["crew"], kind="count_target", count={"entity": "products_per_domain", "op": "at_least", "value": 2}),
+                vs.spec("K8", "other", ["crew"], kind="count_target", count={"entity": "products_per_domain", "op": "at_least", "value": 9}),
+                vs.spec("K9", "other", [], breadth="model", kind="count_target", count={"entity": "domains_per_division", "op": "at_least", "value": 1}))
+    vreq = lambda vid: ah.RawVREQ(vreq_id=vid, intent="x", target="crew", source_quote="x", source_chunk_id="c1")
+    assert ah._vibe_scope_requested_spec([vreq("K7")], model) == (None, [])
+    assert ah._vibe_scope_requested_spec([vreq("K9")], model) == (None, []), "a model-wide count the base meets opens no domain"
+    scope, wide = ah._vibe_scope_requested_spec([vreq("K8")], model)
+    assert "crew" in scope.whole_domains and wide == []
+    assert ah._vov_vreq_satisfied_in_model("K7", model)[0] == "satisfied" and ah._vov_vreq_satisfied_in_model("K8", model)[0] == "unsatisfied"
+
+
+def test_the_final_reconcile_scores_count_targets_whatever_the_engine_reported():
+    model = _tiny()
+    vs.register(ah, model, vs.spec("K5", "other", ["crew"], kind="count_target", count={"entity": "products_per_domain", "op": "at_least", "value": 2}),
+                vs.spec("K6", "other", ["crew"], kind="count_target", count={"entity": "metric_views", "op": "at_least", "value": 3}))
+    d, p, a, _mv = ah.model_to_widgets_flat(model, quiet=True)
+    wv = {"operation": "vibe modeling of version", "domains": d, "products": p, "attributes": a, "metric_views": [],
+          "_vov_2_raw_vreqs": [{"vreq_id": v, "intent": "x", "target": "crew", "source_quote": "x"} for v in ("K5", "K6")],
+          "_vov_vreq_status": {"K5": {"status": "noop_failed", "reason": "empty diff"}, "K6": {"status": "noop_failed", "reason": "empty diff"}}}
+    changed = ah._vov_reconcile_final_outcomes(wv, LOG)
+    assert sorted(changed) == ["K5", "K6"]
+    assert wv["_vov_vreq_status"]["K5"]["status"] == "applied" and "meets the count" in wv["_vov_vreq_status"]["K5"]["reason"]
+    assert wv["_vov_vreq_status"]["K6"]["status"] == "failed" and "does not raise a metric view count" in wv["_vov_vreq_status"]["K6"]["reason"]
