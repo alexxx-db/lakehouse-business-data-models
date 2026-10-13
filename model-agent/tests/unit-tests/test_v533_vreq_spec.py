@@ -134,7 +134,8 @@ def test_the_catalog_lists_every_domain_and_columns_only_for_named_or_anchored_t
     catalog = ah._vreq_spec_catalog(model, [_item("V1", target="crew.member"), dict(_item("V2", target="fleet"), anchor="fleet.aircraft")])
     lines = catalog.split("\n")
     assert len([ln for ln in lines if not ln.startswith("  ")]) == len(model["model"]["domains"])
-    assert sorted(ln.split(" columns:")[0].strip() for ln in lines if ln.startswith("  ")) == ["crew.member", "fleet.aircraft"]
+    assert sorted(ln.split(" columns:")[0].strip() for ln in lines if ln.startswith("  ") and " columns:" in ln) == ["crew.member", "fleet.aircraft"]
+    assert all(" subdomains: " in ln for ln in lines if ln.startswith("  ") and " columns:" not in ln)
     assert len(ah._vreq_spec_catalog(model, [], limit=100)) == 100
 
 
@@ -1810,3 +1811,57 @@ def test_metric_view_counts_are_counted_per_owner_domain_when_the_views_are_know
     assert ah._verify_from_spec(ah.vreq_spec("N4"), d, p, a, metric_views=mvs + [{"view_name": "z", "owner_domain": "a"}])["status"] == "fulfilled"
     assert ah._verify_from_spec(ah.vreq_spec("N5"), d, p, a, metric_views=mvs)["status"] == "partial"
     assert ah._verify_from_spec(ah.vreq_spec("N5"), d, p, a) is None, "an unknown view list is never counted as zero views"
+
+
+# ---------------------------------------------------------------- subdomain targets, honest metric view floors
+
+
+def _subdomain_model():
+    model = _tiny()
+    for name, sub in (("member", "people"), ("person", "people"), ("staff", "workforce"), ("roster", "workforce")):
+        _table(model, "crew", name)["subdomain"] = sub
+    return model
+
+
+def test_a_subdomain_target_stands_for_every_table_of_that_subdomain():
+    model = _subdomain_model()
+    vs.register(ah, model, dict(vs.spec("D1", "add_column", [], columns=[{"name": "review_cycle", "type": "STRING"}]),
+                                targets=[{"domain": "crew", "subdomain": "people"}]),
+                dict(vs.spec("D2", "add_column", [], columns=[{"name": "review_cycle", "type": "STRING"}]),
+                     targets=[{"domain": "crew", "subdomain": "nowhere"}]))
+    assert [ah._vreq_spec_fqn(t) for t in ah.vreq_spec("D1")["targets"]] == ["crew.member", "crew.person"]
+    scope, wide = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="D1", intent="x", target="", source_quote="x", source_chunk_id="c1")], model)
+    assert wide == [] and scope.products == {("crew", "member"), ("crew", "person")}
+    assert not ah.vreq_spec("D2")["interpretable"] and ah.vreq_spec("D2")["reason"] == "the subdomain crew.nowhere is not in the model"
+    assert "crew subdomains: people, workforce" in ah._vreq_spec_catalog(model, [])
+
+
+def test_an_applied_metric_view_floor_the_final_model_misses_is_reported_failed_with_the_reason():
+    model = _tiny()
+    vs.register(ah, model, vs.spec("M9", "other", ["crew"], kind="count_target", count={"entity": "metric_views", "op": "at_least", "value": 3}))
+    d, p, a, _mv = ah.model_to_widgets_flat(model, quiet=True)
+    wv = {"operation": "vibe modeling of version", "domains": d, "products": p, "attributes": a,
+          "metric_views": [{"view_name": "crew_member", "owner_domain": "crew"}],
+          "_vov_2_raw_vreqs": [{"vreq_id": "M9", "intent": "x", "target": "crew", "source_quote": "x"}],
+          "_vov_vreq_status": {"M9": {"status": "applied", "reason": ""}}}
+    assert ah._vov_reconcile_final_outcomes(wv, LOG) == ["M9"]
+    status = wv["_vov_vreq_status"]["M9"]
+    assert status["status"] == "failed" and "measured [1]" in status["reason"] and "does not raise a metric view count" in status["reason"]
+    wv["metric_views"] += [{"view_name": f"crew_v{i}", "owner_domain": "crew"} for i in range(2)]
+    wv["_vov_vreq_status"]["M9"] = {"status": "applied", "reason": ""}
+    assert ah._vov_reconcile_final_outcomes(wv, LOG) == [] and wv["_vov_vreq_status"]["M9"]["status"] == "applied"
+
+
+def test_the_serialize_gate_leaves_the_flat_metric_views_equal_to_the_spliced_model():
+    base = _tiny()
+    base["model"]["metric_views"] = [{"view_name": "crew_member", "owner_domain": "crew", "owner_product": "member", "sql": "SELECT 1"}]
+    vs.register(ah, base, vs.spec("S9", "add_column", ["crew.member"], columns=[{"name": "nickname", "type": "STRING"}]))
+    vreq = ah.RawVREQ(vreq_id="S9", intent="x", target="crew.member", source_quote="x", source_chunk_id="c1")
+    ah._vibe_scope_start_requested([vreq], copy.deepcopy(base), LOG, copy.deepcopy(base))
+    final = copy.deepcopy(base)
+    _table(final, "crew", "member")["attributes"].append({"name": "nickname", "type": "STRING"})
+    wv = {"metric_views": [{"view_name": "stale_extra", "owner_domain": "ops"}] + copy.deepcopy(base["model"]["metric_views"]),
+          "_vibe_scope_outcomes": {}}
+    ah._vibe_scope_serialize_gate(final, wv, LOG)
+    assert wv["metric_views"] == final["model"]["metric_views"] and all(mv["view_name"] != "stale_extra" for mv in wv["metric_views"])
+    ah.set_vibe_scope_runtime(None)
