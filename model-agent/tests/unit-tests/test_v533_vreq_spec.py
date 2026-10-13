@@ -1652,13 +1652,15 @@ def test_an_empty_llm_verdict_is_a_failure_and_no_second_llm_reads_the_requireme
     assert orch.ai_agent.names and set(orch.ai_agent.names) == {"VERIFIER_LLM_FALLBACK"}
 
 
-def test_connect_details_never_rewrite_a_target_column_that_a_requirement_adds():
+def test_connect_details_always_complete_the_target_to_its_primary_key():
+    """Live r12a 900785079378194: a Unity Catalog foreign key references the parent's primary key, so a connect target that names
+    another column, even one the vibe adds, completes to the key; a requirement that asks for such a key is not interpreted."""
     model = _tiny()
     details = ah._v415_complete_connect_details({"action": "connect_table"}, {"fk_target": "crew.person.person_code", "column": "person_code"}, model)
     assert details["fk_target"] == "crew.person.person_id"
     vs.register(ah, model, vs.spec("A2", "add_column", ["crew.person"], columns=[{"name": "person_code", "type": "STRING"}]))
     details = ah._v415_complete_connect_details({"action": "connect_table"}, {"fk_target": "crew.person.person_code", "column": "person_code"}, model)
-    assert details["fk_target"] == "crew.person.person_code"
+    assert details["fk_target"] == "crew.person.person_id"
 
 
 def _policy_rows(cycle=True):

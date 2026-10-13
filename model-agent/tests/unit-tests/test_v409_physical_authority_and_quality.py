@@ -30,7 +30,7 @@ def _extract_quality_fn(src: str):
     )
     assert m, "quality function not found"
     fn_src = textwrap.dedent(m.group(1))
-    ns = {}
+    ns = {"_vibe_actions_landed": ah._vibe_actions_landed}
     exec(fn_src, ns)
     return ns["_compute_deterministic_confidence_and_status"], ns
 
