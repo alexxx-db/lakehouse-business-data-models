@@ -11,6 +11,7 @@ import logging
 import sys
 import threading
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -779,3 +780,253 @@ def test_requirements_with_the_same_llm_spec_merge_and_keep_their_feedback_links
     absorbed = ah._vibe_input_absorbed(kept, [a, b, c, d], [], merged)
     assert [v.vreq_id for v in absorbed["VREQ-0001"]] == ["VREQ-0001", "VREQ-0002"]
     assert ah._vreq_spec_dedupe([c, d], None) == ([c, d], {})
+
+
+def test_the_spec_signature_reads_every_spec_shape_the_normalizer_builds():
+    """Live r2a 502366182160316 and r2b 208131559706991: a set_fields spec with a value keys field_values by (level, field);
+    json.dumps refused the tuple keys and both runs died in the spec dedupe."""
+    idx = ah._vreq_spec_index(_model())
+    raw = {"id": "V1", "action": "set_fields", "targets": [{"domain": "crew"}], "breadth": "named",
+           "fields": [{"level": "domains", "field": "division", "value": "operations"}, {"level": "attributes", "field": "tags"}],
+           "tags": [{"key": "pii", "value": "true"}]}
+    one, two = ah._normalize_vreq_spec(raw, idx), ah._normalize_vreq_spec(dict(raw, id="V2"), idx)
+    assert one["field_values"] == {("domains", "division"): "operations"}
+    assert ah._vreq_spec_signature(one) == ah._vreq_spec_signature(two)
+    other = ah._normalize_vreq_spec(dict(raw, id="V3", fields=[{"level": "domains", "field": "division", "value": "business"}]), idx)
+    assert ah._vreq_spec_signature(one) != ah._vreq_spec_signature(other)
+    swapped = ah._normalize_vreq_spec(dict(raw, id="V4", fields=list(reversed(raw["fields"]))), idx)
+    assert ah._vreq_spec_signature(one) == ah._vreq_spec_signature(swapped)
+    fk = ah._normalize_vreq_spec({"id": "V5", "action": "remove_fk", "targets": [{"domain": "crew", "product": "member", "column": "base_id"}]}, idx)
+    assert isinstance(ah._vreq_spec_signature(fk), str)
+
+
+class _FreeTextLLM(E._CannedLLM):
+    def complete_json(self, system, user, temperature=0.0, response_schema=None):
+        if system == ah.OUTLINE_SYSTEM_PROMPT:
+            return {"sections": [{"title": "Division asks"}, {"title": "Second reading"}, {"title": "Third reading"}]}
+        return super().complete_json(system, user, temperature, response_schema)
+
+    def complete_with_tools(self, system, user, tools, tool_handlers, max_iters=6, temperature=0.0, response_schema=None):
+        if str(user).startswith("CHUNK "):
+            self.chunks = getattr(self, "chunks", []) + [user]
+            lines = [ln[2:].strip() for ln in str(user).split("\n") if ln.startswith("- ")]
+            return {"vreqs": [{"intent": ln, "target": "crew", "source_quote": ln, "severity": "high"} for ln in lines]}
+        return super().complete_with_tools(system, user, tools, tool_handlers, max_iters, temperature, response_schema)
+
+
+def _division_spec(item):
+    if "division" in json.dumps(item).lower():
+        return {"id": item["id"], "action": "set_fields", "breadth": "named", "targets": [{"domain": "crew", "product": "", "column": ""}],
+                "fields": [{"level": "domains", "field": "division", "value": "operations"}], "interpretable": True, "reason": "division"}
+    return None
+
+
+def test_the_free_text_branch_reads_value_specs_and_merges_the_same_ask_end_to_end():
+    """Live r2a/r2b crashed in this branch: a set_fields spec with a value broke the spec dedupe, and no offline test ran
+    the free-text branch with extraction and classification together."""
+    vibe = ("## Domain: crew\n"
+            "- [crew] Set the division of the crew domain to operations.\n"
+            "- [crew] The crew domain belongs to the operations division.\n")
+    llm = _FreeTextLLM(specs=_division_spec)
+    result = ah.run_vov_pipeline(vibe, E._engine(), llm, [], [], parallel=False, priority_reapply_loops=1)
+    ids = sorted({str(v.vreq_id) for v in result.raw_vreqs})
+    assert ids == ["VREQ-0001"], ids
+    assert ah.vreq_spec("VREQ-0001")["field_values"] == {("domains", "division"): "operations"}
+    assert len(llm.chunks) == 1 and llm.chunks[0].count("- [crew]") == 2
+
+
+def _flat_hr():
+    domains = [{"domain": "hr"}, {"domain": "ops"}]
+    products = [{"domain": "hr", "product": "employee", "primary_key": "employee_id", "tags": "source_table=emp_master", "subdomain": "people"},
+                {"domain": "hr", "product": "position", "primary_key": "position_id", "tags": "", "subdomain": "staffing ops"},
+                {"domain": "ops", "product": "shift", "primary_key": "shift_id", "tags": "", "subdomain": ""}]
+    attributes = [{"domain": "hr", "product": "employee", "attribute": "employee_id", "tags": "", "is_primary_key": True},
+                  {"domain": "hr", "product": "employee", "attribute": "badge_number", "tags": "", "source_column": "BADGE_NO"},
+                  {"domain": "hr", "product": "employee", "attribute": "position_id", "foreign_key_to": "hr.position.position_id", "tags": ""},
+                  {"domain": "hr", "product": "position", "attribute": "position_id", "tags": "", "is_primary_key": True},
+                  {"domain": "hr", "product": "position", "attribute": "position_code", "tags": ""},
+                  {"domain": "ops", "product": "shift", "attribute": "shift_id", "tags": "", "is_primary_key": True},
+                  {"domain": "ops", "product": "shift", "attribute": "employee_ref", "foreign_key_to": "hr.employee.employee_id", "tags": ""}]
+    return domains, products, attributes
+
+
+def _register_flat(flat, *specs):
+    vs.register(ah, ah.widgets_flat_to_model(*flat), *specs)
+
+
+def _tag_spec(vid, targets, level, tags, breadth="named"):
+    return dict(vs.spec(vid, "set_fields", targets, breadth=breadth, fields=[vs.field(level, "tags")]), tags=tags)
+
+
+def test_the_allowed_values_list_keeps_only_closed_lists_on_known_fields():
+    out = ah._vreq_spec_allowed_list([
+        {"level": "products", "field": "subdomain", "key": "ignored", "values": ["People", "People", " Staffing ", ""]},
+        {"level": "attributes", "field": "tags", "key": "region", "values": ["EMEA"]},
+        {"level": "products", "field": "row_count", "values": ["1"]},
+        {"level": "galaxy", "field": "tags", "values": ["x"]},
+        {"level": "attributes", "field": "business_glossary_term", "values": []},
+        "not a dict"])
+    assert out == [{"level": "products", "field": "subdomain", "key": "", "values": ["People", "Staffing"]},
+                   {"level": "attributes", "field": "tags", "key": "region", "values": ["EMEA"]}]
+
+
+def test_spec_tags_land_on_the_rows_their_breadth_and_targets_name_and_nowhere_else():
+    flat = _flat_hr()
+    _register_flat(flat,
+                   _tag_spec("T1", [], "attributes", [{"key": "pii_review", "value": "pending"}], breadth="model"),
+                   _tag_spec("T2", ["hr"], "products", [{"key": "data_owner", "value": "hr_team"}], breadth="set"),
+                   _tag_spec("T3", ["hr.employee.badge_number"], "attributes", [{"key": "restricted", "value": "true"}]),
+                   _tag_spec("T4", ["hr.employee"], "attributes", [{"key": "source_column", "value": "<original column>"}]))
+    _d, products, attributes = flat
+    assert ah._vreq_spec_apply_tags(products, attributes, logging.getLogger("t")) == 7 + 2 + 1
+    assert all("pii_review=pending" in a["tags"] for a in attributes)
+    assert [p["product"] for p in products if "data_owner=hr_team" in p["tags"]] == ["employee", "position"]
+    assert [a["attribute"] for a in attributes if "restricted=true" in a["tags"]] == ["badge_number"]
+    assert not any("source_column=" in a["tags"] for a in attributes)
+    assert ah._vreq_spec_apply_tags(products, attributes) == 0
+
+
+def test_spec_tags_never_touch_a_frozen_table():
+    flat = _flat_hr()
+    _register_flat(flat, _tag_spec("T1", [], "attributes", [{"key": "pii_review", "value": "pending"}], breadth="model"))
+    frozen = SimpleNamespace(is_frozen_pass_row=lambda d, p: d == "ops")
+    prior = ah._VIBE_SCOPE_RUNTIME
+    ah._VIBE_SCOPE_RUNTIME = frozen
+    try:
+        ah._vreq_spec_apply_tags(flat[1], flat[2])
+    finally:
+        ah._VIBE_SCOPE_RUNTIME = prior
+    assert [a["domain"] for a in flat[2] if "pii_review" in a["tags"]] == ["hr"] * 5
+
+
+def test_a_tag_key_the_user_wrote_outranks_the_tag_prefix_convention():
+    flat = _flat_hr()
+    _register_flat(flat, _tag_spec("T1", [], "attributes", [{"key": "original_table_name", "value": "<source table>"}], breadth="model"))
+    attributes = flat[2]
+    attributes[1]["tags"] = "acme_original_table_name=EMP,acme_other=1"
+    config = {"MODEL_CONVENTIONS": {"tag_prefix": "acme_"}}
+    assert ah._v383_enforce_tag_name_precedence(flat[1], attributes, config) == 1
+    assert attributes[1]["tags"] == "original_table_name=EMP,acme_other=1"
+    ah.vov_ledger_reset()
+    attributes[1]["tags"] = "acme_original_table_name=EMP"
+    assert ah._v383_enforce_tag_name_precedence(flat[1], attributes, config) == 0
+
+
+def test_a_placeholder_tag_spec_takes_each_column_s_own_provenance_on_source_tables_only():
+    flat = _flat_hr()
+    _register_flat(flat, _tag_spec("T1", ["hr"], "attributes", [{"key": "source_attribute", "value": "<original column>"}], breadth="set"))
+    attributes = flat[2]
+    assert ah._v383_apply_per_attribute_value_tags(attributes, flat[1]) == 3
+    assert "source_attribute=BADGE_NO" in attributes[1]["tags"]
+    assert not any("source_attribute" in a["tags"] for a in attributes if a["product"] != "employee")
+
+
+def test_values_outside_a_closed_list_are_purged_and_members_kept():
+    flat = _flat_hr()
+    _register_flat(flat, dict(vs.spec("L1", "set_fields", [], breadth="model", fields=[vs.field("attributes", "tags")]),
+                              tags=[{"key": "cde", "value": "<data element>"}],
+                              allowed_values=[{"level": "attributes", "field": "tags", "key": "cde", "values": ["Badge Number (BN)", "Position Code"]}]))
+    attributes = flat[2]
+    attributes[1]["tags"] = "cde=badge number,keep=1"
+    attributes[4]["tags"] = "cde=Invented Thing"
+    assert ah._v383_purge_fabricated_lookup_tags(attributes) == 1
+    assert attributes[1]["tags"] == "cde=badge number,keep=1" and attributes[4]["tags"] == ""
+    ah.vov_ledger_reset()
+    attributes[4]["tags"] = "cde=Invented Thing"
+    assert ah._v383_purge_fabricated_lookup_tags(attributes) == 0 and attributes[4]["tags"] == "cde=Invented Thing"
+
+
+def test_a_closed_subdomain_roster_relabels_invented_labels_and_an_open_one_does_nothing():
+    flat = _flat_hr()
+    products = flat[1]
+    assert ah._v383_enforce_closed_label_roster(products) == 0
+    _register_flat(flat, dict(vs.spec("R1", "set_fields", ["hr"], breadth="set", fields=[vs.field("products", "subdomain")]),
+                              allowed_values=[{"level": "products", "field": "subdomain", "values": ["People", "Staffing"]}]))
+    assert ah._v383_enforce_closed_label_roster(products) == 1
+    assert [p["subdomain"] for p in products] == ["people", "staffing", ""]
+
+
+def test_merge_first_review_runs_only_when_a_spec_states_the_policy():
+    flat = _flat_hr()
+    flat[1][0]["tags"] = ""
+    flat[1].append({"domain": "hr", "product": "employee_badge", "tags": "source_table=badge_feed", "description": "employee badge feed"})
+    widgets = {}
+    assert ah._v383_flag_merge_first_candidates(*flat, widgets_values=widgets) == []
+    _register_flat(flat, dict(vs.spec("M1", "other", [], breadth="model"), policy="merge_into_existing"))
+    flags = ah._v383_flag_merge_first_candidates(*flat, widgets_values=widgets)
+    assert flags and all("MERGE-FIRST" in f for f in flags) and widgets["_unfulfilled_for_next_vibe"] == flags
+
+
+def test_a_set_primary_key_spec_rekeys_the_table_and_repoints_its_foreign_keys():
+    flat = _flat_hr()
+    _register_flat(flat, vs.spec("K1", "set_primary_key", ["hr.employee.badge_number"]))
+    products, attributes = flat[1], flat[2]
+    assert ah._v384_apply_canonical_keys(products, attributes, {}) == 1
+    assert products[0]["primary_key"] == "badge_number"
+    assert next(a for a in attributes if a["attribute"] == "employee_ref")["foreign_key_to"] == "hr.employee.badge_number"
+    assert next(a for a in attributes if a["attribute"] == "badge_number")["is_primary_key"] is True
+    d, p, a = flat
+    assert ah._verify_from_spec(ah.vreq_spec("K1"), d, p, a)["status"] == "fulfilled"
+    ah.vov_ledger_reset()
+    _register_flat(_flat_hr(), vs.spec("K2", "set_primary_key", ["hr.employee.no_such_column"]))
+    assert ah._v384_apply_canonical_keys(products, attributes, {}) == 0
+
+
+def test_new_spec_shapes_that_cannot_be_acted_on_are_not_interpretable():
+    idx = ah._vreq_spec_index(ah.widgets_flat_to_model(*_flat_hr()))
+    no_column = ah._normalize_vreq_spec(vs.spec("K1", "set_primary_key", ["hr.employee"]), idx)
+    assert no_column["interpretable"] is False and no_column["reason"] == "set_primary_key names no column"
+    no_prefix = ah._normalize_vreq_spec(dict(vs.spec("P1", "other", [], breadth="model"), policy="column_prefix"), idx)
+    assert no_prefix["interpretable"] is False and no_prefix["reason"] == "column_prefix names no prefix"
+    prefix = ah._normalize_vreq_spec(dict(vs.spec("P2", "other", [], breadth="model"), policy="column_prefix", policy_value="hr_"), idx)
+    assert prefix["interpretable"] is True
+    d, p, a = _flat_hr()
+    assert ah._verify_from_spec(prefix, d, p, a)["status"] == "failed"
+    for row in a:
+        row["attribute"] = "hr_" + row["attribute"]
+    assert ah._verify_from_spec(prefix, d, p, a)["status"] == "fulfilled"
+
+
+def test_the_classifier_prompt_offers_the_new_spec_shapes():
+    for text in ("set_primary_key makes the named column the primary key of its table", '"column_prefix"', '"merge_into_existing"',
+                 "- allowed_values:", '"allowed_values": []'):
+        assert text in ah.VREQ_SPEC_PROMPT, text
+    assert "set_primary_key" in ah.VREQ_SPEC_ACTIONS
+    assert {"column_prefix", "merge_into_existing"} <= set(ah.VREQ_SPEC_POLICIES)
+
+
+def test_a_domain_division_change_is_deployed_even_when_no_table_of_the_domain_is_rebuilt():
+    """Live r2b2 540668198521691: the model set finance's division to business, but no finance table was rebuilt, the
+    schema-tag statements of preserved domains were filtered out, and the physical schema tag stayed corporate."""
+    facts = {"permitted_deltas": [{"kind": "P6", "domain": "finance", "product": "", "attribute": "", "fields": ["division"],
+                                   "old": {"division": "corporate"}, "new": {"division": "business"}},
+                                  {"kind": "P6", "domain": "media", "product": "", "attribute": "", "fields": ["description"],
+                                   "old": {"description": "a"}, "new": {"description": "b"}}]}
+    plan = ah.VibeScopeDeployPlan(facts, {"model": {"domains": []}})
+    div = "ALTER SCHEMA `c`.`finance` SET TAGS ('dbx_division' = 'business');"
+    assert plan.schema_metadata("finance", "`c`.`finance`", "Finance", div) == [div]
+    assert plan.schema_metadata("finance", "`c`.`finance`", "Finance", div) == []
+    assert plan.schema_metadata("media", "`c`.`media`", "Media", "ALTER SCHEMA `c`.`media` SET TAGS ('dbx_division' = 'x');") == \
+        ["COMMENT ON SCHEMA `c`.`media` IS 'Media';"]
+    assert plan.schema_metadata("contract", "`c`.`contract`", "Contract", "ALTER SCHEMA x;") == []
+    assert plan.counts["metadata_statements"] == 2
+    src = open(Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb").read()
+    assert src.count("replace_single_quote(domain_desc), _div_sql))") == 2
+
+
+def test_closed_lists_act_only_inside_the_targets_of_the_spec_that_states_them():
+    flat = _flat_hr()
+    products, attributes = flat[1], flat[2]
+    products[0]["subdomain"] = "workforce analytics"
+    _register_flat(flat, dict(vs.spec("R1", "set_fields", ["hr.position"], fields=[vs.field("products", "subdomain")]),
+                              allowed_values=[{"level": "products", "field": "subdomain", "values": ["Staffing", "Workforce Analytics Hub"]}]))
+    assert ah._v383_enforce_closed_label_roster(products) == 1
+    assert [p["subdomain"] for p in products] == ["workforce analytics", "staffing", ""]
+    ah.vov_ledger_reset()
+    _register_flat(flat, dict(vs.spec("L1", "set_fields", ["hr.position"], fields=[vs.field("attributes", "tags")]),
+                              tags=[{"key": "cde", "value": "<data element>"}],
+                              allowed_values=[{"level": "attributes", "field": "tags", "key": "cde", "values": ["Position Code"]}]))
+    attributes[1]["tags"] = "cde=Invented Thing"
+    attributes[4]["tags"] = "cde=Another Invention"
+    assert ah._v383_purge_fabricated_lookup_tags(attributes) == 1
+    assert attributes[1]["tags"] == "cde=Invented Thing" and attributes[4]["tags"] == ""
