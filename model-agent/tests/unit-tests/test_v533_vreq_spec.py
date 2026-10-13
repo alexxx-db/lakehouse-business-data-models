@@ -1182,3 +1182,32 @@ def test_keep_only_is_verified_and_permitted_only_inside_its_domains():
     req = ah.RawVREQ(vreq_id="K1", intent="keep only employee", target="hr.employee", source_quote="keep only employee", source_chunk_id="c")
     requested, wide = ah._vibe_scope_requested_spec([req], ah.widgets_flat_to_model(*flat))
     assert "hr" in requested.whole_domains and ("hr", "employee") in requested.products and wide == []
+
+
+def test_the_classifier_reads_every_reply_shape_that_carries_the_specs():
+    one = {"id": "V1", "action": "add_column", "targets": [{"domain": "crew", "product": "member", "column": "nickname"}]}
+    assert ah._vreq_spec_reply_list([one]) == [one]
+    assert ah._vreq_spec_reply_list({"specs": [one]}) == [one]
+    assert ah._vreq_spec_reply_list({"specs": {"V1": dict(one, id="")}})[0]["id"] == "V1"
+    assert ah._vreq_spec_reply_list({"vreq_specs": [one]}) == [one]
+    for bad in ({"a": [one], "b": [one]}, {"specs": "none"}, "text", None, [1, 2]):
+        assert ah._vreq_spec_reply_list(bad) is None, bad
+    specs = ah.classify_vreq_specs(lambda prompt, schema: [dict(one, interpretable=True)], [_item("V1", "add a nickname column")], _model(), None)
+    assert specs["V1"]["interpretable"] is True and specs["V1"]["action"] == "add_column"
+    failed = ah.classify_vreq_specs(lambda prompt, schema: {"answer": "no"}, [_item("V2")], _model(), None)
+    assert failed["V2"]["interpretable"] is False and "a dict with keys ['answer']" in failed["V2"]["reason"]
+
+
+def test_a_scoped_run_whose_requirements_cannot_be_read_changes_nothing_inside_the_scope():
+    """Live r4a 1072700004790036: the engine read neither requirement, the named set came back empty, and the fence opened
+    every product of the scoped domain: 19 products and 20 metric views changed for a two-item vibe."""
+    fence = E._fence()
+    base = E._engine()
+    unread = [ah.RawVREQ(vreq_id=f"VREQ-000{i}", intent="x", target="crew.member", source_quote="x", source_chunk_id="c") for i in (1, 2)]
+    ah.register_vreq_specs({v.vreq_id: ah._vreq_spec_not_interpreted(v.vreq_id, "unread", ah._vreq_spec_index(base)) for v in unread})
+    ah._vibe_scope_narrow_scoped(fence, unread, base, LOG)
+    assert fence.spec.named_only is True and not fence.spec.products and not fence.spec.whole_domains
+    fence = E._fence()
+    vs.register(ah, base, vs.spec("VREQ-001", "add_column", ["crew.member"], columns=[{"name": "nickname", "type": "STRING"}]))
+    ah._vibe_scope_narrow_scoped(fence, unread, base, LOG)
+    assert fence.spec.named_only is True and fence.spec.products == frozenset({("crew", "member")})
