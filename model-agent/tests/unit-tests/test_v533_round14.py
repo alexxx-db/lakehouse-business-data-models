@@ -325,3 +325,37 @@ def test_an_install_into_the_versions_own_catalog_still_rewrites_its_rows():
     result = fu.register(fake, "mm_cat", install_catalog="cat_a").last_result
     assert result["kept_deployments"] == []
     assert [r.get("catalog") for r in _registry_rows(fake, "business")] == ["cat_a"]
+
+
+def test_a_parameter_default_calls_current_date_as_a_function():
+    """Live r17d 1106403598347709: two views fell back with 'default value must be a constant expression, got: YEAR(CURRENT_DATE)'.
+    Checked live: YEAR(current_date()) is accepted for an INT parameter and YEAR(CURRENT_DATE) is not."""
+    def default(value, data_type):
+        lines = ah._emit_mv_parameters_yaml([{"name": "p", "data_type": data_type, "default": value}], 2)
+        return next(line.split("default: ", 1)[1] for line in lines if "default: " in line)
+    assert default("YEAR(CURRENT_DATE)", "INT") == "YEAR(current_date())"
+    assert default("year(current_date())", "INT") == "year(current_date())"
+    assert default("date_sub(CURRENT_DATE, 30)", "DATE") == "date_sub(current_date(), 30)"
+    assert default("CURRENT_TIMESTAMP", "TIMESTAMP") == "current_timestamp()"
+    assert default("CURRENT_DATE", "STRING") == "\"'CURRENT_DATE'\""
+
+
+def test_a_count_measure_never_gets_a_date_format():
+    """Live r17d: customer_active_customer_count fell back with 'Column New Registrations has date/time format which is incompatible
+    with column type LONG'."""
+    counted = "COUNT(CASE WHEN date_trunc('month', registered_at) = date_trunc('month', current_date()) THEN 1 END)"
+    assert (ah._infer_mv_format("New Registrations", counted) or {}).get("type") != "date"
+    assert ah._infer_mv_format("First Registration", "MIN(registered_at)", "DATE")["type"] == "date"
+    assert ah._infer_mv_format("Registration Month", "date_trunc('month', registered_at)", None, is_dimension=True)["type"] == "date"
+    products = {"profile": {"table_name": "profile", "domain": "customer", "product": "profile"}}
+    columns = {"profile": {"columns": {"profile_id", "registered_at"}, "string_columns": set(), "boolean_columns": set(), "col_rewrite_map": {}}}
+    spec = {"metric_views": [{"view_name": "metrics_profile", "source_product": "profile",
+                              "dimensions": [{"name": "registered_at", "display_name": "Registered At", "expr": "registered_at"}],
+                              "measures": [{"name": "New Registrations", "expr": "COUNT(profile_id)", "format": {"type": "date"}},
+                                           {"name": "First Registration", "expr": "MIN(registered_at)", "format": {"type": "date"}}]}]}
+    out = ah._render_metric_sql_for_domain_from_llm_spec("cat", "customer", "customer", spec, products, LOG, product_columns=columns, config={})
+    text = "\n".join(out[0] if isinstance(out, tuple) else out)
+    count_block = text.split('name: "New Registrations"', 1)[1].split("- name:", 1)[0]
+    first_block = text.split('name: "First Registration"', 1)[1]
+    assert "type: date" not in count_block
+    assert "type: date" in first_block and "date_format: year_month_day" in first_block
