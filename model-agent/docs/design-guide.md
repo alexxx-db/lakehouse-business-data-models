@@ -752,6 +752,8 @@ Sample data is no longer an agent operation. Since agent 4.8.0 the standalone mo
 - ALL existing products MUST be retained
 - Can only ADD new products and domains
 - Every base metric view is carried (agent 5.3.3, `resize-mv-carry`)
+- A new domain keeps the tables the enlarge plan lists; only a new domain the plan leaves empty gets generated tables (agent 5.3.3, `resize-seed-plan-kept`). Before 5.3.3 every new domain also got a full generated set on top of its planned tables, so an enlarge planned at 107 tables shipped 212.
+- An enlarge does not re-read the vibe the model was created with; size and domain limits for the enlarge go in the enlarge run's own vibe (decision 2B)
 
 ---
 

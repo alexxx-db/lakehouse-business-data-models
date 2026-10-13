@@ -224,3 +224,62 @@ def test_a_dimension_gets_only_a_temporal_or_boolean_format():
     assert "format:" not in status
     assert "type: date" in enrolled and "date_format: year_month_day" in enrolled
     assert "type: number" in points
+
+
+def test_a_resize_asks_kpi_first_for_the_designed_views_of_carried_placeholders(monkeypatch, caplog):
+    """Live r16c 379035090945153: the shrink carried the ECM's six report views as the row-count placeholders the ECM install had
+    left, counted them as designed and never regenerated them; KPI-first also appended production_ingredient_stock_health next to
+    the carried view of the same name, so model.json held 36 views for 35 names."""
+    import json
+    import types
+    placeholder = f"CREATE OR REPLACE VIEW `cat`.`_metrics`.`sales_daily_sales_by_shop_and_product` AS $$ comment: \"{ah._MV_ROWCOUNT_FALLBACK_COMMENT}\" source: cat.sales.shop_sale $$"
+    table_placeholder = f"CREATE OR REPLACE VIEW `cat`.`_metrics`.`sales_shop_sale` AS $$ comment: \"{ah._MV_ROWCOUNT_FALLBACK_COMMENT}\" source: cat.sales.shop_sale $$"
+    base = {"model": {"domains": [], "metric_views": [
+        {"view_name": "sales_daily_sales_by_shop_and_product", "owner_domain": "sales", "owner_product": "shop_sale", "sql": placeholder},
+        {"view_name": "sales_shop_sale", "owner_domain": "sales", "owner_product": "shop_sale", "sql": table_placeholder},
+        {"view_name": "sales_revenue_by_channel", "owner_domain": "sales", "owner_product": "shop_sale",
+         "sql": "CREATE OR REPLACE VIEW `cat`.`_metrics`.`sales_revenue_by_channel` AS $$ source: cat.sales.shop_sale $$"}]}}
+    sdk = types.ModuleType("databricks.sdk")
+    sdk.WorkspaceClient = lambda *a, **k: object()
+    monkeypatch.setitem(sys.modules, "databricks", sys.modules.get("databricks") or types.ModuleType("databricks"))
+    monkeypatch.setitem(sys.modules, "databricks.sdk", sdk)
+    monkeypatch.setitem(ah.__dict__, "read_file_for_ddl", lambda path, w: json.dumps(base))
+    wv = {"operation": "shrink ecm", "source_version": "1", "source_model_scope": "ecm", "current_version": "1", "model_scope": "mvm",
+          "products": [{"domain": "sales", "product": "shop_sale"}]}
+    with caplog.at_level(logging.INFO):
+        ah._resize_carry_base_metric_views(wv, {"TARGET_VOLUME": "/Volumes/c/s/v/bakery/v1/mvm"}, LOG)
+    assert len(wv["_metric_view_records"]) == 3
+    assert wv["_resize_regenerate_mv_names"] == ["daily sales by shop and product"]
+    assert any("1 carried view(s) are row-count placeholders" in r.getMessage() for r in caplog.records)
+
+
+def test_kpi_first_replaces_a_view_of_the_same_name_and_reads_the_resize_names():
+    body = SRC[SRC.index("def step_generate_kpi_first_metric_views("):]
+    body = body[:body.index("\ndef ", 10)]
+    assert '_redo_mv_names = [n for n in widgets_values.get("_resize_regenerate_mv_names") or [] if n not in _spec_mv_names]' in body
+    assert body.index("_spec_mv_names = _spec_mv_names + _redo_mv_names") < body.index("widgets_values['_required_mv_names'] = _spec_mv_names")
+    append = body[body.index("if statements_total:"):]
+    assert "if _extract_metric_view_name_from_statement(s).strip().lower() not in _kpi_fresh]" in append
+    assert 'str(r.get("view_name") or "").strip().lower() in _kpi_fresh)]' in append
+
+
+def test_the_install_reports_carried_placeholders_as_fallbacks():
+    body = SRC[SRC.index("def step_apply_metric_views("):]
+    body = body[:body.index("\ndef ", 10)]
+    seed = body.index('_mv_rowcount_fb = list(metric_exec_result.get("rowcount_fallbacks") or [])')
+    assert body.index("if _MV_ROWCOUNT_FALLBACK_COMMENT in str(s)} - set(_mv_rowcount_fb))", seed) < body.index('widgets_values["_mv_rowcount_fallbacks"] = _mv_rowcount_fb', seed)
+    statements = [f"CREATE OR REPLACE VIEW `c`.`_metrics`.`a` AS $$ comment: \"{ah._MV_ROWCOUNT_FALLBACK_COMMENT}\" $$",
+                  "CREATE OR REPLACE VIEW `c`.`_metrics`.`b` AS $$ comment: \"designed\" $$"]
+    carried = sorted({ah._extract_metric_view_name_from_statement(s) for s in statements if ah._MV_ROWCOUNT_FALLBACK_COMMENT in str(s)} - set())
+    assert carried == ["a"]
+
+
+def test_an_enlarge_keeps_the_tables_its_plan_lists_for_a_new_domain():
+    """Live r16d 1008476504045950: the enlarge plan listed 107 tables (tier target about 100), but every new domain was also queued
+    for product generation, which added 15 to 20 tables to each of the 5 new domains; the model reached 212 tables."""
+    body = SRC[SRC.index("    def _run_resize_model(widgets_values, direction):"):]
+    body = body[:body.index("\n    def ", 10)]
+    branch = body[body.index("for new_domain in new_domains_from_llm:"):body.index("for expansion in expanded_existing:")]
+    assert 'if not (new_domain.get("products") or []):\n                    domains_needing_products.append(new_dom_rec)' in branch
+    assert branch.count("domains_needing_products.append(") == 1
+    assert "[resize-seed-plan-kept FIRED v5.3.3]" in body
