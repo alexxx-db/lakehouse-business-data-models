@@ -526,3 +526,256 @@ def test_a_next_vibes_rename_with_a_different_new_name_is_not_an_echo():
     assert ah._vov_priority_echoes_rename(("rename_product", "aircrew", "member", "aircrew"), model)
     assert not ah._vov_priority_echoes_rename(("rename_product", "aircrew", "member", "crew_member"), model)
     assert not ah._vov_priority_echoes_rename(("rename_product", "fleet", "aircraft", "aircrew"), model)
+
+
+# ---------------------------------------------------------------- the vibe parse never falls back to text rules
+
+
+class _ParseAgent:
+    def __init__(self, vibe, specs=(), fail=0, sizing=None):
+        self.vibe, self.specs, self.fail, self.sizing, self.calls = vibe, specs, fail, sizing or {}, []
+
+    def _call_ai_query(self, prompt_name=None, prompt=None, **kwargs):
+        self.calls.append(prompt_name)
+        if prompt_name == "VIBE_PARSE_PROMPT":
+            if self.fail:
+                self.fail -= 1
+                raise RuntimeError("endpoint down")
+            return json.dumps({"requirements": [{"original_text": self.vibe, "intent": "model the bakery", "scope": "model", "scope_targets": ["*"],
+                                                 "mode": "generative", "priority": "high", "constraint_type": "soft", "verification_strategy": "llm_verify"}],
+                               "sizing_directives": dict({"max_domains": None, "min_domains": None, "max_total_products": None, "min_total_products": None,
+                                                          "max_products_per_domain": None, "min_products_per_domain": None,
+                                                          "single_domain_mode": False, "explicit_count_statements": []}, **self.sizing),
+                               "model_conventions": {}})
+        if prompt_name == "VREQ_SPEC_PROMPT":
+            return json.dumps(vs.reply(prompt, self.specs))
+        return "{}"
+
+
+def _orch_parse(agent, vibe="Build a model for a small bakery with exactly three domains."):
+    widgets = {"logger": LOG, "config": {}, "vibe_modelling_instructions": vibe, "operation": "new base model", "ai_agent": agent}
+    ah.VibeOrchestrator(widgets).parse()
+    return widgets
+
+
+def test_the_vibe_parse_retries_the_llm_and_the_specs_fill_sizing_gaps():
+    count = lambda item: vs.spec(item["id"], "other", [], kind="count_target", count={"entity": "domains", "op": "exactly", "value": 3})
+    agent = _ParseAgent("vibe", specs=count, fail=1)
+    widgets = _orch_parse(agent)
+    assert agent.calls.count("VIBE_PARSE_PROMPT") == 2 and "VREQ_SPEC_PROMPT" in agent.calls
+    assert widgets["vibe_manifest"].parse_method not in ("not_interpreted", "deterministic_grouped")
+    assert widgets["sizing_directives"]["max_domains"] == 3 and widgets["sizing_directives"]["min_domains"] == 3
+
+
+def test_an_unread_vibe_is_one_failed_requirement_never_a_text_parse():
+    widgets = _orch_parse(_ParseAgent("vibe", fail=2))
+    manifest = widgets["vibe_manifest"]
+    assert manifest.parse_method == "not_interpreted" and [r.id for r in manifest.requirements] == ["VREQ-001"]
+    spec = ah.vreq_spec("VREQ-001")
+    assert spec["interpretable"] is False and "RuntimeError: endpoint down" in spec["reason"]
+    assert not hasattr(ah.VibeOrchestrator, "_parse_deterministic")
+    ah.vov_ledger_reset()
+    widgets = {"logger": LOG, "config": {}, "vibe_modelling_instructions": "a tiny toy model", "operation": "new base model"}
+    ah.VibeOrchestrator(widgets).parse()
+    assert widgets["vibe_manifest"].parse_method == "not_interpreted" and "no AI agent" in ah.vreq_spec("VREQ-001")["reason"]
+    assert widgets["sizing_directives"]["max_domains"] is None and widgets["sizing_directives"]["max_total_products"] is None
+
+
+# ---------------------------------------------------------------- sizing comes from count specs an LLM read
+
+
+def _counts(*rows):
+    model = {"model": {"domains": []}}
+    vs.register(ah, model, *[vs.spec(f"C{i}", "other", [], kind="count_target", count=c) for i, c in enumerate(rows, 1)])
+
+
+def test_count_specs_become_sizing_readings_and_directives():
+    _counts({"entity": "domains", "op": "exactly", "value": 3}, {"entity": "products", "op": "between", "value": 20, "low": 15},
+            {"entity": "products_per_domain", "op": "at_most", "value": 8}, {"entity": "attributes_per_product", "op": "at_least", "value": 12},
+            {"entity": "metric_views", "op": "exactly", "value": 4})
+    readings = {r["phrase"].split(":")[0]: (r["unit"], r["scope"], r["per"], r["bound"], r["n"], r["lo"]) for r in ah._vreq_spec_sizing_readings()}
+    assert readings == {"C1": ("domain", "total", "", "both", 3, None), "C2": ("product", "total", "", "range", 20, 15),
+                        "C3": ("product", "per_unit", "domain", "max", 8, None), "C4": ("attribute", "per_unit", "product", "min", 12, None),
+                        "C5": ("metric_view", "total", "", "both", 4, None)}
+    sd = ah._sizing_directives_from_readings(ah._vreq_spec_sizing_readings())
+    assert (sd["max_domains"], sd["min_domains"], sd["max_total_products"], sd["min_total_products"], sd["max_products_per_domain"],
+            sd["min_products_per_domain"], sd["single_domain_mode"]) == (3, 3, 20, 15, 8, None, False)
+    assert ah._vreq_spec_mv_directive() == (4, [])
+    assert ah._vibe_exact_metric_view_directive({}) == (4, [])
+    assert ah._vov_spec_mv_floor(0, LOG) == 4 and ah._vov_spec_mv_floor(7, LOG) == 7
+
+
+def test_one_domain_exactly_is_single_domain_mode_and_bad_counts_are_not_readings():
+    _counts({"entity": "domains", "op": "exactly", "value": 1})
+    assert ah._sizing_directives_from_readings(ah._vreq_spec_sizing_readings())["single_domain_mode"] is True
+    ah.vov_ledger_reset()
+    _counts({"entity": "products", "op": "between", "value": 5, "low": 9}, {"entity": "products", "op": "between", "value": 5})
+    assert ah._vreq_spec_sizing_readings() == []
+    assert all(not ah.vreq_spec(v)["interpretable"] for v in ("C1", "C2"))
+    assert ah._sizing_directives_from_readings([])["max_domains"] is None
+
+
+def test_override_axes_and_attribute_bounds_read_only_the_specs():
+    assert ah._sizing_override_axes({}) == (set(), [])
+    _counts({"entity": "attributes", "op": "about", "value": 600}, {"entity": "products_per_subdomain", "op": "at_most", "value": 4})
+    axes, evidence = ah._sizing_override_axes({})
+    assert axes == {"attributes", "subdomains"} and evidence == ["C1: about 600 attributes", "C2: at_most 4 products_per_subdomain",
+                                                                 "a requirement spec names subdomains"]
+    assert ah._attribute_total_per_product_bounds(30) == {"min_attributes_per_product": 20, "max_attributes_per_product": 20,
+                                                          "phrases": ["C1: about 600 attributes"], "products": 30}
+    assert ah._attribute_total_per_product_bounds(0) is None
+    ah.vov_ledger_reset()
+    vs.register(ah, {"model": {"domains": []}}, vs.spec("V1", "set_fields", ["crew"], breadth="set", fields=[vs.field("products", "subdomain")]))
+    assert ah._sizing_override_axes({})[0] == {"subdomains"}
+
+
+def test_coverage_requeue_reads_tag_specs_and_the_metric_view_count():
+    model = _model()
+    vs.register(ah, model, vs.spec("V1", "set_fields", ["crew"], breadth="set", fields=[vs.field("attributes", "tags")],
+                                   tags=[{"key": "source_system", "value": "crew_ops"}]),
+                vs.spec("V2", "other", [], kind="count_target", count={"entity": "metric_views", "op": "exactly", "value": 500}))
+    widgets = {}
+    assert ah._v320_vibe_completeness_requeue(model, widgets, LOG) == 2
+    queued = {q["id"]: q for q in widgets["_unfulfilled_for_next_vibe"]}
+    assert set(queued) == {"COMPLETENESS-TAG-source_system-column", "COMPLETENESS-MV-COUNT"}
+    assert "of crew" in queued["COMPLETENESS-TAG-source_system-column"]["text"] and "V1" in queued["COMPLETENESS-TAG-source_system-column"]["text"]
+    assert ah._v320_vibe_completeness_requeue(model, widgets, LOG) == 0
+    ah.vov_ledger_reset()
+    assert ah._v320_vibe_completeness_requeue(model, {}, LOG) == 0
+
+
+# ---------------------------------------------------------------- structural placeholders, quote dedupe, redirects
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("", None), ("n/a", "placeholder"), ("TBD", "placeholder"), ("<column>", "placeholder"), ("{term}", "placeholder"),
+    ("member_id", "column name"), ("Member Id", "column name"), ("Crew Member Identifier", None), ("GlossaryTerm_roster_date", None),
+    ("A crew member is a person employed to work aboard an aircraft during a flight sector.", None),
+])
+def test_a_glossary_value_is_rejected_only_for_structural_reasons(value, expected):
+    assert ah._v533_glossary_term_defect(value, "member_id") == expected
+
+
+def test_a_recovered_requirement_is_a_duplicate_only_when_its_quote_is_already_held():
+    existing = [ah.RawVREQ(vreq_id="V1", intent="", target="", source_quote="Add a nickname column to crew member", source_chunk_id="c")]
+    assert ah._v292_duplicate_of("add a nickname column", existing) == "V1"
+    assert ah._v292_duplicate_of("Add a nickname column to crew member so dispatch can greet crew", existing) == "V1"
+    assert ah._v292_duplicate_of("Add the nickname column to the crew member table", existing) is None
+    assert ah._v292_duplicate_of("  ", existing) is None
+
+
+def test_a_rename_requirement_is_never_redirected_and_others_follow_landed_renames_by_spec():
+    model = _model()
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"),
+                vs.spec("V2", "add_column", ["crew.member.nickname"], columns=[{"name": "nickname", "type": "STRING"}], fk_target="crew.base"))
+    vreqs = [ah.RawVREQ(vreq_id="V1", intent="Rename crew.member to crew_member", target="crew.member", source_quote="", source_chunk_id="c"),
+             ah.RawVREQ(vreq_id="V2", intent="Add nickname to crew.member", target="crew.member", source_quote="", source_chunk_id="c")]
+    out, redirected = ah._vov_redirect_vreqs(vreqs, {"crew.member": "crew.crew_member"}, {})
+    assert redirected == ["V2"] and out[0] is vreqs[0] and out[1].target == "crew.crew_member" and out[1].intent == "Add nickname to crew.crew_member"
+    assert ah.vreq_spec("V2")["targets"] == [{"domain": "crew", "product": "crew_member", "column": "nickname"}]
+    assert ah.vreq_spec("V1")["targets"] == [{"domain": "crew", "product": "member", "column": ""}]
+
+
+def test_a_physical_type_matches_a_spec_type_by_base_and_synonym():
+    assert ah._verify_spec_type_matches("bigint", "long") and ah._verify_spec_type_matches("decimal", "decimal(10,2)")
+    assert not ah._verify_spec_type_matches("decimal(10,2)", "decimal(12,2)") and not ah._verify_spec_type_matches("int", "bigint")
+
+
+def test_the_verifier_follows_a_table_rename_that_landed_in_the_same_run():
+    model = _model()
+    vs.register(ah, model, vs.spec("V1", "rename_column", ["crew.member.member_id"], new_name="member_key"),
+                vs.spec("V2", "rename_product", ["crew.member"], new_name="crew_member"))
+    assert ah._v337_apply_rename_product(model["model"], "crew", "member", "crew_member") is not None
+    assert ah._v337_apply_rename_attribute(model["model"], "crew", "crew_member", "crew_member_id", "member_key") is not None
+    d, p, a, _mv = ah.model_to_widgets_flat(model)
+    assert ah._verify_from_spec(ah.vreq_spec("V1"), d, p, a)["status"] == "fulfilled"
+    assert ah._verify_from_spec(ah.vreq_spec("V2"), d, p, a)["status"] == "fulfilled"
+    ah.vov_ledger_reset()
+    vs.register(ah, model, vs.spec("V1", "rename_column", ["crew.member.member_id"], new_name="member_key"))
+    assert ah._verify_from_spec(ah.vreq_spec("V1"), d, p, a)["status"] == "failed"
+
+
+def test_the_ground_truth_audit_does_not_score_fields_the_physical_columns_cannot_carry():
+    spec = ah._normalize_vreq_spec({"id": "V1", "action": "set_fields", "targets": [{"domain": "crew", "product": "member"}],
+                                    "fields": [{"level": "attributes", "field": "business_glossary_term"}]}, ah._vreq_spec_index(_model()))
+    blind = [f for level, f in spec["fields"] if level == "attributes" and f not in ("description", "tags", "tag_set")]
+    assert blind == ["business_glossary_term"]
+    src = open(Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb").read()
+    assert "comment AS cm" in src and "gt-spec-blind FIRED v5.3.3" in src
+
+
+_R1A_VIBE = ("## Domain: product\n"
+             "- (high) [product.size_chart] Rename the column chart_region to fit_region.\n"
+             "- (high) [product.size_chart] Drop the column style from product.size_chart.\n"
+             "- (high) [product.collection] Add a column launch_channel (STRING) to product.collection.\n"
+             "- (high) [product.size_chart] Add a column primary_sku_id to product.size_chart that references product.sku.\n"
+             "- (high) [product.collection] Give every column of product.collection that has no description a short description.\n")
+
+
+class _OutlineLLM:
+    def __init__(self, sections):
+        self.sections = sections
+
+    def complete_json(self, system, user, temperature=0.0, response_schema=None):
+        return {"sections": self.sections}
+
+    def complete_with_tools(self, system, user, tools=None, tool_handlers=None, temperature=0.0, response_schema=None):
+        lines = [ln[2:].strip() for ln in user.split("\n") if ln.startswith("- ")]
+        return {"vreqs": [{"intent": ln, "target": ln.split("]")[0].strip("[( high)"), "source_quote": ln} for ln in lines]}
+
+
+def test_outline_sections_partition_the_vibe_when_the_llm_titles_match_no_heading():
+    llm = _OutlineLLM([{"section_id": "S1", "title": "Size chart changes"}, {"section_id": "S2", "title": "Collection changes"},
+                       {"section_id": "S3", "title": "Descriptions"}])
+    outline = ah.build_outline(_R1A_VIBE, llm)
+    assert [(s.byte_start, s.byte_end) for s in outline.sections] == [(0, len(_R1A_VIBE))]
+    chunks = ah.chunk_vibe(_R1A_VIBE, outline=outline)
+    assert len(chunks) == 1 and chunks[0].text == _R1A_VIBE
+    vreqs = ah.dedupe_vreqs(ah.extract_all(chunks, outline, llm, parallel=False))
+    assert len(vreqs) == 5 and len({v.source_quote for v in vreqs}) == 5
+
+
+def test_outline_sections_take_llm_metadata_by_title_and_never_share_a_range():
+    text = "## Crew\n- add a column shift_code to crew.roster\n## Fleet\n- drop the column legacy_code from fleet.aircraft\n"
+    llm = _OutlineLLM([{"title": "Fleet", "summary": "fleet asks", "declared_entities": ["fleet.aircraft"]},
+                       {"title": "Something else", "summary": "invented"}, {"title": "Crew", "summary": "crew asks"}])
+    sections = ah.build_outline(text, llm).sections
+    ranges = [(s.byte_start, s.byte_end) for s in sections]
+    assert ranges == [(0, text.index("## Fleet")), (text.index("## Fleet"), len(text))]
+    assert [s.summary for s in sections] == ["crew asks", "fleet asks"]
+    assert [s.section_id for s in sections] == ["S1", "S2"]
+    assert sections[1].declared_entities == ("fleet.aircraft",)
+    in_order = ah.build_outline(text, _OutlineLLM([{"title": "a", "summary": "first"}, {"title": "b", "summary": "second"}])).sections
+    assert [s.summary for s in in_order] == ["first", "second"]
+
+
+def test_a_section_with_only_a_heading_yields_no_chunk():
+    text = "## Domain: crew\n### Table: roster\n- add a column shift_code to crew.roster\n"
+    chunks = ah.chunk_vibe(text, outline=ah.build_outline(text, _OutlineLLM([])))
+    assert len(chunks) == 1
+    assert chunks[0].text.startswith("## Domain: crew\n### Table: roster\n") and "shift_code" in chunks[0].text
+    assert ah.chunk_vibe("## Only a heading\n\n", outline=ah.build_outline("## Only a heading\n\n", _OutlineLLM([]))) == []
+
+
+def _raw(rid, quote, severity="medium", user=False, prio=9999):
+    return ah.RawVREQ(vreq_id=rid, intent=quote, target="crew.member", source_quote=quote, source_chunk_id="c1",
+                      severity=severity, is_user_directive=user, priority_id=prio)
+
+
+def test_requirements_with_the_same_llm_spec_merge_and_keep_their_feedback_links():
+    model = _model()
+    a = _raw("VREQ-0001", "Rename member_id to member_key.", severity="low")
+    b = _raw("VREQ-0002", "Please call the member_id column member_key instead.", severity="critical", user=True, prio=2)
+    c = _raw("VREQ-0003", "Rename member_name to full_name.")
+    d = _raw("VREQ-0004", "Something the classifier could not read.")
+    vs.register(ah, model, vs.spec("VREQ-0001", "rename_column", ["crew.member.member_id"], new_name="member_key"),
+                vs.spec("VREQ-0002", "rename_column", ["crew.member.member_id"], new_name="member_key"),
+                vs.spec("VREQ-0003", "rename_column", ["crew.member.member_name"], new_name="full_name"))
+    ah.register_vreq_specs({"VREQ-0004": ah._vreq_spec_not_interpreted("VREQ-0004", "unclear", ah._vreq_spec_index(model))})
+    kept, merged = ah._vreq_spec_dedupe([a, b, c, d], logging.getLogger("t"))
+    assert [v.vreq_id for v in kept] == ["VREQ-0001", "VREQ-0003", "VREQ-0004"]
+    assert (kept[0].severity, kept[0].is_user_directive, kept[0].priority_id) == ("critical", True, 2)
+    assert {k: [v.vreq_id for v in m] for k, m in merged.items()} == {"VREQ-0001": ["VREQ-0002"]}
+    absorbed = ah._vibe_input_absorbed(kept, [a, b, c, d], [], merged)
+    assert [v.vreq_id for v in absorbed["VREQ-0001"]] == ["VREQ-0001", "VREQ-0002"]
+    assert ah._vreq_spec_dedupe([c, d], None) == ([c, d], {})

@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
 import test_v514_vibe_scope_parse as PS  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 VOV = "vibe modeling of version"
 
@@ -34,6 +35,21 @@ class _Log:
 
 def _vreq(vid, target, intent):
     return ah.RawVREQ(vreq_id=vid, intent=intent, target=target, source_quote=intent, source_chunk_id="c1", is_user_directive=True)
+
+
+SPECS = {
+    "Rename the product member to crew_member": lambda vid: vs.spec(vid, "rename_product", ["crew.member"], new_name="crew_member"),
+    "Add an audit_status column to every product in the crew domain":
+        lambda vid: vs.spec(vid, "add_column", ["crew"], breadth="set", columns=[{"name": "audit_status", "type": ""}]),
+    "Improve the overall model": lambda vid: vs.spec(vid, "other", [], breadth="model"),
+    "Improve the descriptions": lambda vid: vs.spec(vid, "set_fields", [], breadth="model",
+                                                     fields=[vs.field(level, "description") for level in ("domains", "products", "attributes")]),
+    "Add a new product crew_shift to the crew domain": lambda vid: vs.spec(vid, "add_product", ["crew.crew_shift"]),
+}
+
+
+def _register(vreqs, raw):
+    vs.register(ah, raw, *[SPECS[v.intent](v.vreq_id) for v in vreqs])
 
 
 RENAME_MEMBER = _vreq("VREQ-0001", "crew.member", "Rename the product member to crew_member")
@@ -53,6 +69,7 @@ def _scoped(vreqs, entries="crew"):
     raw = copy.deepcopy(PS.RAW)
     fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", entries), copy.deepcopy(raw), VOV, log)
     ah.set_vibe_scope_runtime(fence)
+    _register(vreqs, raw)
     returned = ah._vibe_scope_start_requested(vreqs, copy.deepcopy(raw), log, copy.deepcopy(raw))
     return fence, returned, log, raw
 
@@ -152,6 +169,7 @@ def test_the_prompt_lists_what_the_vibe_names_inside_the_scope():
 def test_an_all_domains_requested_fence_is_unchanged():
     raw = copy.deepcopy(PS.RAW)
     log = _Log()
+    _register([RENAME_MEMBER], raw)
     fence = ah._vibe_scope_start_requested([RENAME_MEMBER], raw, log, copy.deepcopy(raw))
     assert fence is not None and fence.spec.mode == "requested" and not fence.spec.named_only
     assert fence.is_frozen_product("crew", "pairing") and not fence.is_frozen_product("crew", "member")

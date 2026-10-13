@@ -70,8 +70,6 @@ EXPECTED_ALIASES = [
     "vov-selffixer-flat-roundtrip",
     "vov-batcher-no-source-quote-trunc",
     "vov-synth-no-payload-trunc",
-    "vov-dedupe-enable-llm",
-    "vov-dedupe-no-drop",
 ]
 
 # Aliases that live INSIDE LLM prompt templates (no runtime FIRED log expected)
@@ -81,7 +79,6 @@ PROMPT_ONLY_ALIASES = {
     "vov-audit-be-aggressive",
     "vov-batcher-no-source-quote-trunc",  # injected as prompt-build comment
     "vov-synth-no-payload-trunc",         # injected as prompt-build comment
-    "vov-dedupe-enable-llm",              # injected at call site
 }
 
 
@@ -252,24 +249,12 @@ def test_synth_payload_cap_widened_to_64kb():
     )
 
 
-def test_dedupe_calls_llm_in_production():
-    """The pipeline must pass `llm=llm` to dedupe_vreqs, not `llm=None`."""
+def test_dedupe_collapses_only_exact_copies_and_the_llm_spec_merges_the_rest():
+    """The extraction dedupe only collapses byte-identical requirements; requirements that ask the same change in other
+    words merge on their LLM spec after classification, so no lexical or regex reading decides what a vibe asks."""
     src = _full_source()
-    # The production call site in run_vov_pipeline must pass llm=llm
-    m = re.search(r"dedupe_vreqs\(raw_vreqs,\s*threshold=0\.85,\s*llm=llm\)", src)
-    assert m is not None, "run_vov_pipeline does not pass llm into dedupe_vreqs"
-    # The dead `llm=None` line must be gone from the live call site
-    m2 = re.search(r"dedupe_vreqs\(raw_vreqs,\s*threshold=0\.85,\s*llm=None\)", src)
-    assert m2 is None, "Old llm=None dedupe call still present"
-
-
-def test_dedupe_no_drop_preserves_distinct_outcomes():
-    """merge_cluster must return a list and never drop the cluster size when distinct outcomes differ."""
-    src = _full_source()
-    # New signature returns list[RawVREQ]
-    m = re.search(r"def merge_cluster\(cluster: list\[RawVREQ\],\s*llm:\s*Optional\[LLMClient\][^)]*\)\s*->\s*list\[RawVREQ\]", src)
-    assert m is not None, "merge_cluster signature not updated to return list[RawVREQ]"
-    # Safety-net log line must exist
-    assert "keeping originals to prevent silent drop" in src, "vov-dedupe-no-drop safety net missing"
-    # dedupe_vreqs consumer must handle list output
-    assert "out.extend(merged_list)" in src, "dedupe_vreqs does not flatten list returns from merge_cluster"
+    assert "deduped = dedupe_vreqs(raw_vreqs)" in src
+    assert "deduped, _spec_merged = _vreq_spec_dedupe(deduped, logger)" in src
+    assert "_user_free, _uf_spec_merged = _vreq_spec_dedupe(_user_free, logger)" in src
+    for gone in ("def merge_cluster(", "def cluster_vreqs(", "def vreq_entity_refs(", "DEDUPE_MERGE_PROMPT"):
+        assert gone not in src, gone

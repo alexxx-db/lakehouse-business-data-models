@@ -15,19 +15,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from v435_helpers import concat_source, slice_method_as_function, Req, FakeVerifierSelf
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
-_TEXT = ("Remove the redundant email_opt_in_flag column from customer.profile "
-         "because it duplicates the consent tracking columns.")
-_SCOPE = ["customer.profile.email_opt_in_flag"]
-
-
-def _verifier():
-    src = concat_source()
-    fn = slice_method_as_function(
-        "_verify_structural_target", src,
-        extra_globals={"_v407_resolve_dp": (lambda p, s: p)})
-    return fn
+_SPEC = vs.spec("RP11", "drop_column", ["customer.profile.email_opt_in_flag"])
 
 
 def _attrs(include_removed_col: bool):
@@ -39,16 +31,19 @@ def _attrs(include_removed_col: bool):
     return rows
 
 
+def _verdict(spec, include_removed_col: bool):
+    base = ah.widgets_flat_to_model([], [{"domain": "customer", "product": "profile", "primary_key": "profile_id"}], _attrs(True))
+    vs.register(ah, base, spec)
+    return ah._verify_from_spec(ah.vreq_spec("RP11"), [], [], _attrs(include_removed_col), None, "RP11")
+
+
 def test_fixB_reports_failed_when_column_still_present():
-    fn = _verifier()
-    req = Req(original_text=_TEXT, scope_targets=_SCOPE, rid="RP11")
-    result = fn(FakeVerifierSelf(), req, [], _attrs(include_removed_col=True))
-    assert result is not None, "pre-patch false-fulfill: verifier had no removal branch (returned None)"
-    assert result["status"] == "failed", result
+    result = _verdict(_SPEC, include_removed_col=True)
+    assert result is not None and result["status"] == "failed", result
 
 
 def test_fixB_reports_fulfilled_when_column_absent():
-    fn = _verifier()
-    req = Req(original_text=_TEXT, scope_targets=_SCOPE, rid="RP11")
-    result = fn(FakeVerifierSelf(), req, [], _attrs(include_removed_col=False))
+    result = _verdict(_SPEC, include_removed_col=False)
     assert result is not None and result["status"] == "fulfilled", result
+    unread = _verdict(vs.spec("RP11", "drop_column"), include_removed_col=False)
+    assert unread["status"] == "failed" and "drop_column names no target" in unread["evidence"], unread

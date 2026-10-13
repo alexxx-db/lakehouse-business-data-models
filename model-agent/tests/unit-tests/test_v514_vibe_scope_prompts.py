@@ -339,3 +339,47 @@ def test_digest_marks_classify_adjacency():
     assert ah._vibe_scope_digest_state((frozen, adjacent), "crew", "member") == "open"
     assert ah._vibe_scope_digest_state((frozen, adjacent), "flight", "plan") == "frozen"
     assert ah._vibe_scope_digest_state(None, "flight", "plan") == "open"
+
+
+def test_prompts_that_read_the_vibe_never_carry_the_fence_block():
+    _fence()
+    for name in sorted(ah._VIBE_SCOPE_PROMPT_EXEMPT):
+        text = ah._apply_vibe_scope_to_prompt("Read the user vibe.\n{vibe_scope_fence}\nReturn JSON.", prompt_name=name)
+        assert text == "Read the user vibe.\nReturn JSON.", (name, text)
+        assert ah._apply_vibe_scope_to_prompt("Read the user vibe.", prompt_name=name) == "Read the user vibe."
+    fenced = ah._apply_vibe_scope_to_prompt("Change the model.", prompt_name="VOV_2_SANDBOX")
+    assert _sentinels(fenced) == 1
+
+
+def test_the_engine_classifier_names_its_prompt_so_the_fence_skips_it():
+    _fence()
+    seen = []
+
+    class _Bridge:
+        def complete_json(self, system, user, temperature=0.0, response_schema=None, prompt_name=None):
+            seen.append((prompt_name, ah._apply_vibe_scope_to_prompt(user, prompt_name=prompt_name)))
+            return {"specs": []}
+
+    ah._vreq_spec_engine_call(_Bridge())("classify these requirements", {"type": "object"})
+    assert seen == [("VREQ_SPEC_PROMPT", "classify these requirements")]
+
+    class _Plain:
+        def complete_json(self, system, user, temperature=0.0):
+            seen.append(("plain", user))
+            return {"specs": []}
+
+    ah._vreq_spec_engine_call(_Plain())("classify", {"type": "object"})
+    assert seen[-1] == ("plain", "classify")
+
+
+def test_every_transport_forwards_the_prompt_name_to_the_fence():
+    nb = json.load(open(Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"))
+    src = "\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+    assert "def complete_json(self, system: str, user: str, temperature: float = 0.0, response_schema: Any = None, prompt_name: Optional[str] = None) -> Any:" in src
+    assert src.count("prompt_name=prompt_name or self.system_prompt_id,") == 2
+    assert "def complete_json(self, system: str, user: str, temperature: float = 0.0, prompt_name: Optional[str] = None) -> Any:" in src
+    for call in ("_apply_vibe_scope_to_prompt(system, prepend=False, prompt_name=prompt_name)",
+                 "_apply_vibe_scope_to_prompt(user, prepend=False, prompt_name=prompt_name)",
+                 "_apply_vibe_scope_to_prompt(system, prompt_name=prompt_name)",
+                 "_apply_vibe_scope_to_prompt(prompt, prompt_name=prompt_name)"):
+        assert src.count(call) >= 1, call

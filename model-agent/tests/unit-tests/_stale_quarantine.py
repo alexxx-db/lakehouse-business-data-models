@@ -74,7 +74,6 @@ STALE_XFAIL_NODEIDS = frozenset({
     'tests/unit-tests/test_v207_phase0_behavioral.py::test_v207_phase0_aliases_have_distinct_emission_sites',
     'tests/unit-tests/test_v207_phase0_behavioral.py::test_v207_spark_free_path_method_present',
     'tests/unit-tests/test_v207_phase0_behavioral.py::test_v207_spark_free_path_omits_temperature_for_no_temp_models',
-    'tests/unit-tests/test_v208_audit_round3_fixes.py::test_audit_round3_alias_present[vov-dedupe-enable-llm]',
     'tests/unit-tests/test_v208_audit_round3_fixes.py::test_audit_round3_alias_present[vov-strict-guard-fail-closed]',
     'tests/unit-tests/test_v208_audit_round3_fixes.py::test_audit_round3_runtime_alias_has_fired_emit[vov-bridge-no-silent-empty]',
     'tests/unit-tests/test_v208_audit_round3_fixes.py::test_audit_round3_runtime_alias_has_fired_emit[vov-strict-guard-fail-closed]',

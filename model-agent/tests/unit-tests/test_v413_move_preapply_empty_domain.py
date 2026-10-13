@@ -29,6 +29,7 @@ from pathlib import Path
 import pytest
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 PRE = Path("/tmp/agent_v412_preedit_backup.ipynb")  # v4.1.2 state, no v4.1.3 fixes
 
@@ -86,23 +87,28 @@ def test_version_bumped_to_413():
     assert ver >= (4, 1, 3), ah.__AGENT_VERSION__
 
 
-# ===================== _v413_vreq_to_det_op (POST) ==========================
-def test_vreq_to_det_op_classifies_move_POST():
+# ===================== _vreq_spec_det_op (POST) =============================
+def test_spec_det_op_builds_the_move_POST():
+    m = _model([("aftersales", [_prod("body_style", pk="body_style_id")]), ("vehicle", [])])
     v = _vreq("P002", source_quote=(
         "PRIORITY 2 \u2014 move_product:aftersales.body_style \u2014 "
         "Move the product aftersales.body_style to the vehicle domain because "
         "body style is a vehicle master attribute"))
-    op = ah._v413_vreq_to_det_op(v)
-    assert op is not None and op[0] == "move_product", op
-    assert op[1] == "aftersales" and op[2] == "body_style"
-    assert op[3].lower() == "vehicle", op
+    vs.register(ah, m, vs.spec("P002", "move_product", ["aftersales.body_style"], destination_domain="Vehicle"))
+    assert ah._vreq_spec_det_op(ah.vreq_spec(v), m) == ("move_product", "aftersales", "body_style", "vehicle")
+    vs.register(ah, m, vs.spec("P002", "move_product", ["aftersales.body_style"], destination_domain="aftersales"))
+    assert ah._vreq_spec_det_op(ah.vreq_spec(v), m) is None
 
 
-def test_vreq_to_det_op_none_for_non_mechanical_POST():
-    # an add_attribute / connect_table style directive is NOT a deterministic op
-    v = _vreq("P099", source_quote=(
-        "PRIORITY 9 \u2014 add_attribute:sales.order \u2014 add a discount_pct column"))
-    assert ah._v413_vreq_to_det_op(v) is None
+def test_spec_det_op_none_for_non_mechanical_POST():
+    # an add_attribute style directive is NOT a deterministic op
+    m = _model([("sales", [_prod("order", pk="order_id"), _prod("customer", pk="customer_id")])])
+    vs.register(ah, m, vs.spec("P099", "add_column", ["sales.order"], columns=[{"name": "discount_pct", "type": "DECIMAL(5,2)"}]),
+                vs.spec("P100", "set_fields", ["sales.order"], fields=[vs.field("products", "description")]),
+                vs.spec("P102", "add_column", ["sales.order"], columns=[{"name": "customer_id", "type": "BIGINT"}], fk_target="sales.customer"))
+    for vid in ("P099", "P100", "P101"):
+        assert ah._vreq_spec_det_ops(ah.vreq_spec(_vreq(vid)), m) == [], vid
+    assert ah._vreq_spec_det_ops(ah.vreq_spec(_vreq("P102")), m) == [("add_fk", "sales", "order", "customer_id", "sales.customer.customer_id")]
 
 
 # =================== _v413_apply_det_op_inplace (POST) ======================
@@ -155,7 +161,11 @@ def test_slip_move_dropped_from_both_POST():
 
 
 def test_slip_move_landed_but_not_detected_POST():
-    m = _model([("aftersales", []), ("vehicle", [_prod("body_style")])])
+    m = _model([("aftersales", []), ("vehicle", [_prod("body_style")]), ("sales", [])])
+    vs.register(ah, m, vs.spec("P002", "move_product", ["aftersales.body_style"], destination_domain="sales"))
+    out = ah._v260_diagnose_slip(_slip_priority(), m, [])
+    assert out == "moved-then-dropped:body_style-absent-from-aftersales-and-sales", out
+    vs.register(ah, m, vs.spec("P002", "move_product", ["aftersales.body_style"], destination_domain="vehicle"))
     out = ah._v260_diagnose_slip(_slip_priority(), m, [])
     assert out == "unknown:move-landed-but-not-detected", out
 
@@ -172,8 +182,9 @@ def test_slip_move_never_unsupported_action_POST():
 def test_preapply_wired_before_batching_POST(agent_source_text):
     src = agent_source_text
     assert "v413-mech-vreq-preapply FIRED v4.1.3" in src
-    assert "_vibe_scope_apply_det_op(model, _v413_op, \"v413-preapply\"" in src
-    assert "return model, _v413_apply_det_op_inplace(model, op), (\"\", \"\")" in src
+    assert "_v413_ops = _vreq_spec_det_ops(vreq_spec(_v413_v), model)" in src
+    assert "_vibe_scope_apply_det_op(_v413_work, _v413_op, \"v413-preapply\", (_v413_vid,), logger)" in src
+    assert "result = _v413_apply_det_op_inplace(model, op)" in src
     # must run BEFORE the LLM batching kwargs are assembled in _apply_batches_for_vreqs
     pre_at = src.find("v413-mech-vreq-preapply FIRED v4.1.3")
     batch_at = src.find('_batch_kwargs = {"llm": llm}')

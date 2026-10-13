@@ -23,6 +23,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 from notebook_source_util import notebook_concat_source  # noqa: E402
 from test_v515_mv_ref_integrity import _measure_names, _render  # noqa: E402
@@ -61,62 +62,25 @@ MODEL = {"model": {"domains": [
 ]}}
 
 
-@pytest.mark.parametrize("target,text,expected", [
-    ("customer.loyalty_engagement",
-     "In the customer domain's loyalty_engagement area, add a new product gift_card with one row per issued gift card",
-     "customer.gift_card"),
-    ("order.order_management",
-     "In the order domain's order_management area, add a foreign key column gift_card_id to the sales_order table "
-     "that references customer.gift_card", "order.sales_order"),
-    ("product.merchandise_catalog",
-     "In the product domain's merchandise_catalog area, add a STRING attribute named season_code to the sku table "
-     "holding the merchandising season", "product.sku"),
-    ("product.merchandise_catalog.sku.sku_status", "rewrite the description of the sku_status attribute",
-     "product.sku.sku_status"),
-    ("product.merchandise_catalog.season_code", "add a STRING attribute named season_code to the sku table",
-     "product.sku.season_code"),
-    ("customer.loyalty_engagement.gift_card", "add a new product gift_card", "customer.gift_card"),
-    ("customer.loyalty_engagement", "add product store_credit to this area", "customer.store_credit"),
-    ("customer.loyalty_engagement", "tighten the rules in this area", "customer"),
+@pytest.mark.parametrize("target,expected", [
+    ("customer.loyalty_engagement", "customer"),
+    ("order.order_management", "order"),
+    ("product.merchandise_catalog", "product"),
+    ("product.merchandise_catalog.sku.sku_status", "product.sku.sku_status"),
+    ("customer.loyalty_engagement.gift_card", "customer.gift_card"),
 ])
-def test_a_subdomain_segment_is_dropped_from_a_target(target, text, expected):
-    assert ah._vov_target_without_subdomain(target, text, MODEL) == expected
+def test_a_subdomain_segment_is_dropped_from_a_target(target, expected):
+    assert ah._vov_target_drop_subdomain(target, MODEL) == expected
 
 
 @pytest.mark.parametrize("target", ["product.sku", "product.sku.sku_status", "customer", "product.pricing",
                                     "nosuch.loyalty_engagement", "Model-wide", ""])
 def test_a_target_without_a_subdomain_segment_is_left_alone(target):
-    assert ah._vov_target_without_subdomain(target, "add a new product gift_card", MODEL) == target
+    assert ah._vov_target_drop_subdomain(target, MODEL) == target
 
 
 def test_targets_are_left_alone_without_a_model():
-    assert ah._vov_target_without_subdomain("customer.loyalty_engagement", "add product x", None) == "customer.loyalty_engagement"
-
-
-def _vreq(vid, target, intent, quote=""):
-    return ah.RawVREQ(vreq_id=vid, intent=intent, target=target, source_quote=quote or intent, source_chunk_id="c1")
-
-
-def test_normalizing_requirements_retargets_only_the_subdomain_ones_and_logs_it():
-    log = _Log()
-    keep = _vreq("VREQ-003", "product.sku", "add season_code to sku")
-    vreqs = [_vreq("VREQ-001", "customer.loyalty_engagement", "add a new product gift_card"),
-             keep,
-             _vreq("VREQ-002", "order.order_management, customer.loyalty_engagement.gift_card",
-                   "add a foreign key column gift_card_id to the sales_order table")]
-    out = ah._vov_normalize_vreq_targets(vreqs, MODEL, log)
-    assert [v.target for v in out] == ["customer.gift_card", "product.sku", "order.sales_order, customer.gift_card"]
-    assert out[1] is keep
-    assert [v.vreq_id for v in out] == ["VREQ-001", "VREQ-003", "VREQ-002"]
-    assert out[0].intent == vreqs[0].intent and out[0].source_quote == vreqs[0].source_quote
-    assert any("vov-target-subdomain-drop FIRED v5.1.5" in m and "2 requirement target(s)" in m for m in log.infos)
-
-
-def test_normalizing_clean_requirements_is_silent():
-    log = _Log()
-    vreqs = [_vreq("VREQ-001", "product.sku", "add season_code")]
-    assert ah._vov_normalize_vreq_targets(vreqs, MODEL, log) == vreqs
-    assert not log.infos
+    assert ah._vov_target_drop_subdomain("customer.loyalty_engagement", None) == "customer.loyalty_engagement"
 
 
 def _pipeline_body():
@@ -125,12 +89,15 @@ def _pipeline_body():
     return src[start:src.index("\ndef ", start + 10)]
 
 
-def test_both_extraction_paths_normalize_targets_before_scope_triage():
+def test_both_extraction_paths_read_specs_before_scope_triage():
     body = _pipeline_body()
-    raw = body.index("deduped = _vov_normalize_vreq_targets(deduped, model, logger")
+    raw = body.index("(deduped,), _spec_failed = _vreq_spec_classify_engine(llm, (deduped,)")
     assert body.index("_v292_audit_extraction_completeness(vibe_text, deduped") < raw
+    assert raw < body.index("_vibe_scope_start_requested(list(deduped), scope_base_model or initial_model")
     assert raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
-    user = body.index("_user_free = _vov_normalize_vreq_targets(_vov_extract_user_free_text(vibe_text, llm, parallel, logger), model, logger")
+    user = body.index("(deduped, _user_free, _v438_rev_vreqs), _spec_failed = _vreq_spec_classify_engine(")
+    assert body.index("_user_free = _vov_extract_user_free_text(vibe_text, llm, parallel, logger)") < user
+    assert user < body.index("_vibe_scope_start_requested(list(deduped) + list(_user_free), scope_base_model or initial_model")
     assert user < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")
 
 
@@ -213,87 +180,112 @@ SA_MULTI_FK = ("Table product.promotion_sku has 2 FK columns pointing to product
                "origin_plan_id, amendment_plan_id)")
 
 
-@pytest.mark.parametrize("target", ["product.promotion_sku", "product.sku", "product.promotion_sku.sku_id"])
-def test_the_multi_fk_label_finding_is_not_a_product_rename(target):
-    vreq = types.SimpleNamespace(source_quote=SA_MULTI_FK, intent=SA_MULTI_FK, target=target)
-    assert ah._v413_vreq_to_det_op(vreq, MODEL) is None
-    assert ah._v337_classify_op("", target, SA_MULTI_FK, SA_MULTI_FK, MODEL) is None
+def _promo_model():
+    return {"model": {"domains": [{"name": "product", "products": [
+        {"name": "sku", "primary_key": "sku_id", "attributes": [{"name": "sku_id"}]},
+        {"name": "promotion_sku", "primary_key": "promotion_sku_id",
+         "attributes": [{"name": "promotion_sku_id"}, {"name": "sku_id", "foreign_key_to": "product.sku.sku_id"},
+                        {"name": "parent_sku_id", "foreign_key_to": "product.sku.sku_id"}]}]}]}}
+
+
+@pytest.mark.parametrize("action,targets,new_name", [
+    ("rename_product", ["product.promotion_sku"], "describe their business role"),
+    ("rename_product", ["product.promotion_sku"], ""),
+    ("rename_column", ["product.promotion_sku.sku_id", "product.promotion_sku.parent_sku_id"], "describe their business role"),
+])
+def test_the_multi_fk_label_finding_is_not_a_product_rename(action, targets, new_name):
+    model = _promo_model()
+    vs.register(ah, model, vs.spec("V1", action, targets, new_name=new_name))
+    spec = ah.vreq_spec("V1")
+    assert spec["interpretable"] is False and spec["new_name"] == "" and spec["reason"] == f"{action} names no new name"
+    assert ah._vreq_spec_det_ops(spec, model) == []
 
 
 def test_the_multi_fk_label_finding_yields_no_rename_pair_for_the_post_condition():
-    vreq = types.SimpleNamespace(source_quote=SA_MULTI_FK, intent=SA_MULTI_FK, target="product.promotion_sku")
-    assert ah._vov_rename_pairs_for_vreqs([vreq], MODEL) == []
+    base, renamed = _promo_model(), _promo_model()
+    vreq = ah.RawVREQ(vreq_id="V1", intent=SA_MULTI_FK, target="product.promotion_sku", source_quote=SA_MULTI_FK, source_chunk_id="c1")
+    vs.register(ah, base, vs.spec("V1", "rename_product", ["product.promotion_sku"], new_name="describe their business role"))
+    assert ah._vov_rename_pairs_for_vreqs([vreq], base) == []
+    vs.register(ah, base, vs.spec("V1", "rename_column", ["product.promotion_sku.sku_id"], new_name="promoted_sku_id"))
+    pairs = ah._vov_rename_pairs_for_vreqs([vreq], base)
+    assert pairs == [("attribute", "product.promotion_sku.sku_id", "product.promotion_sku.promoted_sku_id")]
+    assert ah._v413_apply_det_op_inplace(renamed, ah._vreq_spec_det_op(ah.vreq_spec(vreq), renamed))
+    assert ah._vov_rename_postcondition(base, renamed, pairs) == (True, "")
+    ok, problem = ah._vov_rename_postcondition(base, base, pairs)
+    assert not ok and "product.promotion_sku.sku_id still exists next to product.promotion_sku.promoted_sku_id" in problem
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("Rename to livestock_procurement_allocation.", "livestock_procurement_allocation"),
-    ("rename product order.sales_order to order_header", "order_header"),
-    ("stub table x must be renamed to existing y", "y"),
-    ("merge claimant into the claim table", "claim"),
-    ("merge claimant into claim", "claim"),
-    ("Rename the sales_order table to order_header because it is the header", "order_header"),
-    ("rename generic columns to describe their business role", None),
-    ("rename them to reflect the lifecycle", None),
-    ("rename generic columns to describe their role; rename table x to x_header.", "x_header"),
+@pytest.mark.parametrize("new_name,expected", [
+    ("order_header", ("rename_product", "order", "sales_order", "order_header")),
+    ("`order_header`", ("rename_product", "order", "sales_order", "order_header")),
+    ("'order_header'", ("rename_product", "order", "sales_order", "order_header")),
+    ("describe their business role", None),
+    ("reflect the lifecycle", None),
+    ("order header", None),
+    ("order_header because it is the header", None),
 ])
-def test_the_rename_target_is_a_name_not_a_verb_phrase(text, expected):
-    assert ah._v301_extract_rename_target(text) == expected
+def test_the_rename_target_is_a_name_not_a_verb_phrase(new_name, expected):
+    vs.register(ah, MODEL, vs.spec("V1", "rename_product", ["order.sales_order"], new_name=new_name))
+    spec = ah.vreq_spec("V1")
+    assert ah._vreq_spec_det_op(spec, MODEL) == expected
+    assert spec["interpretable"] is (expected is not None), spec["reason"]
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("rename column status to lifecycle_status", ("status", "lifecycle_status")),
-    ("Rename attribute qty to quantity.", ("qty", "quantity")),
-    ("the column status should be renamed to order_status", ("status", "order_status")),
-    ("rename the column status to reflect the lifecycle", None),
-    ("add a foreign key column gift_card_id to the sales_order table", None),
+@pytest.mark.parametrize("new_name,expected", [
+    ("lifecycle_status", ("rename_attribute", "order", "sales_order", "status", "lifecycle_status")),
+    ("\"order_status\"", ("rename_attribute", "order", "sales_order", "status", "order_status")),
+    ("reflect the lifecycle", None),
+    ("lifecycle status", None),
 ])
-def test_the_column_rename_target_is_a_name_not_a_verb_phrase(text, expected):
-    assert ah._v337_extract_col_rename(text) == expected
-
-
-def test_a_real_product_rename_still_classifies():
-    vreq = types.SimpleNamespace(source_quote="", intent="Rename the sales_order table to order_header", target="order.sales_order")
-    assert ah._v413_vreq_to_det_op(vreq, MODEL) == ("rename_product", "order", "sales_order", "order_header")
+def test_the_column_rename_target_is_a_name_not_a_verb_phrase(new_name, expected):
+    vs.register(ah, MODEL, vs.spec("V1", "rename_column", ["order.sales_order.status"], new_name=new_name))
+    spec = ah.vreq_spec("V1")
+    assert ah._vreq_spec_det_op(spec, MODEL) == expected
+    assert spec["interpretable"] is (expected is not None), spec["reason"]
 
 
 INVOICE_MODEL = {"model": {"domains": [{"name": "finance", "products": [
     {"name": "customer_invoice", "primary_key": "customer_invoice_id",
      "attributes": [{"name": "customer_invoice_id"}, {"name": "invoice_channel"}, {"name": "status"}]}]}]}}
+TWO_HOME_MODEL = {"model": {"domains": [
+    {"name": "finance", "products": [{"name": "customer_invoice", "primary_key": "customer_invoice_id", "attributes": [{"name": "customer_invoice_id"}]}]},
+    {"name": "billing", "products": [{"name": "customer_invoice", "primary_key": "customer_invoice_id", "attributes": [{"name": "customer_invoice_id"}]}]}]}}
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("Rename the column invoice_channel in the product customer_invoice to delivery_channel.", ("invoice_channel", "delivery_channel")),
-    ("In the finance domain, rename the column 'invoice_channel' in the product 'customer_invoice' to 'delivery_channel'.",
-     ("invoice_channel", "delivery_channel")),
-    ("Rename the attribute status of the customer_invoice table to invoice_status", ("status", "invoice_status")),
-    ("Rename the field invoice_channel in table customer_invoice to delivery_channel", ("invoice_channel", "delivery_channel")),
+@pytest.mark.parametrize("target,new_name,expected", [
+    ({"domain": "finance", "product": "customer_invoice", "column": "invoice_channel"}, "delivery_channel",
+     ("rename_attribute", "finance", "customer_invoice", "invoice_channel", "delivery_channel")),
+    ({"domain": "Finance", "product": "'customer_invoice'", "column": "'invoice_channel'"}, "'delivery_channel'",
+     ("rename_attribute", "finance", "customer_invoice", "invoice_channel", "delivery_channel")),
+    ({"domain": "", "product": "customer_invoice", "column": "STATUS"}, "invoice_status",
+     ("rename_attribute", "finance", "customer_invoice", "status", "invoice_status")),
+    ({"domain": "finance", "product": "`customer_invoice`", "column": "`invoice_channel`"}, "`delivery_channel`",
+     ("rename_attribute", "finance", "customer_invoice", "invoice_channel", "delivery_channel")),
+    ({"domain": "finance", "product": "customer_invoice", "column": ""}, "delivery_channel", None),
 ])
-def test_a_column_rename_that_names_its_table_renames_the_column(text, expected):
-    vreq = types.SimpleNamespace(source_quote=text, intent=text, target="finance.customer_invoice")
-    op = ah._v413_vreq_to_det_op(vreq, INVOICE_MODEL)
-    assert op == ("rename_attribute", "finance", "customer_invoice") + expected, (
-        "live R25 79132951735533 renamed the product finance.customer_invoice to delivery_channel")
+def test_a_column_rename_that_names_its_table_renames_the_column(target, new_name, expected):
+    vs.register(ah, INVOICE_MODEL, dict(vs.spec("V1", "rename_column", new_name=new_name), targets=[target]))
+    op = ah._vreq_spec_det_op(ah.vreq_spec("V1"), INVOICE_MODEL)
+    assert op == expected, "live R25 79132951735533 renamed the product finance.customer_invoice to delivery_channel"
 
 
-@pytest.mark.parametrize("text,expected", [
-    ("Rename the product customer_invoice to client_invoice", ("rename_product", "finance", "customer_invoice", "client_invoice")),
-    ("Rename the product customer_invoice in the finance domain to client_invoice",
+@pytest.mark.parametrize("model,target,expected", [
+    (INVOICE_MODEL, {"domain": "finance", "product": "customer_invoice", "column": ""},
      ("rename_product", "finance", "customer_invoice", "client_invoice")),
-    ("Rename the product customer_invoice to client_invoice and update the attribute descriptions", None),
-])
-def test_a_product_rename_is_still_a_product_rename_unless_a_column_is_named(text, expected):
-    vreq = types.SimpleNamespace(source_quote=text, intent=text, target="finance.customer_invoice")
-    assert ah._v413_vreq_to_det_op(vreq, INVOICE_MODEL) == expected
+    (INVOICE_MODEL, {"domain": "", "product": "Customer_Invoice", "column": ""},
+     ("rename_product", "finance", "customer_invoice", "client_invoice")),
+    (TWO_HOME_MODEL, {"domain": "", "product": "customer_invoice", "column": ""}, None),
+], ids=["qualified", "bare_with_one_home", "bare_with_two_homes"])
+def test_a_product_rename_spec_is_still_a_product_rename(model, target, expected):
+    vs.register(ah, model, dict(vs.spec("V1", "rename_product", new_name="client_invoice"), targets=[target]))
+    assert ah._vreq_spec_det_op(ah.vreq_spec("V1"), model) == expected
 
 
-@pytest.mark.parametrize("text", [
-    "Rename the customer_invoice table's invoice_channel column to delivery_channel",
-    "Rename the invoice_channel column in the customer_invoice table to delivery_channel",
-])
-def test_a_column_rename_is_never_applied_as_a_product_rename(text):
-    vreq = types.SimpleNamespace(source_quote=text, intent=text, target="finance.customer_invoice")
-    op = ah._v413_vreq_to_det_op(vreq, INVOICE_MODEL)
-    assert op is None or op[0] == "rename_attribute"
+def test_a_column_rename_is_never_applied_as_a_product_rename():
+    vs.register(ah, INVOICE_MODEL, vs.spec("V1", "rename_product", ["finance.customer_invoice.invoice_channel"], new_name="delivery_channel"))
+    op = ah._vreq_spec_det_op(ah.vreq_spec("V1"), INVOICE_MODEL)
+    assert op is None or op[0] == "rename_attribute", (
+        f"live R25 79132951735533 renamed the product finance.customer_invoice to delivery_channel; got {op}")
 
 
 def _rename_rows():

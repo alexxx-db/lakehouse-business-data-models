@@ -3,19 +3,27 @@ import json
 import logging
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
-from published_models import published_paths, published_text  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 VIBES = json.loads((HERE / "fixtures" / "v514_lostfixes_pc_vibes.json").read_text())
 VOV = "vibe modeling of version"
 LOG = logging.getLogger("test_v514_lostfixes_domain_ops")
+UW_MOVED = ("submission", "uw_decision", "quote", "binder")
+B1_EVIDENCE = "; ".join(f"move_product move coverage.{p}->underwriting" for p in UW_MOVED)
+SPECS = {
+    "A1": vs.spec("A1", "merge_domains", ["claimfinancials"], merge_into="claims"),
+    "A2": vs.spec("A2", "rename_domain", ["claims"], new_name="claim"),
+    "A3": vs.spec("A3", "rename_domain", ["riskexposure"], new_name="risk"),
+    "A4": vs.spec("A4", "rename_domain", ["catastrophegeography"], new_name="catastrophe"),
+    "B1": vs.spec("B1", "move_product", [f"coverage.{p}" for p in UW_MOVED], destination_domain="underwriting"),
+}
 
 
 @pytest.fixture(autouse=True)
@@ -86,8 +94,13 @@ def _flat(m):
     return domains, products, attributes
 
 
+def _register(*items, model=None):
+    vs.register(ah, model or _pc_model(), *(SPECS[i] if isinstance(i, str) else i for i in items))
+
+
 @pytest.mark.parametrize("order", [("A1", "A2", "A3", "A4"), ("A2", "A1", "A3", "A4"), ("A4", "A3", "A2", "A1")])
 def test_a1_to_a4_land_through_the_selffix_precheck_in_every_order(order):
+    _register("A1", "A2", "A3", "A4")
     m = _pc_model()
     for key in order:
         ok, evidence = ah._v410_deterministic_selffix(m, {"id": key, "text": VIBES[key]}, LOG)
@@ -105,23 +118,27 @@ def test_a1_to_a4_land_through_the_selffix_precheck_in_every_order(order):
 
 
 def test_a1_to_a4_land_through_the_vov_preapply_path():
+    _register("A1", "A2", "A3", "A4")
     m = _pc_model()
     for key in ("A1", "A2", "A3", "A4"):
-        op = ah._v413_vreq_to_det_op(SimpleNamespace(source_quote="", intent=VIBES[key], target=""), m)
+        op = ah._vreq_spec_det_op(ah.vreq_spec(key), m)
         assert op is not None and op[0] in ("merge_domain", "rename_domain"), (key, op)
         model, result, verdict = ah._vibe_scope_apply_det_op(m, op, "v413-preapply", (key,), LOG)
         assert result and verdict == ("", ""), (key, result, verdict)
         m = model
     assert _names(m) == ["claim", "risk", "catastrophe", "coverage", "underwriting", "policy"]
     assert _dangling(m) == []
+    _register(vs.spec("A5", "rename_domain", ["claim"], new_name="Claim"), vs.spec("A6", "merge_domains", ["risk"], merge_into="risk"), model=m)
+    assert ah._vreq_spec_det_op(ah.vreq_spec("A5"), m) is None and ah._vreq_spec_det_op(ah.vreq_spec("A6"), m) is None
 
 
-def test_b1_moves_only_the_listed_products_that_exist_and_repoints_their_fks():
+def test_b1_moves_only_the_listed_products_and_repoints_their_fks():
+    _register("B1")
     m = _pc_model()
     ok, evidence = ah._v410_deterministic_selffix(m, {"id": "B1", "text": VIBES["B1"]}, LOG)
     assert ok is True, evidence
-    assert evidence.startswith("bulk_move 4/4 coverage->underwriting")
-    for product in ("submission", "uw_decision", "quote", "binder"):
+    assert evidence == B1_EVIDENCE
+    for product in UW_MOVED:
         assert _where(m, product) == ["underwriting"], product
     for product in ("coverage", "limit", "deductible", "exclusion"):
         assert _where(m, product) == ["coverage"], product
@@ -129,60 +146,60 @@ def test_b1_moves_only_the_listed_products_that_exist_and_repoints_their_fks():
     assert _dangling(m) == []
 
 
-def test_r3_parenthesised_and_keep_lists_are_never_moved():
-    text = ("MOVE the following products FROM the `coverage` domain INTO the `underwriting` domain: submission, quote. "
-            "Leave the rest (keep: coverage, limit, deductible, exclusion, binder, uw_decision) in `coverage`. "
-            "Keep these in coverage: coverage, limit, deductible, exclusion, uw_decision, binder.")
-    assert ah._v337_extract_bulk_move(text) == ("coverage", "underwriting", ["submission", "quote"])
-    assert ah._v337_extract_bulk_move(VIBES["B1"]) == ("coverage", "underwriting", VIBES["uw_move_products"])
+def test_r3_only_the_tables_a_move_spec_names_move_and_a_keep_spec_moves_none():
+    _register(vs.spec("R3", "move_product", ["coverage.submission", "coverage.quote"], destination_domain="underwriting"),
+              vs.spec("R3K", "preserve", ["coverage.submission", "coverage.quote"]))
     m = _pc_model()
-    ok, evidence = ah._v410_deterministic_selffix(m, {"id": "R3", "text": text}, LOG)
+    before = copy.deepcopy(m)
+    assert ah._v410_deterministic_selffix(m, {"id": "R3K"}, LOG) == (None, "no_deterministic_action") and m == before
+    ok, evidence = ah._v410_deterministic_selffix(m, {"id": "R3"}, LOG)
     assert ok is True, evidence
     assert _where(m, "submission") == ["underwriting"] and _where(m, "quote") == ["underwriting"]
     for product in ("coverage", "limit", "deductible", "exclusion", "binder", "uw_decision"):
         assert _where(m, product) == ["coverage"], product
-    assert ah._v337_extract_bulk_move("Do not move the following products FROM the `coverage` domain INTO the "
-                                      "`underwriting` domain: submission, quote.") is None
 
 
-def test_r1_table_product_column_and_negated_renames_never_rename_the_domain():
-    assert ah._v337_classify_op("", "", VIBES["A2"], VIBES["A2"]) == ("rename_domain", "claims", "claim")
-    assert ah._v337_classify_op("", "", VIBES["A3"], VIBES["A3"]) == ("rename_domain", "riskexposure", "risk")
-    for text in ("RENAME the `claims` domain table `claim_status` to `claim_state`",
-                 "RENAME the claims domain's claim_status to claim_state",
-                 "Rename the claims domain product claim_status to claim_state",
-                 "rename domain claims column status to state",
-                 "Do not rename the `claims` domain to `claim`."):
-        assert ah._v337_extract_domain_rename(text) is None, text
-        assert ah._v337_classify_op("", "", text, text) is None, text
-        m = _pc_model()
+def test_r1_table_column_and_negated_rename_specs_never_rename_the_domain():
+    _register("A2", "A3",
+              vs.spec("R1T", "rename_product", ["claims.claim_status"], new_name="claim_state"),
+              dict(vs.spec("R1C", "rename_column", new_name="state"), targets=[{"domain": "claims", "product": "", "column": "status"}]),
+              vs.spec("R1N", "preserve", ["claims"]))
+    m = _pc_model()
+    assert ah._vreq_spec_det_op(ah.vreq_spec("A2"), m) == ("rename_domain", "claims", "claim")
+    assert ah._vreq_spec_det_op(ah.vreq_spec("A3"), m) == ("rename_domain", "riskexposure", "risk")
+    for rid in ("R1C", "R1N"):
         before = copy.deepcopy(m)
-        ok, _evidence = ah._v410_deterministic_selffix(m, {"id": "R1", "text": text}, LOG)
-        assert ok is None and m == before, text
+        assert ah._v410_deterministic_selffix(m, {"id": rid}, LOG) == (None, "no_deterministic_action") and m == before, rid
+    ok, evidence = ah._v410_deterministic_selffix(m, {"id": "R1T"}, LOG)
+    assert ok is True and evidence.startswith("rename_product "), evidence
+    assert _names(m) == _names(_pc_model())
+    assert [p["name"] for p in _domain(m, "claims")["products"]] == ["claim", "claim_state"]
 
 
-def test_r4_hijack_lines_and_published_next_vibes_never_trigger_domain_or_bulk_ops():
-    hijacks = (
-        "**PRIORITY 99 — rename_product: product.product_category** — rename to category_secondary because domain product "
-        "has both category and product_category creating an SSOT violation; merge attributes into category",
-        "**PRIORITY 148 — connect_table: service.contract_line** — add column service_contract_id (BIGINT) with FK to "
-        "service.service_contract.service_contract_id — after merging service_contract_line into contract_line",
-    )
-    for text in hijacks:
-        assert ah._v337_extract_domain_merge(text) is None, text
-    assert ah._v337_extract_domain_merge("Fold `claimfinancials` into `claims` as a subdomain.") == ("claimfinancials", "claims")
-    lines = 0
-    fires = []
-    for path in published_paths("data-models", "next_vibes.txt"):
-        for line in published_text(path).splitlines():
-            if not line.strip():
-                continue
-            lines += 1
-            for fn in (ah._v337_extract_domain_rename, ah._v337_extract_domain_merge, ah._v337_extract_bulk_move):
-                if fn(line):
-                    fires.append((path, fn.__name__, line[:120]))
-    assert lines > 1000
-    assert fires == []
+def _hijack_model():
+    return {"model": {"domains": [
+        {"name": "product", "database_name": "product", "products": [_p("category"), _p("product_category")]},
+        {"name": "service", "database_name": "service", "products": [_p("service_contract"), _p("contract_line"), _p("service_contract_line")]},
+    ]}}
+
+
+def test_r4_hijack_line_specs_act_on_their_tables_and_a_misread_domain_merge_is_refused():
+    m = _hijack_model()
+    _register(vs.spec("P99", "rename_product", ["product.product_category"], new_name="category_secondary"),
+              vs.spec("P148", "add_column", ["service.contract_line"], columns=[{"name": "service_contract_id", "type": "BIGINT"}],
+                      fk_target="service.service_contract"),
+              vs.spec("P99X", "merge_domains", ["product"], merge_into="category"),
+              vs.spec("P148X", "merge_domains", ["service_contract_line"], merge_into="contract_line"), model=m)
+    for rid in ("P99X", "P148X"):
+        before = copy.deepcopy(m)
+        assert ah._v410_deterministic_selffix(m, {"id": rid}, LOG) == (None, "merge_domain_apply_failed") and m == before, rid
+    assert ah._vreq_spec_det_op(ah.vreq_spec("P99"), m) == ("rename_product", "product", "product_category", "category_secondary")
+    assert ah._vreq_spec_det_op(ah.vreq_spec("P148"), m) == (
+        "add_fk", "service", "contract_line", "service_contract_id", "service.service_contract.service_contract_id")
+    for rid in ("P99", "P148"):
+        ok, evidence = ah._v410_deterministic_selffix(m, {"id": rid}, LOG)
+        assert ok is True, (rid, evidence)
+    assert _names(m) == ["product", "service"]
 
 
 def test_r9_merge_refuses_product_name_collisions(caplog):
@@ -203,8 +220,8 @@ def _orch(base):
     return ah.VibeOrchestrator({"logger": LOG, "config": {}, "vibe_modelling_instructions": "vibes", "business_context_raw": base})
 
 
-def _req(text, strategy="state_diff"):
-    return ah.VibeRequirement(id="VREQ-T", original_text=text, intent="modify", scope="domain", verification_strategy=strategy)
+def _req(text, strategy="state_diff", rid="VREQ-T"):
+    return ah.VibeRequirement(id=rid, original_text=text, intent="modify", scope="domain", verification_strategy=strategy)
 
 
 def test_r2_rename_verdict_preempts_the_preserve_structure_lie():
@@ -212,42 +229,42 @@ def test_r2_rename_verdict_preempts_the_preserve_structure_lie():
     orch = _orch(base)
     d, p, a = _flat(base)
     orch._step_snapshots["step_interpret_model_instructions_before"] = ah.capture_vibe_model_snapshot(d, p, a)
-    pre = orch._verify_requirement(_req(VIBES["A2"]), d, p, a)
+    _register("A2")
+    pre = orch._verify_requirement(_req(VIBES["A2"], rid="A2"), d, p, a)
     assert pre["status"] == "failed", pre
-    assert "[verifier-domain-rename FIRED v5.1.4]" in pre["evidence"]
+    assert "[verifier-spec FIRED v5.3.3] domain claims -> claim" in pre["evidence"]
     after = _pc_model()
     assert ah._v410_deterministic_selffix(after, {"id": "A2", "text": VIBES["A2"]}, LOG)[0] is True
-    post = orch._verify_requirement(_req(VIBES["A2"]), *_flat(after))
+    post = orch._verify_requirement(_req(VIBES["A2"], rid="A2"), *_flat(after))
     assert post["status"] == "fulfilled", post
 
 
-def test_r2_verifier_rules_only_on_names_that_were_domains_in_the_base_model():
-    base = _pc_model()
-    orch = _orch(base)
+def test_r2_verifier_never_credits_a_domain_op_on_a_name_that_was_never_a_domain():
+    orch = _orch(_pc_model())
     live = _pc_model()
-    for text in ("Treat `fraud_case` as a subdomain of `claims`.",
-                 "Fold the `fraud_case` domain into `claims`.",
-                 "RENAME the `claimz` domain to `claim`.",
-                 "MOVE the following products FROM the `legacy` domain INTO the `underwriting` domain: submission, quote."):
-        assert orch._verify_domain_structural_op(_req(text), *_flat(live)[:2]) is None, text
-    assert orch._verify_domain_structural_op(_req(VIBES["A1"]), *_flat(live)[:2])["status"] == "failed"
+    ghosts = (vs.spec("G1", "merge_domains", ["fraud_case"], merge_into="claims"),
+              vs.spec("G2", "rename_domain", ["claimz"], new_name="claim"))
+    _register("A1", "A2", *ghosts)
+    for ghost in ghosts:
+        assert orch._verify_requirement(_req("", rid=ghost["id"]), *_flat(live))["status"] != "fulfilled", ghost
+    assert orch._verify_requirement(_req(VIBES["A1"], rid="A1"), *_flat(live))["status"] == "failed"
     assert ah._v410_deterministic_selffix(live, {"id": "A2", "text": VIBES["A2"]}, LOG)[0] is True
     assert ah._v410_deterministic_selffix(live, {"id": "A1", "text": VIBES["A1"]}, LOG)[0] is True
-    assert orch._verify_domain_structural_op(_req(VIBES["A1"]), *_flat(live)[:2])["status"] == "fulfilled"
-    unquoted = "The claimfinancials domain is a SUBDOMAIN of claims."
-    assert orch._verify_domain_structural_op(_req(unquoted), *_flat(live)[:2])["status"] == "partial"
-    assert _orch({"business_context": "no model"})._verify_domain_structural_op(_req(VIBES["A2"]), *_flat(live)[:2]) is None
+    assert orch._verify_requirement(_req(VIBES["A1"], rid="A1"), *_flat(live))["status"] == "fulfilled"
+    for ghost in ghosts:
+        assert orch._verify_requirement(_req("", rid=ghost["id"]), *_flat(live))["status"] != "fulfilled", ghost
 
 
 def test_bulk_move_verdict_is_failed_then_partial_then_fulfilled():
-    base = _pc_model()
-    orch = _orch(base)
+    orch = _orch(_pc_model())
+    _register("B1")
     m = _pc_model()
-    assert orch._verify_domain_structural_op(_req(VIBES["B1"]), *_flat(m)[:2])["status"] == "failed"
+    req = _req(VIBES["B1"], rid="B1")
+    assert orch._verify_requirement(req, *_flat(m))["status"] == "failed"
     ah._v337_apply_move_product(m["model"], "coverage", "submission", "underwriting")
-    assert orch._verify_domain_structural_op(_req(VIBES["B1"]), *_flat(m)[:2])["status"] == "partial"
+    assert orch._verify_requirement(req, *_flat(m))["status"] == "partial"
     assert ah._v410_deterministic_selffix(m, {"id": "B1", "text": VIBES["B1"]}, LOG)[0] is True
-    verdict = orch._verify_domain_structural_op(_req(VIBES["B1"]), *_flat(m)[:2])
+    verdict = orch._verify_requirement(req, *_flat(m))
     assert verdict["status"] == "fulfilled" and "4/4" in verdict["evidence"]
 
 
@@ -271,6 +288,7 @@ def test_r8_domain_ops_that_cross_the_scope_fence_are_refused(caplog):
             assert call(m["model"]) is None, entries
             assert m == before, entries
     assert sum("[v337-domain-op-fence FIRED v5.1.4]" in r.getMessage() for r in caplog.records) == 5
+    _register("A2")
     _scope("claims")
     m = _pc_model()
     assert ah._v410_deterministic_selffix(m, {"id": "A2", "text": VIBES["A2"]}, LOG) == (None, "rename_domain_apply_failed")
@@ -300,11 +318,12 @@ def test_r8_in_scope_domain_ops_apply_and_call_the_domain_rename_ledger():
 
 
 def test_r8_bulk_move_refuses_products_whose_move_crosses_the_fence():
+    _register("B1")
     _scope("coverage")
     m = _pc_model()
     before = copy.deepcopy(m)
-    assert ah._v410_deterministic_selffix(m, {"id": "B1", "text": VIBES["B1"]}, LOG) == (None, "bulk_move_apply_failed")
+    assert ah._v410_deterministic_selffix(m, {"id": "B1", "text": VIBES["B1"]}, LOG) == (None, "move_product_blocked")
     assert m == before
     _scope("coverage, underwriting")
     ok, evidence = ah._v410_deterministic_selffix(m, {"id": "B1", "text": VIBES["B1"]}, LOG)
-    assert ok is True and evidence.startswith("bulk_move 4/4")
+    assert ok is True and evidence == B1_EVIDENCE

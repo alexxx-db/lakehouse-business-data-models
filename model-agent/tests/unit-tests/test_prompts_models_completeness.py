@@ -91,7 +91,6 @@ def test_prompts_models_v240_required_names_present(all_src):
     """The 10 specific prompts added by the v0.7.1 audit MUST stay registered."""
     required = {
         "BATCHING_SYSTEM_PROMPT",
-        "DEDUPE_MERGE_PROMPT",
         "EXTRACTION_SYSTEM_PROMPT",
         "OUTLINE_SYSTEM_PROMPT",
         "SYNTHESIS_SYSTEM_PROMPT",

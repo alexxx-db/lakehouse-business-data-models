@@ -688,10 +688,10 @@ def test_requirements_that_name_different_tables_are_never_duplicates():
     assert ah._v292_duplicate_of(quotes["product.campaign"], existing) == "VREQ-0003"
     vreqs = [ah.RawVREQ(vreq_id=f"VREQ-000{i}", intent="Remove the foreign key on campaign_id", target=f"{t}.campaign_id", source_quote=q,
                         source_chunk_id="c1") for i, (t, q) in enumerate(quotes.items(), 1)]
-    assert sorted(len(c) for c in ah.cluster_vreqs(vreqs)) == [1, 1, 1]
+    assert len(ah.dedupe_vreqs(vreqs)) == 3
     same = [vreqs[0], ah.RawVREQ(vreq_id="VREQ-0009", intent=vreqs[0].intent, target=vreqs[0].target, source_quote=vreqs[0].source_quote,
                                  source_chunk_id="c2")]
-    assert [len(c) for c in ah.cluster_vreqs(same)] == [2]
+    assert len(ah.dedupe_vreqs(same)) == 1
 
 
 def test_every_function_that_logs_without_a_logger_argument_has_the_vov_logger():

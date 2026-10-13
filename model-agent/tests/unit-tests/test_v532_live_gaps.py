@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
 import vibe_scope_deploy_harness as h  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 VIEWS = ["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization", "crew_base_kpis"]
 OWNED = {"skyline.crew", "skyline.flight", "skyline.fleet"}
@@ -146,6 +147,9 @@ ROWS = ([{"domain": "finance", "description": ""}],
          {"domain": "finance", "product": "delivery_channel", "attribute": "send_channel"}])
 
 
+RENAMED = vs.spec("CORR-1", "rename_column", ["finance.delivery_channel.dispatch_channel"], new_name="send_channel")
+
+
 @pytest.mark.parametrize("action", [
     {"action": "rename", "scope": "finance.delivery_channel.dispatch_channel", "name": "rename_dispatch_channel_to_send_channel",
      "target_state": "Column dispatch_channel in product finance.delivery_channel is renamed to send_channel, keeping its type"},
@@ -153,16 +157,23 @@ ROWS = ([{"domain": "finance", "description": ""}],
      "target_state": "Column renamed from dispatch_channel to send_channel in finance.delivery_channel."},
 ])
 def test_a_corrective_for_a_rename_that_landed_is_skipped(action):
+    llm = vs.SpecOnlyLLM([RENAMED])
+    ah._vibe_corrective_specs([action], ah.widgets_flat_to_model(*[list(x) for x in ROWS]), ah._vreq_spec_engine_call(llm), logging.getLogger("t"))
+    asked = vs.requested_items(llm.prompts[0][1])[0]
+    assert asked["target"] == "finance.delivery_channel.dispatch_channel" and asked["intent"].endswith(action["target_state"])
+    assert not ah._vibe_corrective_already_landed(ah.vreq_spec("CORR-1"), *ROWS)
     ah._vibe_scope_note_rename("attribute", "finance.delivery_channel.dispatch_channel", "finance.delivery_channel.send_channel", "VREQ-0001")
-    assert ah._vibe_corrective_already_landed(action, *ROWS), "live R28 923117901254702 re-ran this rename through the LLM fallback"
+    assert ah._vibe_corrective_already_landed(ah.vreq_spec("CORR-1"), *ROWS), "live R28 923117901254702 re-ran this rename through the LLM fallback"
 
 
 def test_a_corrective_for_a_rename_that_did_not_land_still_runs():
-    action = {"action": "rename", "scope": "attribute", "name": "finance.delivery_channel.dispatch_channel", "target_state": "send_channel"}
-    assert not ah._vibe_corrective_already_landed(action, *ROWS)
+    vs.register(ah, ah.widgets_flat_to_model(*[list(x) for x in ROWS]), RENAMED,
+                vs.spec("CORR-2", "add_column", ["finance.delivery_channel.x"], columns=[{"name": "x", "type": "STRING"}]))
+    assert ah.vreq_spec("CORR-1")["interpretable"] and ah.vreq_spec("CORR-2")["interpretable"]
+    assert not ah._vibe_corrective_already_landed(ah.vreq_spec("CORR-1"), *ROWS)
     ah._vibe_scope_note_rename("attribute", "finance.delivery_channel.other_col", "finance.delivery_channel.send_channel", "VREQ-0002")
-    assert not ah._vibe_corrective_already_landed(action, *ROWS)
-    assert not ah._vibe_corrective_already_landed({"action": "add", "scope": "attribute", "name": "finance.delivery_channel.x"}, *ROWS)
+    assert not ah._vibe_corrective_already_landed(ah.vreq_spec("CORR-1"), *ROWS)
+    assert not ah._vibe_corrective_already_landed(ah.vreq_spec("CORR-2"), *ROWS)
 
 
 def _tiny(fk):
@@ -181,8 +192,3 @@ def test_an_fk_re_point_is_one_fk_entry_not_an_attribute_change():
                if e["status"] != "unchanged"]
     assert [(e["kind"], e["status"], e["path"]) for e in changed] == [("product", "modified", "a.q"), ("fk", "modified", "a.q.p_ref")], (
         "live R31 651583018997610 listed 54 FK re-points twice, once as an attribute change with no field")
-
-
-def test_renamed_from_phrasing_parses():
-    assert ah._v337_extract_col_rename("Column renamed from invoice_channel to dispatch_channel in finance.delivery_channel.") == (
-        "invoice_channel", "dispatch_channel")
