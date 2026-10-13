@@ -84,20 +84,10 @@ def test_primary_verifier_uses_retry_helper():
 def test_rescue_extractor_uses_retry_helper():
     """The rescue extractor site (`_v103_extract_resp`) must route through the retry helper."""
     _, src = _find_class_cell_with("def _verify_via_llm")
-    rescue_block_match = re.search(
-        r'_v103_extract_resp\s*=\s*None.*?# Parse rescue response',
-        src,
-        re.DOTALL,
-    )
-    assert rescue_block_match is not None, "could not locate rescue extractor block"
-    rescue_block = rescue_block_match.group(0)
-    assert "_v108_call_with_transient_retry" in rescue_block, (
-        "rescue extractor must call _v108_call_with_transient_retry"
-    )
-    direct_call_count = rescue_block.count("self.ai_agent._call_ai_query(")
-    assert direct_call_count == 0, (
-        f"rescue extractor block still has {direct_call_count} direct _call_ai_query calls; must route through helper"
-    )
+    body = src[src.index("def _verify_via_llm"):]
+    body = body[:body.index("\n    def ", 10)]
+    assert "_v103_extract_resp" not in body and "VERIFIER_LLM_FALLBACK_RESCUE" not in body, "the rescue extractor is gone"
+    assert body.count("self._v108_call_with_transient_retry(") == 1
 
 
 def test_transient_markers_cover_observed_errors():

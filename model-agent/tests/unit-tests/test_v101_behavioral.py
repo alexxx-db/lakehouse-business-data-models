@@ -142,6 +142,8 @@ def test_v101_call_in_try_except(agent_text):
     fn_match = re.search(r"def _verify_via_llm\(self.*?\\n", agent_text)
     assert fn_match
     body = agent_text[fn_match.end():fn_match.end() + 40000]
+    end = body.find('"    def ')
+    body = body[:end] if end > 0 else body
     code_only = _strip_comments(body)
     # v1.0.8 (verifier-rescue-retry-on-transient-error) refactored the direct
     # self.ai_agent._call_ai_query(...) invocation into the transient-retry wrapper

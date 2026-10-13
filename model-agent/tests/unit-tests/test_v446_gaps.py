@@ -185,16 +185,15 @@ def test_gap2_correct_in_domain_resolution_left_alone():
 
 
 # ===================================================== GAP-3
-def _forcekeep_ns():
-    return slice_functions(["_v446_force_keep_shrink"], concat_source(), extra_globals={"re": re, **pk_suffix_globals()})
+_GAP3_KEEP = ("purchase_order", "purchase_order_line", "purchase_requisition", "supplier", "scheduling_agreement", "goods_receipt",
+              "connected_vehicle", "telemetry_event", "predictive_maintenance_alert")
 
 
-_GAP3_REVIEWER = (
-    "REVIEWER-PRIORITY 8 - strengthen Procurement and Mobility in the MVM: the MVM excludes "
-    "Procurement and Mobility entirely, which is too aggressive. When shrinking the ECM to the MVM, "
-    "keep basic Procurement in the MVM: purchase_order, purchase_order_line, purchase_requisition, "
-    "supplier, scheduling_agreement, goods_receipt. Also keep the Mobility basics in the MVM: "
-    "connected_vehicle, telemetry_event, predictive_maintenance_alert.")
+def _gap3_specs(extra=()):
+    """The spec an LLM returns for the reviewer's 'keep basic Procurement / the Mobility basics in the MVM' directive."""
+    homes = {p: "procurement" for p in _GAP3_KEEP[:6]} | {p: "mobility" for p in _GAP3_KEEP[6:]}
+    targets = [{"domain": homes[p], "product": p, "column": ""} for p in _GAP3_KEEP] + [{"domain": d, "product": p, "column": ""} for d, p in extra]
+    return [{"action": "preserve", "targets": targets}]
 
 
 def _gap3_products():
@@ -208,42 +207,30 @@ def _gap3_products():
 
 
 def test_gap3_forcekeep_readds_reviewer_named_mvm_products():
-    """The shrink heuristic excluded procurement + mobility entirely; the USER-KING 'keep ... in the
-    MVM: a, b, c' directive force-re-adds the 9 reviewer-named products. Fail-pre: v4.4.5 has no
-    _v446_force_keep_shrink -> slice raises LookupError."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    ttk = {("sales", "sales_order"), ("sales", "quote")}
-    out = f(ttk, _GAP3_REVIEWER, _gap3_products())
+    """The shrink heuristic excluded procurement + mobility entirely; the reviewer's keep directive, read by the LLM
+    into a preserve spec, re-adds the 9 reviewer-named products."""
+    out = ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order"), ("sales", "quote")}, _gap3_specs(), _gap3_products())
     kept = {p for (_d, p) in out}
-    for must in ("purchase_order", "purchase_order_line", "purchase_requisition", "supplier",
-                 "scheduling_agreement", "goods_receipt",
-                 "connected_vehicle", "telemetry_event", "predictive_maintenance_alert"):
+    for must in _GAP3_KEEP:
         assert must in kept, must
 
 
 def test_gap3_does_not_add_products_outside_the_directive():
-    """Products in those domains that the reviewer did NOT name (rfq, geofence) are NOT force-kept,
-    and phantom names (not in products_data) are never invented."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    ttk = {("sales", "sales_order")}
-    out = f(ttk, _GAP3_REVIEWER, _gap3_products())
+    """Products the reviewer did NOT name (rfq, geofence) are NOT force-kept, and names absent from products_data
+    are never invented."""
+    out = ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order")}, _gap3_specs([("procurement", "nonexistent_table")]), _gap3_products())
     assert ("procurement", "rfq") not in out
     assert ("mobility", "geofence") not in out
     assert not any(p == "nonexistent_table" for (_d, p) in out)
 
 
 def test_gap3_noop_when_no_keep_directive():
-    """No 'keep ... in the MVM' phrasing -> tables_to_keep returned unchanged (retail/other industries)."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
+    """No reviewer spec -> tables_to_keep returned unchanged."""
     ttk = {("sales", "sales_order"), ("sales", "quote")}
-    out = f(ttk, "the customer domain should be minimal: profile plus address.", _gap3_products())
-    assert set(out) == ttk
+    assert set(ah._vov_shrink_apply_reviewer_specs(ttk, [], _gap3_products())) == ttk
 
 
 def test_gap3_preserves_input_container_type():
     """Set in -> set out; list in -> list out (call-site passes a set)."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    out_set = f({("sales", "sales_order")}, _GAP3_REVIEWER, _gap3_products())
-    assert isinstance(out_set, set)
-    out_list = f([("sales", "sales_order")], _GAP3_REVIEWER, _gap3_products())
-    assert isinstance(out_list, list)
+    assert isinstance(ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order")}, _gap3_specs(), _gap3_products()), set)
+    assert isinstance(ah._vov_shrink_apply_reviewer_specs([("sales", "sales_order")], _gap3_specs(), _gap3_products()), list)

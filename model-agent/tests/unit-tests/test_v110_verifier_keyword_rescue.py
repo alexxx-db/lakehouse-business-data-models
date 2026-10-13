@@ -61,8 +61,8 @@ def agent_text():
 
 def test_v110_empty_llm_site_defers_to_the_spec_verifier(agent_text):
     """The v1.1.0 site (primary + rescue LLM both empty) asks the spec verifier before failing."""
-    assert agent_text.count("_v110_spec = _verify_from_spec(vreq_spec(req)") == 1
-    assert "primary LLM empty AND rescue extraction empty AND the requirement spec has no deterministic check" in agent_text
+    assert agent_text.count("_v110_spec = _verify_from_spec(vreq_spec(req)") == 0, "the verifier asks the spec before the LLM, never after"
+    assert "the LLM verifier returned nothing and the requirement spec has no deterministic check" in agent_text
     assert "verifier-keyword-rescue-when-llm-empty" not in agent_text
 
 

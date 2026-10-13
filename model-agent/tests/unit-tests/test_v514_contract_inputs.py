@@ -381,6 +381,11 @@ def _lineage(monkeypatch, wv):
 
 
 def _lineage_inputs():
+    asks = {("VREQ-0001", "VREQ-001"): vs.spec("x", "add_column", ["crew.member"], columns=[{"name": "nickname", "type": "STRING"}]),
+            ("VREQ-0002", "VREQ-002", "VREQ-008"): vs.spec("x", "rename_product", ["crew.roster"], new_name="duty_roster"),
+            ("VREQ-0003", "VREQ-003", "VREQ-007"): vs.spec("x", "add_column", ["fleet.aircraft"], columns=[{"name": "lease_end_date", "type": "DATE"}]),
+            ("VREQ-0004", "VREQ-004", "VREQ-009"): vs.spec("x", "drop_product", ["fleet.engine"])}
+    vs.register(ah, {"model": {"domains": []}}, *[dict(spec, id=vid) for vids, spec in asks.items() for vid in vids])
     stripped, imap = _input_map()
     imap["vreqs"] = {"VREQ-0001": {"item_ids": ["aaaa-1"], "method": "exact_quote", "merged_from": []}}
     raw_vreqs = [{"vreq_id": "VREQ-0001", "intent": "add nickname", "target": "crew.member", "source_quote": "Add a nickname column to crew member"},

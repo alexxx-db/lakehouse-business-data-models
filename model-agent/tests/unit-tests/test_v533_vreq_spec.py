@@ -257,8 +257,9 @@ def test_a_multi_target_spec_gives_one_op_per_target_or_none():
         ("add_fk", "crew", "member", "home_base_id", f"crew.base.{base_pk}"), ("add_fk", "crew", "roster", "base_id", f"crew.base.{base_pk}")]
     assert _ops(model, vs.spec("V1", "rename_column", ["crew.member.status", "crew.roster.status"], new_name="state")) == [
         ("rename_attribute", "crew", "member", "status", "state"), ("rename_attribute", "crew", "roster", "status", "state")]
-    assert _ops(model, vs.spec("V1", "add_fk", ["crew.member.home_base_id", "crew.roster"], fk_target="crew.base")) == []
-    assert _ops(model, vs.spec("V1", "merge_domains", ["crew", "fleet"], merge_into="fleet")) == []
+    assert _ops(model, vs.spec("V1", "add_fk", ["crew.member.home_base_id", "crew.roster"], fk_target="crew.base")) == [
+        ("add_fk", "crew", "member", "home_base_id", f"crew.base.{base_pk}")], "a bare table next to named columns is context, not a target"
+    assert _ops(model, vs.spec("V1", "merge_domains", ["crew", "fleet"], merge_into="fleet")) == [("merge_domain", "crew", "fleet")]
 
 
 def test_a_multi_target_requirement_lands_only_when_every_target_landed():
@@ -680,7 +681,7 @@ def test_a_rename_requirement_is_never_redirected_and_others_follow_landed_renam
 
 def test_a_physical_type_matches_a_spec_type_by_base_and_synonym():
     assert ah._verify_spec_type_matches("bigint", "long") and ah._verify_spec_type_matches("decimal", "decimal(10,2)")
-    assert not ah._verify_spec_type_matches("decimal(10,2)", "decimal(12,2)") and not ah._verify_spec_type_matches("int", "bigint")
+    assert not ah._verify_spec_type_matches("decimal(10,2)", "decimal(12,2)") and ah._verify_spec_type_matches("int", "bigint")
 
 
 def test_the_verifier_follows_a_table_rename_that_landed_in_the_same_run():
@@ -1703,7 +1704,7 @@ def test_a_replaced_table_unsets_the_tags_its_cleared_fields_carried():
 
 @pytest.mark.parametrize("want,have,ok", [
     ("int", "bigint", True), ("int", "INT", True), ("decimal(3,1)", "decimal(3,1)", True), ("decimal(3,1)", "decimal(4,1)", False),
-    ("int", "string", False), ("date", "timestamp", False),
+    ("int", "string", False), ("date", "timestamp", False), ("smallint", "int", True), ("smallint", "bigint", False),
 ])
 def test_a_spec_type_matches_the_physical_type_through_the_platform_type_map(want, have, ok):
     assert ah._verify_spec_type_matches(ah._sql_type_key(want), have) is ok
@@ -1773,3 +1774,39 @@ def test_a_column_comment_never_starts_with_a_dangling_period_when_the_descripti
     assert ah._column_comment("", "^[0-9]{2}$") == "Valid values are `^[0-9]{2}$`"
     assert ah._column_comment("The employer number", "^[0-9]{2}$") == "The employer number. Valid values are `^[0-9]{2}$`"
     assert ah._column_comment("The employer's number", "") == ah.replace_single_quote("The employer's number")
+
+
+
+def test_a_count_target_read_as_a_check_still_opens_its_domain_and_a_no_op_requirement_is_never_scope_rejected():
+    model = _tiny()
+    vs.register(ah, model, vs.spec("Q6", "check_only", ["crew"], kind="count_target", count={"entity": "metric_views", "op": "at_least", "value": 3}),
+                vs.spec("Q7", "rename_product", ["ops.member"], new_name="ops_member"), vs.spec("Q8", "preserve", ["crew.member"]))
+    vreq = lambda vid, target: ah.RawVREQ(vreq_id=vid, intent="x", target=target, source_quote="x", source_chunk_id="c1")
+    scope, wide = ah._vibe_scope_requested_spec([vreq("Q6", "crew")], model)
+    assert "crew" in scope.whole_domains and wide == []
+    ah.set_vibe_scope_runtime(None)
+    fence = ah._vibe_scope_start_requested([vreq("Q7", "ops.member"), vreq("Q8", "crew.member")], copy.deepcopy(model), LOG, copy.deepcopy(model))
+    assert fence.is_frozen_product("crew", "member")
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq("Q7", "ops.member"), vreq("Q8", "crew.member")], model, LOG)
+    assert [v.vreq_id for v in kept] == ["Q7", "Q8"] and rejected == [] and outcomes == []
+    ah.set_vibe_scope_runtime(None)
+
+
+@pytest.mark.parametrize("logical,physical", [("int", "BIGINT"), ("SMALLINT", "INT"), ("decimal(3,1)", "DECIMAL(3,1)"), ("", "STRING"),
+                                              ("varchar(20)", "STRING"), ("timestamp_ntz", "TIMESTAMP"), ("unknown_type", "STRING")])
+def test_the_physical_type_name_map_needs_no_pyspark(logical, physical, monkeypatch):
+    for name in ("StringType", "LongType", "IntegerType", "BooleanType", "DoubleType", "FloatType", "DateType", "TimestampType", "DecimalType"):
+        monkeypatch.delitem(ah.__dict__, name, raising=False)
+    assert ah.map_data_type(logical) == physical
+
+
+def test_metric_view_counts_are_counted_per_owner_domain_when_the_views_are_known():
+    vs.register(ah, {"model": {"domains": [{"name": n, "products": []} for n in ("a", "b", "c")]}},
+                vs.spec("N4", "other", ["a"], kind="count_target", count={"entity": "metric_views", "op": "at_least", "value": 2}),
+                vs.spec("N5", "other", [], kind="count_target", count={"entity": "metric_views_per_domain", "op": "at_least", "value": 1}))
+    d, p, a = _count_rows()
+    mvs = [{"view_name": "x", "owner_domain": "a"}, {"view_name": "y", "owner_domain": "b"}]
+    assert ah._verify_from_spec(ah.vreq_spec("N4"), d, p, a, metric_views=mvs)["status"] == "failed"
+    assert ah._verify_from_spec(ah.vreq_spec("N4"), d, p, a, metric_views=mvs + [{"view_name": "z", "owner_domain": "a"}])["status"] == "fulfilled"
+    assert ah._verify_from_spec(ah.vreq_spec("N5"), d, p, a, metric_views=mvs)["status"] == "partial"
+    assert ah._verify_from_spec(ah.vreq_spec("N5"), d, p, a) is None, "an unknown view list is never counted as zero views"

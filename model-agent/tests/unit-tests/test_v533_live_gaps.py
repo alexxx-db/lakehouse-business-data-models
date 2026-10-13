@@ -475,7 +475,7 @@ def test_after_the_engine_only_the_engine_changes_an_open_field():
     ah.set_vibe_scope_runtime(fence)
     engine = copy.deepcopy(base)
     roster_date = next(a for a in engine["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
-    roster_date["business_glossary_term"] = "Roster Date"
+    roster_date["business_glossary_term"] = "Crew Roster Date"
     d, p, a, mv = ah.model_to_widgets_flat(engine)
     fence.requested_snapshot(d, p, a, mv, h.LOG)
     final = copy.deepcopy(engine)
@@ -483,11 +483,11 @@ def test_after_the_engine_only_the_engine_changes_an_open_field():
     tail["business_glossary_term"] = ""
     fence.splice_and_verify(final, h.LOG)
     attrs = {(dd["name"], pp["name"], aa["name"]): aa for dd in final["model"]["domains"] for pp in dd["products"] for aa in pp["attributes"]}
-    assert attrs[("crew", "roster", "roster_date")]["business_glossary_term"] == "Roster Date"
+    assert attrs[("crew", "roster", "roster_date")]["business_glossary_term"] == "Crew Roster Date"
     assert attrs[("fleet", "aircraft", "tail_number")]["business_glossary_term"] == "Tail Number"
     facts = fence.scope_facts(final, "passed")
     assert [(x["product"], x["attribute"], x["new"]) for x in facts["permitted_deltas"] if x["kind"] == "P6"] == [
-        ("roster", "roster_date", {"business_glossary_term": "Roster Date"})]
+        ("roster", "roster_date", {"business_glossary_term": "Crew Roster Date"})]
     wv = {"domains": d, "products": p, "attributes": copy.deepcopy(a), "_metric_view_records": mv}
     for row in wv["attributes"]:
         if row["product"] == "aircraft" and row["attribute"] == "tail_number":
@@ -596,19 +596,19 @@ def test_open_fields_settle_at_the_review_checkpoint():
     d, p, a, mv = ah.model_to_widgets_flat(base)
     fence.requested_snapshot(d, p, a, mv, h.LOG)
     wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
-    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
     assert ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
     next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = ""
     ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
-    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Date"
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
     next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Rota Day"
     ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
-    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Date"
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
     final = ah.widgets_flat_to_model(d, p, a, mv)
     final = {"model": final} if "model" not in final else final
     next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] = ""
     fence.splice_and_verify(final, h.LOG)
-    assert next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] == "Roster Date"
+    assert next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
 
 
 def test_a_run_with_no_metric_view_to_deploy_still_writes_the_kept_views(monkeypatch):
@@ -704,7 +704,7 @@ def test_a_placeholder_is_never_an_open_field_value():
     spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
-    for value, kinds in (("TODO", {"frozen_attr_changed": 1}), ("N/A", {"frozen_attr_changed": 1}), ("Roster Date", {"P6": 1})):
+    for value, kinds in (("TODO", {"frozen_attr_changed": 1}), ("N/A", {"frozen_attr_changed": 1}), ("Crew Roster Date", {"P6": 1})):
         cur = copy.deepcopy(base)
         next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
         assert fence.check(cur).summary()["by_kind"] == kinds, value
@@ -715,7 +715,7 @@ def test_a_placeholder_is_never_an_open_field_value():
     roster["business_glossary_term"] = "TBD"
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     cur = copy.deepcopy(base)
-    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Roster Date"
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
     assert fence.check(cur).summary()["by_kind"] == {"P6": 1}, "a placeholder in the base counts as no value for a fill-only requirement"
 
 
@@ -799,7 +799,7 @@ def test_a_set_target_requirement_that_changed_no_open_field_is_not_counted_appl
     assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "noop_failed" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
     filled = h.base_model()
     for attr in (a for d in filled["model"]["domains"] for p in d["products"] for a in p["attributes"]):
-        attr["business_glossary_term"] = attr.get("business_glossary_term") or attr["name"].replace("_", " ").title()
+        attr["business_glossary_term"] = f"Enterprise {attr['name'].replace('_', ' ').title()}"
     spec, _w = ah._vibe_scope_requested_spec([_wide(text)], filled)
     fence = ah.build_vibe_scope_fence(spec, filled, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)

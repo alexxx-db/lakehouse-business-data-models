@@ -198,7 +198,7 @@ def test_deterministic_type_credit_all_correct_credits():
     ])
     ok, ev = _satisfied(m, vs.spec("V1", "retype_column", ["site.instruction.instruction_date"], column_type="TIMESTAMP"))
     assert ok is True, ev
-    assert "1/1 column(s) typed TIMESTAMP" in ev
+    assert "1/1 column(s) typed as asked ['TIMESTAMP']" in ev
 
 
 def test_deterministic_type_credit_string_mistype_does_not_credit():

@@ -31,7 +31,6 @@ def src():
 
 
 FINAL_PASS_ALIASES = [
-    "vov-dual-vibe-authority",
     "vov-remediate-before-modeljson",
     "vov-tools-honest-prompt",
     "vov-linking-respects-applied",
@@ -71,15 +70,9 @@ def test_fired_log_emission(alias, src):
     assert re.search(pattern, src), f"No `[{alias} FIRED v2.0.8` log emit found"
 
 
-def test_dual_vibe_authority_method_on_orchestrator(src):
-    """fold_vov_outcomes method must be defined on VibeOrchestrator."""
-    assert "def fold_vov_outcomes(self, vov_result, vov_raw_vreqs=None):" in src
-
-
-def test_dual_vibe_authority_callsite_passes_orchestrator(src):
-    """The VOV writeback must look up orchestrator and call fold_vov_outcomes."""
-    assert "fold_vov_outcomes" in src
-    assert 'widgets_values.get(\\"vibe_orchestrator\\")' in src or 'widgets_values.get("vibe_orchestrator")' in src
+def test_no_text_overlap_fold_marks_a_requirement_fulfilled(src):
+    assert "def fold_vov_outcomes(" not in src and ".fold_vov_outcomes(" not in src
+    assert "def _vov_text_overlaps(" not in src and "_vreq_spec_same_ask(req, v)" in src
 
 
 def test_remediate_before_modeljson_re_exports(src):
@@ -262,76 +255,3 @@ def test_mv_install_filter_vov_aware_surfaces_to_next_vibes(src):
     """Dropped MVs must be surfaced via widgets_values['_unfulfilled_for_next_vibe']."""
     assert "mv-install-filter-vov-aware FIRED v2.0.8] surfaced" in src
     assert "widgets_values['_unfulfilled_for_next_vibe'] = _existing_unf" in src
-
-
-def _build_fold_harness(src: str) -> dict:
-    """Extract fold_vov_outcomes method body, attach it to a synthetic class, exec, return namespace."""
-    import textwrap
-    pattern = (
-        r"    def fold_vov_outcomes\(self, vov_result, vov_raw_vreqs=None\):[\s\S]+?\n"
-        r"(?=    def score\(self\):)"
-    )
-    m = re.search(pattern, src)
-    assert m, "Could not locate fold_vov_outcomes method definition"
-    # Dedent the 4-space class-method indentation to flush, then re-indent inside our class
-    method_src = textwrap.dedent(m.group(0))  # now top-level `def fold_vov_outcomes(...)`
-    method_src_indented = textwrap.indent(method_src, "    ")
-
-    harness = (
-        "import logging\n"
-        "class _FakeReq:\n"
-        "    def __init__(self, text):\n"
-        "        self.original_text = text\n"
-        "        self.status = 'unfulfilled'\n"
-        "        self.fulfilled_evidence = None\n"
-        "    def mark_fulfilled(self, evidence, source):\n"
-        "        self.status = 'fulfilled'\n"
-        "        self.fulfilled_evidence = evidence\n"
-        "class _FakeManifest:\n"
-        "    def __init__(self):\n"
-        "        self.requirements = [\n"
-        "            _FakeReq('rename booking.issuing_office.id to parent_id'),\n"
-        "            _FakeReq('add a finance domain with billing products'),\n"
-        "            _FakeReq('nothing in scope'),\n"
-        "        ]\n"
-        "class _FakeOrch:\n"
-        "    def __init__(self):\n"
-        "        self.is_enabled = True\n"
-        "        self.manifest = _FakeManifest()\n"
-        "        self.logger = logging.getLogger('test_fold_vov')\n"
-        + method_src_indented
-    )
-    ns: dict = {}
-    exec(harness, ns)
-    return ns
-
-
-def test_fold_vov_outcomes_executes_correctly(src):
-    """Build a minimal namespace and run fold_vov_outcomes against synthetic outcomes."""
-    ns = _build_fold_harness(src)
-    orch = ns["_FakeOrch"]()
-    outcomes = {"outcomes": [{"status": "applied", "vreq_ids": ["V1", "V2"]}]}
-    raw_vreqs = [
-        {"vreq_id": "V1", "intent": "rename column", "target": "booking.issuing_office",
-         "source_quote": "rename booking.issuing_office.id to parent_id"},
-        {"vreq_id": "V2", "intent": "add domain", "target": "finance",
-         "source_quote": "add a finance domain"},
-    ]
-    summary = orch.fold_vov_outcomes(outcomes, raw_vreqs)
-    assert summary.get("folded") == 2, f"Expected to fold 2, got {summary}"
-    assert orch.manifest.requirements[0].status == "fulfilled"
-    assert orch.manifest.requirements[1].status == "fulfilled"
-    assert orch.manifest.requirements[2].status == "unfulfilled"
-
-
-def test_fold_vov_outcomes_no_applied_returns_zero(src):
-    """When no outcomes are applied, fold_vov_outcomes returns folded=0."""
-    ns = _build_fold_harness(src)
-    # Empty-manifest variant
-    class EmptyManifest:
-        requirements = []
-    orch = ns["_FakeOrch"]()
-    orch.manifest = EmptyManifest()
-    summary = orch.fold_vov_outcomes({"outcomes": [{"status": "rejected_unsafe", "vreq_ids": ["V1"]}]}, [])
-    assert summary.get("folded") == 0
-    assert summary.get("reason") == "no_applied_outcomes"

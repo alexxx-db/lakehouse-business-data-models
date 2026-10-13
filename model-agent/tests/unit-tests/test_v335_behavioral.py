@@ -155,6 +155,6 @@ def test_version_is_335():
 
 def test_v335_spec_verdict_wired_at_both_sites():
     full = _full_src(NB)
-    assert "_spec_v = _verify_from_spec(vreq_spec(req), domains, products, attributes, self.logger, req.id)" in full
+    assert "_spec_v = _verify_from_spec(vreq_spec(req), domains, products, attributes, self.logger, req.id, metric_views=" in full
     assert "verdict = _verify_from_spec(vreq_spec(req), domains_data, products_data, attributes_data, self.logger" in full
     assert "alias=verifier-spec" in full

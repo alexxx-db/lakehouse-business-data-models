@@ -201,7 +201,7 @@ def test_requeue_mv_count_shortfall():
     assert added == 1
     reqs = wv.get("_unfulfilled_for_next_vibe", [])
     assert [r["id"] for r in reqs] == ["COMPLETENESS-MV-COUNT"]
-    assert reqs[0]["evidence"] == "have=1 want=5 shortfall=4"
+    assert reqs[0]["evidence"].startswith("have=1 want=5 shortfall=4; the model: 1/5")
 
 
 def test_requeue_dedups_existing_ids():

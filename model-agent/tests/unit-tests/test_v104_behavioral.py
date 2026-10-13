@@ -166,7 +166,6 @@ def test_v104_prior_v103_sentinels_preserved(agent_text):
     """v1.0.4 patch must not break v1.0.3 fixes — sentinels still present."""
     for sentinel in (
         "vibe-master-retry-on-zero-actions FIRED v1.0.3",
-        "verifier-llm-fallback-deterministic-rescue FIRED v1.0.3",
     ):
         assert sentinel in agent_text, f"v1.0.3 sentinel preserved: {sentinel}"
 

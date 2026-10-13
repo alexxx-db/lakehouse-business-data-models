@@ -199,9 +199,10 @@ def test_per_domain_and_total_count_specs_fill_their_own_fields():
     assert [sd[k] for k in PER_DOMAIN_KEYS] == [4, 4], sd
 
 
-def test_a_count_per_a_unit_the_spec_cannot_name_is_no_sizing_reading():
+def test_a_per_division_domain_count_is_a_reading_but_never_a_domain_total():
     sd = _directives({"entity": "domains_per_division", "op": "about", "value": 4})
-    assert not ah.vreq_spec("C1")["interpretable"] and ah._vreq_spec_sizing_readings() == []
+    assert ah.vreq_spec("C1")["interpretable"]
+    assert [(r["unit"], r["scope"], r["per"]) for r in ah._vreq_spec_sizing_readings()] == [("domain", "per_unit", "division")]
     assert {k: v for k, v in sd.items() if v not in (None, False, [])} == {}, sd
 
 

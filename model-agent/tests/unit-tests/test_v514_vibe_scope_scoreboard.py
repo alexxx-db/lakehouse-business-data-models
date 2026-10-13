@@ -70,6 +70,10 @@ def _row(rows, domain, product, attribute=None):
 
 
 def _orchestrator():
+    asks = {("REQ-1", "V2"): vs.spec("x", "rename_product", ["fleet.engine"], new_name="powerplant"),
+            ("REQ-2", "V1"): vs.spec("x", "add_column", ["crew.member"], columns=[{"name": "nickname", "type": "STRING"}]),
+            ("REQ-3", "V3"): vs.spec("x", "add_column", ["crew.member", "fleet.aircraft"], columns=[{"name": "audit_ts", "type": "TIMESTAMP"}])}
+    vs.register(ah, {"model": {"domains": []}}, *[dict(spec, id=vid) for vids, spec in asks.items() for vid in vids])
     orch = ah.VibeOrchestrator({"logger": LOG, "config": {}, "vibe_modelling_instructions": "vibe"})
     orch.manifest = ah.VibeManifest(raw_text="vibe", requirements=[
         ah.VibeRequirement(id="REQ-1", original_text="rename fleet.engine to powerplant", intent="rename", scope="table"),
@@ -97,12 +101,8 @@ def test_orchestrator_moves_scope_rejected_requirements_out_of_verification_and_
     assert checklist == {"REQ-2": "fulfilled", "REQ-3": "fulfilled", "REQ-1": "scope_rejected"}
 
 
-def test_fold_still_matches_applied_outcomes_through_the_shared_matcher():
-    orch = _orchestrator()
-    summary = orch.fold_vov_outcomes({"outcomes": [{"vreq_ids": ["V1"], "status": "applied"}]},
-                                     [{"vreq_id": "V1", "intent": "add nickname", "source_quote": "add nickname to crew.member"}])
-    assert summary["folded"] == 1
-    assert [r.status for r in orch.manifest.requirements] == ["pending", "fulfilled", "pending"]
+def test_the_orchestrator_has_no_text_overlap_fold():
+    assert not hasattr(_orchestrator(), "fold_vov_outcomes")
 
 
 def test_run_vov_2_marks_orchestrator_and_publishes_scope_outcomes(monkeypatch):

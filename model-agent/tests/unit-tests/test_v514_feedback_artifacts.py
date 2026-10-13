@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import v514_feedback_util as fu  # noqa: E402
 from v514_feedback_util import ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from notebook_source_util import notebook_concat_source, slice_function_source  # noqa: E402
 
 
@@ -167,6 +168,9 @@ def test_setup_logs_the_pinned_domain_cache_without_a_logger(monkeypatch, capsys
 def test_setup_applies_a_vibe_fk_suffix_after_config_exists(monkeypatch):
     wv = fu.setup_widgets(fu.NEW_BASE, vibes="Use FK suffix _ref for every foreign key")
     config = fu.run_setup(monkeypatch, wv, fu.FakeSpark())
+    assert "foreign_key_suffix" not in (config.get("MODEL_CONVENTIONS") or {}), "setup never reads the vibe text"
+    vs.register(ah, {"model": {"domains": []}}, vs.spec("V1", "other", [], breadth="model", policy="foreign_key_suffix", policy_value="ref"))
+    assert ah._vreq_spec_apply_key_conventions(config) == "_ref"
     assert config["MODEL_CONVENTIONS"]["foreign_key_suffix"] == "_ref"
 
 

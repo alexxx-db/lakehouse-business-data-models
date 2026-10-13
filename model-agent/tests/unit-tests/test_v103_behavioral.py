@@ -89,10 +89,8 @@ def test_v103_fix_a_sentinel_present(agent_text):
 
 
 def test_v103_fix_b_sentinel_present(agent_text):
-    n = agent_text.count("verifier-llm-fallback-deterministic-rescue FIRED v1.0.3")
-    assert n >= 2, (
-        f"FIX B sentinel must fire at the rescue path AND the no-extraction-target path; got {n}"
-    )
+    assert "verifier-llm-fallback-deterministic-rescue FIRED v1.0.3" not in agent_text, "no second LLM reads the requirement once the primary returns nothing"
+    assert agent_text.count("[verifier-llm-fallback FIRED v5.3.3] the LLM verifier returned nothing") == 1
 
 
 def test_v103_fix_c_sentinel_in_auditor(v96_module):
@@ -369,14 +367,10 @@ def test_v103_fix_b_unknown_extraction_returns_failed_not_partial():
 def test_v103_fix_b_no_partial_in_rescue_path(agent_text):
     """The rescue path block must NOT have any `status: "partial"` returns. Confirm via grep
     of the FIX B insertion region."""
-    # locate the FIX B block
-    block_start = agent_text.find("verifier-llm-fallback-deterministic-rescue FIRED v1.0.3")
+    block_start = agent_text.find("if not _v100_resp:")
     assert block_start >= 0
-    block_end = agent_text.find('return _v103_verdict_status', block_start)
-    if block_end < 0:
-        # alternatively look for the closing return in the rescue
-        block_end = agent_text.find('"verifier-llm-fallback-deterministic-rescue FIRED v1.0.3"', block_start + 1000)
-    block_text = agent_text[block_start:block_end + 500] if block_end > block_start else agent_text[block_start:block_start + 12000]
+    block_text = agent_text[block_start:agent_text.find("[verifier-llm-fallback FIRED v5.3.3] the LLM verifier returned nothing", block_start) + 200]
+    assert "skipped_budget" in block_text and "failed" in block_text
     # The FIX B rescue must not put `partial` in its return paths.
     partial_returns = re.findall(r'return\s*\{[^}]*"status"\s*:\s*"partial"', block_text)
     assert not partial_returns, (

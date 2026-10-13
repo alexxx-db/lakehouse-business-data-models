@@ -75,7 +75,7 @@ def test_v82_p47_cache_populated_in_step_interpret():
         "P47 cache population sentinel not emitted in orchestrator"
     )
     # And must also extend with v1 preserve
-    assert "user-pinned-domains-runtime-add-v1 FIRED" in src, (
+    assert "vov-preserve-v1-domains FIRED v5.3.3" in src and "_USER_PINNED_DOMAINS_RUNTIME.update(added)" in src, (
         "P47 cache v1-preserve extension sentinel not emitted"
     )
 

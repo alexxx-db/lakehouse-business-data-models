@@ -163,9 +163,14 @@ def test_control_without_a_rename_spec_the_stub_survives(spec):
 
     assert "volunteer_deployment2" in _product_names(new_model, "volunteer"), \
         "without a rename spec the stub must survive (pre-patch behaviour)"
-    assert priority["action"] == "table", "non-rename VREQ must not be reclassified"
-    assert [p["vreq_id"] for p in residual] == ["VREQ-025"] and outcomes == [], \
-        "the un-reclassified VREQ should be residual, not silently applied"
+    if spec and spec.get("action") == "add_column":
+        assert priority["action"] == "add_attribute", "an add-column spec relabels the priority to the column action, never to a rename"
+        assert _find_attr(new_model, "volunteer", "volunteer_deployment2", "redeployment_priority") is not None
+        assert [o.vreq_ids for o in outcomes] == [("VREQ-025",)] and residual == []
+    else:
+        assert priority["action"] == "table", "non-rename VREQ must not be reclassified"
+        assert [p["vreq_id"] for p in residual] == ["VREQ-025"] and outcomes == [], \
+            "the un-reclassified VREQ should be residual, not silently applied"
     assert _find_attr(new_model, "workforce", "timesheet", "dep2_ref_id")["foreign_key_to"] == \
         "volunteer.volunteer_deployment2.volunteer_deployment2_id"
     assert not any("v301-rename-merge-reclassify FIRED" in line for line in log.lines)

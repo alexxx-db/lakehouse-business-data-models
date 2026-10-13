@@ -102,4 +102,4 @@ def test_rewire_sites_present():
                   if c.get("cell_type") == "code")
     # both the primary and rescue parse sites must call the helper
     assert src.count("_v291_lenient_verifier_json(_v100_txt)") == 1
-    assert src.count("_v291_lenient_verifier_json(_v103_etxt)") == 1
+    assert src.count("_v291_lenient_verifier_json(_v103_etxt)") == 0
