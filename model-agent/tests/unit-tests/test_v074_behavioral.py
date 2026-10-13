@@ -16,7 +16,16 @@ vibe_tester smoke after deploy.
 """
 
 import json
+import logging
+import sys
 from pathlib import Path
+from types import SimpleNamespace
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from version_test_util import assert_valid_single_digit_semver, assert_version_at_least, assert_version_in_notebook  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENT_NB = REPO_ROOT / "agent" / "dbx_vibe_modelling_agent.ipynb"
@@ -34,9 +43,9 @@ def _load_nb_source(path: Path) -> str:
 
 def test_v074_agent_version_is_071_release():
     src = _load_nb_source(AGENT_NB)
-    assert '__AGENT_VERSION__ = "4.2.7"' in src, (
-        "__AGENT_VERSION__ must track the current single-digit semver (CLAUDE.md \u00a73a-bis)"
-    )
+    assert_version_in_notebook(src)
+    assert_valid_single_digit_semver()
+    assert_version_at_least("0.7.4")
 
 
 def test_v074_agent_version_is_first_non_comment_line_of_first_code_cell():
@@ -46,9 +55,10 @@ def test_v074_agent_version_is_first_non_comment_line_of_first_code_cell():
     src_lines = "".join(first_code_cell.get("source", [])).splitlines()
     code_lines = [ln for ln in src_lines if ln.strip() and not ln.lstrip().startswith("#")]
     assert code_lines, "First code cell must contain at least one code line"
-    assert '__AGENT_VERSION__ = "4.2.7"' in code_lines[0], (
+    assert f'__AGENT_VERSION__ = "{ah.__AGENT_VERSION__}"' in code_lines[0], (
         "First non-comment code line of first code cell must declare current __AGENT_VERSION__ (CLAUDE.md §3a-bis)"
     )
+    assert_valid_single_digit_semver()
 
 
 # -------------------- NEW-1 runner-single-biz-fallback --------------------
@@ -370,62 +380,58 @@ def test_v074_runner_folder_path_makedirs_is_wrapped_in_try():
     )
 
 
-def test_v074_fidelity_deterministic_attr_count_alias_present():
-    src = _load_nb_source(AGENT_NB)
-    assert "fidelity-deterministic-attr-count" in src, (
-        "NEW-8 alias must appear in dbx_vibe_modelling_agent.ipynb (deterministic attr-count verifier)"
-    )
+def _fidelity_rows():
+    domains = [{"domain": "sales"}, {"domain": "crm"}]
+    products = [{"domain": "sales", "product": "order", "primary_key": "order_id"},
+                {"domain": "crm", "product": "customer", "primary_key": "customer_id"},
+                {"domain": "crm", "product": "segment", "primary_key": "segment_id"}]
+    attributes = [{"domain": "sales", "product": "order", "attribute": "order_id"},
+                  {"domain": "sales", "product": "order", "attribute": "customer_id", "foreign_key_to": "crm.customer.customer_id"},
+                  {"domain": "sales", "product": "order", "attribute": "order_total"},
+                  {"domain": "crm", "product": "customer", "attribute": "customer_id"},
+                  {"domain": "crm", "product": "customer", "attribute": "full_name"},
+                  {"domain": "crm", "product": "segment", "attribute": "segment_id"}]
+    return domains, products, attributes
 
 
-def test_v074_fidelity_deterministic_attr_count_uses_attrs_by_product():
-    """v0.9.6 update: the v0.7.4 regex on req.original_text (`between N and M attributes per product`)
-    was DELETED per the LLM-only mandate. Attribute-count caps now come from the LLM-extracted
-    structured fields `requirement.attribute_count_min/_max` (set by VIBE_MASTER_PROMPT) with a
-    fallback to tier defaults in PROMPT_VARIABLES. The verifier still uses `attrs_by_product`,
-    still FIRES the `[fidelity-deterministic-attr-count FIRED]` sentinel, but no longer re-parses
-    prose with regex."""
-    src = _load_nb_source(AGENT_NB)
-    pos = src.find("[fidelity-deterministic-attr-count FIRED]")
-    assert pos > -1
-    block = src[max(0, pos - 4000): pos + 1500]
-    assert "attrs_by_product" in block, (
-        "Verifier must use the existing per-product attribute index; do NOT recompute"
-    )
-    assert "vibe-attr-cap-regex-removed" in block, (
-        "v0.9.6 sentinel must mark the deletion of the v0.7.4 regex sweep"
-    )
-    assert "min_attributes_per_product" in block and "max_attributes_per_product" in block, (
-        "v0.9.6 verifier must read structured min/max attribute caps from LLM-extracted requirement "
-        "fields or tier defaults (no regex on req.original_text)"
-    )
+def _register_policy(policy, value, rows):
+    vs.register(ah, ah.widgets_flat_to_model(*rows), dict(vs.spec("V1", "other", [], breadth="model"), policy=policy, policy_value=value))
+    return ah.vreq_spec("V1")
 
 
-def test_v074_fidelity_deterministic_fk_density_alias_present():
-    src = _load_nb_source(AGENT_NB)
-    assert "fidelity-deterministic-fk-density" in src, (
-        "NEW-9 alias must appear in dbx_vibe_modelling_agent.ipynb (deterministic FK-density verifier)"
-    )
+def test_v074_fidelity_attribute_count_policy_reads_the_per_product_attribute_index():
+    """The v0.7.4 regex over req.original_text is gone (LLM-only mandate); an attribute-count requirement
+    is an LLM spec policy whose range the verifier checks against each product's live attribute rows."""
+    rows = _fidelity_rows()
+    res = ah._verify_from_spec(_register_policy("attribute_count", "2-3", rows), *rows)
+    assert res["status"] == "failed", res
+    assert "2/3 table(s) have 2-3 columns" in res["evidence"] and "crm.segment" in res["evidence"], res
+    rows[2].append({"domain": "crm", "product": "segment", "attribute": "segment_name"})
+    assert ah._verify_from_spec(_register_policy("attribute_count", "2-3", rows), *rows)["status"] == "fulfilled"
 
 
-def test_v074_fidelity_deterministic_fk_density_counts_inbound_and_outbound():
-    src = _load_nb_source(AGENT_NB)
-    pos = src.find("[fidelity-deterministic-fk-density FIRED]")
-    assert pos > -1
-    block = src[max(0, pos - 5000): pos + 1500]
-    assert "_v074_fk_inbound" in block and "_v074_fk_outbound" in block, (
-        "FK density check must consider BOTH inbound and outbound FK relationships per product"
-    )
+def test_v074_fidelity_fk_density_policy_counts_inbound_and_outbound_links():
+    rows = _fidelity_rows()
+    res = ah._verify_from_spec(_register_policy("fk_density", "", rows), *rows)
+    assert res["status"] == "failed", res
+    assert "2/3 table(s) have a foreign key in or out" in res["evidence"] and "crm.segment" in res["evidence"], res
+    rows[2].append({"domain": "crm", "product": "customer", "attribute": "segment_id", "foreign_key_to": "crm.segment.segment_id"})
+    assert ah._verify_from_spec(_register_policy("fk_density", "", rows), *rows)["status"] == "fulfilled"
 
 
-def test_v074_fidelity_verifiers_run_before_fallthrough_partial():
-    """The new verifiers MUST execute BEFORE the 'no specific pattern matched' fall-through,
-    otherwise they're dead code."""
-    src = _load_nb_source(AGENT_NB)
-    attr_pos = src.find("[fidelity-deterministic-attr-count FIRED]")
-    fk_pos = src.find("[fidelity-deterministic-fk-density FIRED]")
-    fallthrough_pos = src.rfind("Deterministic verification: no specific pattern matched for this requirement")
-    assert attr_pos < fallthrough_pos, "attr-count verifier must precede fall-through"
-    assert fk_pos < fallthrough_pos, "fk-density verifier must precede fall-through"
+def test_v074_fidelity_verdicts_run_before_fallthrough_partial():
+    """The spec verifier MUST decide before the 'no specific pattern matched' fall-through, which
+    answers only for a requirement no deterministic check fits."""
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch.logger, orch._step_snapshots, orch.config = logging.getLogger("test_v074"), {}, {}
+    req = SimpleNamespace(id="V1", scope="model", scope_targets=["*"], original_text="every table links to another one")
+    rows = _fidelity_rows()
+    _register_policy("fk_density", "", rows)
+    assert orch._verify_deterministic(req, *rows)["evidence"].startswith("[verifier-spec FIRED v5.3.3]")
+    ah.vov_ledger_reset()
+    vs.register(ah, ah.widgets_flat_to_model(*rows), vs.spec("V1", "check_only", ["sales.order"]))
+    res = orch._verify_deterministic(req, *rows)
+    assert res == {"status": "partial", "evidence": "Deterministic verification: no specific pattern matched for this requirement"}, res
 
 
 def test_v074_vibe_tester_inner_workflow_error_capture_alias_present():

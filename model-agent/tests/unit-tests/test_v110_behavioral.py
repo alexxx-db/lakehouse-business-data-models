@@ -8,11 +8,21 @@ SURGICAL FAST PATH, hydrate, sizing gate) all created phantom stubs.
 v1.0.9 only guarded P70 auto-seed (_missing_new path). v1.1.0 filters at the
 upstream call site of _compute_vov_user_closure where _vov_user_new_entities
 is set into widgets_values, so ALL downstream consumers see filtered tuples.
+
+v5.3.3 deleted the regex closure parser: the closure is built from the entities
+the LLM requirement specs target (_vov_refresh_user_closure), so prose tokens
+never become closure tuples.
 """
 import json
 import os
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB_PATH = Path(__file__).parent.parent.parent / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -33,41 +43,21 @@ def test_agent_version_bumped_to_110():
     assert parts >= (1, 1, 0), f"expected __AGENT_VERSION__ >= 1.1.0, got {m.group(1)}"
 
 
-def test_v110_alias_in_version_header():
-    src = _nb_src()
-    assert "vov-closure-respect-user-widget" in src, (
-        "v1.1.0 sentinel alias not in source"
-    )
-
-
-def test_v110_fired_log_emission_present():
-    src = _nb_src()
-    assert "[vov-closure-respect-user-widget FIRED]" in src, (
-        "[vov-closure-respect-user-widget FIRED] log marker missing"
-    )
-
-
-def test_v110_filter_anchored_at_compute_vov_user_closure_call():
-    """Ensure filter runs at the closure call site (the ONE upstream point)."""
-    src = _nb_src()
-    idx_call = src.find("_vov_closure, _vov_new_entities = _compute_vov_user_closure(")
-    assert idx_call > 0, "closure call site not found"
-    idx_filter = src.find("_v110_user_widget_doms", idx_call)
-    idx_set = src.find('widgets_values["_vov_user_closure"] = _vov_closure', idx_call)
-    assert idx_filter > 0, "v1.1.0 filter not present"
-    assert idx_filter < idx_set, "v1.1.0 filter must run BEFORE widgets_values assignment"
-
-
-def test_v110_uses_user_specified_domains_widget_key():
-    """Anti-tautology: filter must read the widget, not a constant."""
-    src = _nb_src()
-    idx = src.find("[vov-closure-respect-user-widget")
-    assert idx > 0
-    # Within ~3000 chars of the alias, look for the widget key reference
-    window = src[max(0, idx - 5000):idx + 5000]
-    assert '"_user_specified_domains"' in window, (
-        "filter must read widgets_values['_user_specified_domains']"
-    )
+def test_v110_closure_holds_only_spec_targets_never_prose_domains():
+    model = {"model": {"domains": [
+        {"name": "hr", "products": [{"name": "employee", "primary_key": "employee_id", "attributes": [
+            {"name": "employee_id"}, {"name": "organization_id"}, {"name": "job_family_id"}]}]},
+        {"name": "project", "products": [{"name": "milestone", "primary_key": "milestone_id", "attributes": [{"name": "milestone_id"}]}]}]}}
+    vs.register(ah, model,
+                vs.spec("VREQ-001", "add_fk", ["hr.employee.organization_id"], fk_target="project.milestone"),
+                vs.spec("VREQ-002", "add_product", ["hr.position"]),
+                vs.spec("VREQ-003", "add_domain", ["organization"], interpretable=False, reason="a column name in prose"))
+    widgets_values = {}
+    closure, new = ah._vov_refresh_user_closure(widgets_values)
+    assert closure == {("hr",), ("hr", "employee"), ("hr", "employee", "organization_id"), ("hr", "position")}, closure
+    assert new == {("hr", "position")}, new
+    assert not [t for t in closure if t[0] in ("organization", "job_family", "project")], closure
+    assert widgets_values["_vov_user_closure"] == closure and widgets_values["_vov_user_new_entities"] == new
 
 
 # ---------- Behavioral simulation: gov_transport-style phantom rejection ----------
@@ -157,14 +147,3 @@ def test_prior_version_aliases_still_present():
         "division-filter-user-domain-bypass",  # v1.0.6
     ):
         assert alias in src, f"prior alias {alias} missing — regression"
-
-
-def test_v110_filter_order_inside_vov_closure_block():
-    """Filter must run BEFORE config['_vov_user_closure_for_ssot'] mirroring."""
-    src = _nb_src()
-    idx_filter = src.find("[vov-closure-respect-user-widget FIRED]")
-    idx_ssot = src.find('config["_vov_user_closure_for_ssot"]', idx_filter or 0)
-    assert idx_filter > 0
-    assert idx_ssot > idx_filter, (
-        "v1.1.0 filter must run BEFORE SSOT mirror so config sees filtered set"
-    )

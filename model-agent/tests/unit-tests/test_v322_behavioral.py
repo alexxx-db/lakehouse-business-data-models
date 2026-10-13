@@ -9,7 +9,7 @@ Every test proves the NEW behavior AND that pre-patch behavior would have failed
 (CLAUDE.md §8.3 anti-tautology, §8.10 behavioral-not-noop).
 
 Fixes covered:
-  (F1) vov-mvfloor-from-nextvibes   MV "exactly N" read from next_vibes vibe_text, not just widget
+  (F1) vov-mvfloor-from-nextvibes   MV "exactly N" read from the next_vibes requirement's LLM spec, not just widget
   (F2) vov-prevalidate-requeue      missing-target priorities re-queued into LLM residual, not dropped
   (F3) vov-generative-budget-floor  generative batches start at 480s cap, not 240s base
 """
@@ -17,11 +17,19 @@ import ast
 import json
 import os
 import re
+import sys
 import types
+from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+
 NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
+NO_MODEL = {"model": {"domains": []}}
 
 
 def _load_src():
@@ -29,61 +37,39 @@ def _load_src():
     return "".join("".join(c.get("source", [])) for c in nb["cells"] if c.get("cell_type") == "code")
 
 
-def _slice_module_def(full, def_name):
-    start = full.index(f"def {def_name}")
-    lines = full[start:].split("\n")
-    out = [lines[0]]
-    for ln in lines[1:]:
-        if ln.strip() == "" or ln[:1] in (" ", "\t"):
-            out.append(ln)
-        else:
-            break
-    return "\n".join(out)
-
-
 # --------------------------------------------------------------------------- #
 # (F1) vov-mvfloor-from-nextvibes
 # --------------------------------------------------------------------------- #
-def _load_mv_directive():
-    full = _load_src()
-    src = _slice_module_def(full, "_vibe_exact_metric_view_directive")
-    ns = {"re": re}
-    exec(src, ns)
-    return ns["_vibe_exact_metric_view_directive"]
+def _mv_count(vid, op, value, names=()):
+    return vs.spec(vid, "other", kind="count_target", count={"entity": "metric_views", "op": op, "value": value}, metric_views=list(names))
 
 
-def test_mv_count_read_from_nextvibes_when_widget_silent():
-    fn = _load_mv_directive()
+def test_mv_count_read_from_the_requirement_spec_when_widget_silent():
     # VOV run: widget vibe_classification is EMPTY (the dead-code condition on gov_transport)
     widgets = {}
-    nv = (
-        "MISSED VIBES\n"
-        "- Constrain model to exactly 3 metric views "
-        "(target: Vacancy Rate, Retirement Eligibility, Total Positions and Active Employees)\n"
-    )
-    # PRE-PATCH behavior: without vibe_text the widget path returns None (proves anti-tautology)
-    cnt_no_text, _ = fn(widgets)
-    assert cnt_no_text is None
-
-    # POST-PATCH: next_vibes fallback resolves the explicit count
-    cnt, names = fn(widgets, vibe_text=nv)
-    assert cnt == 3, f"expected 3 from next_vibes directive, got {cnt}"
+    assert ah._vibe_exact_metric_view_directive(widgets) == (None, [])
+    vs.register(ah, NO_MODEL, dict(_mv_count("VREQ-0005", "exactly", 9), interpretable=False, reason="two readings"),
+                vs.spec("VREQ-0006", "other", kind="count_target", count={"entity": "products", "op": "exactly", "value": 3}))
+    assert ah._vibe_exact_metric_view_directive(widgets) == (None, [])
+    vs.register(ah, NO_MODEL, _mv_count("VREQ-0007", "exactly", 3, ["Vacancy Rate", "Retirement Eligibility", "Total Positions and Active Employees"]))
+    cnt, names = ah._vibe_exact_metric_view_directive(widgets)
+    assert cnt == 3, f"expected 3 from the next_vibes requirement spec, got {cnt}"
     assert "Vacancy Rate" in names
 
 
 def test_mv_count_widget_still_wins_when_present():
-    fn = _load_mv_directive()
     widgets = {"vibe_classification": {"sizing_directives": {"max_metric_views": 5}}}
     # widget present => fallback must NOT be consulted (widget authority preserved)
-    cnt, _ = fn(widgets, vibe_text="Constrain model to exactly 3 metric views")
+    vs.register(ah, NO_MODEL, _mv_count("VREQ-0007", "exactly", 3))
+    cnt, _ = ah._vibe_exact_metric_view_directive(widgets)
     assert cnt == 5
 
 
 def test_mv_count_narrative_mention_does_not_trip():
-    fn = _load_mv_directive()
     # a narrative line WITHOUT a constraint word must not be parsed as a directive
     nv = "In v1 the agent added 5 metric views across the operations domain."
-    cnt, _ = fn({}, vibe_text=nv)
+    vs.register(ah, NO_MODEL, vs.spec("VREQ-0008", "other", kind="documentation", reason=nv), _mv_count("VREQ-0009", "about", 5))
+    cnt, _ = ah._vibe_exact_metric_view_directive({})
     assert cnt is None, f"narrative mention must not fire, got {cnt}"
 
 
@@ -91,13 +77,7 @@ def test_mv_count_narrative_mention_does_not_trip():
 # (F3) vov-generative-budget-floor
 # --------------------------------------------------------------------------- #
 def _load_generative_budget():
-    full = _load_src()
-    i = full.index("_VOV_GEN_VERB_RE = None")
-    end = full.index("# ----- inlined from agent/vov_2_0/llm.py -----", i)
-    block = full[i:end]
-    ns = {"re": re}
-    exec(block, ns)
-    return ns["_vov_batch_is_generative"], ns["_vov_effective_handler_budget"]
+    return ah._vov_batch_is_generative, ah._vov_effective_handler_budget
 
 
 class _FakeBatch:

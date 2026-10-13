@@ -198,7 +198,8 @@ def test_r7_corrective_loop_creates_the_rename_maps_once_outside_the_per_action_
     src = cell_containing("CORRECTIVE ACTION(S) FROM VERIFICATION SWEEP")
     loop = src[src.index("CORRECTIVE ACTION(S) FROM VERIFICATION SWEEP"):]
     loop = loop[:loop.index("Corrective actions complete")]
-    assert loop.index("_vs_renames = {'domain_renames': {}, 'product_renames': {}, 'attribute_renames': {}}") < loop.index("for _vs_action in _vs_corrective:")
-    assert "'domain_renames': {}" not in loop[loop.index("for _vs_action in _vs_corrective:"):]
+    per_action = loop.index("for _vs_index, _vs_action in enumerate(_vs_corrective, 1):")
+    assert loop.index("_vs_renames = {'domain_renames': {}, 'product_renames': {}, 'attribute_renames': {}}") < per_action
+    assert "'domain_renames': {}" not in loop[per_action:]
     for key in ("domain_renames", "product_renames", "attribute_renames"):
         assert loop.count("'%s': _vs_renames['%s']" % (key, key)) == 2, key

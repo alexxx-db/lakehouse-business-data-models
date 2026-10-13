@@ -171,6 +171,8 @@ def test_merged_requirements_union_their_item_ids_and_the_oos_half_keeps_them():
     final_dup = _vreq("VREQ-0001", "add audit columns", c1, intent="add audit columns", target="crew")
     keep_a = _vreq("C1_V2", "keep member", c1, intent="Preserve the crew.member table verbatim")
     keep_b = _vreq("C3_V1", "keep aircraft", c3, intent="Preserve the fleet.aircraft table verbatim", target="fleet.aircraft")
+    vs.register(ah, E._engine(), vs.spec("VREQ-0001", "other", ["crew"], breadth="set"), vs.spec("C1_V2", "preserve", ["crew.member"]),
+                vs.spec("C3_V1", "preserve", ["fleet.aircraft"]))
     collapsed = ah._v299_collapse_preservation_vreqs([final_dup, keep_a, keep_b])
     assert [v.vreq_id for v in collapsed] == ["VREQ-0001", "V299-PRESERVE-ALL"]
     oos_half = _vreq("VREQ-0009#oos", "", "", intent="zzz qqq", target="fleet.engine")

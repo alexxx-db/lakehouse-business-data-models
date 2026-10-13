@@ -20,31 +20,21 @@ fail-pre/pass-post:
     repoint) is preserved (no regression).
   - test_noop_when_no_canonical_directive: no directive -> nothing mutated.
 """
-import json
-import os
-import textwrap
+import sys
+from pathlib import Path
 
-REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
-
-
-def _load_canonical_fns():
-    nb = json.load(open(NB))
-    src = "\n".join("".join(c.get("source", [])) for c in nb["cells"] if c["cell_type"] == "code")
-    i = src.find("\ndef _v384_parse_canonical_keys(")
-    assert i != -1, "_v384_parse_canonical_keys missing"
-    # extend through _v384_apply_canonical_keys; stop at the next def AFTER apply
-    j = src.find("\ndef _v384_apply_canonical_keys(", i)
-    assert j != -1, "_v384_apply_canonical_keys missing"
-    k = src.find("\ndef ", j + 1)
-    end = k if k != -1 else len(src)
-    body = textwrap.dedent(src[i + 1:end])
-    ns = {}
-    exec(compile(body, "<canonical>", "exec"), ns)
-    return ns
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 
-VIBE = "`position_number` is the canonical position key for HR reporting."
+def _register(products, attributes, *specs):
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": "hr"}], products, attributes), *specs)
+
+
+def _canonical_position_key():
+    return vs.spec("VREQ-011", "set_primary_key", ["hr.position.position_number"])
 
 
 def _model():
@@ -59,9 +49,9 @@ def _model():
 
 
 def test_canonical_attr_flag_flips():
-    ns = _load_canonical_fns()
     products, attributes = _model()
-    n = ns["_v384_apply_canonical_keys"](products, attributes, VIBE, {}, None)
+    _register(products, attributes, _canonical_position_key())
+    n = ah._v384_apply_canonical_keys(products, attributes, {}, None)
     assert n == 1, "canonical key should apply once"
 
     canon = next(a for a in attributes if a["attribute"] == "position_number" and a["product"] == "position")
@@ -73,17 +63,19 @@ def test_canonical_attr_flag_flips():
 
 
 def test_product_field_and_fk_still_updated():
-    ns = _load_canonical_fns()
     products, attributes = _model()
-    ns["_v384_apply_canonical_keys"](products, attributes, VIBE, {}, None)
+    _register(products, attributes, _canonical_position_key())
+    ah._v384_apply_canonical_keys(products, attributes, {}, None)
     assert products[0]["primary_key"] == "position_number", "v3.8.4 product field update must be preserved"
     fk = next(a for a in attributes if a["product"] == "employee")
     assert fk["foreign_key_to"] == "hr.position.position_number", "FK must repoint to canonical (v3.8.4 behavior preserved)"
 
 
 def test_noop_when_no_canonical_directive():
-    ns = _load_canonical_fns()
     products, attributes = _model()
-    n = ns["_v384_apply_canonical_keys"](products, attributes, "no directive here", {}, None)
+    _register(products, attributes, dict(vs.spec("VREQ-011", "set_fields", ["hr.position.position_number"], fields=[vs.field("attributes", "tags")]),
+                                         tags=[{"key": "business_key", "value": "true"}]))
+    n = ah._v384_apply_canonical_keys(products, attributes, {}, None)
     assert n == 0
     assert attributes[0]["is_primary_key"] is True and attributes[1]["is_primary_key"] is False, "no directive -> nothing mutated"
+    assert products[0]["primary_key"] == "position_id" and attributes[2]["foreign_key_to"] == "hr.position.position_id"

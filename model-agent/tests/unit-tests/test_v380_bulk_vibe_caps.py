@@ -1,58 +1,19 @@
 """v3.8.0 behavioral test for deterministic bulk vibe-caps (items 15/16, core of 14).
 
-Extracts the `_v371_*` helpers from the production notebook and proves:
-- tag-EVERY-attribute: verify FAILS pre-apply, apply stamps 100%, verify PASSES post, idempotent.
+Drives the production helpers with the requirement specs an LLM returns for the vibe and proves:
+- tag-EVERY-attribute: verify FAILS pre-apply, the spec tag pass stamps 100%, verify PASSES post, idempotent.
 - prefix-EVERY-attribute: apply renames every column AND rewires foreign_key_to (no orphan joins);
   verify FAILS pre, PASSES post; FK target component is rewritten.
-- the directive parsers recognise the canonical vibe phrasings.
+- the column_prefix spec is the prefix the finalize step applies.
 """
-import json
-import os
-import re
+import sys
+from pathlib import Path
 
-import pytest
-
-from notebook_source_util import vov_ledger_globals
-
-NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
-
-
-def _load_v371_namespace():
-    nb = json.load(open(NB))
-    block = None
-    for c in nb.get("cells", []):
-        if c.get("cell_type") != "code":
-            continue
-        src = "".join(c.get("source", []))
-        if "def _iter_flat_attributes" in src and "def _v371_apply_prefix_all" in src:
-            start = src.index("def _iter_flat_attributes")
-            end = src.index("def _apply_vibe_custom_tags")
-            block = src[start:end]
-            break
-    assert block, "v371 helper block not found in notebook"
-
-    def _vibe_set_entity_tag(entity, tag_key, tag_value):
-        existing = (entity.get("tags") or "")
-        full_tag = f"{tag_key}={tag_value}"
-        if full_tag not in existing:
-            entity["tags"] = f"{existing},{full_tag}".strip(",")
-            return True
-        return False
-
-    ns = {
-        **vov_ledger_globals(),
-        "re": re,
-        "_coerce_tags_to_string_v250": lambda v: "" if v is None else (v if isinstance(v, str) else str(v)),
-        "_vibe_set_entity_tag": _vibe_set_entity_tag,
-        "sanitize_name": lambda name, **k: name,
-    }
-    exec(compile(block, "<v371>", "exec"), ns)
-    return ns
-
-
-@pytest.fixture(scope="module")
-def ns():
-    return _load_v371_namespace()
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import slice_function_source  # noqa: E402
 
 
 def _attrs():
@@ -64,29 +25,48 @@ def _attrs():
     ]
 
 
-def test_tag_all_fail_pre_pass_post(ns):
+def _register(*specs):
+    vs.register(ah, {"model": {"domains": []}}, *specs)
+
+
+def _tag_every_attribute(key, value):
+    return dict(vs.spec("VREQ-015", "set_fields", [], breadth="model", fields=[vs.field("attributes", "tags")]), tags=[{"key": key, "value": value}])
+
+
+def _prefix_every_column(vid, prefix):
+    return dict(vs.spec(vid, "other", [], breadth="model"), policy="column_prefix", policy_value=prefix)
+
+
+def test_tag_all_fail_pre_pass_post():
     attrs = _attrs()
-    ok_pre, _ = ns["_v371_verify_tag_all"](attrs, "source_system")
+    prods = [{"domain": "hr", "product": "employee", "primary_key": "employee_id", "tags": ""}]
+    _register(_tag_every_attribute("source_system", "DDL"))
+    ok_pre, _ = ah._v371_verify_tag_all(attrs, "source_system")
     assert ok_pre is False  # fail-pre proof
+    assert ah._verify_from_spec(ah.vreq_spec("VREQ-015"), [], prods, attrs)["status"] == "failed"
 
-    n = ns["_v371_apply_tag_all"](attrs, "source_system", "DDL", config={})
+    n = ah._vreq_spec_apply_tags(prods, attrs)
     assert n == 3
+    assert prods[0]["tags"] == ""
 
-    ok_post, diag = ns["_v371_verify_tag_all"](attrs, "source_system")
+    ok_post, diag = ah._v371_verify_tag_all(attrs, "source_system")
     assert ok_post is True, diag
+    assert all("source_system=DDL" in a["tags"] for a in attrs)
+    assert ah._verify_from_spec(ah.vreq_spec("VREQ-015"), [], prods, attrs)["status"] == "fulfilled"
 
-    n2 = ns["_v371_apply_tag_all"](attrs, "source_system", "DDL", config={})
+    n2 = ah._vreq_spec_apply_tags(prods, attrs)
     assert n2 == 0  # idempotent
 
 
-def test_prefix_all_rewires_fk(ns):
+def test_prefix_all_rewires_fk():
     attrs = _attrs()
     prods = [{"domain": "hr", "product": "employee", "primary_key": "employee_id"}]
+    _register(_prefix_every_column("VREQ-016", "ass_"))
+    spec = ah.vreq_spec("VREQ-016")
 
-    ok_pre, _ = ns["_v371_verify_prefix_all"](attrs, "ass_")
-    assert ok_pre is False  # fail-pre proof
+    assert ah._verify_from_spec(spec, [], prods, attrs)["status"] == "failed"  # fail-pre proof
 
-    n = ns["_v371_apply_prefix_all"](attrs, prods, "ass_")
+    n = ah._v371_apply_prefix_all(attrs, prods, "ass_")
     assert n == 3
 
     names = {a["attribute"] for a in attrs}
@@ -95,21 +75,23 @@ def test_prefix_all_rewires_fk(ns):
     assert fk == "hr.employee.ass_employee_id"  # FK rewired, no orphan
     assert prods[0]["primary_key"] == "ass_employee_id"  # PK rewired
 
-    ok_post, diag = ns["_v371_verify_prefix_all"](attrs, "ass_")
-    assert ok_post is True, diag
+    post = ah._verify_from_spec(spec, [], prods, attrs)
+    assert post["status"] == "fulfilled", post["evidence"]
 
 
-def test_prefix_all_idempotent(ns):
+def test_prefix_all_idempotent():
     attrs = _attrs()
-    ns["_v371_apply_prefix_all"](attrs, [], "ass_")
-    n2 = ns["_v371_apply_prefix_all"](attrs, [], "ass_")
+    ah._v371_apply_prefix_all(attrs, [], "ass_")
+    n2 = ah._v371_apply_prefix_all(attrs, [], "ass_")
     assert n2 == 0
 
 
-def test_parsers(ns):
-    assert ns["_v371_parse_bulk_prefix_directive"]("Prefix every column with ass_") == "ass_"
-    assert ns["_v371_parse_bulk_prefix_directive"]("all attributes must be prefixed with src_") == "src_"
-    assert ns["_v371_parse_bulk_prefix_directive"]("nothing here") is None
-
-    got = ns["_v371_parse_bulk_tag_directives"]("tag source_system=DDL on every attribute")
-    assert ("source_system", "DDL") in got
+def test_the_column_prefix_spec_is_the_prefix_finalize_applies():
+    _register(_prefix_every_column("VREQ-016", "src_"), dict(vs.spec("VREQ-017", "other", [], breadth="model"), policy="column_prefix"),
+              dict(vs.spec("VREQ-018", "other", [], breadth="model"), policy="naming_convention", policy_value="snake_case"))
+    assert ah._vreq_spec_policy_values("column_prefix") == ["src_"]
+    assert ah.vreq_spec("VREQ-017")["interpretable"] is False
+    finalize = slice_function_source("step_finalize_model_before_physical_schema")
+    assert '_vreq_spec_policy_values("column_prefix")' in finalize
+    assert "_v371_apply_prefix_all(attributes_data, products_data, _v371_pfx, logger)" in finalize
+    assert "_vreq_spec_apply_tags(products_data, attributes_data, logger)" in finalize

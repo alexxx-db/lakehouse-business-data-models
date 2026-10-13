@@ -21,10 +21,20 @@ not a regex pattern, and is generic across all industries. No industry strings,
 no hardcoded entity names.
 
 Sentinel: '[verifier-rename-drop-structural FIRED]' logs once per VREQ.
+
+v5.3.3: the verb checks are gone. An LLM reads each requirement into a spec, and
+_verify_from_spec checks the spec's rename / drop against the live model state.
 """
 import json
+import logging
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NOTEBOOK = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -40,7 +50,7 @@ def _all_source():
 
 def test_v98_agent_version_constant():
     cells = _load_notebook_source()
-    cell1 = next(src for idx, src in cells if "__AGENT_VERSION__" in src)
+    cell1 = next(src for idx, src in cells if re.search(r"__AGENT_VERSION__\s*=", src))
     m = re.search(r'__AGENT_VERSION__\s*=\s*"(\d+)\.(\d+)\.(\d+)"', cell1)
     assert m is not None, "v0.9.8: __AGENT_VERSION__ must be set with single-digit semver"
     major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
@@ -49,85 +59,80 @@ def test_v98_agent_version_constant():
     )
 
 
-def test_v98_rename_verifier_present():
-    """v0.9.8: _verify_deterministic must contain a structural rename verifier
-    that checks scope_targets against product_keys / attr_keys."""
-    src = _all_source()
-    assert "_verifier_verbs_rename = ('rename', 'rename to')" in src, (
-        "v0.9.8: rename verb tuple missing from _verify_deterministic"
-    )
-    assert "verifier-rename-drop-structural FIRED" in src, (
-        "v0.9.8: sentinel '[verifier-rename-drop-structural FIRED]' missing"
-    )
-    # The rename branch must check scope in (table, attribute) and use scope_targets
-    assert "req.scope in ('table', 'attribute') and req.scope_targets" in src, (
-        "v0.9.8: rename verifier must gate on scope in (table, attribute) and scope_targets"
-    )
+def _crew_model():
+    return {"model": {"domains": [{"name": "crew", "products": [
+        {"name": "member", "primary_key": "member_id", "attributes": [
+            {"name": "member_id", "type": "BIGINT"}, {"name": "legacy_code", "type": "STRING"}]},
+        {"name": "roster", "primary_key": "roster_id", "attributes": [
+            {"name": "roster_id", "type": "BIGINT"}, {"name": "duty_code", "type": "STRING"}]}]}]}}
 
 
-def test_v98_drop_verifier_present():
-    """v0.9.8: _verify_deterministic must contain a structural drop/remove
-    verifier alongside the rename verifier."""
-    src = _all_source()
-    assert "_verifier_verbs_drop = ('drop', 'remove', 'delete')" in src, (
-        "v0.9.8: drop verb tuple missing from _verify_deterministic"
-    )
+def _verdict(rid, model):
+    d, p, a, _mv = ah.model_to_widgets_flat(model)
+    orch = ah.VibeOrchestrator({"logger": logging.getLogger("test_v98"), "config": {}, "vibe_modelling_instructions": "rename and drop",
+                                "operation": "vibe modeling of version"})
+    req = ah.VibeRequirement(id=rid, original_text="rename and drop", intent="structural", scope="table", scope_targets=["crew.member"],
+                             verification_strategy="deterministic")
+    return orch._verify_deterministic(req, d, p, a)
+
+
+def _product(model, name):
+    return next(p for p in model["model"]["domains"][0]["products"] if p["name"] == name)
 
 
 def test_v98_rename_returns_failed_when_old_target_still_present():
-    """v0.9.8: when an old rename target still appears in product_keys,
-    the verifier MUST return status='failed' with the structural evidence."""
-    src = _all_source()
-    # The fail path emits a 'failed' status and 'Rename not applied' evidence
-    assert "\"status\": \"failed\", \"evidence\": f\"[verifier-rename-drop-structural FIRED] Rename not applied:" in src, (
-        "v0.9.8: rename failure path must emit status=failed with structural evidence"
-    )
-    assert "\"status\": \"fulfilled\", \"evidence\": f\"[verifier-rename-drop-structural FIRED] Rename applied:" in src, (
-        "v0.9.8: rename success path must emit status=fulfilled with structural evidence"
-    )
+    model = _crew_model()
+    vs.register(ah, model, vs.spec("VREQ-003", "rename_product", ["crew.member"], new_name="crew_member"),
+                vs.spec("VREQ-031", "rename_column", ["crew.roster.duty_code"], new_name="duty_type"))
+    assert _verdict("VREQ-003", model)["status"] == "failed"
+    assert _verdict("VREQ-031", model)["status"] == "failed"
+    model["model"]["domains"][0]["products"].append(dict(_product(model, "member"), name="crew_member"))
+    copied = _verdict("VREQ-003", model)
+    assert copied["status"] == "partial" and "the old one is still there" in copied["evidence"], copied
+    model["model"]["domains"][0]["products"].remove(_product(model, "member"))
+    next(a for a in _product(model, "roster")["attributes"] if a["name"] == "duty_code")["name"] = "duty_type"
+    assert _verdict("VREQ-003", model)["status"] == "fulfilled"
+    assert _verdict("VREQ-031", model)["status"] == "fulfilled"
 
 
 def test_v98_drop_returns_failed_when_target_still_present():
-    """v0.9.8: when a drop target still appears in product_keys/attr_keys,
-    the verifier MUST return status='failed' with the structural evidence."""
+    model = _crew_model()
+    vs.register(ah, model, vs.spec("VREQ-040", "drop_product", ["crew.roster"]), vs.spec("VREQ-041", "drop_column", ["crew.member.legacy_code"]))
+    assert _verdict("VREQ-040", model)["status"] == "failed"
+    assert _verdict("VREQ-041", model)["status"] == "failed"
+    model["model"]["domains"][0]["products"].remove(_product(model, "roster"))
+    _product(model, "member")["attributes"].pop()
+    dropped = _verdict("VREQ-040", model)
+    assert dropped["status"] == "fulfilled" and "1/1 target(s) removed" in dropped["evidence"], dropped
+    assert _verdict("VREQ-041", model)["status"] == "fulfilled"
+
+
+def _spec_verifier_block():
     src = _all_source()
-    assert "\"status\": \"failed\", \"evidence\": f\"[verifier-rename-drop-structural FIRED] Drop not applied:" in src, (
-        "v0.9.8: drop failure path must emit status=failed with structural evidence"
-    )
-    assert "\"status\": \"fulfilled\", \"evidence\": f\"[verifier-rename-drop-structural FIRED] Drop applied:" in src, (
-        "v0.9.8: drop success path must emit status=fulfilled with structural evidence"
-    )
+    start = src.find("def _verify_spec_action(")
+    end = src.find("def _verify_spec_follow_renames(", start)
+    assert start != -1 and end > start, "spec verifier block not found"
+    block = src[start:end]
+    entry = src.find("def _verify_from_spec(")
+    assert entry != -1, "_verify_from_spec not found"
+    return block + src[entry:src.find("\ndef ", entry + 10)]
 
 
 def test_v98_no_regex_introduced_for_verbs():
-    """v0.9.8: the new verifier branches MUST NOT introduce regex on req.original_text
-    for the verb check. Verb membership must use Python tuple `in ll`, not re.search."""
-    src = _all_source()
-    # Verify that the new branch uses tuple membership, not regex compilation
-    assert "any(v in ll for v in _verifier_verbs_rename)" in src, (
-        "v0.9.8: rename verb check must use tuple-membership, not regex"
-    )
-    assert "any(v in ll for v in _verifier_verbs_drop)" in src, (
-        "v0.9.8: drop verb check must use tuple-membership, not regex"
-    )
+    """v5.3.3: the spec verifier never reads the requirement text, so no verb check, regex or keyword can creep back in."""
+    block = _spec_verifier_block()
+    for token in ("original_text", "source_quote", ".intent", "re.search", "re.match", "re.compile", "re.findall"):
+        assert token not in block, f"spec verifier reads requirement text or uses regex: {token!r}"
 
 
 def test_v98_no_industry_strings_introduced():
-    """v0.9.8: the new verifier MUST NOT contain industry-specific strings,
-    customer names, or hardcoded entity names (per CLAUDE.md §8.5 industry-agnostic).
-    Specifically check the surrounding verifier code does not introduce
-    common industry tokens that were absent before."""
-    src = _all_source()
+    """v0.9.8 / v5.3.3: the structural verifier MUST NOT contain industry-specific strings,
+    customer names, or hardcoded entity names (per CLAUDE.md §8.5 industry-agnostic)."""
     forbidden = (
         "retail_", "healthcare_", "legal_", "airlines_", "banking_",
         "advance_ship_notice", "return_authorization", "ship_from_store_node",
     )
-    start = src.find("# v0.9.8 [verifier-rename-drop-structural FIRED]")
-    end = src.find("return {\"status\": \"partial\", \"evidence\": \"Deterministic verification: no specific pattern matched", start)
-    assert start != -1 and end != -1 and end > start, (
-        "v0.9.8: verifier block markers not found in expected order"
-    )
-    block = src[start:end]
+    block = _spec_verifier_block()
     for token in forbidden:
         assert token not in block, (
             f"v0.9.8: forbidden industry-specific token '{token}' found in verifier block"
@@ -171,7 +176,7 @@ def test_v98_mode_reconciliation_no_regex_no_industry_strings():
     """v0.9.8: mode reconciliation MUST be a pure enum comparison —
     no regex on vibe text, no industry-specific strings."""
     src = _all_source()
-    start = src.find("# v0.9.8 [mode-reconciliation-aggregate-wins FIRED]")
+    start = src.find('_llm_top_classification = str(data.get("classification", "") or "").upper()')
     end = src.find("classification_data = {", start)
     assert start != -1 and end != -1 and end > start, (
         "v0.9.8: mode-reconciliation block markers not found in expected order"

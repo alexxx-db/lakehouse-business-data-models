@@ -17,6 +17,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from notebook_source_util import notebook_concat_source  # noqa: E402
 
 LIVE_DOMAINS = ["customer", "order", "product", "inventory"]
@@ -50,6 +51,10 @@ def _block(start_marker, end_marker):
     start = SOURCE.rindex("\n", 0, start) + 1
     end = SOURCE.index(end_marker, start) + len(end_marker)
     return textwrap.dedent(SOURCE[start:end])
+
+
+def _count(count, rid="VREQ-001"):
+    vs.register(ah, {"model": {"domains": []}}, vs.spec(rid, "other", [], kind="count_target", count=count))
 
 
 @pytest.fixture(autouse=True)
@@ -134,6 +139,7 @@ def test_empty_vibe_with_the_domain_widget_keeps_the_tier_guardrails():
 
 
 def test_an_explicit_vibe_count_still_activates_the_override_for_its_own_axis():
+    _count({"entity": "products_per_domain", "op": "about", "value": 4})
     llm = dict(_MVM_LIVE, min_data_products_per_domain=4, max_data_products_per_domain=4,
                max_attributes_per_product=20)
     pv, lines, _ = _model_params(LIVE_VIBE, llm, sizing_directives=_widget_sizing_directives(),
@@ -144,11 +150,14 @@ def test_an_explicit_vibe_count_still_activates_the_override_for_its_own_axis():
 
 
 class _StubParseLLM:
-    def __init__(self, vibe, sizing):
+    def __init__(self, vibe, sizing, specs=None):
         self.vibe = vibe
         self.sizing = sizing
+        self.specs = specs
 
-    def _call_ai_query(self, prompt_name=None, **_kw):
+    def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+        if prompt_name == "VREQ_SPEC_PROMPT" and self.specs:
+            return json.dumps(vs.reply(prompt, self.specs))
         if prompt_name == "VIBE_PARSE_PROMPT":
             return json.dumps({
                 "requirements": [{"original_text": self.vibe, "intent": "sizing", "scope": "model",
@@ -530,41 +539,36 @@ def _live_model_lists(per_domain):
 def test_about_four_per_domain_is_counted_against_the_live_model():
     orch, rec = _orchestrator()
     d, p, a = _live_model_lists({"customer": 21, "order": 20, "product": 22, "inventory": 18})
+    unread = orch._verify_requirement(_req(LIVE_VIBE), d, p, a)
+    assert unread["status"] == "failed" and "not interpreted" in unread["evidence"], unread
+    _count({"entity": "products_per_domain", "op": "about", "value": 4})
     verdict = orch._verify_requirement(_req(LIVE_VIBE), d, p, a)
     assert verdict["status"] == "failed", verdict
-    assert "0/4 domain(s) in 4 +/-20% = 3-5" in verdict["evidence"], verdict
+    assert "0/4 products_per_domain about 4" in verdict["evidence"], verdict
     d, p, a = _live_model_lists({"customer": 4, "order": 5, "product": 3, "inventory": 4})
     verdict = orch._verify_requirement(_req(LIVE_VIBE), d, p, a)
-    assert verdict["status"] == "fulfilled" and "4/4 domain(s)" in verdict["evidence"], verdict
+    assert verdict["status"] == "fulfilled" and "4/4 products_per_domain" in verdict["evidence"], verdict
 
 
 def test_exactly_means_zero_tolerance_and_partial_coverage_is_partial():
     orch, _ = _orchestrator()
+    _count({"entity": "products_per_domain", "op": "exactly", "value": 4})
     d, p, a = _live_model_lists({"customer": 4, "order": 5, "product": 4, "inventory": 4})
     verdict = orch._verify_requirement(_req("Exactly 4 products per domain."), d, p, a)
-    assert verdict["status"] == "partial" and "3/4 domain(s)" in verdict["evidence"], verdict
+    assert verdict["status"] == "partial" and "3/4 products_per_domain exactly 4" in verdict["evidence"], verdict
 
 
 def test_a_total_and_an_attribute_count_are_counted():
     orch, _ = _orchestrator()
+    _count({"entity": "products", "op": "about", "value": 16}, "VREQ-001")
+    _count({"entity": "products", "op": "about", "value": 20}, "VREQ-002")
+    _count({"entity": "attributes_per_product", "op": "at_most", "value": 30}, "VREQ-003")
+    _count({"entity": "attributes_per_product", "op": "at_most", "value": 25}, "VREQ-004")
     d, p, a = _live_model_lists({"customer": 5, "order": 5, "product": 5, "inventory": 5})
     assert orch._verify_deterministic(_req("about 16 products in total"), d, p, a)["status"] == "failed"
-    assert orch._verify_deterministic(_req("about 20 tables in total"), d, p, a)["status"] == "fulfilled"
-    assert orch._verify_deterministic(_req("at most 30 columns per table"), d, p, a)["status"] == "fulfilled"
-    assert orch._verify_deterministic(_req("at most 25 columns per table"), d, p, a)["status"] == "failed"
-
-
-def test_count_words_are_counted_too():
-    orch, _ = _orchestrator()
-    d, p, a = _live_model_lists({"customer": 4, "order": 4, "product": 4, "inventory": 4})
-    assert orch._verify_requirement(_req("about four products per domain"), d, p, a)["status"] == "fulfilled"
-    assert orch._verify_requirement(_req("about a dozen products per domain"), d, p, a)["status"] == "failed"
-
-
-def test_additive_phrasing_is_not_mistaken_for_a_size_target():
-    orch, _ = _orchestrator()
-    d, p, a = _live_model_lists({"customer": 4})
-    assert orch._verify_count_shape(_req("Add 3 more products per domain"), d, p, a) is None
+    assert orch._verify_deterministic(_req("about 20 tables in total", rid="VREQ-002"), d, p, a)["status"] == "fulfilled"
+    assert orch._verify_deterministic(_req("at most 30 columns per table", rid="VREQ-003"), d, p, a)["status"] == "fulfilled"
+    assert orch._verify_deterministic(_req("at most 25 columns per table", rid="VREQ-004"), d, p, a)["status"] == "failed"
 
 
 class _AuditLLM:
@@ -580,6 +584,7 @@ class _AuditLLM:
 
 def test_llm_verify_count_requirements_get_an_authoritative_deterministic_verdict():
     orch, _ = _orchestrator()
+    _count({"entity": "products_per_domain", "op": "about", "value": 4})
     d, p, a = _live_model_lists({"customer": 21, "order": 20, "product": 22, "inventory": 18})
     req = _req(LIVE_VIBE, strategy="llm_verify")
     orch.manifest = ah.VibeManifest(raw_text=LIVE_VIBE, requirements=[req])
@@ -589,15 +594,15 @@ def test_llm_verify_count_requirements_get_an_authoritative_deterministic_verdic
     orch.widgets_values.update({"domains": d, "products": p, "attributes": a})
     orch.validate()
     assert req.status == "failed", (req.status, req.evidence)
-    assert "[verifier-count-deterministic FIRED v5.1.6]" in req.evidence
-    orch.fold_vov_outcomes({"outcomes": [{"status": "applied", "vreq_ids": ["R1"]}]},
-                           [{"vreq_id": "R1", "intent": "sizing", "source_quote": LIVE_VIBE.lower()}])
-    assert req.status == "failed", req.status
+    assert "[verifier-spec FIRED v5.3.3] 0/4 products_per_domain about 4" in req.evidence
+    assert orch.ai_agent.calls == 0, "the LLM audit never re-scores a requirement its spec already verified"
+    assert not hasattr(orch, "fold_vov_outcomes"), "no text-overlap fold may mark a requirement fulfilled after the spec verdict"
 
 
 # ---------------------------------------------------------------- task 7: relax only the sized axis
 
 def test_a_product_only_vibe_keeps_the_attribute_guardrails():
+    _count({"entity": "products_per_domain", "op": "about", "value": 4})
     llm = dict(_MVM_LIVE, min_data_products_per_domain=4, max_data_products_per_domain=4,
                min_attributes_per_product=5, max_attributes_per_product=20)
     pv, lines, _ = _model_params(LIVE_VIBE, llm, user_sizing_override=True)
@@ -607,6 +612,7 @@ def test_a_product_only_vibe_keeps_the_attribute_guardrails():
 
 
 def test_an_attribute_vibe_relaxes_only_the_attribute_axis():
+    _count({"entity": "attributes_per_product", "op": "between", "value": 20, "low": 5})
     llm = dict(_MVM_LIVE, min_data_products_per_domain=2, max_data_products_per_domain=3,
                min_attributes_per_product=5, max_attributes_per_product=20)
     pv, _, _ = _model_params("Keep tables lean: between 5 and 20 columns per table.", llm, user_sizing_override=True)
@@ -628,65 +634,35 @@ def test_the_clamp_relaxes_only_the_named_axes():
 
 # ---------------------------------------------------------------- task 8: counts written as words
 
-@pytest.mark.parametrize("vibe,per_domain,totals", [
-    ("Keep the model small: about four products per domain.", [4, 4], [None, None]),
-    ("roughly five to seven tables per domain", [7, 5], [None, None]),
-    ("about a dozen tables per domain", [12, 12], [None, None]),
-    ("half a dozen products per domain", [6, 6], [None, None]),
-    ("twenty-five tables in total", [None, None], [25, 25]),
-    ("at most thirty tables overall", [None, None], [30, None]),
-    ("between ten and twelve products per domain", [12, 10], [None, None]),
-])
-def test_number_words_are_read_by_the_literal_reader(vibe, per_domain, totals):
-    out = ah._extract_sizing_directives_from_text(vibe)
-    assert [out["max_products_per_domain"], out["min_products_per_domain"]] == per_domain, (vibe, out)
-    assert [out["max_total_products"], out["min_total_products"]] == totals, (vibe, out)
-
-
 def test_a_word_count_copied_into_the_totals_is_overruled():
     log, rec = _logger("test_v516_word_parse")
     vibe = "Keep the model small: about four products per domain."
+    per_domain = lambda item: vs.spec(item["id"], "other", [], kind="count_target",
+                                      count={"entity": "products_per_domain", "op": "about", "value": 4})
     widgets = {"logger": log, "config": {}, "vibe_modelling_instructions": vibe, "operation": "new base model",
                "ai_agent": _StubParseLLM(vibe, dict(_NULL_SD, max_total_products=4, min_total_products=4,
-                                                    max_products_per_domain=4, min_products_per_domain=4))}
+                                                    max_products_per_domain=4, min_products_per_domain=4), specs=per_domain)}
     ah.VibeOrchestrator(widgets).parse()
     sd = widgets["sizing_directives"]
     assert sd.get("max_total_products") is None and sd.get("min_total_products") is None, sd
+    assert (sd.get("max_products_per_domain"), sd.get("min_products_per_domain")) == (4, 4), sd
     assert any("disagree" in l and "max_total_products=4" in l for l in rec.lines), rec.lines
-    assert any("[sizing-number-words FIRED v5.1.6]" in l and "four products per domain" in l for l in rec.lines), rec.lines
-
-
-@pytest.mark.parametrize("prose", [
-    "each domain must have at least one product",
-    "A silo whose domain has only one product cannot receive an inbound FK",
-    "zero tables were dropped",
-])
-def test_one_and_zero_in_prose_are_not_sizing(prose):
-    assert ah._sizing_literal_readings(prose) == [], prose
-    out = ah._extract_sizing_directives_from_text(prose)
-    assert out["max_total_products"] is None and out["min_total_products"] is None, (prose, out)
-    assert out["max_products_per_domain"] is None and out["min_products_per_domain"] is None, (prose, out)
-
-
-def test_compound_words_with_one_still_count():
-    out = ah._extract_sizing_directives_from_text("twenty-one tables in total")
-    assert [out["max_total_products"], out["min_total_products"]] == [21, 21], out
-    assert ah._sizing_count_value("one hundred") == 100 and ah._sizing_count_value("one dozen") == 12
-
-
-def test_ordinary_words_are_not_numbers():
-    assert ah._sizing_literal_readings("someone added tables and the domain looks attentive") == []
-    assert ah._sizing_count_value("twenty-five") == 25 and ah._sizing_count_value("three hundred and ten") == 310
+    assert any("[sizing-unit-scope-literal FIRED v5.3.3]" in l and "about 4 products_per_domain" in l for l in rec.lines), rec.lines
 
 
 # ---------------------------------------------------------------- task 9: attribute totals become per-product bounds
 
 def test_an_attribute_total_is_divided_across_the_products():
-    out = ah._attribute_total_per_product_bounds("about 300 attributes in total", 58, 10, 42)
+    _count({"entity": "attributes", "op": "about", "value": 300})
+    out = ah._attribute_total_per_product_bounds(58, 10, 42)
     assert (out["min_attributes_per_product"], out["max_attributes_per_product"]) == (5, 6), out
-    capped = ah._attribute_total_per_product_bounds("at most 300 attributes in total", 30, 10, 42)
+    ah.vov_ledger_reset()
+    _count({"entity": "attributes", "op": "at_most", "value": 300})
+    capped = ah._attribute_total_per_product_bounds(30, 10, 42)
     assert (capped["min_attributes_per_product"], capped["max_attributes_per_product"]) == (10, 10), capped
-    assert ah._attribute_total_per_product_bounds("about 30 attributes per product", 58, 10, 42) is None
+    ah.vov_ledger_reset()
+    _count({"entity": "attributes_per_product", "op": "about", "value": 30})
+    assert ah._attribute_total_per_product_bounds(58, 10, 42) is None
 
 
 def test_step_four_applies_the_per_product_bounds_before_generating_attributes():
@@ -700,6 +676,10 @@ def test_step_four_applies_the_per_product_bounds_before_generating_attributes()
     ns = dict(vars(ah))
     ns.update({"config": config, "logger": log, "products_to_create": [{"product": f"p{i}"} for i in range(58)],
                "widgets_values": {"vibe_modelling_instructions": "about three hundred attributes in total"}})
+    exec(compile(block, "<step4>", "exec"), ns)
+    assert config["PROMPT_VARIABLES"] == {"min_attributes_per_product": 10, "max_attributes_per_product": 42}
+    assert not any("attr-total-per-product-cap FIRED" in l for l in rec.lines), rec.lines
+    _count({"entity": "attributes", "op": "about", "value": 300})
     exec(compile(block, "<step4>", "exec"), ns)
     pv = config["PROMPT_VARIABLES"]
     assert (pv["min_attributes_per_product"], pv["max_attributes_per_product"]) == (5, 6), pv

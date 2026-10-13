@@ -1,5 +1,8 @@
 import json, re, os, types, textwrap, pytest
 
+import agent_helpers as ah
+import vreq_spec_util as vs
+
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
 NB_PRE = "/tmp/agent_pre_v333.ipynb"  # pre-patch backup (optional, for no-tautology proof)
@@ -59,76 +62,82 @@ def _prods(pairs):
     return [{"domain": d, "product": p} for d, p in pairs]
 
 
+def _verify(spec, catalog, attrs, text):
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": d} for d in dict.fromkeys(a["domain"] for a in catalog)],
+                                             _prods(dict.fromkeys((a["domain"], a["product"]) for a in catalog)), catalog), spec)
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch.logger = _Logger()
+    return orch._verify_deterministic(_Req(text, spec["id"]), [], _prods(dict.fromkeys((a["domain"], a["product"]) for a in attrs)), attrs)
+
+
 # ---------------- RENAME (RC-1) ----------------
 
+RENAME_TEXT = "Rename column organization_id to home_organization_id on hr.employee because role."
+RENAME_SPEC = vs.spec("VREQ-T", "rename_column", ["hr.employee.organization_id"], new_name="home_organization_id")
+RENAME_BEFORE = _attrs([("hr", "employee", "organization_id", "hr.organization.organization_id", None),
+                        ("hr", "employee", "employee_id", "", None)])
+
+
 def test_rename_applied_is_fulfilled():
-    obj = _bind(NB)
     attrs = _attrs([("hr", "employee", "home_organization_id", "hr.organization.organization_id", None),
                     ("hr", "employee", "employee_id", "", None)])
-    req = _Req("Rename column organization_id to home_organization_id on hr.employee because role.",
-               scope_targets=["hr.employee"])
-    v = obj._verify_structural_target(req, _prods([("hr", "employee")]), attrs)
+    v = _verify(RENAME_SPEC, RENAME_BEFORE, attrs, RENAME_TEXT)
     assert v and v["status"] == "fulfilled", v
 
 
 def test_rename_not_applied_is_failed():
     # OLD still present, NEW absent -> must FAIL (no-tautology proof)
-    obj = _bind(NB)
     attrs = _attrs([("hr", "employee", "organization_id", "hr.organization.organization_id", None)])
-    req = _Req("Rename column organization_id to home_organization_id on hr.employee because role.",
-               scope_targets=["hr.employee"])
-    v = obj._verify_structural_target(req, _prods([("hr", "employee")]), attrs)
+    v = _verify(RENAME_SPEC, RENAME_BEFORE, attrs, RENAME_TEXT)
     assert v and v["status"] == "failed", v
 
 
 def test_rename_both_present_is_partial():
-    obj = _bind(NB)
     attrs = _attrs([("hr", "employee", "organization_id", "", None),
                     ("hr", "employee", "home_organization_id", "", None)])
-    req = _Req("Rename column organization_id to home_organization_id on hr.employee.",
-               scope_targets=["hr.employee"])
-    v = obj._verify_structural_target(req, _prods([("hr", "employee")]), attrs)
+    v = _verify(RENAME_SPEC, RENAME_BEFORE, attrs, "Rename column organization_id to home_organization_id on hr.employee.")
     assert v and v["status"] == "partial", v
 
 
 # ---------------- TAG (RC-3) ----------------
 
+TAG_TEXT = ("Add classification tags restricted/confidential and gov_transport_pii to column compensation_employee_id "
+            "in hr.compensation.")
+TAG_SPEC = dict(vs.spec("VREQ-T", "set_fields", ["hr.compensation.compensation_employee_id"], fields=[vs.field("attributes", "tags")]),
+                tags=[{"key": "classification", "value": "restricted"}, {"key": "gov_transport_pii", "value": "true"}])
+
+
 def test_tag_present_is_fulfilled():
-    obj = _bind(NB)
-    attrs = _attrs([("hr", "compensation", "compensation_employee_id", "", {"gov_transport_pii": "true", "classification": "restricted"})])
-    req = _Req("Add classification tags restricted/confidential and gov_transport_pii to column compensation_employee_id in hr.compensation.",
-               scope_targets=["hr.compensation"])
-    v = obj._verify_structural_target(req, _prods([("hr", "compensation")]), attrs)
+    attrs = _attrs([("hr", "compensation", "compensation_employee_id", "", "gov_transport_pii=true,classification=restricted")])
+    v = _verify(TAG_SPEC, attrs, attrs, TAG_TEXT)
     assert v and v["status"] == "fulfilled", v
 
 
 def test_tag_absent_is_failed():
-    obj = _bind(NB)
     attrs = _attrs([("hr", "compensation", "compensation_employee_id", "", None)])
-    req = _Req("Add classification tags restricted/confidential and gov_transport_pii to column compensation_employee_id in hr.compensation.",
-               scope_targets=["hr.compensation"])
-    v = obj._verify_structural_target(req, _prods([("hr", "compensation")]), attrs)
+    v = _verify(TAG_SPEC, attrs, attrs, TAG_TEXT)
+    assert v and v["status"] == "failed", v
+    attrs = _attrs([("hr", "compensation", "compensation_employee_id", "", "classification=restricted")])
+    v = _verify(TAG_SPEC, attrs, attrs, TAG_TEXT)
     assert v and v["status"] == "failed", v
 
 
 # ---------------- REMOVE FK (RC-4) "foreign key" phrasing ----------------
 
+REMOVE_TEXT = "Remove the foreign key on column dsctr_group_control_id in project.dsctr_dropdown_lookup because dup."
+REMOVE_SPEC = vs.spec("VREQ-T", "remove_fk", ["project.dsctr_dropdown_lookup.dsctr_group_control_id"])
+REMOVE_BEFORE = _attrs([("project", "dsctr_dropdown_lookup", "dsctr_group_control_id", "project.x.y", None)])
+
+
 def test_remove_foreign_key_phrasing_fulfilled_when_gone():
-    obj = _bind(NB)
     # column present but no FK -> remove satisfied
     attrs = _attrs([("project", "dsctr_dropdown_lookup", "dsctr_group_control_id", "", None)])
-    req = _Req("Remove the foreign key on column dsctr_group_control_id in project.dsctr_dropdown_lookup because dup.",
-               scope_targets=["project.dsctr_dropdown_lookup"])
-    v = obj._verify_structural_target(req, _prods([("project", "dsctr_dropdown_lookup")]), attrs)
+    v = _verify(REMOVE_SPEC, REMOVE_BEFORE, attrs, REMOVE_TEXT)
     assert v and v["status"] == "fulfilled", v
 
 
 def test_remove_foreign_key_phrasing_failed_when_present():
-    obj = _bind(NB)
-    attrs = _attrs([("project", "dsctr_dropdown_lookup", "dsctr_group_control_id", "project.x.y", None)])
-    req = _Req("Remove the foreign key on column dsctr_group_control_id in project.dsctr_dropdown_lookup because dup.",
-               scope_targets=["project.dsctr_dropdown_lookup"])
-    v = obj._verify_structural_target(req, _prods([("project", "dsctr_dropdown_lookup")]), attrs)
+    v = _verify(REMOVE_SPEC, REMOVE_BEFORE, REMOVE_BEFORE, REMOVE_TEXT)
     assert v and v["status"] == "failed", v
 
 
@@ -156,6 +165,5 @@ def test_version_is_333():
 
 def test_aliases_present():
     full = _full_src(NB)
-    assert "verifier-rename-structural FIRED v3.3.3" in full
-    assert "verifier-tag-structural FIRED v3.3.3" in full
-    assert "prod_tags" in full
+    assert "verifier-spec FIRED v5.3.3" in full
+    assert "alias=verifier-spec" in full

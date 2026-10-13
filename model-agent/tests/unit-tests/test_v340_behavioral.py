@@ -1,4 +1,9 @@
-import json, os, re, textwrap, pytest
+import json, os, re, sys, textwrap, pytest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -16,16 +21,6 @@ def _full_src():
     return "\n".join(_cells())
 
 
-def _extract_module_fn(src, name):
-    start = src.find(f"\ndef {name}(")
-    assert start != -1, f"{name} not found at module level"
-    seg = src[start + 1:]
-    nxt = seg.find("\ndef ", 1)
-    if nxt > 0:
-        seg = seg[:nxt]
-    return seg
-
-
 def _extract_nested_fn(src, name):
     m = re.search(rf"\n( +)def {name}\(.*?\n\1    return \"\"\n", src, re.S)
     assert m, f"{name} not found as nested fn"
@@ -35,37 +30,27 @@ def _extract_nested_fn(src, name):
 # ---------------------------------------------------------------------------
 # FIX-A: vibe-enumerated-product-cap-floor — deterministic per-domain floor
 # Root cause (gov_transport 38.1%): max_data_products_per_domain=16 trimmed the user's
-# 43 verbatim HR products. The floor helper must derive 43 from the checklist.
+# 43 verbatim HR products. The floor helper must derive 43 from the products the LLM
+# requirement specs add to each user-named domain (v5.3.3: no checklist text is read).
 # ---------------------------------------------------------------------------
-def _bind_cap_floor():
-    src = None
-    for c in _cells():
-        if "def _enumerated_product_cap_floor(" in c:
-            src = c
-            break
-    assert src is not None
-    ns = {"re": re}
-    exec(_extract_module_fn(src, "_enumerated_product_cap_floor"), ns)
-    return ns["_enumerated_product_cap_floor"]
+def _register(*specs):
+    vs.register(ah, {"model": {"domains": []}}, *specs)
 
 
 def test_fixA_cap_floor_derives_enumerated_count():
-    floor_fn = _bind_cap_floor()
-    hr_products = ", ".join(f"hr_prod_{i}" for i in range(43))
-    proj_products = ", ".join(f"proj_prod_{i}" for i in range(21))
-    checklist = [
-        {"text": f"Build the hr domain with the following products: {hr_products}."},
-        {"text": f"Build the project domain with the following products: {proj_products}."},
-    ]
-    floor, counts = floor_fn(checklist, ["hr", "project"])
-    assert counts.get("hr") == 43, counts
-    assert counts.get("project") == 21, counts
+    _register(vs.spec("VREQ-001", "add_product", [f"hr.hr_prod_{i}" for i in range(43)]),
+              vs.spec("VREQ-002", "add_product", [f"project.proj_prod_{i}" for i in range(21)]),
+              vs.spec("VREQ-003", "add_product", [f"finance.fin_prod_{i}" for i in range(60)]),
+              vs.spec("VREQ-004", "add_product", [f"hr.unread_{i}" for i in range(90)], interpretable=False, reason="unclear"))
+    floor, counts = ah._enumerated_product_cap_floor(["hr", "project"])
+    assert counts == {"hr": 43, "project": 21}, counts
     assert floor == 43, floor
 
 
 def test_fixA_cap_floor_none_when_no_enumeration():
-    floor_fn = _bind_cap_floor()
-    floor, counts = floor_fn([{"text": "make a nice HR model"}], ["hr"])
+    assert ah._enumerated_product_cap_floor(["hr"]) == (None, {})
+    _register(vs.spec("VREQ-001", "set_fields", ["hr"], breadth="set", fields=[vs.field("products", "description")]))
+    floor, counts = ah._enumerated_product_cap_floor(["hr"])
     assert floor is None and counts == {}
 
 
@@ -139,4 +124,4 @@ def test_fixC_selffixer_cascade_present():
 
 def test_version_is_340():
     m = re.search(r'__AGENT_VERSION__\s*=\s*"([^"]+)"', _full_src())
-    assert m and m.group(1) == "3.4.0", m.group(1) if m else None
+    assert m and tuple(int(x) for x in m.group(1).split(".")) >= (3, 4, 0), m.group(1) if m else None

@@ -24,17 +24,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 
 RAW = published_json()
 GOLDEN_PATH = Path(__file__).resolve().parent / "fixtures" / "v514_vibe_scope_pass_goldens.json"
 VOV = "vibe modeling of version"
 CAPTURE = os.environ.get("VIBE_SCOPE_CAPTURE_GOLDENS") == "1"
-TAG_VIBE = (
-    "add tag data_owner=crewops to all products in the crew domain\n"
-    "add tag data_owner=flightops to all products in the flight domain\n"
-    "add tag reviewed=yes to all remarks attributes\n"
-)
 
 
 class _Log:
@@ -179,6 +175,23 @@ def naming_apply_case(model):
     return {"result": summary, "domains": d, "products": p, "attributes": a}
 
 
+def _tag_spec(vid, targets, level, key, value):
+    return dict(vs.spec(vid, "set_fields", targets, breadth="set", fields=[vs.field(level, "tags")]), tags=[{"key": key, "value": value}])
+
+
+def _with_tag_vibe_specs(model, attributes, fn):
+    remarks = [f"{a['domain']}.{a['product']}.{a['attribute']}" for a in attributes if "remarks" in str(a.get("attribute") or "").lower()]
+    saved = dict(ah._VREQ_SPECS)
+    vs.register(ah, model, _tag_spec("VREQ-0001", ["crew"], "products", "data_owner", "crewops"),
+                _tag_spec("VREQ-0002", ["flight"], "products", "data_owner", "flightops"),
+                _tag_spec("VREQ-0003", remarks, "attributes", "reviewed", "yes"))
+    try:
+        return fn()
+    finally:
+        ah._VREQ_SPECS.clear()
+        ah._VREQ_SPECS.update(saved)
+
+
 @_runner
 def naming_step_prefix_suffix(model):
     d, p, a, mv = _flat(model)
@@ -186,8 +199,8 @@ def naming_step_prefix_suffix(model):
     cfg["SCHEMA_PREFIX"] = "dbx_"
     cfg["MODEL_CONVENTIONS"]["table_suffix"] = "_tbl"
     wv = {"spark": None, "logger": _Log(), "config": cfg, "business_name": "airlines", "domains": d,
-          "products": p, "attributes": a, "vibe_modelling_instructions": TAG_VIBE}
-    ah.step_apply_naming_conventions(wv)
+          "products": p, "attributes": a}
+    _with_tag_vibe_specs(model, a, lambda: ah.step_apply_naming_conventions(wv))
     return {"domains": wv["domains"], "products": wv["products"], "attributes": wv["attributes"],
             "table_name_mapping": wv.get("table_name_mapping"), "db_name_mapping": wv.get("db_name_mapping")}
 
@@ -202,7 +215,7 @@ def naming_bare_attribute_fix(model):
 @_runner
 def tags_vibe_custom(model):
     d, p, a, mv = _flat(model)
-    n = ah._apply_vibe_custom_tags(d, p, a, {"vibe_modelling_instructions": TAG_VIBE}, _Log())
+    n = _with_tag_vibe_specs(model, a, lambda: ah._vreq_spec_apply_tags(p, a, _Log()))
     return {"result": n, "domains": d, "products": p, "attributes": a}
 
 

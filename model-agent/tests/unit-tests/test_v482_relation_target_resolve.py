@@ -6,12 +6,15 @@ vibe's own wording ("origin purchase") rather than a product name, and the relat
 branch returned failed on that name miss before reaching the targets that do resolve.
 
 The model below is the shape of that run: an origin -> middle -> end FK chain where the
-VREQ names the first hop in prose and the later hops by their real product names.
+VREQ names the first hop in prose and the later hops by their real product names. The
+verifier now reads the LLM spec of the requirement: a target the catalog cannot resolve is
+recorded in the spec's absent list and never decides the verdict on its own.
 """
 
 import re
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 from notebook_source_util import agent_version_line, notebook_concat_source
 
 
@@ -44,6 +47,9 @@ LINEAGE_TEXT = (
 
 REMOVE_TEXT = "Remove the foreign key from roast batch to the origin purchase."
 
+PROSE = {"domain": "", "product": "origin purchase", "column": ""}
+PACKAGE_LINK = {"domain": "roasting", "product": "finished_package", "column": "roast_batch_id"}
+
 
 def _model():
     domains = [{"domain": "sourcing"}, {"domain": "roasting"}]
@@ -70,6 +76,14 @@ def _model():
     return domains, products, attrs
 
 
+def _register(action, targets, **fields):
+    vs.register(ah, ah.widgets_flat_to_model(*_model()), dict(vs.spec("VREQ-003", action, **fields), targets=list(targets)))
+
+
+def _link_to_roast_batch(*targets):
+    _register("add_fk", targets, fk_target="roasting.roast_batch.roast_batch_id")
+
+
 def _orch(logger=None):
     o = object.__new__(ah.VibeOrchestrator)
     o.logger = logger or _Logger()
@@ -86,6 +100,7 @@ def _verify(req, logger=None):
 def test_a_prose_first_target_no_longer_false_fails_a_lineage_that_exists():
     # pre-patch this returned {"status": "failed", "evidence": "No FK relationship found
     # for 'origin purchase'"} and the physical pass took that as authoritative.
+    _link_to_roast_batch(PROSE, PACKAGE_LINK)
     res = _verify(_Req(LINEAGE_TEXT, "relation",
                        ["origin purchase", "roasting.roast_batch", "roasting.finished_package"]))
     assert res is not None
@@ -93,18 +108,20 @@ def test_a_prose_first_target_no_longer_false_fails_a_lineage_that_exists():
 
 
 def test_the_later_resolvable_target_is_what_decides_the_verdict():
+    _link_to_roast_batch(PROSE, PACKAGE_LINK)
     res = _verify(_Req(LINEAGE_TEXT, "relation",
                        ["origin purchase", "roasting.roast_batch", "roasting.finished_package"]))
     assert res["status"] == "fulfilled", res
-    assert "roast_batch" in res["evidence"], res
+    assert "roast_batch" in res["evidence"] and "1/1 column(s) reference" in res["evidence"], res
 
 
 def test_the_skip_is_reported_so_the_run_can_be_audited():
     log = _Logger()
+    _link_to_roast_batch(PROSE, PACKAGE_LINK)
     _verify(_Req(LINEAGE_TEXT, "relation", ["origin purchase", "roasting.roast_batch"]), log)
-    fired = [l for l in log.lines if "verifier-relation-target-resolvable FIRED" in l]
-    assert len(fired) == 1, log.lines
-    assert "origin purchase" in fired[0]
+    assert ah.vreq_spec("VREQ-003")["absent"] == ["origin purchase"]
+    fired = [l for l in log.lines if "verifier-spec FIRED" in l]
+    assert len(fired) == 1 and "VREQ-003" in fired[0], log.lines
 
 
 def test_a_target_that_resolves_but_has_no_foreign_key_still_fails():
@@ -112,6 +129,7 @@ def test_a_target_that_resolves_but_has_no_foreign_key_still_fails():
     # genuine failure and has to keep failing.
     domains, products, attrs = _model()
     attrs = [a for a in attrs if not a["foreign_key_to"]]
+    _link_to_roast_batch(PACKAGE_LINK)
     res = _orch()._verify_deterministic(
         _Req(LINEAGE_TEXT, "relation", ["roasting.finished_package"]), domains, products, attrs
     )
@@ -121,24 +139,28 @@ def test_a_target_that_resolves_but_has_no_foreign_key_still_fails():
 def test_a_remove_verb_on_an_unresolvable_target_is_not_reported_as_removed():
     # opposite polarity of the same bug: "not _rel_linked -> removed" false-fulfilled a
     # remove VREQ whose target named nothing.
+    _register("remove_fk", [PROSE])
     res = _verify(_Req(REMOVE_TEXT, "relation", ["origin purchase"]))
     assert res is None or res["status"] != "fulfilled", res
 
 
 def test_a_remove_verb_on_a_resolvable_target_still_reports_the_surviving_link():
+    _register("remove_fk", [{"domain": "roasting", "product": "roast_batch", "column": "gc_lot_id"}])
     res = _verify(_Req("Remove the foreign key to sourcing.gc_lot.", "relation", ["sourcing.gc_lot"]))
     assert res["status"] == "failed", res
 
 
 def test_a_target_naming_a_product_with_different_punctuation_resolves():
+    _link_to_roast_batch({"domain": "", "product": "finished package", "column": "roast batch id"})
+    assert ah.vreq_spec("VREQ-003")["targets"] == [PACKAGE_LINK]
     res = _verify(_Req(LINEAGE_TEXT, "relation", ["finished package"]))
     assert res["status"] == "fulfilled", res
 
 
 def test_the_guard_is_wired_into_the_notebook_source():
     src = notebook_concat_source()
-    assert src.count("verifier-relation-target-resolvable FIRED") == 1
-    assert re.search(r"if not _rel_known:\s*\n\s+try:", src)
+    assert "verifier-relation-target-resolvable FIRED" not in src
+    assert "[verifier-spec FIRED v5.3.3]" in src and "def _vreq_spec_target(raw, idx):" in src
 
 
 def test_the_agent_version_is_at_least_the_one_that_shipped_this_fix():

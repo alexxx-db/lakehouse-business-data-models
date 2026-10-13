@@ -9,37 +9,24 @@ ROOT CAUSE (water_utilities v2 ECM VOV, run <run_id>):
     dragging physical adherence to 49/56 = 87.5% -- below the 90% floor. With the
     req correctly excluded (informational), scoreable_total becomes 55.
 
-FIX: _verify_requirement gains an early classifier (alias
-    verifier-pipeline-meta-informational) that returns status="informational"
-    (excluded from precision/recall via the v4.2.2 gt-informational-exclude path)
-    for requirements whose text names the generation PROCESS/TOOLING.
+FIX (v5.3.3): the requirement classifier (an LLM) reads VREQ-029 into a spec of
+    kind "tooling"; _verify_from_spec returns status="informational" (excluded
+    from precision/recall via the v4.2.2 gt-informational-exclude path) for the
+    tooling, quality_goal, deployment and documentation kinds, before any model
+    check runs.
 
-These tests extract the ACTUAL shipped regex from the notebook cell (not a copy)
-and prove the decision boundary: pipeline/tooling meta-reqs are matched, while
-genuine model-content reqs (add a table / add an ontology domain) are NOT (so
-they still count toward precision -- no scoreboard gaming, S8.3).
+These tests register the spec the LLM returns and drive the REAL
+VibeOrchestrator._verify_requirement, proving the decision boundary: specs of
+the non-model kinds are informational, while genuine model-content specs (add a
+table / add an ontology domain) are NOT (so they still count toward precision --
+no scoreboard gaming, S8.3).
 """
-import json
-import os
-import re
+import logging
 
 import pytest
 
-NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
-
-
-def _pipeline_meta_regex():
-    cells = json.load(open(NB))["cells"]
-    for c in cells:
-        if c["cell_type"] != "code":
-            continue
-        s = "".join(c["source"])
-        if "_v424_pipeline_meta = re.compile(" in s:
-            m = re.search(r'_v424_pipeline_meta = re\.compile\(r"(.*?)", re\.I\)', s)
-            assert m, "could not extract _v424_pipeline_meta pattern literal"
-            return re.compile(m.group(1), re.I)
-    raise AssertionError("cell containing _v424_pipeline_meta not found")
-
+import agent_helpers as ah
+import vreq_spec_util as vs
 
 # The exact VREQ-029 text that false-failed on the live wu run.
 VREQ_029 = (
@@ -48,57 +35,63 @@ VREQ_029 = (
     "entities (long-chain vs short-chain PFAS, PFAS compound taxonomy)."
 )
 
-
-class TestPipelineMetaMatches:
-    """Requirements that target the agent's generation process/tooling."""
-
-    def test_vreq_029_ontology_first_pipeline_matches(self):
-        assert _pipeline_meta_regex().search(VREQ_029)
-
-    @pytest.mark.parametrize("text", [
-        "add a code generation stage to the pipeline",
-        "introduce a codegen step in the generation pipeline",
-        "add an ontology-first generation phase",
-        "integrate OntoBricks into the model build",
-        "add a new stage to the generation pipeline",
-        "insert a pipeline stage that seeds an OWL ontology",
-    ])
-    def test_tooling_meta_variants_match(self, text):
-        assert _pipeline_meta_regex().search(text), text
+SNAPSHOT = ([{"domain": "treatment"}, {"domain": "compliance"}],
+            [{"domain": "treatment", "product": "scada_tag", "primary_key": "scada_tag_id"},
+             {"domain": "compliance", "product": "regulatory_requirement", "primary_key": "regulatory_requirement_id"}],
+            [{"domain": "treatment", "product": "scada_tag", "attribute": "scada_tag_id", "tags": ""},
+             {"domain": "compliance", "product": "regulatory_requirement", "attribute": "regulatory_requirement_id", "tags": ""}])
 
 
-class TestModelContentNotMatched:
+class _Req:
+    def __init__(self, rid, text):
+        self.id = rid
+        self.original_text = text
+        self.scope_targets = []
+
+
+def _verify(spec, text="requirement text"):
+    vs.register(ah, ah.widgets_flat_to_model(*[list(x) for x in SNAPSHOT]), spec)
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch.logger = logging.getLogger("test_v424")
+    orch._llm_verify_enabled = False
+    orch.ai_agent = None
+    return orch._verify_requirement(_Req(spec["id"], text), *SNAPSHOT)
+
+
+class TestPipelineMetaIsInformational:
+    """Requirements whose spec names the agent's process/tooling, not the model."""
+
+    def test_vreq_029_ontology_first_pipeline_is_informational(self):
+        verdict = _verify(vs.spec("VREQ-029", "other", [], breadth="model", kind="tooling"), VREQ_029)
+        assert verdict["status"] == "informational", verdict
+        assert "tooling requirement changes no model entity and is not scored" in verdict["evidence"]
+        assert verdict["evidence"].startswith("[verifier-spec FIRED v5.3.3]")
+
+    @pytest.mark.parametrize("kind", ["tooling", "quality_goal", "deployment", "documentation"])
+    def test_every_non_model_kind_is_informational(self, kind):
+        assert _verify(vs.spec("VREQ-T", "other", [], breadth="model", kind=kind))["status"] == "informational"
+
+    def test_an_uninterpretable_spec_is_failed_not_informational(self):
+        verdict = _verify(vs.spec("VREQ-029", "other", [], kind="tooling", interpretable=False, reason="two readings"), VREQ_029)
+        assert verdict["status"] == "failed" and "two readings" in verdict["evidence"], verdict
+
+
+class TestModelContentStaysScored:
     """Genuine model-content reqs MUST still be scored (not excluded)."""
 
-    @pytest.mark.parametrize("text", [
+    @pytest.mark.parametrize("spec", [
         # wu VREQ-023 / VREQ-024 -- real create-entity gaps, MUST stay scoreable
-        "Add a generic prediction_event entity with predicted_value, actual_value, confidence.",
-        "Add a customer-impact linkage entity connecting main_break to affected customers.",
+        vs.spec("VREQ-023", "add_product", ["treatment.prediction_event"]),
+        vs.spec("VREQ-024", "add_product", ["compliance.customer_impact_link"]),
         # an ontology *domain/table* is model content, not a pipeline stage
-        "Add an ontology domain with owl_class and rdf_triple tables.",
-        "Add a jurisdiction dimension to compliance.regulatory_requirement.",
-        "Promote treatment.scada_tag to MVM with a basic tag taxonomy.",
-        "Ship 50-100 pre-baked KPI metric views such as non-revenue-water percent.",
-        "Remove value_regex from typed DATE/BOOLEAN columns where it is redundant.",
-    ])
-    def test_model_content_not_matched(self, text):
-        assert not _pipeline_meta_regex().search(text), text
-
-
-class TestClassifierWiredIntoVerifier:
-    """The classifier must live in _verify_requirement and return informational."""
-
-    def test_returns_informational_status(self):
-        cells = json.load(open(NB))["cells"]
-        src = ""
-        for c in cells:
-            if c["cell_type"] == "code" and "verifier-pipeline-meta-informational" in "".join(c["source"]):
-                src = "".join(c["source"])
-                break
-        assert src, "classifier cell not found"
-        # the FIRED classifier branch must return status informational
-        assert "def _verify_requirement(" in src
-        block = src.split("_v424_pipeline_meta = re.compile(", 1)[1]
-        head = block[:1200]
-        assert 'return {"status": "informational"' in head
-        assert "verifier-pipeline-meta-informational FIRED v4.2.4" in head
+        vs.spec("VREQ-030", "add_product", ["ontology.owl_class", "ontology.rdf_triple"]),
+        vs.spec("VREQ-031", "add_column", ["compliance.regulatory_requirement"], columns=[{"name": "jurisdiction", "type": "STRING"}]),
+        dict(vs.spec("VREQ-032", "set_fields", ["treatment.scada_tag"], fields=[vs.field("products", "tags")]),
+             tags=[{"key": "tag_taxonomy", "value": "basic"}]),
+        vs.spec("VREQ-033", "other", [], kind="count_target", count={"entity": "metric_views", "op": "between", "value": 100, "low": 50}),
+        vs.spec("VREQ-034", "set_fields", ["treatment.scada_tag"], fields=[vs.field("attributes", "value_regex")]),
+    ], ids=lambda s: s["id"])
+    def test_model_content_is_scored(self, spec):
+        verdict = _verify(spec)
+        assert verdict["status"] in ("failed", "partial"), verdict
+        assert verdict["status"] != "informational"

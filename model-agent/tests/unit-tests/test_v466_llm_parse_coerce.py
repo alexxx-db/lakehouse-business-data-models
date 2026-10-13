@@ -84,8 +84,10 @@ def test_helper_defined_once():
 
 
 def test_all_llm_parse_sites_present():
-    """35 call sites (23 json-parse + 12 smart_worker_loop) + 1 def = 36."""
-    assert _full_src().count("_v466_coerce_llm_obj") == 36
+    """36 call sites (24 json-parse, including the v5.3.3 requirement-spec reply, + 12 smart_worker_loop) + 1 def = 37."""
+    src = _full_src()
+    assert src.count("_v466_coerce_llm_obj") == 37
+    assert 'site="vreq-spec")' in src
 
 
 def test_nested_list_coercions_present():

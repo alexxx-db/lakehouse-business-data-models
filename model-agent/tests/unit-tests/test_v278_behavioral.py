@@ -13,7 +13,13 @@ v2.7.8:
 """
 import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB_PATH = Path(__file__).parent.parent.parent / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -73,7 +79,14 @@ def test_pregroup_has_no_hardcoded_run_specific_literals():
     assert '"gov_transport_source_table" in text' not in block, "hardcoded run-specific tag key must be gone"
     assert '"gov_transport_business_glossary_term" in text' not in block
     assert '"exactly 3 metric" in text' not in block, "hardcoded count literal must be gone"
-    assert "pregroup-generic-no-run-overfit" in block, "generic-intent sentinel missing"
+    model = {"model": {"domains": [{"name": "hr", "products": [{"name": "employee", "attributes": [{"name": "employee_id"}, {"name": "org_id"}]}]}]}}
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["hr.employee"], new_name="worker"),
+                vs.spec("V2", "add_fk", ["hr.employee.org_id"], fk_target="hr.employee.employee_id"),
+                vs.spec("V3", "set_fields", ["hr.employee"], fields=[vs.field("attributes", "tags")], tags=[{"key": "source_table", "value": "emp"}]))
+    literal = "exactly 3 metric views; gov_transport_source_table; gov_transport_business_glossary_term"
+    vreqs = [ah.RawVREQ(vreq_id=f"V{i}", intent=literal, target="hr.employee", source_quote=literal, source_chunk_id="c") for i in range(1, 5)]
+    groups = {key: [v.vreq_id for v in items] for key, items in ah.deterministic_pre_group(vreqs).items()}
+    assert groups == {"rename": ["V1"], "fk": ["V2"], "tag_apply": ["V3"], "other": ["V4"]}, groups
 
 
 # ---------- the recovery is GENERIC across entity types (not MV-only) ----------
@@ -110,17 +123,8 @@ def test_recovery_fires_on_any_null_count_and_gapfills_only():
 
 # ---------- behavioral: enforcement gate consumes the recovered field ----------
 
-def _extract_gate_fn():
-    src = _nb_src()
-    start = src.find("def _vibe_exact_metric_view_directive(")
-    nxt = src.find("\ndef ", start + 1)
-    ns = {}
-    exec(compile(src[start:nxt], "<gate>", "exec"), ns)
-    return ns["_vibe_exact_metric_view_directive"]
-
-
 def test_gate_none_then_exact_after_recovery():
-    gate = _extract_gate_fn()
+    gate = ah._vibe_exact_metric_view_directive
     pre = {"vibe_classification": {"sizing_directives": {"max_metric_views": None, "explicit_metric_views": []}}}
     assert gate(pre) == (None, [])
     post = {"vibe_classification": {"sizing_directives": {"max_metric_views": 3, "min_metric_views": 3,

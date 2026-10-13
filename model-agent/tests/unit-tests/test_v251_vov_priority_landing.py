@@ -1,11 +1,14 @@
 import copy
 import re
-import time
-from dataclasses import dataclass
+import sys
+from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Optional
 
-from notebook_source_util import notebook_concat_source, slice_function_source, vov_ledger_globals
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source  # noqa: E402
 
 
 SRC = notebook_concat_source()
@@ -27,133 +30,31 @@ class _ListLogger:
         self.error_msgs.append(str(msg))
 
 
-@dataclass
-class RawVREQ:
-    vreq_id: str
-    intent: str
-    target: str
-    source_quote: str
-    source_chunk_id: str
-    severity: str = "medium"  # v2.9.6 alias=vov-severity-first
-    is_user_directive: bool = False  # v2.9.6 alias=vov-merge-user-first
-    priority_id: int = 9999  # v2.9.6 alias=vov-severity-first
-
-
-@dataclass
-class VReqOutcome:
-    batch_id: str
-    vreq_ids: tuple[str, ...]
-    status: str
-    diagnostic: str
-    attempts: int
-
-
-@dataclass
-class VibeOutline:
-    sections: tuple[Any, ...]
-    full_text: str
-    global_constraints: tuple[Any, ...]
-    declared_entities_global: tuple[Any, ...]
-
-
-@dataclass
-class PipelineResult:
-    initial_model: dict
-    final_model: dict
-    outline: VibeOutline
-    raw_vreqs: list[Any]
-    batches: list[Any]
-    outcomes: list[VReqOutcome]
-    coverage_pct: float
-    rejected_handlers: list[tuple[str, str]]
-    deferred_vreqs: list = None  # v2.9.6 alias=vov-defer-low-severity (defaulted for the test stub)
-    vibe_input_vreqs: dict = None
-
-
 def _exec_v251_namespace():
-    ns = {
-        **vov_ledger_globals(),
-        "__name__": "_v251_test_ns",
-        "copy": copy,
-        "re": re,
-        "time": time,
-        "Optional": Optional,
-        "RawVREQ": RawVREQ,
-        "VReqOutcome": VReqOutcome,
-        "VibeOutline": VibeOutline,
-        "PipelineResult": PipelineResult,
-        "Handler": object,
-        "Batch": object,
-        "InvariantSnapshot": object,
-        "LLMClient": object,
-        "logger": _ListLogger(),
-        # v2.9.6 alias=vov-severity-first — the sort const used by the extracted helpers.
-        "_V296_SEV_RANK": {"critical": 0, "high": 1, "medium": 2, "low": 3},
-        # v4.1.5 test-harness debt fix: _v320_vov_calls/_reset_calls read these module-level
-        # globals (the VOV LLM-bridge call counter + its lock). The isolated namespace must
-        # provide them or run_vov_pipeline NameErrors mid-pipeline. Stub with real values.
-        "_VOV_BRIDGE_CALL_LOCK": __import__("threading").Lock(),
-        "_VOV_BRIDGE_CALL_COUNT": 0,
-        "_VIBE_SCOPE_RUNTIME": None,
-        "_vibe_scope_start_requested": lambda *args, **kwargs: None,
+    return dict(vars(ah))
+
+
+def _sales_model():
+    return {
+        "model": {
+            "domains": [
+                {
+                    "name": "sales",
+                    "products": [
+                        {"name": "order", "attributes": [{"name": "order_id", "type": "BIGINT"}]},
+                        {"name": "invoice", "attributes": [{"name": "invoice_id", "type": "BIGINT"}]},
+                    ],
+                }
+            ]
+        }
     }
-    ordered_defs = [
-        "_V251_PRIORITY_LINE_RE",
-        # v2.9.6: run_vov_pipeline + _v251_priority_to_vreq now reference these helpers.
-        "_v296_norm_severity",
-        "_v296_sev_rank",
-        "_v296_sort_vreqs",
-        "_v251_parse_priorities",
-        "_v251_priority_to_vreq",
-        "_v251_model_root",
-        "_v251_product_list",
-        "_v251_find_domain",
-        "_v251_find_product",
-        "_v251_find_attribute_row",
-        "_v251_iter_attribute_rows",
-        "_v251_parse_priority_details",
-        "_v410_resolve_pk",
-        "_v415_complete_connect_details",
-        "_v251_prevalidate_priority",
-        "_v327_infer_coltype",
-        "_vibe_scope_note_rename",
-        "_v251_apply_priority_deterministic",
-        "_v310_apply_rename_ledger",
-        "_v251_apply_pass1_priorities",
-        "_apply_handler_with_retry",
-        "_v328_pack_budget",
-        # v4.1.5 test-harness debt fix: run_vov_pipeline transitively calls these module-level
-        # helpers; the hand-curated namespace list had drifted (pre-existing failures at v4.1.4
-        # baseline aafc1c8 too). Add the real defs so the run_vov_pipeline tests can execute.
-        "_v207_get_runtime_budget",
-        "_v260_diagnose_slip",
-        "_v260_priority_to_vreq_with_feedback",
-        "_v261_vreq_with_feedback",
-        "_v292_audit_extraction_completeness",
-        "_v292_residual_signature",
-        "_v299_collapse_preservation_vreqs",
-        "_v299_is_preservation_only",
-        "_v320_vov_calls",
-        "_v320_vov_reset_calls",
-        "_v330_recover_dropped_priorities",
-        "_v413_vreq_to_det_op",
-        "_v413_apply_det_op_inplace",
-        "_vibe_scope_apply_pass1",
-        "_vibe_scope_apply_det_op",
-        "_vibe_scope_engine_gate",
-        "_vibe_input_absorbed",
-        "_vibe_input_map_vreqs",
-        "run_vov_pipeline",
-    ]
-    for name in ordered_defs:
-        if name == "_V251_PRIORITY_LINE_RE":
-            idx = SRC.find("_V251_PRIORITY_LINE_RE = re.compile(")
-            end = SRC.find("\n\n", idx)
-            chunk = SRC[idx:end]
-        else:
-            chunk = slice_function_source(name, source=SRC)
-        exec(compile(chunk, f"<{name}>", "exec"), ns)
-    return ns
+
+
+def _connect_spec(vid, table, column, fk_target):
+    return vs.spec(vid, "add_column", [table], columns=[{"name": column, "type": "BIGINT"}], fk_target=fk_target)
+
+
+PRIORITY_1 = "**PRIORITY 1 — connect_table: sales.invoice** — add column order_id (BIGINT) with FK to sales.order.order_id"
 
 
 def test_v251_version_and_aliases_present():
@@ -193,9 +94,14 @@ def test_v251_prevalidate_rejects_missing_target_and_fk():
             ]
         }
     }
+    vs.register(ah, model,
+                _connect_spec("P001", "sales.invoice", "order_id", "sales.order.order_id"),
+                _connect_spec("P002", "sales.order", "invoice_id", "sales.invoice.invoice_id"),
+                _connect_spec("P003", "sales.order", "parent_order_id", "sales.order.order_id"))
 
     p_missing_product = {
         "priority_id": 1,
+        "vreq_id": "P001",
         "action": "connect_table",
         "target": "sales.invoice",
         "reason": "add column order_id (BIGINT) with FK to sales.order.order_id",
@@ -206,13 +112,19 @@ def test_v251_prevalidate_rejects_missing_target_and_fk():
 
     p_missing_fk = {
         "priority_id": 2,
+        "vreq_id": "P002",
         "action": "connect_table",
         "target": "sales.order",
         "reason": "add column invoice_id (BIGINT) with FK to sales.invoice.invoice_id",
     }
-    ok2, reason2 = prevalidate(p_missing_fk, model, parse_details(p_missing_fk))
+    details = parse_details(p_missing_fk)
+    assert (details["column"], details["fk_target"]) == ("invoice_id", "sales.invoice.invoice_id")
+    ok2, reason2 = prevalidate(p_missing_fk, model, details)
     assert ok2 is False
     assert reason2 == "fk-target-missing"
+
+    p_resolvable = dict(p_missing_fk, priority_id=3, vreq_id="P003")
+    assert prevalidate(p_resolvable, model, parse_details(p_resolvable)) == (True, "")
 
 
 def test_v251_atomic_rename_product_updates_fks_and_drops_old():
@@ -244,8 +156,18 @@ def test_v251_atomic_rename_product_updates_fks_and_drops_old():
             ]
         }
     }
+    vs.register(ah, model, vs.spec("P004", "rename_product", ["store.store_cluster"], new_name="cluster"),
+                vs.spec("P005", "rename_product", ["store.store_cluster"], new_name="cluster because duplicate"))
+    misread = {"priority_id": 5, "vreq_id": "P005", "action": "rename_product", "target": "store.store_cluster",
+               "reason": "rename to cluster because duplicate"}
+    before = copy.deepcopy(model)
+    assert ah.vreq_spec("P005")["interpretable"] is False
+    assert apply_det(misread, parse_details(misread), model, logger) == (False, "rename-new-name-missing")
+    assert model == before
+
     priority = {
         "priority_id": 4,
+        "vreq_id": "P004",
         "action": "rename_product",
         "target": "store.store_cluster",
         "reason": "rename to cluster because duplicate",
@@ -292,8 +214,18 @@ def test_v251_atomic_rename_attribute_updates_foreign_keys():
             ]
         }
     }
+    vs.register(ah, model,
+                vs.spec("P028", "rename_column", ["inventory.shrinkage_event.shared_employee_id"], new_name="approver_employee_id"),
+                vs.spec("P029", "rename_column", ["inventory.shrinkage_event.shared_employee_id"], new_name="approver employee id"))
+    misread = {"priority_id": 29, "vreq_id": "P029", "action": "rename_attribute", "target": "inventory.shrinkage_event",
+               "reason": "rename column shared_employee_id to approver employee id"}
+    before = copy.deepcopy(model)
+    assert apply_det(misread, parse_details(misread), model, _ListLogger()) == (False, "rename-names-missing")
+    assert model == before
+
     priority = {
         "priority_id": 28,
+        "vreq_id": "P028",
         "action": "rename_attribute",
         "target": "inventory.shrinkage_event",
         "reason": "rename column shared_employee_id to approver_employee_id",
@@ -310,23 +242,14 @@ def test_v251_atomic_rename_attribute_updates_foreign_keys():
     assert fk == "inventory.shrinkage_event.approver_employee_id"
 
 
-def test_v251_pass1_applies_resolved_and_marks_unresolvable():
+def test_v251_pass1_applies_resolved_and_requeues_unresolvable():
     ns = _exec_v251_namespace()
     apply_pass1 = ns["_v251_apply_pass1_priorities"]
 
-    model = {
-        "model": {
-            "domains": [
-                {
-                    "name": "sales",
-                    "products": [
-                        {"name": "order", "attributes": [{"name": "order_id", "type": "BIGINT"}]},
-                        {"name": "invoice", "attributes": [{"name": "invoice_id", "type": "BIGINT"}]},
-                    ],
-                }
-            ]
-        }
-    }
+    model = _sales_model()
+    vs.register(ah, model,
+                _connect_spec("P001", "sales.invoice", "order_id", "sales.order.order_id"),
+                _connect_spec("P002", "sales.payment", "invoice_id", "sales.invoice.invoice_id"))
     priorities = [
         {
             "priority_id": 1,
@@ -347,58 +270,33 @@ def test_v251_pass1_applies_resolved_and_marks_unresolvable():
     logger = _ListLogger()
     updated, outcomes, residual = apply_pass1(priorities, model, logger)
     assert updated is model
-    assert residual == []
-    assert outcomes[0].status == "applied"
-    assert outcomes[1].status == "structural_unresolvable"
-    assert "[unresolvable] needs-sourcing-decision" in outcomes[1].diagnostic
-    assert any("v251-vov-target-prevalidate FIRED" in m for m in logger.warn_msgs)
+    assert [(o.batch_id, o.status) for o in outcomes] == [("P001", "applied")]
+    assert [p["vreq_id"] for p in residual] == ["P002"]
+    invoice = model["model"]["domains"][0]["products"][1]["attributes"]
+    assert [(a["name"], a.get("foreign_key_to")) for a in invoice if a["name"] == "order_id"] == [("order_id", "sales.order.order_id")]
+    assert any("v251-vov-target-prevalidate FIRED" in m and "reason=target-domain-product-missing" in m for m in logger.warn_msgs)
     assert any("v251-vov-pass1-deterministic FIRED" in m for m in logger.info_msgs)
 
 
-def test_v251_run_pipeline_uses_deterministic_first_without_llm_batches():
-    ns = _exec_v251_namespace()
-    run_pipeline = ns["run_vov_pipeline"]
-
+def test_v251_run_pipeline_uses_deterministic_first_without_llm_batches(monkeypatch):
     called = {"batch_vreqs": 0}
 
     def _batch_vreqs(*args, **kwargs):
         called["batch_vreqs"] += 1
         return []
 
-    ns["batch_vreqs"] = _batch_vreqs
-    ns["build_outline"] = lambda *a, **k: None
-    ns["chunk_vibe"] = lambda *a, **k: []
-    ns["extract_all"] = lambda *a, **k: []
-    ns["dedupe_vreqs"] = lambda *a, **k: []
-    ns["capture_invariants"] = lambda *a, **k: None
-    ns["synthesize_batch_handlers"] = lambda *a, **k: []
-    ns["plan_waves"] = lambda *a, **k: []
-    ns["_merge_partial"] = lambda model, new_m, targets: model
-
-    vibe_text = "**PRIORITY 1 — connect_table: sales.invoice** — add column order_id (BIGINT) with FK to sales.order.order_id"
-    model = {
-        "model": {
-            "domains": [
-                {
-                    "name": "sales",
-                    "products": [
-                        {"name": "order", "attributes": [{"name": "order_id", "type": "BIGINT"}]},
-                        {"name": "invoice", "attributes": [{"name": "invoice_id", "type": "BIGINT"}]},
-                    ],
-                }
-            ]
-        }
-    }
-    result = run_pipeline(vibe_text, model, llm=object(), user_pinned_domains=(), user_pinned_products=(), parallel=False)
+    monkeypatch.setitem(ah.__dict__, "batch_vreqs", _batch_vreqs)
+    llm = vs.SpecOnlyLLM([_connect_spec("P001", "sales.invoice", "order_id", "sales.order.order_id")])
+    result = ah.run_vov_pipeline(PRIORITY_1, _sales_model(), llm=llm, user_pinned_domains=(), user_pinned_products=(), parallel=False)
     assert called["batch_vreqs"] == 0
     assert result.coverage_pct == 100.0
-    assert any(o.status == "applied" for o in result.outcomes)
+    assert [o.status for o in result.outcomes if "P001" in o.vreq_ids] == ["applied"]
+    assert len(llm.prompts) == 1 and vs.is_classifier_call(*llm.prompts[0])
+    invoice = result.final_model["model"]["domains"][0]["products"][1]["attributes"]
+    assert any(a["name"] == "order_id" and a.get("foreign_key_to") == "sales.order.order_id" for a in invoice)
 
 
-def test_v251_run_pipeline_reapplies_missing_priorities_for_configured_loops():
-    ns = _exec_v251_namespace()
-    run_pipeline = ns["run_vov_pipeline"]
-
+def test_v251_run_pipeline_reapplies_missing_priorities_for_configured_loops(monkeypatch):
     calls = {"pass1": 0, "batch_vreqs": 0}
 
     def _fake_pass1(priorities, model, logger):
@@ -406,38 +304,20 @@ def test_v251_run_pipeline_reapplies_missing_priorities_for_configured_loops():
         out = []
         for p in priorities:
             vid = str(p.get("vreq_id") or f"P{int(p.get('priority_id') or 0):03d}")
-            out.append(VReqOutcome(batch_id=vid, vreq_ids=(vid,), status="skipped_unsafe", diagnostic="forced-miss", attempts=1))
+            out.append(ah.VReqOutcome(batch_id=vid, vreq_ids=(vid,), status="skipped_unsafe", diagnostic="forced-miss", attempts=1))
         return model, out, []
 
     def _batch_vreqs(*args, **kwargs):
         calls["batch_vreqs"] += 1
         return []
 
-    ns["_v251_apply_pass1_priorities"] = _fake_pass1
-    ns["batch_vreqs"] = _batch_vreqs
-    ns["capture_invariants"] = lambda *a, **k: None
-    ns["synthesize_batch_handlers"] = lambda *a, **k: []
-    ns["plan_waves"] = lambda *a, **k: []
-    ns["_merge_partial"] = lambda model, new_m, targets: model
-
-    vibe_text = "**PRIORITY 1 — connect_table: sales.invoice** — add column order_id (BIGINT) with FK to sales.order.order_id"
-    model = {
-        "model": {
-            "domains": [
-                {
-                    "name": "sales",
-                    "products": [
-                        {"name": "order", "attributes": [{"name": "order_id", "type": "BIGINT"}]},
-                        {"name": "invoice", "attributes": [{"name": "invoice_id", "type": "BIGINT"}]},
-                    ],
-                }
-            ]
-        }
-    }
-    result = run_pipeline(
-        vibe_text,
-        model,
-        llm=object(),
+    monkeypatch.setitem(ah.__dict__, "_v251_apply_pass1_priorities", _fake_pass1)
+    monkeypatch.setitem(ah.__dict__, "batch_vreqs", _batch_vreqs)
+    llm = vs.SpecOnlyLLM([_connect_spec("P001", "sales.invoice", "order_id", "sales.order.order_id")])
+    result = ah.run_vov_pipeline(
+        PRIORITY_1,
+        _sales_model(),
+        llm=llm,
         user_pinned_domains=(),
         user_pinned_products=(),
         parallel=False,

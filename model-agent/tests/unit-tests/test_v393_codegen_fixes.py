@@ -1,5 +1,7 @@
 import json, os, types, logging
 
+import agent_helpers as ah
+import vreq_spec_util as vs
 from notebook_source_util import agent_version_line, cell_containing
 
 NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -54,54 +56,47 @@ def _model_with(domain, product, attrs):
     ]}]}
 
 
+def _satisfied(model, spec):
+    vs.register(ah, {"model": model}, spec)
+    return ah._vov_deterministic_satisfied(_batch("", ()), _handler(), model)
+
+
 # ============================================================
 # FIX 1 (behavioral): deterministic already-satisfied credit
 # ============================================================
-def test_deterministic_satisfied_pk_present_credits():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
-    m = _model_with("hr", "employee", [{"name": "employee_id", "is_primary_key": True}])
-    ok, ev = fn(_batch("ensure primary key on hr.employee", [("hr", "employee")]), _handler(), m)
-    assert ok is True, ev
-    assert "class=pk" in ev
-
-
-def test_deterministic_satisfied_pk_missing_does_not_credit():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
-    m = _model_with("hr", "employee", [{"name": "name", "is_primary_key": False}])
-    ok, ev = fn(_batch("ensure primary key on hr.employee", [("hr", "employee")]), _handler(), m)
-    assert ok is False, ev
-    assert "no primary key" in ev
-
-
-def test_deterministic_satisfied_fk_isolated_does_not_credit():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
-    m = _model_with("proj", "plan", [{"name": "id", "foreign_key_to": None}])
-    ok, ev = fn(_batch("ensure proj.plan is not isolated (has a foreign key)", [("proj", "plan")]), _handler(), m)
-    assert ok is False, ev
-    assert "isolated" in ev
-
-
 def test_deterministic_satisfied_fk_outbound_credits():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("proj", "plan", [{"name": "proj_id", "foreign_key_to": "proj.project.id"}])
-    ok, ev = fn(_batch("ensure proj.plan is not isolated, add foreign key", [("proj", "plan")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "add_fk", ["proj.plan.proj_id"], fk_target="proj.project.id"))
     assert ok is True, ev
+    assert "1/1 column(s) reference proj.project.id" in ev
+
+
+def test_deterministic_satisfied_fk_absent_does_not_credit():
+    m = _model_with("proj", "plan", [{"name": "proj_id", "foreign_key_to": None}])
+    ok, ev = _satisfied(m, vs.spec("V1", "add_fk", ["proj.plan.proj_id"], fk_target="proj.project.id"))
+    assert ok is False, ev
+    assert "0/1 column(s) reference proj.project.id" in ev
+
+
+def test_deterministic_satisfied_fk_without_a_target_does_not_credit():
+    m = _model_with("proj", "plan", [{"name": "proj_id", "foreign_key_to": "proj.project.id"}])
+    ok, ev = _satisfied(m, vs.spec("V1", "add_fk", ["proj.plan.proj_id"]))
+    assert ok is False, ev
+    assert "no interpretable spec" in ev
 
 
 def test_deterministic_satisfied_unknown_class_is_conservative():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("hr", "employee", [{"name": "x"}])
-    ok, ev = fn(_batch("do something vague to hr.employee", [("hr", "employee")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "other", ["hr.employee"]))
     assert ok is False, ev
-    assert "not deterministically checkable" in ev
+    assert "not idempotency-checkable" in ev
 
 
 def test_deterministic_satisfied_missing_target_is_conservative():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("hr", "employee", [{"name": "employee_id", "is_primary_key": True}])
-    ok, ev = fn(_batch("ensure primary key on sales.order", [("sales", "order")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "add_column", ["sales.order.order_note"], columns=[{"name": "order_note", "type": "STRING"}]))
     assert ok is False, ev
-    assert "not found" in ev
+    assert "0/1 table(s) carry" in ev
 
 
 # ============================================================
@@ -196,31 +191,27 @@ def test_sandbox_dump_relocated_to_logs():
 # GAP A (behavioral): deterministic TYPE-credit class (live v3.9.2 ~25 retype raises)
 # ============================================================
 def test_deterministic_type_credit_all_correct_credits():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("site", "instruction", [
         {"name": "instruction_date", "type": "TIMESTAMP"},
         {"name": "is_active", "type": "BOOLEAN"},
         {"name": "unit_price", "type": "DECIMAL"},
     ])
-    ok, ev = fn(_batch("retype temporal attribute on site.instruction", [("site", "instruction")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "retype_column", ["site.instruction.instruction_date"], column_type="TIMESTAMP"))
     assert ok is True, ev
-    assert "class=type" in ev
+    assert "1/1 column(s) typed TIMESTAMP" in ev
 
 
 def test_deterministic_type_credit_string_mistype_does_not_credit():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("site", "instruction", [
         {"name": "instruction_date", "type": "STRING"},  # canonical-named but still STRING -> mistyped
     ])
-    ok, ev = fn(_batch("retype temporal attribute on site.instruction", [("site", "instruction")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "retype_column", ["site.instruction.instruction_date"], column_type="TIMESTAMP"))
     assert ok is False, ev
-    assert "STRING-typed" in ev
 
 
 def test_deterministic_type_credit_boolean_flag_string_blocks():
-    fn = _load_helper("_vov_deterministic_satisfied", "\ndef _apply_handler_with_retry(")
     m = _model_with("hr", "employee", [{"name": "is_manager", "type": "STRING"}])
-    ok, ev = fn(_batch("retype boolean-named attribute to boolean on hr.employee", [("hr", "employee")]), _handler(), m)
+    ok, ev = _satisfied(m, vs.spec("V1", "retype_column", ["hr.employee.is_manager"], column_type="BOOLEAN"))
     assert ok is False, ev
 
 
@@ -300,7 +291,6 @@ def test_gap_fired_anchors_present():
     s = _full()
     assert "vov-ast-allow-yield FIRED" in s
     assert "vov-rebind-aliased-import FIRED" in s
-    assert "vov-deterministic-type-credit" in s
     assert "ast.Yield, ast.YieldFrom," in s
 
 

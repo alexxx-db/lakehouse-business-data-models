@@ -277,7 +277,7 @@ def test_f1_chunks_carry_their_heading_ancestry():
     product_chunk = next(c for c in chunks if "Rename to" in c.text)
     assert product_chunk.text.startswith("## Domain: procurement\n#### Product: livestock_procurement\n")
     assert vibe[product_chunk.byte_start:product_chunk.byte_end].startswith("#### Product:")
-    assert next(c for c in chunks if c.text.startswith("## Domain: procurement")).text == "## Domain: procurement\n\n"
+    assert [c.text for c in chunks] == [product_chunk.text], "a heading-only section is skipped, not extracted as its own chunk"
 
 
 def test_f1_extraction_prompt_requires_fully_qualified_targets():

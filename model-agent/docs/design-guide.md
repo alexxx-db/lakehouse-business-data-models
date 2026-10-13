@@ -191,7 +191,7 @@ The pipeline executes a series of stages, each with a specific purpose, quality 
 ### Stage 2: Interpreting Instructions (Vibe mode only)
 - **Purpose:** Parse natural-language vibes into structured action plan
 - **Duration:** 10-30 seconds
-- **What happens:** An LLM reads the vibe text into discrete requirements and classifies the mode (surgical/holistic/generative). A second LLM call then states, for each requirement, exactly what it changes as a structured spec (action, targets, fields, values, counts, policies, closed value lists). Every deterministic pass reads those specs; no code reads the vibe text with keywords or regex. A requirement the LLM cannot read after retries is marked not interpreted and reported, never guessed.
+- **What happens:** An LLM reads the vibe text into discrete requirements and classifies the mode (surgical/holistic/generative). A second LLM call then states, for each requirement, exactly what it changes as a structured spec (action, targets, fields, values, counts, policies, closed value lists). Every deterministic pass reads those specs; no code reads the vibe text with keywords or regex. A requirement the LLM cannot read after retries is marked not interpreted and reported, never guessed. The same parse states which cleanup changes the user permits or forbids (removing, renaming or merging domains and tables, junction tables, enrichment, reduction), and every cleanup pass reads those permissions. When a long vibe with several heading sections comes back with two requirements or fewer, each section is parsed on its own. A spec can also clear metadata fields, merge a table into another (its missing columns and every foreign key move to the target), retype several columns with a type each, or set a structural rule such as a primary key on every table, resolvable foreign keys or no foreign key cycles.
 - **Quality check:** Constraint extraction, requirement parsing
 - **Progress budget:** 1.0%
 
@@ -970,7 +970,7 @@ The pipeline runs many LLM calls in parallel (product generation across domains,
 When a user provides natural-language vibes, the system follows a six-phase lifecycle:
 
 1. **Parse** — Analyze the vibe text into structured requirements: each with an intent (drop, create, rename, merge, etc.), scope (model, domain, product, attribute), mode classification, and priority.
-2. **Plan** — Route each requirement to an action primitive, build an execution plan respecting mutation budgets and hard constraints extracted from phrases like "do not", "must not", "never".
+2. **Plan** — Route each requirement to an action primitive and build an execution plan within the mutation budgets and the cleanup permissions the LLM read from the vibe.
 3. **Execute** — Apply mutations within the budget, respecting constraints. Each pipeline step is wrapped to pin requirements and track progress.
 4. **Validate** — Run verification checks against the modified model to confirm each requirement was fulfilled.
 5. **Remediate** — Auto-fix failed verifications where possible.

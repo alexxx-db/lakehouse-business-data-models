@@ -6,7 +6,7 @@ test that demonstrates the patch changes observable state. Static-grep assertion
 ("alias=foo is in the source") are SMOKE checks only — paired with behavioural tests.
 
 These tests:
-1. Extract the SelfFixer cell from the notebook (no notebook execution).
+1. Load the SelfFixer through agent_helpers (every notebook code cell, Databricks runtime stubbed).
 2. Inject minimal stubs for execute_in_sandbox, ai_agent, logger.
 3. Drive `fix_all_unfulfilled` through realistic unfulfilled REQ scenarios.
 4. Assert observable state changes on the canonical `model` dict.
@@ -20,12 +20,26 @@ All aliases tested:
 import copy
 import json
 import re
+import sys
 from collections import namedtuple
 from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+
 NB_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_sizing_bounds():
+    saved = dict(ah._USER_SIZING_BOUNDS_RUNTIME)
+    ah._USER_SIZING_BOUNDS_RUNTIME.clear()
+    yield
+    ah._USER_SIZING_BOUNDS_RUNTIME.clear()
+    ah._USER_SIZING_BOUNDS_RUNTIME.update(saved)
 
 
 # ---------------------------------------------------------------------------
@@ -103,20 +117,8 @@ class _FakeAIAgent:
 
 
 def _build_selffixer_namespace():
-    """Execute the SelfFixer cell in an isolated namespace and return it."""
-    src = _load_selffixer_cell()
-    from notebook_source_util import pk_predicate_globals, user_removed_fk_globals, vov_ledger_globals
-
-    ns = {**vov_ledger_globals(), **user_removed_fk_globals(), "__name__": "__test_selffixer__", "_VIBE_SCOPE_RUNTIME": None, "_USER_SIZING_BOUNDS_RUNTIME": {}, "re": re}
-    from notebook_source_util import notebook_concat_source, slice_function_source
-    ns.update(pk_predicate_globals())
-    for name in ("_vibe_scope_digest_marks", "_vibe_scope_digest_state", "shrink_is_user_requested", "_v490_user_product_bounds",
-                 "_vov_text_allows_attribute_removal"):
-        exec(compile(slice_function_source(name), f"<{name}>", "exec"), ns)
-    exec(compile(re.search(r"^_VOV_ATTR_REMOVAL_RE = re\.compile\(.*?\n\n", notebook_concat_source(), re.S | re.M).group(0),
-                 "<_VOV_ATTR_REMOVAL_RE>", "exec"), ns)
-    exec(compile(src, "<selffixer-cell>", "exec"), ns)
-    return ns
+    """The SelfFixer surface as the notebook defines it, with every helper it calls."""
+    return dict(vars(ah))
 
 
 # ---------------------------------------------------------------------------

@@ -56,6 +56,7 @@ def test_call_site_precedes_sandbox_loop():
 #     would surface that error instead of a clean success. ---
 def test_move_req_lands_without_sandbox():
     import agent_helpers as ah
+    import vreq_spec_util as vs
     if not hasattr(ah, "SelfFixer"):
         pytest.skip("SelfFixer not loaded in agent_helpers")
 
@@ -67,6 +68,7 @@ def test_move_req_lands_without_sandbox():
     req = {"id": "VREQ-046",
            "text": "P17: Move the product procurement.benefit_plan to the workforce domain "
                    "because benefit plans are an HR function."}
+    vs.register(ah, model, vs.spec("VREQ-046", "move_product", ["procurement.benefit_plan"], destination_domain="workforce"))
     ok, applied, ev = fixer._fix_one_req(model, req, per_req_retries=2)
     assert ok is True, ev
     proc = [d for d in model["model"]["domains"] if d["name"] == "procurement"][0]

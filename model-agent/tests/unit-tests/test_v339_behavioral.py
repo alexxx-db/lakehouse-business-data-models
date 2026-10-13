@@ -3,12 +3,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from notebook_source_util import notebook_concat_source, exec_function_namespace
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+from version_test_util import assert_valid_single_digit_semver, assert_version_at_least  # noqa: E402
 
 
 def _directive():
-    ns = exec_function_namespace("_vibe_exact_metric_view_directive")
-    return ns["_vibe_exact_metric_view_directive"]
+    return ah._vibe_exact_metric_view_directive
 
 
 def test_rc4_toplevel_sizing_fallback_fires_when_nested_empty():
@@ -57,18 +58,6 @@ def test_rc4_silent_when_no_mv_directive():
     assert names == [], names
 
 
-def test_v339_aliases_present():
-    src = notebook_concat_source()
-    for alias in [
-        "mv-exact-sizing-toplevel-fallback",
-        "verifier-mv-source-authoritative",
-        "verifier-catalog-key-fix",
-        "verifier-declared-context-inventory",
-        "verifier-subdomain-inventory",
-    ]:
-        assert src.count(alias) >= 1, f"missing alias {alias}"
-
-
 def test_v339_version_constant():
-    src = notebook_concat_source()
-    assert '__AGENT_VERSION__ = "4.2.7"' in src
+    assert_valid_single_digit_semver()
+    assert_version_at_least("4.2.7")

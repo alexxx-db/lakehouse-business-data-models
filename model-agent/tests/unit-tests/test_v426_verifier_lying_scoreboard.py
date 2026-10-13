@@ -9,8 +9,16 @@ Root causes (coffee_roastery base-MVM run <run_id> reported 33.3% adherence on a
       silo / cycle) carry scope_target "*", so _verify_deterministic's per-target loop skips them, they
       fall through to a blind-partial, route to the LLM verifier, and false-fail on a transient
       SparkException.
+
+v5.3.3: the verdict comes from the LLM spec of each requirement (_verify_from_spec): spec targets match the
+physical names on their collapsed form, and the model-wide "no siloed table" rule is the fk_density policy.
 """
-import json, re, os, textwrap, pytest
+import json, re, os, sys, textwrap, logging, pytest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -68,8 +76,16 @@ def _attr(dom, prod, name, is_pk=False, fk=None):
             "is_primary_key": is_pk, "foreign_key_to": fk}
 
 
+def _verify(text, spec, prods, attrs=(), scope="model", scope_targets=None):
+    vs.register(ah, {"model": {"domains": []}}, spec)
+    orch = ah.VibeOrchestrator({"logger": logging.getLogger("test_v426"), "config": {}, "vibe_modelling_instructions": text,
+                                "operation": "new base model"})
+    domains = [{"domain": d} for d in dict.fromkeys(p["domain"] for p in prods)]
+    return orch._verify_deterministic(_Req(text, rid=spec["id"], scope=scope, scope_targets=scope_targets), domains, prods, list(attrs))
+
+
 # ============================================================================
-# FIX (a): name-normalization in _verify_domain_create_coverage
+# FIX (a): spec targets match the physical names on their collapsed form
 # ============================================================================
 
 # Faithful reproduction of the live coffee_roastery VREQ-002: the vibe names the domain with SPACES
@@ -84,12 +100,13 @@ def _spaced_model_prods():
     return _prods([(PHYSICAL, p) for p in NAMED])
 
 
+def _create_spec():
+    return vs.spec("VREQ-002", "add_product", ["%s.%s" % (DISPLAY, p) for p in NAMED])
+
+
 def test_a_post_patch_spaced_domain_name_fulfilled():
-    # POST-PATCH: the collapsed-form match credits the physically-present domain -> fulfilled.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    req = _Req(VREQ_TEXT, rid="VREQ-002", scope="domain", scope_targets=[DISPLAY])
-    v = obj._verify_domain_create_coverage(req, _spaced_model_prods())
-    assert v is not None and v["status"] == "fulfilled", v
+    v = _verify(VREQ_TEXT, _create_spec(), _spaced_model_prods(), scope="domain", scope_targets=[DISPLAY])
+    assert v["status"] == "fulfilled" and "4/4 target(s) present" in v["evidence"], v
 
 
 def test_a_pre_patch_spaced_domain_name_false_fails():
@@ -105,21 +122,15 @@ def test_a_pre_patch_spaced_domain_name_false_fails():
 
 
 def test_a_genuinely_absent_domain_still_failed():
-    # NON-TAUTOLOGY must-fail: a domain that truly does not exist anywhere must still fail post-patch.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    req = _Req(VREQ_TEXT, rid="VREQ-002", scope="domain", scope_targets=[DISPLAY])
-    v = obj._verify_domain_create_coverage(req, _prods([("customer_loyalty", "customer")]))
-    assert v is not None and v["status"] == "failed", v
+    v = _verify(VREQ_TEXT, _create_spec(), _prods([("customer_loyalty", "customer")]), scope="domain", scope_targets=[DISPLAY])
+    assert v["status"] == "failed" and "0/4 target(s) present" in v["evidence"], v
 
 
 # ============================================================================
-# FIX (b): deterministic structural-invariant verifier
+# FIX (b): the model-wide "no siloed table" rule is the fk_density policy spec
 # ============================================================================
 
-PK_TXT = "Every table in the model must have a primary key."
-FK_TXT = "All foreign keys must resolve to a valid target (no dangling references)."
 SILO_TXT = "There must be no siloed tables; every table must connect to the rest of the model."
-CYC_TXT = "The foreign-key relationship graph must contain no cycles."
 
 
 def _clean_model():
@@ -135,77 +146,23 @@ def _clean_model():
     return prods, attrs
 
 
-def _bind_struct():
-    return _bind(NB, "_verify_structural_invariant")
+def _silo_spec():
+    return vs.spec("VREQ-S", "other", [], breadth="model", policy="fk_density")
 
 
-def test_b_clean_model_all_invariants_fulfilled():
-    obj = _bind_struct()
+def test_b_clean_model_silo_invariant_fulfilled():
     prods, attrs = _clean_model()
-    for txt, kind in [(PK_TXT, "PK"), (FK_TXT, "FK"), (SILO_TXT, "silo"), (CYC_TXT, "cycle")]:
-        v = obj._verify_structural_invariant(_Req(txt), [], prods, attrs)
-        assert v is not None and v["status"] == "fulfilled", (kind, v)
-        assert "verifier-structural-invariant-deterministic" in v["evidence"], (kind, v)
-
-
-def test_b_missing_pk_failed():
-    # NON-TAUTOLOGY: table 'c' loses its PK -> PK invariant must fail.
-    obj = _bind_struct()
-    prods, attrs = _clean_model()
-    attrs = [a for a in attrs if not (a["product"] == "c" and a["is_primary_key"])]
-    attrs.append(_attr("ref", "c", "c_id", is_pk=False, fk=None))
-    v = obj._verify_structural_invariant(_Req(PK_TXT), [], prods, attrs)
-    assert v is not None and v["status"] == "failed", v
-    assert "ref.c" in v["evidence"], v
-
-
-def test_b_dangling_fk_failed():
-    # NON-TAUTOLOGY: b.c_id points at a non-existent table -> FK-resolve invariant must fail.
-    obj = _bind_struct()
-    prods, attrs = _clean_model()
-    for a in attrs:
-        if a["attribute"] == "c_id" and a["product"] == "b":
-            a["foreign_key_to"] = "ref.does_not_exist.x_id"
-    v = obj._verify_structural_invariant(_Req(FK_TXT), [], prods, attrs)
-    assert v is not None and v["status"] == "failed", v
+    v = _verify(SILO_TXT, _silo_spec(), prods, attrs)
+    assert v["status"] == "fulfilled" and "3/3 table(s) have a foreign key in or out" in v["evidence"], v
 
 
 def test_b_silo_failed():
-    # NON-TAUTOLOGY: add an island table with no FK in and no FK out -> silo invariant must fail.
-    obj = _bind_struct()
     prods, attrs = _clean_model()
     prods = prods + _prods([("misc", "island")])
     attrs = attrs + [_attr("misc", "island", "island_id", is_pk=True)]
-    v = obj._verify_structural_invariant(_Req(SILO_TXT), [], prods, attrs)
-    assert v is not None and v["status"] == "failed", v
+    v = _verify(SILO_TXT, _silo_spec(), prods, attrs)
+    assert v["status"] == "failed", v
     assert "misc.island" in v["evidence"], v
-
-
-def test_b_cycle_failed():
-    # NON-TAUTOLOGY: close the chain c->a so a->b->c->a is a cycle -> cycle invariant must fail.
-    obj = _bind_struct()
-    prods, attrs = _clean_model()
-    attrs = attrs + [_attr("ref", "c", "a_id", fk="sales.a.a_id")]
-    v = obj._verify_structural_invariant(_Req(CYC_TXT), [], prods, attrs)
-    assert v is not None and v["status"] == "failed", v
-
-
-def test_b_targeted_vreq_returns_none():
-    # A targeted (non-model-wide) VReq has no universal quantifier and scope_targets != "*" -> None,
-    # so it cannot hijack the targeted verification paths.
-    obj = _bind_struct()
-    req = _Req("Add a primary key column order_id to the order.header table.",
-               scope="table", scope_targets=["order.header"])
-    v = obj._verify_structural_invariant(req, [], *_clean_model())
-    assert v is None, v
-
-
-def test_b_non_structural_vreq_returns_none():
-    # A model-wide but non-structural VReq (tagging) must not be claimed by the structural verifier.
-    obj = _bind_struct()
-    req = _Req("Every attribute must carry a business glossary tag.")
-    v = obj._verify_structural_invariant(req, [], *_clean_model())
-    assert v is None, v
 
 
 # ============================================================================
@@ -213,12 +170,11 @@ def test_b_non_structural_vreq_returns_none():
 # ============================================================================
 
 def test_b_call_site_exists_in_verify_deterministic():
-    # §8.4: the new helper must have a live call site (not dead code).
     src = _full_src(NB)
     m = re.search(r"\n    def _verify_deterministic\(self.*?\n    def ", src, re.S)
     assert m, "_verify_deterministic not found"
     body = m.group(0)
-    assert "self._verify_structural_invariant(" in body, "structural verifier not called from _verify_deterministic"
+    assert "_verify_from_spec(vreq_spec(req)" in body, "spec verifier not called from _verify_deterministic"
 
 
 def test_b_pre_patch_lacks_helper_and_callsite():
@@ -231,11 +187,10 @@ def test_b_pre_patch_lacks_helper_and_callsite():
 
 
 def test_version_bumped_to_426():
-    src = _full_src(NB)
-    assert re.search(r'__AGENT_VERSION__ = "4\.2\.[6-9]"', src), "engine build must be >= 4.2.6 (monotonic; v4.2.6 fixes remain live)"
+    m = re.search(r'__AGENT_VERSION__ = "(\d)\.(\d)\.(\d)"', _full_src(NB))
+    assert m and tuple(int(x) for x in m.groups()) >= (4, 2, 6), "engine build must be >= 4.2.6 (monotonic; v4.2.6 fixes remain live)"
 
 
 def test_aliases_present():
     src = _full_src(NB)
-    assert "verifier-domain-create-name-normalize" in src
-    assert "verifier-structural-invariant-deterministic" in src
+    assert "alias=verifier-spec" in src

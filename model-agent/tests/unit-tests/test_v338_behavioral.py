@@ -1,6 +1,11 @@
-import json, re, os, textwrap, pytest
+import json, re, os, sys, textwrap, logging, pytest
 
 from notebook_source_util import pk_suffix_globals
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -84,50 +89,59 @@ VERIFY_ONLY_TEXT = (
 )
 
 
-def test_verify_only_all_linked_returns_fulfilled():
-    obj = _bind_verify_requirement(NB)
-    req = _Req(VERIFY_ONLY_TEXT)
-    attrs = _attrs([
-        ("hr", "succession_plan", "job_family_id", "hr.job_family.job_family_id"),
-        ("hr", "rif_group", "job_family_id", "hr.job_family.job_family_id"),
-        ("project", "plan_inclusion", "milestone_id", "project.milestone.milestone_id"),
+def _flat(linked=True):
+    tables = [("hr", "succession_plan"), ("hr", "rif_group"), ("hr", "job_family"), ("hr", "position"), ("hr", "salary_grade"),
+              ("project", "plan_inclusion"), ("project", "milestone")]
+    domains = [{"domain": "hr"}, {"domain": "project"}]
+    products = [{"domain": d, "product": p, "primary_key": f"{p}_id"} for d, p in tables]
+    attrs = _attrs([(d, p, f"{p}_id", "") for d, p in tables] + [
+        ("hr", "succession_plan", "job_family_id", "hr.job_family.job_family_id" if linked else ""),
+        ("hr", "rif_group", "job_family_id", "hr.job_family.job_family_id" if linked else ""),
+        ("project", "plan_inclusion", "milestone_id", "project.milestone.milestone_id" if linked else ""),
     ])
-    res = obj._verify_requirement(req, [], [], attrs)
-    assert res["status"] == "fulfilled", res
-    assert "verifier-verify-only-no-change" in res["evidence"]
+    return domains, products, attrs
 
 
-def test_verify_only_unlinked_falls_through():
-    # asserted columns present but NOT linked -> genuine miss -> fall through (not my fulfilled)
-    obj = _bind_verify_requirement(NB)
-    req = _Req(VERIFY_ONLY_TEXT)
-    attrs = _attrs([
-        ("hr", "succession_plan", "job_family_id", ""),
-        ("hr", "rif_group", "job_family_id", ""),
-        ("project", "plan_inclusion", "milestone_id", ""),
-    ])
-    res = obj._verify_requirement(req, [], [], attrs)
-    # contract: an unlinked verify-only directive must NOT be falsely marked fulfilled by our branch
-    assert res["status"] != "fulfilled"
-    assert "verifier-verify-only-no-change" not in res.get("evidence", "")
+def _orchestrator(llm=False):
+    orch = ah.VibeOrchestrator({"logger": logging.getLogger("test_v338"), "config": {}, "vibe_modelling_instructions": VERIFY_ONLY_TEXT,
+                                "operation": "vibe modeling of version"})
+    orch._llm_verify_enabled = llm
+    orch.ai_agent = object() if llm else None
+    orch._verify_via_llm = lambda *a, **k: dict(SENTINEL)
+    return orch
 
 
-def test_verify_only_no_parseable_target_informational():
-    obj = _bind_verify_requirement(NB)
-    req = _Req("Verify only (no action needed): the model is internally consistent.")
-    res = obj._verify_requirement(req, [], [], _attrs([]))
-    assert res["status"] == "informational"
-    assert "verifier-verify-only-no-change" in res["evidence"]
+def _verify(spec, flat, llm=False, text=VERIFY_ONLY_TEXT):
+    vs.register(ah, ah.widgets_flat_to_model(*[list(x) for x in flat]), spec)
+    return _orchestrator(llm)._verify_requirement(_Req(text, rid=spec["id"]), *flat)
+
+
+def _check_spec():
+    return vs.spec("VREQ-T", "check_only", ["hr.succession_plan.job_family_id", "hr.rif_group.job_family_id",
+                                            "project.plan_inclusion.milestone_id"])
+
+
+def test_verify_only_check_is_never_scored_failed_or_fulfilled_without_the_llm():
+    for linked in (True, False):
+        res = _verify(_check_spec(), _flat(linked))
+        assert res["status"] == "partial", (linked, res)
+        assert "no deterministic check fits this requirement" in res["evidence"], res
+
+
+def test_verify_only_check_is_judged_by_the_llm_audit():
+    assert _verify(_check_spec(), _flat(), llm=True) == SENTINEL
+    assert _verify(vs.spec("VREQ-T", "check_only", []), _flat(), llm=True,
+                   text="Verify only (no action needed): the model is internally consistent.") == SENTINEL
 
 
 def test_non_verify_only_directive_unaffected():
-    # a normal directive must NOT be caught by the verify-only branch
-    obj = _bind_verify_requirement(NB)
-    req = _Req("connect_table hr.position: add column salary_grade_id with FK to hr.salary_grade")
-    attrs = _attrs([("hr", "position", "salary_grade_id", "hr.salary_grade.salary_grade_id")])
-    res = obj._verify_requirement(req, [], [], attrs)
-    # a normal connect_table directive must not be intercepted by the verify-only branch
-    assert "verifier-verify-only-no-change" not in res.get("evidence", "")
+    connect = vs.spec("VREQ-T", "add_column", ["hr.position"], columns=[{"name": "salary_grade_id", "type": "BIGINT"}], fk_target="hr.salary_grade")
+    text = "connect_table hr.position: add column salary_grade_id with FK to hr.salary_grade"
+    domains, products, attrs = _flat()
+    landed = (domains, products, attrs + _attrs([("hr", "position", "salary_grade_id", "hr.salary_grade.salary_grade_id")]))
+    res = _verify(connect, landed, llm=True, text=text)
+    assert res["status"] == "fulfilled" and "reference hr.salary_grade.salary_grade_id" in res["evidence"], res
+    assert _verify(connect, _flat(), llm=True, text=text)["status"] == "failed"
 
 
 @pytest.mark.skipif(not os.path.exists(NB_PRE), reason="pre-v338 backup not present")

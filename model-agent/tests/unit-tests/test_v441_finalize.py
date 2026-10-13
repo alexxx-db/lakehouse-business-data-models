@@ -1,17 +1,15 @@
-"""v4.4.1 behavioral tests — the reviewer-directive FINALIZATION pass that runs at the model.json
-serialization boundary (CLAUDE.md 8.10). Exercises the REAL notebook function
-`_v441_reviewer_finalization` sliced from agent/dbx_vibe_modelling_agent.ipynb.
+"""v4.4.1 behavioral tests — reviewer directives on the final nested data_model (CLAUDE.md 8.10).
 
-Fail-pre proof: on the v4.4.0 HEAD the function does not exist, so `slice_functions` raises
-LookupError -> every test errors. Pass-post: the function exists and enforces P2/P6/P7/P9/P12 on
-the final nested data_model, so the shipped model.json actually carries the reviewer directives even
-when the earlier pass-1 deterministic handlers are undone downstream.
-
-Generic: the pass reads the reviewer's own FQNs / domain names from the vibe text; the test asserts
-NO hardcoding of "retail"/"customer" by using a DIFFERENT root domain name ("member") in one case.
+v5.3.3 deleted the regex reviewer finalization: an LLM reads each harvested reviewer requirement into a
+spec and the engine applies the spec through its deterministic ops (split / move) and pass-1 priorities
+(remove_fk / drop_column). The P-tests register the spec an LLM returns for the reviewer's directive and
+assert the model change. The G-tests exercise `_v443_structural_hardening`.
 """
 import re
 
+import conftest  # noqa: F401
+import agent_helpers as ah
+import vreq_spec_util as vs
 from v435_helpers import concat_source, slice_functions
 from notebook_source_util import pk_predicate_globals, vov_ledger_globals
 
@@ -30,32 +28,15 @@ class _Log:
         pass
 
 
-def _finalize_ns():
-    return slice_functions(["_v441_reviewer_finalization", "_v533_glossary_is_column_name", "_v533_vibe_asks_glossary_cleanup"], concat_source(),
-                           extra_globals={"re": re, **pk_predicate_globals(), **vov_ledger_globals()})
+def _apply_op(dm, spec):
+    vs.register(ah, dm, spec)
+    return ah._v410_deterministic_selffix(dm, {"id": spec["id"]}, _Log())
 
 
-# Reviewer directive text mirroring the retail SME review shape, but the tests below also run a
-# second domain name to prove genericity.
-REVIEWER_TEXT = (
-    "The customer domain is a ROOT master-data domain; master entities are pointed TO, not OUT.\n\n"
-    'REVIEWER-PRIORITY 2 - vendor_neutral_descriptions: strip vendor names.\n'
-    '  - "Informatica MDM" -> "the customer master data system"\n'
-    '  - "Salesforce Service Cloud" -> "the case management system"\n'
-    '  - remove brand examples such as "Nike" from descriptions.\n\n'
-    "REVIEWER-PRIORITY 6 - split_preference_god_table: customer.preference crams many concepts into "
-    "one EAV-style table. Split it into focused tables: customer.communication_preference, "
-    "customer.dietary_restriction, and a small generic customer.customer_attribute(key, value) "
-    "extensibility table for the long tail. Do not keep a single catch-all preference table.\n\n"
-    "REVIEWER-PRIORITY 7 - rehome_non_identity_products: move customer.segment to a marketing domain "
-    "(marketing-analytics construct, not identity).\n\n"
-    "REVIEWER-PRIORITY 9 - fk_direction_correctness: the customer master must not point OUT to "
-    "transactional domains; prune those cross-domain FKs.\n\n"
-    "REVIEWER-PRIORITY 11 - customer_type_clean: customer.profile.customer_type must describe only "
-    "the legal-entity type (individual vs organization). Remove the redundancy where classification/"
-    "role values (vip, employee, wholesale) are duplicated across customer_type AND separate "
-    "vip_flag / employee_flag / account_tier columns. Separate legal-entity type from the role.\n"
-)
+def _apply_priorities(dm, spec):
+    vs.register(ah, dm, spec)
+    vreq = ah.RawVREQ(vreq_id=spec["id"], intent="", target="", source_quote="", source_chunk_id="c1")
+    return ah._v251_apply_pass1_priorities(ah._vov_vreq_to_priorities(vreq), dm, _Log())
 
 
 def _base_model():
@@ -147,128 +128,57 @@ def _attr(prod, name):
     return next((a for a in prod["attributes"] if a["name"] == name), None)
 
 
-# ============================================================ P2
-def test_p2_strips_vendor_root_and_examples_everywhere():
-    ns = _finalize_ns()
-    dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    desc = _attr(_prod(_cust(dm), "profile"), "source_system_code")["description"].lower()
-    assert "informatica" not in desc, desc
-    assert "nike" not in desc, desc
-
-
-def test_p2_token_joined_brand_root_scrubbed():
-    """Brand root embedded in an underscore-joined token (INFORMATICA_MDM) must be scrubbed too."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    _attr(_prod(_cust(dm), "profile"), "source_system_code")["description"] = "Fed from INFORMATICA_MDM nightly."
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    assert "informatica" not in _attr(_prod(_cust(dm), "profile"), "source_system_code")["description"].lower()
-
-
 # ============================================================ P6
 def test_p6_materializes_all_three_children_no_columns_lost():
-    ns = _finalize_ns()
     dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
+    split = vs.spec("VREQ-006", "split_product", ["customer.preference"], split_into=[
+        {"product": "communication_preference", "columns": ["preference_value"]},
+        {"product": "dietary_restriction", "columns": []},
+        {"product": "customer_attribute", "columns": ["attribute_key", "attribute_value"]}])
+    ok, evidence = _apply_op(dm, split)
+    assert ok is True, evidence
     cust = _cust(dm)
     for child in ("communication_preference", "dietary_restriction", "customer_attribute"):
         assert _prod(cust, child) is not None, "missing child %s" % child
-    # the (key,value) child must carry the EAV columns the reviewer named
-    ca = _prod(cust, "customer_attribute")
-    cols = {a["name"] for a in ca["attributes"]}
+    cols = {a["name"] for a in _prod(cust, "customer_attribute")["attributes"]}
     assert "attribute_key" in cols and "attribute_value" in cols, cols
+    assert _attr(_prod(cust, "communication_preference"), "preference_value") is not None
+    assert _attr(_prod(cust, "preference"), "preference_value") is None
+    before = repr(dm)
+    assert _apply_op(dm, dict(split, id="VREQ-016"))[0] is None
+    assert repr(dm) == before, "a split whose children already exist must change nothing"
 
 
 # ============================================================ P7
 def test_p7_dedupes_moved_product_from_root_and_rewires():
-    ns = _finalize_ns()
     dm = _base_model()
-    # add a NON-root-domain product that references the to-be-removed customer.segment, so P9
-    # (which only prunes the ROOT domain's outbound FKs) leaves it in place and we can observe
-    # the P7 rewire to marketing.segment.
     mk = next(d for d in dm["model"]["domains"] if d["name"] == "marketing")
     mk["products"].append({"name": "affinity", "attributes": [
         {"name": "affinity_id", "type": "BIGINT", "is_primary_key": True, "tags": "primary_key"},
         {"name": "segment_id", "type": "BIGINT", "foreign_key_to": "customer.segment.segment_id", "tags": "foreign_key"},
     ]})
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    # customer.segment removed (survives only in marketing)
-    assert _prod(_cust(dm), "segment") is None
+    ok, evidence = _apply_op(dm, vs.spec("VREQ-007", "move_product", ["customer.segment"], destination_domain="marketing"))
+    assert _prod(_cust(dm), "segment") is None, (ok, evidence)
     assert _prod(mk, "segment") is not None
-    # the inbound FK was rewired to marketing.segment
     aff_fk = _attr(_prod(mk, "affinity"), "segment_id")["foreign_key_to"]
     assert aff_fk.lower().startswith("marketing.segment."), aff_fk
 
 
 # ============================================================ P9
 def test_p9_prunes_transactional_out_keeps_reference_out():
-    ns = _finalize_ns()
     dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
+    _model, outcomes, residual = _apply_priorities(dm, vs.spec("VREQ-009", "remove_fk", ["customer.loyalty.campaign_id",
+                                                                                          "customer.wishlist.campaign_id"]))
+    assert [o.status for o in outcomes] == ["applied", "applied"] and residual == [], outcomes
     loyalty = _prod(_cust(dm), "loyalty")
-    # cross-domain FK to a transactional/marketing table pruned
     assert _attr(loyalty, "campaign_id")["foreign_key_to"] == ""
-    # cross-domain FK to a reference/dimension table (store.location) kept
+    assert _attr(_prod(_cust(dm), "wishlist"), "campaign_id")["foreign_key_to"] == ""
     assert _attr(loyalty, "location_id")["foreign_key_to"] == "store.location.location_id"
-    # intra-domain FK untouched
     assert _attr(loyalty, "profile_id")["foreign_key_to"] == "customer.profile.profile_id"
-
-
-def test_p9_silo_guard_repoints_to_master_not_reversed_fk():
-    ns = _finalize_ns()
-    dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    wishlist = _prod(_cust(dm), "wishlist")
-    # original reversed cross-domain FK is gone
-    assert _attr(wishlist, "campaign_id")["foreign_key_to"] == ""
-    # product is NOT siloed: it carries a clean intra-domain FK to the customer master
-    intra = [a for a in wishlist["attributes"]
-             if str(a.get("foreign_key_to") or "").startswith("customer.profile.")]
-    assert intra, "wishlist was left siloed after prune"
-
-
-# ============================================================ P12
-P12_DIRECTIVE = "REVIEWER-PRIORITY 12 - glossary_and_regex_tag_cleanup: clean up the auto-generated glossary terms and redundant value_regex tags.\n"
-
-
-def test_p12_clears_junk_keeps_genuine_and_pii():
-    ns = _finalize_ns()
-    dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT + P12_DIRECTIVE, _Log())
-    prof = _prod(_cust(dm), "profile")
-    email = _attr(prof, "email")
-    status = _attr(prof, "status_code")
-    region = _attr(prof, "region_name")
-    # junk glossary (term == TitleCase(col)) cleared, in field AND tag_set
-    assert email.get("business_glossary_term", "") == ""
-    assert all(t.get("key") != "dbx_business_glossary_term" for t in email.get("tag_set", []))
-    # PII tag preserved
-    assert any(t.get("key") == "pii" for t in email.get("tag_set", []))
-    # redundant value_regex on an already-typed (INT) column cleared
-    assert status.get("value_regex", "") == ""
-    assert all(t.get("key") != "dbx_value_regex" for t in status.get("tag_set", []))
-    # genuine glossary term (NOT a title-cased column name) kept
-    assert region.get("business_glossary_term", "") == "Customer Home Region"
-
-
-def test_p12_keeps_glossary_terms_when_the_vibe_asks_for_no_cleanup():
-    """Live b8 640584420933318: P12 cleared every glossary term equal to its column name on every VOV, including 75 real
-    terms the run had just written for 'add a business glossary term to every column that has none'."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    prof = _prod(_cust(dm), "profile")
-    assert _attr(prof, "email").get("business_glossary_term", "") == "Email"
-    assert any(t.get("key") == "dbx_business_glossary_term" for t in _attr(prof, "email").get("tag_set", []))
-    assert _attr(prof, "status_code").get("value_regex", "") == "", "the value_regex cleanup does not depend on the vibe"
 
 
 # ============================================================ P11
 def test_p11_drops_reviewer_named_redundant_role_columns():
-    """The reviewer names redundant role/classification flag columns to remove from the master;
-    the pass must drop exactly those (read from the directive) and leave legal-entity + other cols."""
-    ns = _finalize_ns()
     dm = _base_model()
     prof = _prod(_cust(dm), "profile")
     prof["attributes"].extend([
@@ -276,63 +186,13 @@ def test_p11_drops_reviewer_named_redundant_role_columns():
         {"name": "vip_flag", "type": "BOOLEAN", "description": "VIP flag."},
         {"name": "employee_flag", "type": "BOOLEAN", "description": "Employee flag."},
         {"name": "account_tier", "type": "STRING", "description": "Account tier."},
+        {"name": "priority_flag", "type": "BOOLEAN"},
     ])
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    prof = _prod(_cust(dm), "profile")
-    cols = {a["name"] for a in prof["attributes"]}
-    # the three reviewer-named redundant role columns are removed
-    assert "vip_flag" not in cols, cols
-    assert "employee_flag" not in cols, cols
-    assert "account_tier" not in cols, cols
-    # the legal-entity type column the directive says to KEEP survives, as do unrelated columns
-    assert "customer_type" in cols
-    assert "email" in cols
-
-
-def test_p11_generic_reads_directive_not_hardcoded():
-    """Prove P11 removes only what the directive lists — a column NOT listed is retained even if
-    it looks flag-ish, and a differently-listed column IS removed."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    prof = _prod(_cust(dm), "profile")
-    prof["attributes"].extend([
-        {"name": "customer_type", "type": "STRING"},
-        {"name": "vip_flag", "type": "BOOLEAN"},
-        {"name": "priority_flag", "type": "BOOLEAN"},  # NOT named by the reviewer -> keep
-    ])
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
+    _apply_priorities(dm, vs.spec("VREQ-011", "drop_column", ["customer.profile.vip_flag", "customer.profile.employee_flag",
+                                                              "customer.profile.account_tier"]))
     cols = {a["name"] for a in _prod(_cust(dm), "profile")["attributes"]}
-    assert "vip_flag" not in cols       # listed -> removed
-    assert "priority_flag" in cols      # not listed -> kept
-
-
-# ============================================================ genericity (no hardcoded "customer")
-def test_generic_root_domain_name():
-    """Prove the pass reads the reviewer's OWN root/domain names — use 'member', not 'customer'."""
-    ns = _finalize_ns()
-    dm = {
-        "model": {
-            "domains": [
-                {"name": "member", "products": [
-                    {"name": "master", "attributes": [
-                        {"name": "master_id", "type": "BIGINT", "is_primary_key": True, "tags": "primary_key"}]},
-                    {"name": "activity", "attributes": [
-                        {"name": "activity_id", "type": "BIGINT", "is_primary_key": True, "tags": "primary_key"},
-                        {"name": "order_id", "type": "BIGINT", "foreign_key_to": "sales.order.order_id", "tags": "foreign_key"}]},
-                ]},
-                {"name": "sales", "products": [
-                    {"name": "order", "attributes": [
-                        {"name": "order_id", "type": "BIGINT", "is_primary_key": True, "tags": "primary_key"}]},
-                ]},
-            ]
-        }
-    }
-    rtext = "The member domain is a ROOT master-data domain; do not point OUT to transactional domains.\n"
-    ns["_v441_reviewer_finalization"](dm, rtext, _Log())
-    activity = next(p for p in dm["model"]["domains"][0]["products"] if p["name"] == "activity")
-    order_fk = next(a for a in activity["attributes"] if a["name"] == "order_id")["foreign_key_to"]
-    # the transactional cross-domain FK from the reviewer-named ROOT ('member') is pruned/re-pointed
-    assert not order_fk.startswith("sales.order"), order_fk
+    assert not {"vip_flag", "employee_flag", "account_tier"} & cols, cols
+    assert {"customer_type", "priority_flag", "email", "profile_id"} <= cols, cols
 
 
 # =========================================================================================
@@ -507,59 +367,6 @@ def test_g11_canonicalizes_invalid_type_to_databricks_type():
     assert ca == "TIMESTAMP", "DATETIME must canonicalize to TIMESTAMP (got %s)" % ca
 
 
-# ============================================================ P2-extend (v4.4.5): generic vendor lexicon
-_P3_REVIEWER = (
-    "The customer domain is a ROOT master-data domain.\n\n"
-    "REVIEWER-PRIORITY 3 - enum_type_categories_only: Store customer.payment_method.card_brand and "
-    "customer.payment_method.wallet_provider as free STRING (not a fixed visa|mastercard|amex enum) "
-    "so new brands need no schema change.\n"
-)
-
-
-def test_p2_strips_unnamed_vendor_tool_via_lexicon():
-    """v4.4.5: an implementation tool the reviewer did NOT explicitly pair (Blue Yonder) must still be
-    stripped by the generic cross-industry vendor lexicon. Fail-pre (v4.4.4): only reviewer-paired
-    names are stripped, so 'Blue Yonder' survives."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    _prod(_cust(dm), "profile")["attributes"].append(
-        {"name": "reorder_point_qty", "type": "INT",
-         "description": "Calculated by Blue Yonder Demand Planning from historical sales velocity."})
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    d = next(a for a in _prod(_cust(dm), "profile")["attributes"]
-             if a["name"] == "reorder_point_qty")["description"].lower()
-    assert "blue yonder" not in d, "un-named vendor 'Blue Yonder' must be stripped: %r" % d
-    assert "the source system" in d
-
-
-def test_p2_anchor_does_not_mangle_common_word_with_acronym_substring():
-    """The ORMS acronym must not match inside 'performs' (non-letter left-anchor). Guards the v4.4.5
-    anchored pattern against the substring over-strip regression."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    _prod(_cust(dm), "profile")["attributes"].append(
-        {"name": "role_at_location", "type": "STRING",
-         "description": "Specific role the associate performs at this node."})
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    d = next(a for a in _prod(_cust(dm), "profile")["attributes"]
-             if a["name"] == "role_at_location")["description"]
-    assert "performs at this node" in d, "common word 'performs' must survive (ORMS substring): %r" % d
-
-
-def test_p2_preserves_color_space_standard():
-    """'Adobe RGB' is a color-space STANDARD, not a vendor tool — must survive. Bare 'adobe' is not a
-    lexicon root and the color-std shield double-protects."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    _prod(_cust(dm), "profile")["attributes"].append(
-        {"name": "color_profile", "type": "STRING",
-         "description": "Master image color captured in the Adobe RGB color space."})
-    ns["_v441_reviewer_finalization"](dm, REVIEWER_TEXT, _Log())
-    d = next(a for a in _prod(_cust(dm), "profile")["attributes"]
-             if a["name"] == "color_profile")["description"]
-    assert "Adobe RGB" in d, "color-space standard 'Adobe RGB' must survive: %r" % d
-
-
 # =========================================================================================
 # v4.4.6 — PK-self-ref corruption repair (G5/G2) + siloed-table relink (G7).
 # Fail-pre proof: on the committed v4.4.5 notebook these two passes are absent, so the corrupted
@@ -720,29 +527,3 @@ def test_g7_leaves_isolated_table_untouched_when_no_token_match():
     ns["_v443_structural_hardening"](dm, _Log())
     cur = _find_prod(dm, "reference", "currency")
     assert not any(a.get("foreign_key_to") for a in cur["attributes"]), "no invented FK when no token match"
-
-
-# ============================================================ P3 (v4.4.5): enum free-STRING
-def test_p3_clears_brand_enum_on_reviewer_named_free_string_column():
-    """The reviewer names card_brand / wallet_provider as free STRING; the pass clears their brand-list
-    value_regex/enum wherever the column lands (matched by leaf column name, not FQN). Fail-pre
-    (v4.4.4): no P3 block -> the brand regex/enum survives."""
-    ns = _finalize_ns()
-    dm = _base_model()
-    _cust(dm)["products"].append({
-        "name": "digital_payment",  # DIFFERENT product name than the reviewer FQN (payment_method)
-        "attributes": [
-            {"name": "dp_id", "type": "BIGINT", "is_primary_key": True, "tags": "primary_key"},
-            {"name": "wallet_provider", "type": "STRING", "value_regex": "apple_pay|google_pay|samsung_pay"},
-            {"name": "card_brand", "type": "STRING", "enum": ["visa", "mastercard", "amex"]},
-            {"name": "auth_status", "type": "STRING", "value_regex": "approved|declined"},
-        ],
-    })
-    ns["_v441_reviewer_finalization"](dm, _P3_REVIEWER, _Log())
-    dp = _prod(_cust(dm), "digital_payment")
-    wp = next(a for a in dp["attributes"] if a["name"] == "wallet_provider")
-    cb = next(a for a in dp["attributes"] if a["name"] == "card_brand")
-    au = next(a for a in dp["attributes"] if a["name"] == "auth_status")
-    assert not wp.get("value_regex"), "wallet_provider brand regex must be cleared: %r" % wp
-    assert "enum" not in cb, "card_brand enum must be cleared"
-    assert au.get("value_regex") == "approved|declined", "unrelated enum column must be untouched"

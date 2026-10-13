@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
@@ -264,6 +265,8 @@ def _selffix_inputs():
 def test_selffixer_drops_out_of_scope_reqs_and_fences_every_fix():
     fence = _fence()
     model, wv = _selffix_inputs()
+    vs.register(ah, model, vs.spec("REQ-1", "set_fields", ["crew.member"], fields=[vs.field("products", "tags")]),
+                vs.spec("REQ-2", "set_fields", ["fleet.engine"], fields=[vs.field("products", "description")]))
     agent = _FakeAgent(LEAKY_FIX)
     summary = ah.run_selffixer_or_skip(model, wv, agent, LOG, max_rounds=1, per_req_retries=0)
     assert summary["vibe_scope"]["out_of_scope_dropped"] == 1
@@ -379,7 +382,12 @@ def test_next_vibes_summary_out_of_scope_section_and_suggested_links():
     assert "- add tail colour (target: fleet.aircraft) [outside vibe_scope: vov_residual_unapplied]" in body
     link = next(line for line in body if line.startswith("**PRIORITY 901"))
     assert link.startswith("**PRIORITY 901 - connect_table: fleet.aircraft** - set column pilot_skill_id FK to crew.pilot_skill.pilot_skill_id")
-    details = ah._v251_parse_priority_details({"action": "connect_table", "target": "fleet.aircraft", "reason": link.split("** - ", 1)[1]})
+    parsed = ah._v251_parse_priorities(link)
+    assert [(p["vreq_id"], p["action"], p["target"]) for p in parsed] == [("P901", "connect_table", "fleet.aircraft")]
+    assert ah._v251_parse_priority_details(parsed[0])["fk_target"] is None
+    vs.register(ah, ah.widgets_flat_to_model(wv["domains"], wv["products"], wv["attributes"]),
+                vs.spec("P901", "add_column", ["fleet.aircraft.pilot_skill_id"], fk_target="crew.pilot_skill"))
+    details = ah._v251_parse_priority_details(parsed[0])
     assert details["column"] == "pilot_skill_id" and details["fk_target"] == "crew.pilot_skill.pilot_skill_id"
 
 

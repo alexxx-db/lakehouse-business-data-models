@@ -18,18 +18,18 @@ on widgets_values that downstream stages will read.
 
 import json
 import re
+import sys
 from collections import namedtuple
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+
 NB_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
-
-
-def _notebook_source():
-    nb = json.loads(NB_PATH.read_text())
-    return "\n".join("".join(c.get("source", [])) for c in nb["cells"] if c.get("cell_type") == "code")
 
 
 def _vov_shim_source():
@@ -48,16 +48,15 @@ def _vov_shim_source():
 # Static-grep tests (smoke)
 # ---------------------------------------------------------------------------
 
-def test_all_three_vov_aliases_present():
+def test_vov_preload_and_review_base_aliases_present():
     src = _vov_shim_source()
     assert "alias=vov-v1-preload" in src
-    assert "alias=vov-unconditional-writeback" in src
     assert "alias=vov-review-base-seed" in src
 
 
 def test_vov_v1_preload_uses_business_context_raw():
     src = _vov_shim_source()
-    m = re.search(r"\[vov-v1-preload FIRED v2\.0\.8\].*?domains=", src)
+    m = re.search(r"\[vov-v1-preload FIRED v\d+\.\d+\.\d+\].*?domains=", src)
     assert m is not None, "vov-v1-preload FIRED log line missing"
     assert "business_context_raw" in src, "preload must read business_context_raw"
     assert "model_to_widgets_flat" in src, "preload must use existing flattener"
@@ -160,76 +159,11 @@ class _CapturingLogger:
         return sum(1 for l in self.lines if alias in l[1])
 
 
-def _extract_function_block(src, fn_name):
-    """Indent-based extractor: pulls `def fn_name(...): ...` to end of body."""
-    lines = src.splitlines()
-    out = []
-    in_block = False
-    fn_indent = None
-    for line in lines:
-        if not in_block:
-            if line.lstrip().startswith(f"def {fn_name}(") and not line.lstrip().startswith(f"def {fn_name}_"):
-                in_block = True
-                fn_indent = len(line) - len(line.lstrip())
-                out.append(line)
-            continue
-        if line.strip() == "":
-            out.append(line)
-            continue
-        cur_indent = len(line) - len(line.lstrip())
-        if cur_indent <= fn_indent and line.strip():
-            break
-        out.append(line)
-    return "\n".join(out)
-
-
-def _build_shim_namespace_with_stubs():
-    """Extract ONLY run_vov_2_against_widgets + its called helpers from the shim cell, then
-    exec them into an isolated namespace with stubs for heavyweight deps."""
-    src = _vov_shim_source()
-    fn_block = _extract_function_block(src, "run_vov_2_against_widgets")
-    flat_to_model = _extract_function_block(src, "widgets_flat_to_model")
-    model_to_flat = _extract_function_block(src, "model_to_widgets_flat")
-
-    import copy as _copy
-    import json as _json
-    import logging as _logging
-
-    from notebook_source_util import user_removed_fk_globals
-
-    ns = {
-        **user_removed_fk_globals(),
-        "__name__": "__test_vov_shim__",
-        "copy": _copy,
-        "json": _json,
-        "logging": _logging,
-        # Heavyweight deps stubbed to MagicMock — these are never called when the pipeline
-        # is also stubbed (which the tests do via ns["run_vov_pipeline"]).
-        "AIAgentLLMBridge": MagicMock(),
-        "__VOV_VERSION__": "2.0.8",
-        # v2.0.8 [vov-agent-version-stamp-callsite] run_vov_2_against_widgets now reads
-        # __AGENT_VERSION__ instead of __VOV_VERSION__. Inject both so the shim runs.
-        "__AGENT_VERSION__": "2.0.8",
-        # v0.8.0 [release-version-public] widgets_flat_to_model now also stamps
-        # __RELEASE_VERSION__ (public label decoupled from the engine build). Cell 1
-        # defines it in production; the extracted-function shim must inject it too.
-        "__RELEASE_VERSION__": "0.8.0",
-        "_VIBE_SCOPE_RUNTIME": None,
-        "_vov_note_pass_changes": lambda *args, **kwargs: 0,
-    }
-    # Order matters: helpers first
-    exec(compile(_extract_function_block(_notebook_source(), "_vibe_scope_bind_engine_baseline"), "<vibe-scope-bind>", "exec"), ns)
-    exec(compile(_extract_function_block(_notebook_source(), "_metamodel_log"), "<metamodel-log>", "exec"), ns)
-    exec(compile(_extract_function_block(_notebook_source(), "_resolve_base_model_json"), "<base-model-json>", "exec"), ns)
-    exec(compile(_extract_function_block(_notebook_source(), "_vibe_scope_checkpoint"), "<vibe-scope-checkpoint>", "exec"), ns)
-    exec(compile(_extract_function_block(_notebook_source(), "_vibe_scope_raw_base"), "<vibe-scope-raw-base>", "exec"), ns)
-    exec(compile(_extract_function_block(_notebook_source(), "_vov_record_engine_actions"), "<vov-record-engine-actions>", "exec"), ns)
-    for helper in ("_vov285_san", "_vibe_scope_model_root", "_vibe_scope_products_of", "_vov_engine_removed_fk_keys"):
-        exec(compile(_extract_function_block(_notebook_source(), helper), f"<{helper}>", "exec"), ns)
-    exec(compile(model_to_flat, "<model_to_widgets_flat>", "exec"), ns)
-    exec(compile(flat_to_model, "<widgets_flat_to_model>", "exec"), ns)
-    exec(compile(fn_block, "<run_vov_2_against_widgets>", "exec"), ns)
-    return ns
+def _run_shim(monkeypatch, widgets, logger, pipeline):
+    """Run the REAL run_vov_2_against_widgets with only the pipeline and the LLM bridge stubbed."""
+    monkeypatch.setattr(ah, "run_vov_pipeline", pipeline)
+    monkeypatch.setattr(ah, "AIAgentLLMBridge", MagicMock())
+    return ah.run_vov_2_against_widgets(widgets, logger, parallel=False)
 
 
 def _stub_pipeline_result(initial_model):
@@ -238,20 +172,16 @@ def _stub_pipeline_result(initial_model):
     return PR(raw_vreqs=[], batches=[], outcomes=[], coverage_pct=100.0, rejected_handlers=[], final_model=initial_model)
 
 
-def test_preload_flattens_v1_when_widgets_empty():
+def test_preload_flattens_v1_when_widgets_empty(monkeypatch):
     """When widgets_values has no flat domains but has business_context_raw with v1 model,
     the preload block must flatten v1 into widgets BEFORE the pipeline builds initial_model."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
     captured = {}
 
-    def stub_pipeline(*, vibe_text, initial_model, llm, user_pinned_domains, user_pinned_products, parallel):
+    def stub_pipeline(*, vibe_text, initial_model, llm, user_pinned_domains, user_pinned_products, parallel, **kw):
         # Record what initial_model the pipeline saw -- THIS is the proof that preload worked.
         captured["initial_model"] = initial_model
         return _stub_pipeline_result(initial_model)
-
-    ns["run_vov_pipeline"] = stub_pipeline
 
     fake_ai = MagicMock()
     widgets = {
@@ -259,7 +189,7 @@ def test_preload_flattens_v1_when_widgets_empty():
         "vibe_modelling_instructions": "make small changes",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    res = run(widgets, logger, parallel=False)
+    res = _run_shim(monkeypatch, widgets, logger, stub_pipeline)
 
     # Preload must have flattened v1 into the flat lists.
     assert logger.has_alias("vov-v1-preload"), "FIRED log missing"
@@ -276,18 +206,14 @@ def test_preload_flattens_v1_when_widgets_empty():
     assert res["coverage_pct"] == 100.0
 
 
-def test_preload_skips_when_widgets_already_populated():
+def test_preload_skips_when_widgets_already_populated(monkeypatch):
     """If widgets_values already has flat domains, preload must NOT clobber them."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
     captured = {}
 
     def stub_pipeline(*, vibe_text, initial_model, **kw):
         captured["initial_model"] = initial_model
         return _stub_pipeline_result(initial_model)
-
-    ns["run_vov_pipeline"] = stub_pipeline
 
     # v2.0.8 vov-v1-preload-broader-gate (audit A4): preload now fires when ANY of
     # domains/products/attributes is empty (not just domains). The skip path requires
@@ -303,30 +229,27 @@ def test_preload_skips_when_widgets_already_populated():
         "attributes": existing_attributes,
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    run(widgets, logger, parallel=False)
+    _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     # preload must NOT fire when all flat lists already populated
     assert not logger.has_alias("vov-v1-preload"), "preload should be skipped when all three flat lists populated"
     # original domains preserved (or replaced only by pipeline output, which for stub is the
     # widgets_flat_to_model of `existing_domains`)
 
 
-def test_writeback_lands_unconditionally():
+def test_writeback_lands_unconditionally(monkeypatch):
     """After pipeline runs, the writeback must populate widgets_values[domains/products/attributes/metric_views]
     even if those keys didn't exist before preload. Proves the conditional writeback bug is fixed."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
 
     def stub_pipeline(*, vibe_text, initial_model, **kw):
         return _stub_pipeline_result(initial_model)
 
-    ns["run_vov_pipeline"] = stub_pipeline
     widgets = {
         "ai_agent": MagicMock(),
         "vibe_modelling_instructions": "go",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    run(widgets, logger, parallel=False)
+    _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     # All 4 keys MUST be present (writeback unconditional)
     assert "domains" in widgets
     assert "products" in widgets
@@ -337,23 +260,20 @@ def test_writeback_lands_unconditionally():
     assert len(widgets["products"]) > 0
 
 
-def test_review_base_seed_sets_use_review_base_data_true():
+def test_review_base_seed_sets_use_review_base_data_true(monkeypatch):
     """The biggest fix: ensure widgets_values['use_review_base_data'] = True is set so
     step_create_logical_schema reads from review_base_* instead of regenerating."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
 
     def stub_pipeline(*, vibe_text, initial_model, **kw):
         return _stub_pipeline_result(initial_model)
 
-    ns["run_vov_pipeline"] = stub_pipeline
     widgets = {
         "ai_agent": MagicMock(),
         "vibe_modelling_instructions": "go",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    run(widgets, logger, parallel=False)
+    _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     # CRITICAL assertion: review base mode is engaged
     assert widgets.get("use_review_base_data") is True, "use_review_base_data NOT set to True — step_create_logical_schema will regen!"
     assert "review_base_domains" in widgets and len(widgets["review_base_domains"]) > 0
@@ -362,22 +282,19 @@ def test_review_base_seed_sets_use_review_base_data_true():
     assert logger.has_alias("vov-review-base-seed")
 
 
-def test_review_base_seed_matches_writeback_data():
+def test_review_base_seed_matches_writeback_data(monkeypatch):
     """review_base_* MUST contain the SAME data the writeback put in widgets_values[domains/products/attributes]."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
 
     def stub_pipeline(*, vibe_text, initial_model, **kw):
         return _stub_pipeline_result(initial_model)
 
-    ns["run_vov_pipeline"] = stub_pipeline
     widgets = {
         "ai_agent": MagicMock(),
         "vibe_modelling_instructions": "go",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    run(widgets, logger, parallel=False)
+    _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     assert widgets["domains"] == widgets["review_base_domains"]
     assert widgets["products"] == widgets["review_base_products"]
     assert widgets["attributes"] == widgets["review_base_attributes"]
@@ -400,31 +317,26 @@ def test_pre_patch_would_have_been_no_op():
     # step_create_logical_schema would have entered NEW BASE MODE and regenerated.
 
 
-def test_metric_views_preserved_through_preload():
+def test_metric_views_preserved_through_preload(monkeypatch):
     """Metric views must round-trip from v1 -> flat list -> widgets_values."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
 
     def stub_pipeline(*, vibe_text, initial_model, **kw):
         return _stub_pipeline_result(initial_model)
 
-    ns["run_vov_pipeline"] = stub_pipeline
     widgets = {
         "ai_agent": MagicMock(),
         "vibe_modelling_instructions": "go",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    run(widgets, logger, parallel=False)
+    _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     assert len(widgets.get("metric_views", [])) == 1
     assert widgets["metric_views"][0]["name"] == "monthly_orders"
 
 
-def test_no_op_when_vibe_text_empty():
+def test_no_op_when_vibe_text_empty(monkeypatch):
     """Empty vibe_text -> shim returns early; preload should still happen for downstream
     consistency, but pipeline must not fire."""
-    ns = _build_shim_namespace_with_stubs()
-    run = ns["run_vov_2_against_widgets"]
     logger = _CapturingLogger()
 
     pipeline_calls = {"n": 0}
@@ -432,12 +344,11 @@ def test_no_op_when_vibe_text_empty():
         pipeline_calls["n"] += 1
         return _stub_pipeline_result(kw["initial_model"])
 
-    ns["run_vov_pipeline"] = stub_pipeline
     widgets = {
         "ai_agent": MagicMock(),
         "vibe_modelling_instructions": "",
         "business_context_raw": _build_v1_business_context_raw(),
     }
-    res = run(widgets, logger, parallel=False)
+    res = _run_shim(monkeypatch, widgets, logger, stub_pipeline)
     assert pipeline_calls["n"] == 0, "pipeline must NOT fire on empty vibe"
     assert res["coverage_pct"] == 100.0

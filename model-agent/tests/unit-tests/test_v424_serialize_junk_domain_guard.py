@@ -15,8 +15,8 @@ FIX: at the AUTHORITATIVE model.json serialization boundary, sweep the NESTED
     valid sibling, and drop the husk IN PLACE. User-specified / user-vibed-new domains
     are PROTECTED even when empty (S3b/S3c). Idempotent (clean model = cheap no-op).
 
-These tests extract the ACTUAL shipped function from the notebook cell and exec it in an
-isolated namespace (a stand-in _v357_is_junk_domain_name flags the sentinel names; the
+These tests call the ACTUAL shipped function through agent_helpers (a stand-in
+_v357_is_junk_domain_name flags the sentinel names; the
 real junk-name detection is separately covered by test_v357_marathon_fixes). They prove
 the OBSERVABLE state changes the guard produces (S8.10): pre-call the junk domain is
 present; post-call it is gone, empty non-protected domains are dropped, protected empty
@@ -25,32 +25,29 @@ domains are kept, and products are reassigned to the most-populated valid siblin
 import json
 import logging
 import os
+import sys
+from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
 
 NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
 
 
-def _guard_ns():
-    """Extract _v424_reject_junk_empty_domains_in_serialized_model source and exec it
-    into an isolated namespace with a stand-in _v357_is_junk_domain_name."""
-    cells = json.load(open(NB))["cells"]
-    src_concat = "\n".join("".join(c.get("source", [])) for c in cells if c["cell_type"] == "code")
-    start = src_concat.find("def _v424_reject_junk_empty_domains_in_serialized_model(")
-    assert start != -1, "guard def not found in notebook"
-    end = src_concat.find("\ndef ", start + 10)
-    fn_src = src_concat[start:end]
-
+def _guard_ns(monkeypatch):
+    """The shipped _v424_reject_junk_empty_domains_in_serialized_model with a stand-in
+    _v357_is_junk_domain_name."""
     _JUNK = {"partially", "unknown", ""}
 
     def _stub_is_junk(name):
         return str(name or "").strip().lower() in _JUNK
 
-    ns = {"__name__": "_v424_guard_test", "_v357_is_junk_domain_name": _stub_is_junk, "_VIBE_SCOPE_RUNTIME": None}
-    runtime_start = src_concat.find("def get_vibe_scope_runtime(")
-    exec(src_concat[runtime_start:src_concat.find("\ndef ", runtime_start + 10)], ns)
-    exec(fn_src, ns)
-    return ns["_v424_reject_junk_empty_domains_in_serialized_model"]
+    monkeypatch.setattr(ah, "_v357_is_junk_domain_name", _stub_is_junk)
+    ah.set_vibe_scope_runtime(None)
+    return ah._v424_reject_junk_empty_domains_in_serialized_model
 
 
 def _logger():
@@ -73,8 +70,8 @@ def _dm():
 
 
 class TestGuardDropsJunkAndEmpty:
-    def test_junk_and_empty_removed_protected_kept_products_reassigned(self, caplog):
-        guard = _guard_ns()
+    def test_junk_and_empty_removed_protected_kept_products_reassigned(self, caplog, monkeypatch):
+        guard = _guard_ns(monkeypatch)
         dm = _dm()
         names_pre = {d["name"] for d in dm["domains"]}
         assert "partially" in names_pre and "unknown" in names_pre and "ghost" in names_pre
@@ -99,8 +96,8 @@ class TestGuardDropsJunkAndEmpty:
         assert any("v424-serialize-junk-domain-guard FIRED" in (r.message or "")
                    for r in caplog.records)
 
-    def test_clean_model_is_idempotent_noop(self, caplog):
-        guard = _guard_ns()
+    def test_clean_model_is_idempotent_noop(self, caplog, monkeypatch):
+        guard = _guard_ns(monkeypatch)
         clean = {"domains": [
             {"name": "powertrain", "products": [{"product": "engine"}]},
             {"name": "chassis", "products": [{"product": "frame"}]},
@@ -110,8 +107,8 @@ class TestGuardDropsJunkAndEmpty:
         assert removed == 0
         assert json.dumps(clean, sort_keys=True) == before
 
-    def test_protected_empty_domain_never_dropped(self):
-        guard = _guard_ns()
+    def test_protected_empty_domain_never_dropped(self, monkeypatch):
+        guard = _guard_ns(monkeypatch)
         dm = {"domains": [
             {"name": "powertrain", "products": [{"product": "engine"}]},
             {"name": "user_wanted", "products": []},  # empty but protected
@@ -120,9 +117,9 @@ class TestGuardDropsJunkAndEmpty:
         assert removed == 0
         assert {d["name"] for d in dm["domains"]} == {"powertrain", "user_wanted"}
 
-    def test_data_products_key_variant_supported(self):
+    def test_data_products_key_variant_supported(self, monkeypatch):
         # some layouts use 'data_products' instead of 'products'
-        guard = _guard_ns()
+        guard = _guard_ns(monkeypatch)
         dm = {"domains": [
             {"name": "powertrain", "data_products": [{"product": "engine"}]},
             {"name": "partially", "data_products": []},

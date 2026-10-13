@@ -22,9 +22,15 @@ move lands after the reviewer-named domain is created.
 """
 import re
 import copy
+import sys
+from pathlib import Path
 
-from v435_helpers import concat_source, slice_functions
-from notebook_source_util import vov_ledger_globals
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from v435_helpers import concat_source, slice_functions  # noqa: E402
+from notebook_source_util import vov_ledger_globals  # noqa: E402
 
 
 class _StubVREQ:
@@ -90,58 +96,45 @@ P11_BLOCK = (
     "role the customer plays.\n"
 )
 
-P3_BLOCK = (
-    "REVIEWER-PRIORITY 3 \u2014 enum_type_categories_only: do NOT bake specific vendor/brand lists "
-    "into value_regex or enum constraints. Store customer.payment_method.card_brand and "
-    "customer.payment_method.wallet_provider as free STRING (not a fixed visa|mastercard|amex enum).\n"
-)
 
-
-def _expander_ns():
-    return slice_functions(
-        ["_v436_expand_vreq_to_priorities", "_v533_vibe_asks_glossary_cleanup"],
-        concat_source(), extra_globals={"re": re})
+def _apply_removals(spec, vreq):
+    model = _model()
+    vs.register(ah, model, spec)
+    removes = set()
+    for p in ah._vov_vreq_to_priorities(vreq):
+        if p["action"] == "remove_attribute":
+            removes.add(f"{p['target']}.{p['column']}")
+            assert ah._v251_apply_priority_deterministic(p, ah._v251_parse_priority_details(p), model, _Log()) == (True, "applied"), p
+    profile = next(p for p in model["domains"][0]["products"] if p["name"] == "profile")
+    return removes, {a["name"] for a in profile["attributes"]}
 
 
 # ---------------- J1: P11 keep-guard + bare-name resolution ----------------
 
 def test_fixJ1_p11_keeps_customer_type_removes_bare_flags():
-    ns = _expander_ns()
     vreq = _StubVREQ(vreq_id="REVIEWER-11", intent="customer_type_clean",
                      source_quote=P11_BLOCK, priority_id=11)
-    out = ns["_v436_expand_vreq_to_priorities"](vreq, _model())
-    removes = {p["target"] for p in out if p["action"] == "remove_attribute"}
+    bare = [{"domain": "", "product": "profile", "column": c} for c in ("vip_flag", "employee_flag", "account_tier")]
+    removes, columns = _apply_removals(dict(vs.spec("REVIEWER-11", "drop_column"), targets=bare), vreq)
     # KEEP the col the reviewer wants kept
-    assert "customer.profile.customer_type" not in removes, ("regression: customer_type removed", removes)
+    assert "customer.profile.customer_type" not in removes and "customer_type" in columns, ("regression: customer_type removed", removes)
     # REMOVE the redundant bare flags (resolved against the keep-col table)
-    assert "customer.profile.vip_flag" in removes, removes
-    assert "customer.profile.employee_flag" in removes, removes
-    assert "customer.profile.account_tier" in removes, removes
+    assert removes == {"customer.profile.vip_flag", "customer.profile.employee_flag", "customer.profile.account_tier"}, removes
+    assert not columns & {"vip_flag", "employee_flag", "account_tier"}, columns
 
 
-def test_fixJ1_bare_name_pass_does_not_touch_pure_fqn_dirs():
+def test_fixJ1_a_named_column_removal_has_no_collateral_removals():
     # A pure-FQN removal directive with NO keep clause (P4/P5 shape) must ONLY remove the listed
-    # FQNs and never trigger the bare-name pass (no collateral removals).
-    ns = _expander_ns()
+    # FQNs (no collateral removals).
     body = ("REVIEWER-PRIORITY 4 \u2014 deduplicate_consent: remove customer.profile.vip_flag.\n")
     vreq = _StubVREQ(vreq_id="REVIEWER-4", intent="deduplicate_consent",
                      source_quote=body, priority_id=4)
-    out = ns["_v436_expand_vreq_to_priorities"](vreq, _model())
-    removes = {p["target"] for p in out if p["action"] == "remove_attribute"}
+    removes, columns = _apply_removals(vs.spec("REVIEWER-4", "drop_column", ["customer.profile.vip_flag"]), vreq)
     assert removes == {"customer.profile.vip_flag"}, removes
+    assert {"customer_type", "employee_flag", "account_tier"} <= columns, columns
 
 
 # ---------------- J2: P3 clear_value_regex classifier + handler ----------------
-
-def test_fixJ2_p3_emits_clear_value_regex():
-    ns = _expander_ns()
-    vreq = _StubVREQ(vreq_id="REVIEWER-3", intent="enum_type_categories_only",
-                     source_quote=P3_BLOCK, priority_id=3)
-    out = ns["_v436_expand_vreq_to_priorities"](vreq, _model())
-    cleared = {p["target"] for p in out if p["action"] == "clear_value_regex"}
-    assert "customer.payment_method.card_brand" in cleared, cleared
-    assert "customer.payment_method.wallet_provider" in cleared, cleared
-
 
 def test_fixJ2_handler_blanks_value_regex():
     ns = slice_functions(

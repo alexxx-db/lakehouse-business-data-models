@@ -1,4 +1,7 @@
-import json, re, os, textwrap, pytest
+import json, re, os, textwrap, logging, pytest
+
+import agent_helpers as ah
+import vreq_spec_util as vs
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -47,91 +50,87 @@ INVENTORY = ["stock_position", "stock_ledger", "inventory_node", "replenishment_
              "expiry_tracking", "reservation", "reorder_policy", "asn", "lot", "node_assortment",
              "promo_stock_allocation", "location_assignment", "assortment_deployment"]
 VREQ002_TEXT = ("Create the inventory domain with the following products: " + ", ".join(INVENTORY) + ".")
+VREQ002_SPEC = vs.spec("VREQ-002", "add_product", [f"inventory.{p}" for p in INVENTORY])
 
 
-def _bind(path, name):
-    src = _full_src(path)
-    ns = {"re": re}
-    exec(_extract_fn(src, name), ns)
-
-    class Dummy:
-        logger = _Logger()
-    setattr(Dummy, name, ns[name])
-    return Dummy()
+def _orch(llm_verify=False, ai_agent=None):
+    o = object.__new__(ah.VibeOrchestrator)
+    o.logger = logging.getLogger("test_v411_domain_create")
+    o._llm_verify_enabled = llm_verify
+    o.ai_agent = ai_agent
+    return o
 
 
-# ---------- helper-level: coverage grading is real (non-tautology: includes MUST-fail cases) ----------
+def _verify(prods, spec=VREQ002_SPEC, text=VREQ002_TEXT):
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": "customer"}], _prods([("customer", "profile")]), []), spec)
+    return _orch()._verify_deterministic(_Req(text, spec["id"], scope_targets=["inventory"]), [], prods, [])
+
+
+# ---------- coverage grading is real (non-tautology: includes MUST-fail cases) ----------
 
 def test_full_coverage_fulfilled():
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    prods = _prods([("inventory", p) for p in INVENTORY])
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "fulfilled", v
-    assert "verifier-domain-create-coverage" in v["evidence"]
+    v = _verify(_prods([("inventory", p) for p in INVENTORY]))
+    assert v["status"] == "fulfilled", v
+    assert v["evidence"] == "[verifier-spec FIRED v5.3.3] 19/19 target(s) present", v
 
 
-def test_ninety_pct_coverage_fulfilled():
-    # 17 of 19 present (2 intentionally moved out, as consent/preference were in retail) -> 89.5%?
-    # 18/19 = 94.7% >= 0.9 -> fulfilled. Prove the threshold credits a near-complete build.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    prods = _prods([("inventory", p) for p in INVENTORY[:18]])
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "fulfilled", v
+def test_ninety_pct_coverage_is_partial_because_a_named_list_needs_every_table():
+    # 18/19 = 94.7%: a named create list is fulfilled only when every named table exists.
+    v = _verify(_prods([("inventory", p) for p in INVENTORY[:18]]))
+    assert v["status"] == "partial", v
+    assert "18/19 target(s) present" in v["evidence"], v
 
 
 def test_half_coverage_partial():
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    prods = _prods([("inventory", p) for p in INVENTORY[:10]])  # 10/19 = 52%
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "partial", v
+    v = _verify(_prods([("inventory", p) for p in INVENTORY[:10]]))  # 10/19 = 52%
+    assert v["status"] == "partial", v
 
 
 def test_zero_named_present_failed():
     # MUST-fail (non-tautology): domain exists but none of the NAMED products are present.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    prods = _prods([("inventory", x) for x in ["foo", "bar", "baz"]])
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "failed", v
+    v = _verify(_prods([("inventory", x) for x in ["foo", "bar", "baz"]]))
+    assert v["status"] == "failed", v
 
 
 def test_domain_absent_failed():
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    prods = _prods([("customer", "profile")])  # inventory domain absent entirely
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "failed", v
+    v = _verify(_prods([("customer", "profile")]))  # inventory domain absent entirely
+    assert v["status"] == "failed", v
 
 
-def test_not_domain_create_returns_none():
-    # A non-domain-create VReq must be ignored (return None) so it cannot hijack other verdicts.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    req = _Req("Add a foreign key on order.header.customer_id to customer.profile.profile_id",
-               rid="VREQ-X", scope="relation", scope_targets=["order.header"])
-    v = obj._verify_domain_create_coverage(req, _prods([("order", "header")]))
-    assert v is None, v
+def test_a_domain_action_that_names_tables_is_refused():
+    spec = vs.spec("VREQ-002", "add_domain", [f"inventory.{p}" for p in INVENTORY])
+    v = _verify(_prods([("inventory", p) for p in INVENTORY]), spec=spec)
+    assert v["status"] == "failed", v
+    assert "add_domain changes a domain but names the table(s)" in v["evidence"], v
 
 
-# ---------- integration through _verify_structural_target (the llm_verify rescue path) ----------
+def test_a_non_create_spec_is_judged_by_its_own_action():
+    # A foreign-key requirement on an existing table is never credited by the table's presence.
+    spec = vs.spec("VREQ-X", "add_fk", ["order.header.customer_id"], fk_target="customer.profile.profile_id")
+    text = "Add a foreign key on order.header.customer_id to customer.profile.profile_id"
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": "order"}], _prods([("order", "header")]), []), spec)
+    attrs = [{"domain": "order", "product": "header", "attribute": "customer_id", "foreign_key_to": ""}]
+    v = _orch()._verify_deterministic(_Req(text, "VREQ-X", scope="relation", scope_targets=["order.header"]), [], _prods([("order", "header")]), attrs)
+    assert v["status"] == "failed" and "0/1 column(s) reference customer.profile.profile_id" in v["evidence"], v
+    attrs[0]["foreign_key_to"] = "customer.profile.profile_id"
+    v = _orch()._verify_deterministic(_Req(text, "VREQ-X", scope="relation", scope_targets=["order.header"]), [], _prods([("order", "header")]), attrs)
+    assert v["status"] == "fulfilled", v
 
-def test_structural_target_rescues_domain_create():
-    obj = _bind(NB, "_verify_structural_target")
-    # _verify_structural_target requires the helper as a sibling method; bind it too.
-    src = _full_src(NB)
-    ns = {"re": re}
-    exec(_extract_fn(src, "_verify_domain_create_coverage"), ns)
-    type(obj)._verify_domain_create_coverage = ns["_verify_domain_create_coverage"]
-    # other early-return helpers it calls must exist as no-op-safe; bind the two it invokes first.
-    for fn in ("_v395_verify_description_coverage", "_v394_verify_move_type_count"):
-        exec(_extract_fn(src, fn), ns)
-        setattr(type(obj), fn, ns[fn])
-    prods = _prods([("inventory", p) for p in INVENTORY])
-    req = _Req(VREQ002_TEXT, rid="VREQ-002", scope_targets=["inventory"])
-    v = obj._verify_structural_target(req, prods, [])
-    assert v is not None and v["status"] == "fulfilled", v
+
+# ---------- the llm_verify path takes the deterministic spec verdict ----------
+
+def test_llm_verify_requirement_takes_the_spec_verdict_without_calling_the_llm():
+    class _NoLLM:
+        def _call_ai_query(self, **kwargs):
+            raise AssertionError("the LLM verifier must not run when the spec gives a verdict")
+
+    vs.register(ah, ah.widgets_flat_to_model([], [], []), VREQ002_SPEC)
+    orch = _orch(llm_verify=True, ai_agent=_NoLLM())
+    v = orch._verify_requirement(_Req(VREQ002_TEXT, "VREQ-002", scope_targets=["inventory"]),
+                                 [], _prods([("inventory", p) for p in INVENTORY]), [])
+    assert v["status"] == "fulfilled", v
+    v = orch._verify_requirement(_Req(VREQ002_TEXT, "VREQ-002", scope_targets=["inventory"]), [], _prods([("customer", "profile")]), [])
+    assert v["status"] == "failed", v
 
 
 # ---------- pre-patch proof: the FN existed (domain-create VReq not resolvable -> not fulfilled) ----------
@@ -160,55 +159,51 @@ def test_pre_patch_structural_target_not_fulfilled():
 
 def test_v411_alias_present():
     full = _full_src(NB)
-    assert "verifier-domain-create-coverage" in full
+    assert "alias=verifier-spec" in full
 
 
-# ---------- v4.1.1 model-wide-with-domain-preference matching (the automotive regression fix) ----------
+# ---------- tables another pass re-homed are followed through the rename ledger ----------
 
 def test_cross_domain_redistribution_fulfilled():
     # Mirrors live automotive VREQ-015 aftersales: the directive names 19 products but the architect
-    # legitimately re-homes most of them to better domains (vehicle/product/compliance). Domain-scoped
-    # matching would FALSE-PARTIAL this good build; model-wide presence must credit it -> fulfilled.
-    obj = _bind(NB, "_verify_domain_create_coverage")
-    # only 2 of the 19 stay in the target domain; the rest are placed elsewhere. Short tokens
-    # (asn, lot) are matched via EXACT model-wide presence (length-independent); long tokens via the
-    # guarded prefix/suffix path. Proves a legit re-home is credited -> fulfilled.
+    # legitimately re-homes most of them to better domains (vehicle/product/compliance). A table the
+    # ledger shows was moved (or moved and renamed) is credited where it landed -> fulfilled.
     prods = _prods(
         [("inventory", INVENTORY[0]), ("inventory", INVENTORY[1])]       # 2 in target domain
-        + [("product", p) for p in INVENTORY[2:15]]                      # 13 exact in another domain
-        + [("vehicle", "rehomed_" + p) for p in INVENTORY[15:]]          # 4 long-named, suffix match
+        + [("product", p) for p in INVENTORY[2:15]]                      # 13 moved to another domain
+        + [("vehicle", "rehomed_" + p) for p in INVENTORY[15:]]          # 4 moved and renamed
     )
-    req = _Req(VREQ002_TEXT, rid="VREQ-015", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "fulfilled", v
+    v = _verify(prods)
+    assert v["status"] == "partial" and "2/19 target(s) present" in v["evidence"], v
+    for p in INVENTORY[2:15]:
+        ah._vov_note_product_rename("inventory", p, "product", p, "pass:architect_rehome")
+    for p in INVENTORY[15:]:
+        ah._vov_note_product_rename("inventory", p, "vehicle", "rehomed_" + p, "pass:architect_rehome")
+    v = _verify(prods)
+    assert v["status"] == "fulfilled", v
 
 
 def test_genuinely_absent_stays_partial_modelwide():
     # Mirrors live water_utilities wastewater 10/30: most named products exist NOWHERE in the model.
-    # Model-wide matching must NOT rescue them -> honest partial (anti-lying-scoreboard in reverse).
-    obj = _bind(NB, "_verify_domain_create_coverage")
+    # Model-wide presence must NOT rescue them -> honest partial (anti-lying-scoreboard in reverse).
     prods = _prods(
         [("inventory", p) for p in INVENTORY[:10]]            # 10 named present in domain
         + [("unrelated", "alpha_widget"), ("misc", "beta_gadget")]  # decoys, no overlap with named
+        + [("product", p) for p in INVENTORY[10:]]
     )
-    req = _Req(VREQ002_TEXT, rid="VREQ-006", scope_targets=["inventory"])
-    v = obj._verify_domain_create_coverage(req, prods)
-    assert v is not None and v["status"] == "partial", v
+    v = _verify(prods)
+    assert v["status"] == "partial" and "10/19 target(s) present" in v["evidence"], v
 
 
 def test_guarded_suffix_no_short_token_overmatch():
-    # The guard (len>=6 or contains "_") prevents a short generic named token from matching an
-    # unrelated *_token product model-wide. Named 'sku' (len 3) must NOT be credited by 'dealer_sku'
-    # via suffix; it is only credited by an EXACT 'sku' product. Prove the guard is not a tautology.
-    obj = _bind(NB, "_verify_domain_create_coverage")
+    # A short named table must NOT be credited by an unrelated *_token table; only the exact
+    # domain.table counts. Prove the exact match is not a tautology.
+    spec = vs.spec("VREQ-G", "add_product", ["catalog.sku", "catalog.ima"])
     text = "Create the catalog domain with the following products: sku, ima."
-    # model has 'dealer_sku' and 'schema' (endswith _ima? no) -> neither should credit 'sku'/'ima' by suffix
     prods = _prods([("inventory", "dealer_sku"), ("inventory", "max_ima"), ("catalog", "listing")])
-    req = _Req(text, rid="VREQ-G", scope_targets=["catalog"])
-    v = obj._verify_domain_create_coverage(req, prods)
+    v = _verify(prods, spec=spec, text=text)
     # 0 of the 2 short named tokens credited (catalog present but neither sku nor ima built) -> failed
-    assert v is not None and v["status"] == "failed", v
+    assert v["status"] == "failed", v
     # now add an EXACT 'sku' product -> 1/2 credited -> partial (proves exact match still works)
-    prods2 = prods + _prods([("catalog", "sku")])
-    v2 = obj._verify_domain_create_coverage(req, prods2)
-    assert v2 is not None and v2["status"] == "partial", v2
+    v2 = _verify(prods + _prods([("catalog", "sku")]), spec=spec, text=text)
+    assert v2["status"] == "partial", v2

@@ -369,7 +369,17 @@ def _without_tag_list_pk_flags(out):
     return out
 
 
-INTENDED_CHANGES = {"structural_hardening": _without_tag_list_pk_flags}
+def _without_glossary_term_gate(out):
+    out = copy.deepcopy(out)
+    gate = [i for i in out["issues"] if i.get("category") == "invalid_glossary_term"]
+    out["issues"] = [i for i in out["issues"] if i.get("category") != "invalid_glossary_term"]
+    for issue in gate:
+        out["severity_counts"][issue["severity"]] -= 1
+    out["summary_by_category"].pop("invalid_glossary_term", None)
+    return out
+
+
+INTENDED_CHANGES = {"structural_hardening": _without_tag_list_pk_flags, "static_analysis": _without_glossary_term_gate}
 
 
 def _without_steward(out):

@@ -10,46 +10,23 @@ ROOT CAUSE (retail v2 ECM VOV, run <run_id>):
     tag/MV, so neither is assertable by a model mutation. They dragged physical
     adherence below the 90% floor.
 
-FIX: _verify_requirement gains a classifier (alias verifier-artifact-meta-
-    informational) returning status="informational" for these two classes, GUARDED
-    by a structural-verb exclusion so a COMPOUND VReq that also names a real
-    structural action (resolve SSOT / re-home / split / add ...) keeps its genuine
+v5.3.3: an LLM reads every requirement into a spec. A spec of kind "deployment" or
+    "documentation" changes no model entity, and the spec verifier scores it
+    informational. A requirement whose spec changes the model keeps its genuine
     verdict (a real miss is NEVER excused -- S8.3, section-12 no false-positive).
-
-Tests extract the SHIPPED regexes (not copies) and prove the decision boundary.
 """
-import json
-import os
-import re
+import logging
+import sys
+from pathlib import Path
 
 import pytest
 
-NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
-
-def _classifier_src():
-    cells = json.load(open(NB))["cells"]
-    for c in cells:
-        if c["cell_type"] == "code" and "verifier-artifact-meta-informational" in "".join(c["source"]):
-            return "".join(c["source"])
-    raise AssertionError("cell containing verifier-artifact-meta-informational not found")
-
-
-def _regex(name):
-    src = _classifier_src()
-    m = re.search(name + r' = re\.compile\(r"(.*?)", re\.I\)', src)
-    assert m, "could not extract %s pattern literal" % name
-    return re.compile(m.group(1), re.I)
-
-
-def _classifies_informational(text):
-    """Replicate the shipped decision using the SHIPPED regexes: two-tier structural guard first."""
-    structural = _regex("_v425_structural_verb")
-    additive = _regex("_v425_additive_model")
-    if structural.search(text) or additive.search(text):
-        return False
-    return bool(_regex("_v425_deploy_meta").search(text) or _regex("_v425_doc_meta").search(text))
-
+LOG = logging.getLogger("test_v425_artifact_meta_informational")
 
 # ---- real live VREQ texts ----
 VREQ_022 = ("Fix the schema/database name mismatch: the file named _v1_mvm.sql writes DDL into the "
@@ -64,47 +41,103 @@ VREQ_070 = ("Section 3E.4: Add a sensitivity/PII classification tag to these 14 
             "attributes and mask them in non-prod.")
 
 
+def _model():
+    return {"model": {"domains": [
+        {"name": "customer", "products": [
+            {"name": "profile", "primary_key": "profile_id", "attributes": [
+                {"name": "profile_id", "type": "BIGINT"}, {"name": "email", "type": "STRING", "tags": ""},
+                {"name": "phone", "type": "STRING", "tags": ""},
+                {"name": "order_id", "type": "BIGINT", "foreign_key_to": "sales.order.order_id"}]},
+            {"name": "consent", "primary_key": "consent_id", "attributes": [{"name": "consent_id", "type": "BIGINT"}]},
+            {"name": "preference", "primary_key": "preference_id", "attributes": [
+                {"name": "preference_id", "type": "BIGINT"}, {"name": "channel", "type": "STRING"},
+                {"name": "diet", "type": "STRING"}]}]},
+        {"name": "sales", "products": [
+            {"name": "order", "primary_key": "order_id", "attributes": [{"name": "order_id", "type": "BIGINT"}]},
+            {"name": "customer", "primary_key": "customer_id", "attributes": [{"name": "customer_id", "type": "BIGINT"}]}]},
+        {"name": "compliance", "products": [
+            {"name": "policy", "primary_key": "policy_id", "attributes": [{"name": "policy_id", "type": "BIGINT"}]}]},
+    ]}}
+
+
+def _orchestrator():
+    orch = ah.VibeOrchestrator({"logger": LOG, "config": {"MODEL_CONVENTIONS": {"primary_key_suffix": "_id"}},
+                                "vibe_modelling_instructions": VREQ_022, "operation": "vibe modeling of version"})
+    orch._llm_verify_enabled = False
+    orch.ai_agent = None
+    return orch
+
+
+def _req(text, rid="VREQ-T"):
+    return ah.VibeRequirement(id=rid, original_text=text, intent=text[:40], scope="model", scope_targets=["*"],
+                              verification_strategy="deterministic")
+
+
+def _verdict(text, spec):
+    model = _model()
+    vs.register(ah, model, spec)
+    d, p, a, _mv = ah.model_to_widgets_flat(model)
+    return _orchestrator()._verify_requirement(_req(text, spec["id"]), d, p, a)
+
+
 class TestArtifactMetaMatches:
     def test_vreq_022_deploy_file_naming(self):
-        assert _classifies_informational(VREQ_022)
+        verdict = _verdict(VREQ_022, vs.spec("VREQ-022", "other", [], kind="deployment"))
+        assert verdict["status"] == "informational", verdict
+        assert "deployment requirement changes no model entity" in verdict["evidence"], verdict
 
     def test_vreq_043_provenance_doc(self):
-        assert _classifies_informational(VREQ_043)
+        verdict = _verdict(VREQ_043, vs.spec("VREQ-043", "other", [], kind="documentation"))
+        assert verdict["status"] == "informational", verdict
 
-    @pytest.mark.parametrize("text", [
-        "The file named schema_ddl.sql writes DDL into the wrong catalog.",
-        "Fix the catalog mismatch where MVM and ECM target the same catalog.",
-        "Add a model card documenting provenance.",
-        "Include an LLM-generated disclosure so adopters know to vet the model.",
+    @pytest.mark.parametrize("text,kind", [
+        ("The file named schema_ddl.sql writes DDL into the wrong catalog.", "deployment"),
+        ("Fix the catalog mismatch where MVM and ECM target the same catalog.", "deployment"),
+        ("Add a model card documenting provenance.", "documentation"),
+        ("Include an LLM-generated disclosure so adopters know to vet the model.", "documentation"),
     ])
-    def test_meta_variants_match(self, text):
-        assert _classifies_informational(text), text
+    def test_meta_variants_match(self, text, kind):
+        assert _verdict(text, vs.spec("VREQ-T", "other", [], kind=kind))["status"] == "informational", text
 
 
 class TestCompoundStructuralNotExcused:
-    """A real structural action in the text keeps the VReq scoreable (no false-positive)."""
+    """A requirement whose spec changes the model keeps its genuine verdict (no false-positive)."""
 
     def test_vreq_047_resolve_ssot_stays_scoreable(self):
-        assert not _classifies_informational(VREQ_047)
+        verdict = _verdict(VREQ_047, vs.spec("VREQ-047", "merge_products", ["sales.customer"], merge_into="customer.profile"))
+        assert verdict["status"] == "failed", verdict
 
     def test_vreq_070_add_pii_tag_stays_scoreable(self):
-        assert not _classifies_informational(VREQ_070)
+        spec = vs.spec("VREQ-070", "set_fields", ["customer.profile"], fields=[vs.field("attributes", "tags")],
+                       tags=[{"key": "pii", "value": "true"}])
+        verdict = _verdict(VREQ_070, spec)
+        assert verdict["status"] == "failed" and "0/2" in verdict["evidence"], verdict
 
-    @pytest.mark.parametrize("text", [
-        "Re-home the consent table to a compliance domain.",
-        "Split the preference god-table into focused tables.",
-        "Add a household table to the customer domain.",
-        "Remove reversed cross-domain FKs from the customer schema.",
+    @pytest.mark.parametrize("text,spec", [
+        ("Re-home the consent table to a compliance domain.",
+         vs.spec("VREQ-T", "move_product", ["customer.consent"], destination_domain="compliance")),
+        ("Split the preference god-table into focused tables.",
+         vs.spec("VREQ-T", "split_product", ["customer.preference"], split_into=[{"product": "preference_channel", "columns": ["channel"]},
+                                                                                 {"product": "preference_diet", "columns": ["diet"]}])),
+        ("Add a household table to the customer domain.", vs.spec("VREQ-T", "add_product", ["customer.household"])),
+        ("Remove reversed cross-domain FKs from the customer schema.", vs.spec("VREQ-T", "remove_fk", ["customer.profile.order_id"])),
     ])
-    def test_structural_reqs_stay_scoreable(self, text):
-        assert not _classifies_informational(text), text
+    def test_structural_reqs_stay_scoreable(self, text, spec):
+        assert _verdict(text, spec)["status"] == "failed", text
 
 
 class TestWiredIntoVerifier:
     def test_returns_informational_and_guarded(self):
-        src = _classifier_src()
-        assert "def _verify_requirement(" in src
-        block = src.split("_v425_structural_verb = re.compile(", 1)[1][:2200]
-        assert "if not _v425_structural_verb.search(_ot425) and not _v425_additive_model.search(_ot425):" in block
-        assert 'return {"status": "informational"' in block
-        assert "verifier-artifact-meta-informational FIRED v4.2.5" in block
+        model = _model()
+        vs.register(ah, model, vs.spec("VREQ-022", "other", [], kind="deployment"),
+                    vs.spec("VREQ-070", "set_fields", ["customer.profile"], fields=[vs.field("attributes", "tags")],
+                            tags=[{"key": "pii", "value": "true"}]))
+        d, p, a, _mv = ah.model_to_widgets_flat(model)
+        orch = _orchestrator()
+        meta, pii, unread = _req(VREQ_022, "VREQ-022"), _req(VREQ_070, "VREQ-070"), _req(VREQ_043, "VREQ-043")
+        orch.manifest = ah.VibeManifest(raw_text=VREQ_022, requirements=[meta, pii, unread])
+        orch.widgets_values.update({"domains": d, "products": p, "attributes": a})
+        orch.validate()
+        assert meta.status == "informational" and "[verifier-spec FIRED v5.3.3]" in meta.evidence, meta.evidence
+        assert pii.status == "failed", pii.evidence
+        assert unread.status == "failed" and "not interpreted" in unread.evidence, unread.evidence

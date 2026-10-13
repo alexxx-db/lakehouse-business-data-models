@@ -12,10 +12,13 @@ the SAME expander classifies + expands it inside the priority branch.
 
 FAIL-PRE proof: on v4.3.7 HEAD `_v437_harvest_reviewer_directives` does not exist, so
 slice_functions raises (LookupError: def not found) and every test below errors pre-patch.
-PASS-POST: the harvester returns the reviewer VReqs and they expand via _v436.
+PASS-POST: the harvester returns the reviewer VReqs, the LLM reads each into a spec, and the
+spec becomes the canonical priorities the priority branch applies.
 """
 import re
 
+import agent_helpers as ah
+import vreq_spec_util as vs
 from v435_helpers import concat_source, slice_functions
 
 
@@ -64,12 +67,13 @@ def _harvest_ns():
         src, extra_globals={"re": re, "RawVREQ": _StubVREQ})
 
 
-def _full_ns():
-    src = concat_source()
-    return slice_functions(
-        ["_v437_harvest_reviewer_directives", "_v436_expand_vreq_to_priorities",
-         "_v437_priority_to_v337_op", "_v533_vibe_asks_glossary_cleanup"],
-        src, extra_globals={"re": re, "RawVREQ": _StubVREQ})
+def _customer_model():
+    columns = [("contact", "contact_value", "STRING"), ("profile", "nps_score", "STRING"),
+               ("profile", "email_opt_in_flag", "BOOLEAN"), ("profile", "sms_opt_in_flag", "BOOLEAN")]
+    return ah.widgets_flat_to_model(
+        [{"domain": "customer"}],
+        [{"domain": "customer", "product": p, "primary_key": f"{p}_id"} for p in ("contact", "profile", "account")],
+        [{"domain": "customer", "product": p, "attribute": c, "type": t} for p, c, t in columns])
 
 
 def test_fixI_harvest_parses_reviewer_priority_blocks():
@@ -93,26 +97,29 @@ def test_fixI_harvest_returns_empty_without_reviewer_block():
 
 
 def test_fixI_harvested_vreq_expands_to_canonical_priorities():
-    # End-to-end: harvest -> feed the SAME expander -> canonical ops emerge. This is the exact
-    # chain the priority branch now runs; pre-patch the harvester does not exist so this errors.
-    ns = _full_ns()
-    harvested = ns["_v437_harvest_reviewer_directives"](_SAMPLE)
-    by_id = {v.priority_id: v for v in harvested}
-
-    # P1 retype -> retype_attribute per FQN with the right type
-    retypes = {(p["target"], p["target_state"])
-               for p in ns["_v436_expand_vreq_to_priorities"](by_id[1])
-               if p["action"] == "retype_attribute"}
-    assert ("customer.contact.contact_value", "STRING") in retypes, retypes
-    assert ("customer.profile.nps_score", "INT") in retypes, retypes
+    # End-to-end: harvest -> the LLM spec of each harvested VReq -> canonical priorities. This is the
+    # exact chain the priority branch now runs; pre-patch the harvester does not exist so this errors.
+    by_id = {v.priority_id: v for v in ah._v437_harvest_reviewer_directives(_SAMPLE)}
+    assert {i: v.vreq_id for i, v in by_id.items()} == {1: "REVIEWER-1", 2: "REVIEWER-2", 4: "REVIEWER-4", 10: "REVIEWER-10"}
+    scd_columns = [{"name": "effective_from", "type": "TIMESTAMP"}, {"name": "effective_to", "type": "TIMESTAMP"},
+                   {"name": "is_current", "type": "BOOLEAN"}]
+    vs.register(ah, _customer_model(),
+                vs.spec("REVIEWER-4", "drop_column", ["customer.profile.email_opt_in_flag", "customer.profile.sms_opt_in_flag"]),
+                vs.spec("REVIEWER-10", "add_column", ["customer.profile", "customer.account"], columns=scd_columns),
+                vs.spec("REVIEWER-2", "set_fields", [], breadth="model",
+                        fields=[vs.field("products", "description"), vs.field("attributes", "description")]),
+                vs.spec("REVIEWER-1", "retype_column", ["customer.contact.contact_value", "customer.profile.nps_score"],
+                        interpretable=False, reason="the two columns take different types"))
 
     # P4 deduplicate_consent -> remove_attribute per FQN
-    removes = {p["target"] for p in ns["_v436_expand_vreq_to_priorities"](by_id[4])
-               if p["action"] == "remove_attribute"}
-    assert "customer.profile.email_opt_in_flag" in removes, removes
-    assert "customer.profile.sms_opt_in_flag" in removes, removes
+    removes = [(p["action"], p["target"], p["column"]) for p in ah._vov_vreq_to_priorities(by_id[4])]
+    assert removes == [("remove_attribute", "customer.profile", "email_opt_in_flag"),
+                       ("remove_attribute", "customer.profile", "sms_opt_in_flag")], removes
+    assert {p["vreq_id"] for p in ah._vov_vreq_to_priorities(by_id[4])} == {"REVIEWER-4"}
 
-    # P10 scd -> add_scd2_history on the 2-part master tables
-    scd = {p["target"] for p in ns["_v436_expand_vreq_to_priorities"](by_id[10])
-           if p["action"] == "add_scd2_history"}
-    assert "customer.profile" in scd and "customer.account" in scd, scd
+    # P10 scd -> the SCD-2 columns on the 2-part master tables
+    scd = [(p["action"], p["target"]) for p in ah._vov_vreq_to_priorities(by_id[10])]
+    assert scd == [("add_attribute", "customer.profile"), ("add_attribute", "customer.account")], scd
+
+    assert ah._vov_vreq_to_priorities(by_id[2]) == []
+    assert ah._vov_vreq_to_priorities(by_id[1]) == []

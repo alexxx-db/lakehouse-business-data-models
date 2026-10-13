@@ -12,9 +12,17 @@ and emits only remove/retype; `_v437_priority_to_v337_op` does not exist, and
 `_v413_apply_det_op_inplace` has no split_product/reverse_fk branch. Each assertion below
 fails pre-patch (TypeError on the model arg / empty output / LookupError / None result).
 PASS-POST: the extended expander + bridge produce the exact canonical ops.
+
+v5.3.3: the regex expander is deleted. An LLM reads each reviewer requirement into a spec; the spec's
+ops (_vreq_spec_v337_entries -> _v437_priority_to_v337_op) and pass-1 priorities (_vov_vreq_to_priorities)
+carry the canonical actions.
 """
+import logging
 import re
 
+import conftest  # noqa: F401
+import agent_helpers as ah
+import vreq_spec_util as vs
 from v435_helpers import concat_source, slice_functions
 from notebook_source_util import vov_ledger_globals
 
@@ -27,63 +35,52 @@ class _V:
         self.vreq_id = vid
 
 
-def _expander_ns():
-    src = concat_source()
-    return slice_functions(
-        ["_v436_expand_vreq_to_priorities", "_v437_priority_to_v337_op", "_v533_vibe_asks_glossary_cleanup"],
-        src, extra_globals={"re": re})
+def _customer_model():
+    def _table(name):
+        return {"name": name, "primary_key": f"{name}_id", "attributes": [{"name": f"{name}_id", "type": "BIGINT"}]}
+    return {"model": {"domains": [
+        {"name": "customer", "products": [_table(n) for n in ("profile", "account", "note", "service_case", "segment",
+                                                             "customer_membership", "payment_method")]},
+        {"name": "marketing", "products": [_table("campaign")]},
+        {"name": "finance", "products": [_table("payment_instrument")]}]}}
 
 
-_P7 = ("Move products that are not customer master identity out of the customer domain:\n"
-       "  - move customer.service_case to a dedicated service domain.\n"
-       "  - move customer.segment and customer.customer_membership to a marketing / customer_intelligence domain.")
-
-_P8 = ("Move customer.payment_method (including cardholder_name and card fields) into a "
-       "vault-adjacent finance domain table (e.g. finance.payment_instrument).")
+def _columns(model, product):
+    return {a["name"] for p in model["model"]["domains"][0]["products"] if p["name"] == product for a in p["attributes"]}
 
 
 def test_fixH_scd_emits_add_scd2_history_per_master_table():
-    ns = _expander_ns()
-    out = ns["_v436_expand_vreq_to_priorities"](
-        _V("scd_history_on_master",
-           "Master tables customer.profile and customer.account must carry change history (SCD-2 "
-           "effective_start_date/effective_end_date).", vid="VREQ-010"))
-    got = {(p["action"], p["target"]) for p in out}
-    assert ("add_scd2_history", "customer.profile") in got, got
-    assert ("add_scd2_history", "customer.account") in got, got
+    model = _customer_model()
+    scd = [{"name": "effective_start_date", "type": "DATE"}, {"name": "effective_end_date", "type": "DATE"}]
+    vs.register(ah, model, vs.spec("VREQ-010", "add_column", ["customer.profile", "customer.account"], columns=scd))
+    priorities = ah._vov_vreq_to_priorities(_V("scd_history_on_master", vid="VREQ-010"))
+    assert sorted(p["target"] for p in priorities) == ["customer.account", "customer.profile"], priorities
+    _model, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logging.getLogger("test_v437"))
+    for table in ("profile", "account"):
+        assert {"effective_start_date", "effective_end_date"} <= _columns(model, table), (table, outcomes, residual)
+    assert not {"effective_start_date", "effective_end_date"} & _columns(model, "note")
 
 
 def test_fixH_move_expands_all_products_with_per_clause_dest():
-    ns = _expander_ns()
-    out = ns["_v436_expand_vreq_to_priorities"](_V("rehome_non_identity_products", _P7, vid="VREQ-007"))
-    moves = {(p["target"], p["new_domain"]) for p in out if p["action"] == "move_product"}
-    assert ("customer.service_case", "service") in moves, moves
-    assert ("customer.segment", "marketing") in moves, moves
-    assert ("customer.customer_membership", "marketing") in moves, moves
+    model = _customer_model()
+    vs.register(ah, model, vs.spec("VREQ-007", "move_product", ["customer.service_case"], destination_domain="service"),
+                vs.spec("VREQ-017", "move_product", ["customer.segment", "customer.customer_membership"], destination_domain="marketing"),
+                vs.spec("VREQ-027", "move_product", ["customer.segment", "customer"], destination_domain="marketing"))
+    moves = {(e["target"], e["new_domain"]) for vid in ("VREQ-007", "VREQ-017")
+             for e in ah._vreq_spec_v337_entries(_V(vid=vid), model) if e["action"] == "move_product"}
+    assert moves == {("customer.service_case", "service"), ("customer.segment", "marketing"),
+                     ("customer.customer_membership", "marketing")}, moves
+    assert ah._vreq_spec_v337_entries(_V(vid="VREQ-027"), model) == []
 
 
 def test_fixH_move_op_converter_builds_v337_tuple_and_ignores_abbrev_noise():
-    ns = _expander_ns()
-    out = ns["_v436_expand_vreq_to_priorities"](_V("pci_scope_isolation", _P8, vid="VREQ-008"))
-    ops = [ns["_v437_priority_to_v337_op"](p) for p in out if p["action"] == "move_product"]
-    ops = [o for o in ops if o]
-    assert ("move_product", "customer", "payment_method", "finance") in ops, ops
-    # "e.g." abbreviation must NOT become a bogus move op
-    assert not any(o[1] == "e" for o in ops), ops
-
-
-def test_fixH_vendor_neutral_rewrites_descriptions_model_wide():
-    ns = _expander_ns()
-    model = {"model": {"domains": [{"name": "customer", "products": [
-        {"name": "profile", "description": "Mastered in Informatica MDM.",
-         "attributes": [{"name": "email", "description": "Captured by Salesforce Commerce Cloud."}]}]}]}}
-    p2 = ('vendor_neutral_descriptions: strip vendor names. '
-          '"Informatica MDM" -> "the customer master data system", '
-          '"Salesforce Commerce Cloud" -> "the e-commerce platform"')
-    out = ns["_v436_expand_vreq_to_priorities"](_V("vendor_neutral_descriptions", p2, vid="VREQ-002"), model)
-    by_t = {p["target"]: p["new_description"] for p in out if p["action"] == "update_description"}
-    assert "Informatica MDM" not in by_t.get("customer.profile", ""), by_t
-    assert "Salesforce Commerce Cloud" not in by_t.get("customer.profile.email", ""), by_t
+    model = _customer_model()
+    vs.register(ah, model, vs.spec("VREQ-008", "move_product", ["customer.payment_method"], destination_domain="finance"),
+                vs.spec("VREQ-018", "move_product", ["customer.payment_method"], destination_domain="e.g."))
+    ops = [ah._v437_priority_to_v337_op(e) for e in ah._vreq_spec_v337_entries(_V(vid="VREQ-008"), model)]
+    assert ops == [("move_product", "customer", "payment_method", "finance")], ops
+    assert ah.vreq_spec("VREQ-018")["interpretable"] is False
+    assert ah._vreq_spec_v337_entries(_V(vid="VREQ-018"), model) == []
 
 
 def test_fixH_v413_bridge_applies_split_and_reverse():

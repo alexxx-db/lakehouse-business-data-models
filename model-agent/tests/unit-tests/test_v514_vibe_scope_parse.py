@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 from notebook_source_util import notebook_concat_source, slice_function_source  # noqa: E402
 
@@ -317,13 +318,17 @@ def test_setup_scoped_new_base_domains_keeps_the_legacy_roster(monkeypatch):
 
 def test_setup_scoped_vov_pins_scope_skips_exhaustive_and_closure_filter(monkeypatch):
     wv = _vov_widgets()
+    vs.register(ah, RAW, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"),
+                vs.spec("V2", "add_product", ["flight.delay_code"]),
+                vs.spec("V3", "add_product", ["fleet.paint_scheme"], interpretable=False, reason="names no table"))
     _run_setup(monkeypatch, wv, sql=_vov_sql(), table_exists=True)
     fence = ah.get_vibe_scope_runtime()
     assert isinstance(fence, ah.VibeScopeFence)
     assert fence.report()["frozen"]["domains"] == 14 and fence.report()["frozen"]["products"] == 192
     assert wv["_user_specified_domains"] == ["crew"]
     assert "user_domains_exhaustive" not in (wv.get("sizing_directives") or {})
-    assert ("flight", "delay_code") in wv["_vov_user_closure"]
+    assert {("crew", "crew_member"), ("flight", "delay_code")} <= wv["_vov_user_closure"]
+    assert ("fleet", "paint_scheme") not in wv["_vov_user_closure"]
     assert wv["_vibe_scope_spec"].entries == ("crew",)
     assert any("[vibe-scope-exhaustive-skip FIRED v5.1.4]" in s for s in wv["_vov_pending_sentinels"])
 

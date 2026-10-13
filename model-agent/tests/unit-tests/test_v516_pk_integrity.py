@@ -15,6 +15,7 @@ import pytest
 
 import conftest  # noqa: F401
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 FIXTURE = Path(__file__).parent / "fixtures" / "v516_r0p_campaign_subset.json"
 DANGLING = "customer.campaign.campaign_id"
@@ -181,17 +182,17 @@ def test_llm_fallback_remove_refuses_a_primary_key():
 
 
 def test_reviewer_p11_keeps_the_primary_key():
-    model = {"domains": [{"name": "customer", "products": [{"name": "campaign", "primary_key": "campaign_id", "attributes": [
+    model = {"model": {"domains": [{"name": "customer", "products": [{"name": "campaign", "primary_key": "campaign_id", "attributes": [
         {"name": "campaign_id", "tags": "primary_key", "foreign_key_to": ""},
         {"name": "campaign_type", "tags": "", "foreign_key_to": ""},
-        {"name": "campaign_name", "tags": "", "foreign_key_to": ""}]}]}]}
-    text = ("REVIEWER-PRIORITY P11 customer_type_clean: customer.campaign.campaign_name keeps a separate "
-            "campaign_id/campaign_type column that duplicates the name. REVIEWER-PRIORITY P12 none")
-    log, cap = _logger()
-    ah._v441_reviewer_finalization(model, text, log)
+        {"name": "campaign_name", "tags": "", "foreign_key_to": ""}]}]}]}}
+    vs.register(ah, model, vs.spec("VREQ-011", "drop_column", ["customer.campaign.campaign_id", "customer.campaign.campaign_type"]))
+    vreq = ah.RawVREQ(vreq_id="VREQ-011", intent="customer_type_clean", target="customer.campaign", source_quote="P11", source_chunk_id="c1")
+    log, _cap = _logger()
+    _model, outcomes, _residual = ah._v251_apply_pass1_priorities(ah._vov_vreq_to_priorities(vreq), model, log)
     names = [a["name"] for a in _nested_product(model, "customer", "campaign")["attributes"]]
-    assert "campaign_id" in names and "campaign_type" not in names
-    assert "[reviewer-p11-pk-guard FIRED v5.1.6]" in _text(cap)
+    assert "campaign_id" in names and "campaign_type" not in names and "campaign_name" in names
+    assert sorted((o.status, o.diagnostic) for o in outcomes) == [("applied", ""), ("skipped_unsafe", "refuse-remove-pk")], outcomes
 
 
 def test_g9_never_drops_a_primary_key_twin():

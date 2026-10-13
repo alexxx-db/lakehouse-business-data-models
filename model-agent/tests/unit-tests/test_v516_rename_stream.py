@@ -59,8 +59,8 @@ def test_task2_note_helpers_classify_and_skip_noise(caplog):
 
 
 SWEEP_CAUSES = (
-    "shrink_relink_orphan_fk", "apply_convention_changes", "product_domain_location_fit", "v441_reviewer_finalize_scd",
-    "v441_reviewer_finalize_pci", "v443_pk_selfref_repair", "domain_architect_review", "global_semantic_dedup",
+    "shrink_relink_orphan_fk", "apply_convention_changes", "product_domain_location_fit",
+    "v443_pk_selfref_repair", "domain_architect_review", "global_semantic_dedup",
     "global_semantic_dedup_same_name", "find_missing_fk_keep_as_is", "qa_small_domain_merge", "qa_duplicate_product_rename",
     "qa_name_overlap_rename", "apply_naming_case", "ddl_fk_collision_keep", "ddl_pk_dedup", "p074_product_name_collision",
     "p074_pk_attr_sync", "pre_sa_stub_id_product", "p016_ambiguous_fk_rename", "p075_fk_target_pk_suffix",
@@ -284,15 +284,3 @@ def test_task9_suffix_group_strips_the_pk_suffix_only_at_the_end(caplog):
         ah._create_missing_parent_tables_for_unlinked_fks(d, p, a, cfg, LOG)
     assert sorted(r["product"] for r in p) == ["order", "product_idea", "ticket"]
     assert any("[pk-suffix-trailing-strip FIRED v5.1.6]" in r.getMessage() for r in caplog.records)
-
-
-def test_anchored_pass_blanks_handled_lines_without_shifting_offsets():
-    import test_v514_contract_inputs as CI
-    ah.set_vibe_scope_runtime(None)
-    stripped, _imap = CI._input_map()
-    _model, vreqs, _outcomes, out = ah._vov_apply_anchored_directives(stripped, CI.E._engine(), LOG)
-    assert [v.vreq_id for v in vreqs] == ["ANCHOR-001"]
-    assert "Rename roster to duty_roster" not in out
-    assert len(out) == len(stripped)
-    tail = stripped.index("## Domain: fleet")
-    assert out[tail:] == stripped[tail:]

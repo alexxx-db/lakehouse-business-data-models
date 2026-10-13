@@ -105,15 +105,6 @@ def test_v90_alias_t1d_finalize_vendor_name_scrub():
         )
 
 
-def test_v90_alias_p73a_participle_blocklist():
-    assert "vov-closure-domain-participle-blocklist" in ALL_SOURCE
-    # Sanity: all the key participles that caused HC v5 phantom 'covering'
-    for w in ("covering", "including", "excluding", "owning", "managing",
-              "supporting", "serving", "processing", "providing"):
-        # word should appear as a quoted blocklist entry
-        assert f"'{w}'" in ALL_SOURCE, f"participle '{w}' not in _COMMON blocklist"
-
-
 def test_v90_alias_p73b_non_business_blocklist():
     assert "n5-auto-parent-non-business-blocklist" in ALL_SOURCE
     # Sanity: blocklist contains the phantom domains seen in HC v5

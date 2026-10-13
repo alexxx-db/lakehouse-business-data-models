@@ -20,10 +20,15 @@ RC-physical (ddl-fk-collision-keep) — at table-create dedup, when two DISTINCT
   `_build_fk_collision_name` and KEEP BOTH.
 """
 
-import ast
 import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NOTEBOOK_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -41,16 +46,6 @@ def _load_source() -> str:
     return "\n".join(chunks)
 
 
-def _extract_fn(name: str) -> str:
-    src = _load_source()
-    tree = ast.parse(src)
-    lines = src.splitlines()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == name:
-            return "\n".join(lines[node.lineno - 1:node.end_lineno])
-    raise AssertionError(f"function {name!r} not found")
-
-
 # ---------------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------------
@@ -64,31 +59,39 @@ def test_agent_version_at_least_3_2_5():
 
 
 # ---------------------------------------------------------------------------
-# RC1 static contract
+# RC1 behavioral — the spec verifier requires the FK the requirement names
 # ---------------------------------------------------------------------------
 
-def test_verifier_defines_fk_intent():
-    fn = _extract_fn("_verify_structural_target")
-    assert "fk_intent" in fn, "RC1: verifier must compute fk_intent"
-    assert "verifier-fk-required" in fn, "RC1: must emit verifier-fk-required alias"
-    # FK-intent must cover the natural-language phrasings, not just 'fk to a.b.c'
-    low = fn.lower()
-    assert "foreign key" in low, "RC1: must recognise 'foreign key to' phrasing"
-    assert "connect_table" in low, "RC1: connect_table directives imply an FK"
+def _hr_rows(fk=""):
+    domains = [{"domain": "hr"}]
+    products = [{"domain": "hr", "product": "eligibility_rule", "primary_key": "eligibility_rule_id"},
+                {"domain": "hr", "product": "pension_plan", "primary_key": "pension_plan_id"}]
+    attributes = [{"domain": "hr", "product": "eligibility_rule", "attribute": "eligibility_rule_id", "is_primary_key": True},
+                  {"domain": "hr", "product": "eligibility_rule", "attribute": "pension_plan_id", "foreign_key_to": fk},
+                  {"domain": "hr", "product": "pension_plan", "attribute": "pension_plan_id", "is_primary_key": True}]
+    return domains, products, attributes
 
 
-def test_verifier_missing_fk_returns_partial_not_fulfilled():
-    """The FK-intent fallback must return 'partial' (not 'fulfilled') when the
-    column is present but the required FK is absent."""
-    fn = _extract_fn("_verify_structural_target")
-    # locate the fk_intent fallback block
-    idx = fn.find("if fk_intent:")
-    assert idx >= 0, "RC1: fk_intent fallback block missing"
-    block = fn[idx: idx + 900]
-    assert '"partial"' in block or "'partial'" in block, (
-        "RC1: column-present-without-required-FK must score partial"
-    )
-    assert "REQUIRED FK MISSING" in block, "RC1: must log the required-FK-missing diagnostic"
+def _add_column_verdict(fk_target, fk):
+    rows = _hr_rows(fk)
+    vs.register(ah, ah.widgets_flat_to_model(*_hr_rows()),
+                vs.spec("V1", "add_column", ["hr.eligibility_rule"], columns=[{"name": "pension_plan_id", "type": "BIGINT"}], fk_target=fk_target))
+    return ah._verify_from_spec(ah.vreq_spec("V1"), *rows)
+
+
+def test_verifier_requires_the_fk_an_add_column_spec_names():
+    res = _add_column_verdict("hr.pension_plan", "")
+    assert ah.vreq_spec("V1")["fk_target"] == "hr.pension_plan.pension_plan_id"
+    assert res["status"] == "failed" and "0/1 column(s) reference hr.pension_plan.pension_plan_id" in res["evidence"], res
+    res = _add_column_verdict("hr.pension_plan", "hr.pension_plan.pension_plan_id")
+    assert res["status"] == "fulfilled", res
+
+
+def test_verifier_column_present_without_the_required_fk_is_never_fulfilled():
+    """A column present WITHOUT the FK the requirement names, or with a different FK, must not
+    score fulfilled; a pure add-column requirement with no FK still passes on presence."""
+    assert _add_column_verdict("hr.pension_plan", "hr.eligibility_rule.eligibility_rule_id")["status"] == "failed"
+    assert _add_column_verdict("", "")["status"] == "fulfilled"
 
 
 # ---------------------------------------------------------------------------

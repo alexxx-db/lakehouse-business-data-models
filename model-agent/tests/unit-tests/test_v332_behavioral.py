@@ -11,13 +11,20 @@ precision to 39.7% on an otherwise healthy 92/100 model.
 
 Fixes (this file proves each against the EXACT deployed block, failing on pre-patch HEAD):
   A. verifier-snapshot-metadata: untruncatable TAG / METRIC-VIEW / CATALOG inventories.
-  B. verifier-relation-remove-column: column-scoped remove_fk verification.
+  B. verifier-relation-remove-column: column-scoped remove_fk verification. v5.3.3: the LLM spec names
+     the columns, and _verify_from_spec checks each named column (or, once dropped, its FK before).
 """
 import json
 import logging
 import os
+import sys
 import textwrap
 import types
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
 
@@ -88,64 +95,33 @@ def test_metadata_absent_when_model_has_none():
 
 # ---------------- FIX B: column-level remove_fk verification ----------------
 
-def _run_remove_branch(ll, fk_attrs, tl, target):
-    """Run the EXACT deployed remove-verb branch as a function body.
+_GROUP = ("project", "dsctr_category_group")
+_LINKED = {"domain": "project", "product": "dsctr_category_group", "attribute": "pse_user_id", "foreign_key_to": "hr.pse_user.id"}
+_OTHERS = [{"domain": "project", "product": "dsctr_category_group", "attribute": f"other_{i}_id", "foreign_key_to": f"project.x{i}.id"}
+           for i in range(7)]
 
-    The slice starts at _rel_needles (v4.8.2) rather than _rel_linked, because the
-    needle set is what _rel_linked reads. _rtl and _rel_canon are passed in as the
-    identity case (target already canonical, no extra resolution), which is the
-    pre-v4.8.2 matching behaviour these cases were written against.
-    """
-    src = _load_src()
-    block = _slice(src,
-                   '                _rel_needles = {tl, _rtl} | _rel_canon',
-                   '                if any(kw in ll for kw in ("link", "connect", "fk", "foreign key")):\n')
-    body = textwrap.indent(textwrap.dedent(block), "    ")
-    fn = ("import re\ndef _f(self, ll, fk_attrs, tl, target, req, _rtl, _rel_canon, attrs_by_product):\n"
-          + body + "    return {'status': 'no-branch'}\n")
-    _self = types.SimpleNamespace(logger=logging.getLogger("v332test"))
-    ns = {}
-    start = src.index("_VOV_FK_REMOVAL_COLUMN_RES = (")
-    exec("import re\n" + src[start:src.index("\n)\n", start) + 3], ns, ns)
-    touches = src.index("def _fk_touches_entity(")
-    exec(src[touches:src.index("\ndef ", touches + 10)], ns, ns)
-    exec(fn, ns, ns)
-    attrs_by_product = {}
-    for a in fk_attrs:
-        attrs_by_product.setdefault(f"{a['domain']}.{a['product']}".lower(), []).append(a)
-    return ns["_f"](_self, ll, fk_attrs, tl, target,
-                    types.SimpleNamespace(id="VREQ-009"), tl, set(), attrs_by_product)
+
+def _remove_fk_verdict(read_against, live):
+    def _products(rows):
+        return [{"domain": d, "product": p} for d, p in dict.fromkeys((r["domain"], r["product"]) for r in rows)] or [
+            {"domain": _GROUP[0], "product": _GROUP[1]}]
+    model = ah.widgets_flat_to_model([{"domain": "project"}], _products(read_against), [dict(r) for r in read_against])
+    vs.register(ah, model, vs.spec("VREQ-009", "remove_fk", ["project.dsctr_category_group.pse_user_id"]))
+    return ah._verify_from_spec(ah.vreq_spec("VREQ-009"), [{"domain": "project"}], _products(live), live)
 
 
 def test_remove_fk_column_level_fulfilled_when_named_column_removed():
-    # Table keeps 7 legitimate FKs but the NAMED column (pse_user_id) FK is gone.
-    fk_attrs = [{"domain": "project", "product": "dsctr_category_group",
-                 "attribute": f"other_{i}_id", "foreign_key_to": f"project.x{i}.id"} for i in range(7)]
-    res = _run_remove_branch(
-        "remove the foreign key on column pse_user_id from project.dsctr_category_group",
-        fk_attrs, "project.dsctr_category_group", "project.dsctr_category_group")
+    res = _remove_fk_verdict(_OTHERS + [_LINKED], _OTHERS)
+    assert res["status"] == "fulfilled" and "1/1 foreign key(s) removed" in res["evidence"], res
+    res = _remove_fk_verdict(_OTHERS + [_LINKED], _OTHERS + [dict(_LINKED, foreign_key_to="")])
     assert res["status"] == "fulfilled", res
-    assert "pse_user_id" in res["evidence"]
-
-
-def test_remove_fk_column_level_failed_when_named_column_still_linked():
-    # The named column STILL has its FK -> genuine miss must still be failed (no tautology).
-    fk_attrs = [{"domain": "project", "product": "dsctr_category_group",
-                 "attribute": "pse_user_id", "foreign_key_to": "hr.pse_user.id"}]
-    res = _run_remove_branch(
-        "remove the foreign key on column pse_user_id from project.dsctr_category_group",
-        fk_attrs, "project.dsctr_category_group", "project.dsctr_category_group")
+    res = _remove_fk_verdict(_OTHERS + [_LINKED], _OTHERS + [dict(_LINKED, attribute="pse_user_ref")])
     assert res["status"] == "failed", res
 
 
-def test_remove_fk_table_level_fallback_when_no_column_named():
-    # No column parseable -> fall back to table-level check (legacy behavior preserved).
-    fk_attrs = [{"domain": "project", "product": "x", "attribute": "y_id",
-                 "foreign_key_to": "project.dsctr_group_control.id"}]
-    res = _run_remove_branch(
-        "remove all foreign keys touching project.dsctr_group_control",
-        fk_attrs, "project.dsctr_group_control", "project.dsctr_group_control")
-    assert res["status"] == "failed", res  # link still present, no column named
+def test_remove_fk_column_level_failed_when_named_column_still_linked():
+    res = _remove_fk_verdict([_LINKED], [_LINKED])
+    assert res["status"] == "failed" and "0/1 foreign key(s) removed" in res["evidence"], res
 
 
 # ---------------- static contracts ----------------
@@ -159,7 +135,6 @@ def test_version_is_332():
 
 def test_aliases_present():
     src = _load_src()
-    for a in ("verifier-snapshot-metadata", "verifier-snapshot-tags", "verifier-snapshot-mv",
-              "verifier-snapshot-catalog", "verifier-relation-remove-column"):
+    for a in ("verifier-snapshot-metadata", "alias=verifier-spec"):
         assert a in src, a
     assert "AUTHORITATIVE TAGS/METRIC-VIEWS/CATALOG" in src
