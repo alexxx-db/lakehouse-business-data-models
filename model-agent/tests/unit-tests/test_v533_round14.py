@@ -283,3 +283,45 @@ def test_an_enlarge_keeps_the_tables_its_plan_lists_for_a_new_domain():
     assert 'if not (new_domain.get("products") or []):\n                    domains_needing_products.append(new_dom_rec)' in branch
     assert branch.count("domains_needing_products.append(") == 1
     assert "[resize-seed-plan-kept FIRED v5.3.3]" in body
+
+
+def _registry_rows(fake, table):
+    return [r for key, rows in fake.rows.items() if key.endswith(f"._metamodel.{table}") for r in rows]
+
+
+def test_an_install_into_another_catalog_keeps_the_versions_first_deployment(capsys):
+    """Live r17e 842714421575815: install model r14b put advertising v55 into vibe_dryrun_installed_v1 and rewrote v55's registry rows
+    with that catalog, so v55's own schemas in vibe_dryrun_smoke_v2 had no owner and the next VOV there was refused."""
+    import v514_feedback_util as fu
+    fake = fu.register(fu.FakeSpark(), "mm_cat", install_catalog="cat_a")
+    for row in _registry_rows(fake, "business"):
+        row["deploy_status"] = None
+    for row in _registry_rows(fake, "domain"):
+        row["catalog"] = None
+    capsys.readouterr()
+    result = fu.register(fake, "mm_cat", install_catalog="cat_b").last_result
+    printed = capsys.readouterr().out
+    assert result["success"] and result["kept_deployments"] == ["cat_a"]
+    business = sorted((r.get("catalog"), r.get("deploy_status")) for r in _registry_rows(fake, "business"))
+    assert business == [("cat_a", None), ("cat_b", "installed")]
+    domains = sorted({r.get("catalog") for r in _registry_rows(fake, "domain")})
+    assert domains == ["cat_a", "cat_b"]
+    per_catalog = {c: len([r for r in _registry_rows(fake, "domain") if r.get("catalog") == c]) for c in domains}
+    assert per_catalog["cat_a"] == per_catalog["cat_b"] > 0
+    products = len(_registry_rows(fake, "product"))
+    assert "[install-registry-keeps-deployment FIRED v5.3.3] Airlines v1 (mvm) is also deployed in ['cat_a']" in printed
+    fu.register(fake, "mm_cat", install_catalog="cat_b")
+    assert sorted(r.get("catalog") for r in _registry_rows(fake, "business")) == ["cat_a", "cat_b"]
+    assert len([r for r in _registry_rows(fake, "domain") if r.get("catalog") == "cat_b"]) == per_catalog["cat_b"]
+    assert len(_registry_rows(fake, "product")) == products
+    assert ah._registry_undo_failed_install(fake, "mm_cat", "Airlines", "1", "mvm", None, LOG, catalog="cat_b", kept=["cat_a"]) is True
+    assert [r.get("catalog") for r in _registry_rows(fake, "business")] == ["cat_a"]
+    assert {r.get("catalog") for r in _registry_rows(fake, "domain")} == {"cat_a"}
+
+
+def test_an_install_into_the_versions_own_catalog_still_rewrites_its_rows():
+    import v514_feedback_util as fu
+    fake = fu.register(fu.FakeSpark(), "mm_cat", install_catalog="cat_a")
+    result = fu.register(fake, "mm_cat", install_catalog="cat_a").last_result
+    assert result["kept_deployments"] == []
+    assert [r.get("catalog") for r in _registry_rows(fake, "business")] == ["cat_a"]
