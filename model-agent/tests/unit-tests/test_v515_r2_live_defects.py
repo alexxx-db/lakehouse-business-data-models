@@ -96,7 +96,7 @@ def test_both_extraction_paths_read_specs_before_scope_triage():
     assert raw < body.index("_vibe_scope_start_requested(list(deduped), scope_base_model or initial_model")
     assert raw < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _vs_work, model, logger)")
     user = body.index("(deduped, _user_free, _v438_rev_vreqs), _spec_failed = _vreq_spec_classify_engine(")
-    assert body.index("_user_free = _vov_extract_user_free_text(vibe_text, llm, parallel, logger)") < user
+    assert body.index("_user_free = _vov_extract_user_free_text(vibe_text, llm, parallel, logger, generated_text)") < user
     assert user < body.index("_vibe_scope_start_requested(list(deduped) + list(_user_free), scope_base_model or initial_model")
     assert user < body.index("_vibe_scope_triage_vreqs(_VIBE_SCOPE_RUNTIME, _user_free, model, logger)")
 

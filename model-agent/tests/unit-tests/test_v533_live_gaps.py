@@ -955,7 +955,7 @@ def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fiel
     spec, wide = ah._vibe_scope_requested_spec([vreq], base)
     assert wide == [] and spec.products == frozenset() and spec.whole_domains == frozenset() and spec.entries == ("crew",)
     assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
-    assert ("attributes", "business_glossary_term") in spec.fill_only_fields and spec.open_field_vreqs == ("VREQ-0001",)
+    assert spec.fill_only_targets == {("crew", "", "attributes", "business_glossary_term")} and spec.open_field_vreqs == ("VREQ-0001",)
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
     cur = copy.deepcopy(base)
@@ -1438,7 +1438,7 @@ def test_only_the_clause_about_empty_values_is_fill_only():
     assert ah._vreq_spec_fill_fields(only_empty) == {("attributes", "business_glossary_term")}
     spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
                                                          source_chunk_id="c1")], base)
-    assert spec.fill_only_fields == {("attributes", "business_glossary_term")}
+    assert spec.fill_only_fields == frozenset() and spec.fill_only_targets == {("crew", "roster", "attributes", "business_glossary_term")}
     fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
     ah.set_vibe_scope_runtime(fence)
     cur = copy.deepcopy(base)

@@ -118,7 +118,7 @@ def test_fallback_success_has_zero_final_failures_and_parity():
     assert result["succeeded"] == 1
     assert result["fallback_repaired"] == ["orders"]
     assert "FALLBACK:" in result["fallback_statements"]["orders"]
-    assert any("mv-fallback-emit-live FIRED" in line for line in logger.info_lines)
+    assert any("mv-fallback-emit-live FIRED" in line and "because the designed view failed: EmptySparkError" in line for line in logger.warning_lines)
     assert any(
         "mv-strict-parity-repair FIRED v4.5.8" in line
         for line in logger.info_lines

@@ -978,7 +978,7 @@ def test_a_set_primary_key_spec_rekeys_the_table_and_repoints_its_foreign_keys()
 def test_new_spec_shapes_that_cannot_be_acted_on_are_not_interpretable():
     idx = ah._vreq_spec_index(ah.widgets_flat_to_model(*_flat_hr()))
     no_column = ah._normalize_vreq_spec(vs.spec("K1", "set_primary_key", ["hr.employee"]), idx)
-    assert no_column["interpretable"] is False and no_column["reason"] == "set_primary_key names no column"
+    assert no_column["interpretable"] is False and no_column["reason"].startswith("set_primary_key names no column; a rule that every table has a primary key is the policy primary_key_everywhere")
     no_prefix = ah._normalize_vreq_spec(dict(vs.spec("P1", "other", [], breadth="model"), policy="column_prefix"), idx)
     assert no_prefix["interpretable"] is False and no_prefix["reason"] == "column_prefix names no value"
     prefix = ah._normalize_vreq_spec(dict(vs.spec("P2", "other", [], breadth="model"), policy="column_prefix", policy_value="hr_"), idx)
@@ -1568,7 +1568,8 @@ def test_a_clear_requirement_may_blank_the_fields_it_names_and_a_set_requirement
         vs.register(ah, base, vs.spec("X2", action, ["crew.member"], fields=[vs.field("attributes", "value_regex")]))
         vreq = ah.RawVREQ(vreq_id="X2", intent="x", target="crew.member", source_quote="x", source_chunk_id="c1")
         fence = ah._vibe_scope_start_requested([vreq], copy.deepcopy(base), LOG, copy.deepcopy(base))
-        assert (("attributes", "value_regex") in fence.spec.clear_fields) is survives
+        assert (("crew", "member", "attributes", "value_regex") in fence.spec.clear_targets) is survives
+        assert fence.spec.clear_fields == frozenset(), "a clear on a named table opens blanking only on that table"
         final = copy.deepcopy(base)
         for a in _table(final, "crew", "member")["attributes"]:
             a["value_regex"] = ""

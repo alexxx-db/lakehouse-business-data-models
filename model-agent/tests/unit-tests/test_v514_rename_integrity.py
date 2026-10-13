@@ -250,8 +250,41 @@ def test_f1_priority_branch_extracts_the_user_free_text():
     assert extraction_users and all("PRIORITY 1" not in u for u in extraction_users)
 
 
-def test_f1_free_text_extraction_skips_vibes_without_the_merge_sentinels():
-    assert ah._vov_extract_user_free_text(CONNECT_ROSTER + "Some prose about the model.\n", _NoLLM(), False, LOG) == []
+def test_f1_a_vibe_without_sentinels_still_applies_the_users_own_lines_next_to_a_priority_line():
+    """Live r11a 258488145999450: the same shape without the merge sentinels lost every plain-language ask."""
+    user_text = "## Domain: crew\n#### Product: member\n- (high) Link each crew member to a backup home base.\n"
+    def _specs(item):
+        if item["target"] == "crew.roster":
+            return vs.spec(item["id"], "add_column", ["crew.roster.backup_base_id"], columns=[{"name": "backup_base_id", "type": "BIGINT"}],
+                           fk_target="crew.base.base_id")
+        return vs.spec(item["id"], "add_column", ["crew.member.backup_home_base_id"], columns=[{"name": "backup_home_base_id", "type": "BIGINT"}],
+                       fk_target="crew.base.base_id")
+    llm = _FakeLLM(vreqs=[{"vreq_id": "V1", "target": "crew.member", "severity": "high", "is_user_directive": True,
+                           "intent": "connect_table: crew.member — add column backup_home_base_id (BIGINT) with FK to crew.base.base_id",
+                           "source_quote": "- (high) Link each crew member to a backup home base."}], specs=_specs)
+    result = ah.run_vov_pipeline(user_text + CONNECT_ROSTER, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2)
+    added = ah._v251_find_attribute_row(result.final_model, "crew", "member", "backup_home_base_id")
+    assert added is not None and added["foreign_key_to"] == "crew.base.base_id", "the user's own line is applied"
+    assert ah._v251_find_attribute_row(result.final_model, "crew", "roster", "backup_base_id") is not None
+    user_vreqs = [v for v in result.raw_vreqs if v.vreq_id.startswith("U-")]
+    assert len(user_vreqs) == 1 and "applied" in _statuses(result)[user_vreqs[0].vreq_id]
+    extraction_users = [user for system, user in llm.prompts if "extracting USER INSTRUCTIONS" in system]
+    assert extraction_users and all("PRIORITY 1" not in u for u in extraction_users)
+    parent = user_text + CONNECT_ROSTER
+    llm = _FakeLLM(vreqs=[], specs=_specs)
+    result = ah.run_vov_pipeline(parent, _engine(), llm, [], [], parallel=False, priority_reapply_loops=2, generated_text=parent)
+    assert not [v for v in result.raw_vreqs if v.vreq_id.startswith("U-")], "lines copied from the parent next_vibes are not user asks"
+    assert not [user for system, user in llm.prompts if "extracting USER INSTRUCTIONS" in system]
+
+
+def test_f1_free_text_extraction_reads_the_users_lines_and_skips_the_parent_next_vibes():
+    """Live r11a 258488145999450: a vibe with one PRIORITY line and six plain-language asks (no merge sentinels) reached the
+    engine as the PRIORITY line alone; the six asks were never extracted and the scope gate discarded the orchestrator's work."""
+    prose = "Some prose about the model.\n"
+    assert ah._vov_user_written_text(CONNECT_ROSTER + prose).strip() == prose.strip(), "without sentinels every non-PRIORITY line is the user's"
+    parent = CONNECT_ROSTER + "**Model Quality Score: 70/100**\n" + prose
+    assert ah._vov_user_written_text(ah._plain_vibe_text(parent), parent).strip() == "", "a vibe copied from the parent next_vibes has no user text"
+    assert ah._vov_extract_user_free_text(ah._plain_vibe_text(parent), _NoLLM(), False, LOG, parent) == []
     assert ah._vov_extract_user_free_text(USER + RENAME_FEEDBACK.replace("- (medium) Rename to crew_member.\n", "") + AUTO + CONNECT_ROSTER,
                                           _NoLLM(), False, LOG) == []
 
