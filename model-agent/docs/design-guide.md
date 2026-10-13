@@ -191,7 +191,7 @@ The pipeline executes a series of stages, each with a specific purpose, quality 
 ### Stage 2: Interpreting Instructions (Vibe mode only)
 - **Purpose:** Parse natural-language vibes into structured action plan
 - **Duration:** 10-30 seconds
-- **What happens:** The vibe text is analyzed and translated into 190+ specific actions. Hard constraints are extracted ("do not", "must not", "never" -> forbidden operations). Mode is classified (surgical/holistic/generative) based on keywords.
+- **What happens:** An LLM reads the vibe text into discrete requirements and classifies the mode (surgical/holistic/generative). A second LLM call then states, for each requirement, exactly what it changes as a structured spec (action, targets, fields, values, counts, policies, closed value lists). Every deterministic pass reads those specs; no code reads the vibe text with keywords or regex. A requirement the LLM cannot read after retries is marked not interpreted and reported, never guessed.
 - **Quality check:** Constraint extraction, requirement parsing
 - **Progress budget:** 1.0%
 
@@ -1659,7 +1659,7 @@ Custom tags from vibes are injected at two points:
 
 ```mermaid
 flowchart TD
-    V["Vibe text"] --> CHK{"Classify<br/>keywords"}
+    V["Vibe text"] --> CHK{"LLM classifies<br/>the vibe"}
     CHK -->|"'new base model' or<br/>'rebuild', 'regenerate all',<br/>'restructure'"| GEN["GENERATIVE<br/>12 rewrites / 100 domains<br/>1,000 products / 50,000 attrs<br/>Full pipeline from scratch"]
     CHK -->|"'rename all', 'add PII<br/>everywhere', broad patterns<br/>across many domains"| HOL["HOLISTIC<br/>4 rewrites / 30 domains<br/>400 products / 12,000 attrs<br/>Pattern-based, full pipeline"]
     CHK -->|"'add column', 'rename X',<br/>'link A to B', targeted<br/>discrete actions"| SURG["SURGICAL<br/>0 rewrites / 4 domains<br/>80 products / 1,200 attrs<br/>Fast path: skip stages 11/15/19"]
@@ -1676,7 +1676,7 @@ The vibe interpreter classifies every vibe session into one of three execution m
 | **HOLISTIC** | Vibe text that touches multiple domains or requests broad changes (e.g., "rename all tables", "add PII tags everywhere") | Medium (4 global rewrites, 30 domains, 400 products, 12,000 attributes) | Full pipeline, but constrained mutation budgets prevent runaway changes |
 | **SURGICAL** | Vibe text that targets specific entities (e.g., "add email column to customer", "rename billing.invoice to billing.bill", "link order to warehouse") | Lowest (0 global rewrites, 4 domains, 80 products, 1,200 attributes) | **Fast path**: skips subdomain allocation and metric view generation |
 
-Mode classification is deterministic based on keyword analysis in the vibe text. Keywords like "add column", "rename", "drop attribute", "link X to Y" trigger surgical mode. Keywords like "rebuild", "regenerate all", "restructure" trigger generative mode. Everything else defaults to holistic.
+The LLM vibe parse classifies the mode from what the requirements ask: targeted changes such as adding a column, renaming one table or linking two tables are surgical; a request to rebuild or regenerate the model is generative; broad changes across many domains are holistic. No keyword rule decides the mode.
 
 ### Diagram: Surgical Iteration Flow
 
