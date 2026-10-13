@@ -139,10 +139,12 @@ def test_v511_format_type_whitelist():
     assert f({"type": "text"}, 6) == []
     # valid types still emit
     for t in ("currency", "number", "percentage", "date", "date_time", "boolean", "byte"):
-        assert f({"type": t}, 6)[:1] == ["      format:"], f"valid type {t} must emit"
-        assert f({"type": t}, 6)[1] == "        type: " + t
+        fmt = {"type": t, "currency_code": "USD"} if t == "currency" else {"type": t}
+        assert f(fmt, 6)[:1] == ["      format:"], f"valid type {t} must emit"
+        assert f(fmt, 6)[1] == "        type: " + t
     # capitalized normalized to lowercase
-    assert f({"type": "Currency"}, 6)[1] == "        type: currency"
+    assert f({"type": "Currency", "currency_code": "USD"}, 6)[1] == "        type: currency"
+    assert f({"type": "currency"}, 6)[1] == "        type: number"
 
 
 def test_v505_window_yaml_time_intelligence():
