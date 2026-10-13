@@ -977,7 +977,7 @@ def test_new_spec_shapes_that_cannot_be_acted_on_are_not_interpretable():
     no_column = ah._normalize_vreq_spec(vs.spec("K1", "set_primary_key", ["hr.employee"]), idx)
     assert no_column["interpretable"] is False and no_column["reason"] == "set_primary_key names no column"
     no_prefix = ah._normalize_vreq_spec(dict(vs.spec("P1", "other", [], breadth="model"), policy="column_prefix"), idx)
-    assert no_prefix["interpretable"] is False and no_prefix["reason"] == "column_prefix names no prefix"
+    assert no_prefix["interpretable"] is False and no_prefix["reason"] == "column_prefix names no value"
     prefix = ah._normalize_vreq_spec(dict(vs.spec("P2", "other", [], breadth="model"), policy="column_prefix", policy_value="hr_"), idx)
     assert prefix["interpretable"] is True
     d, p, a = _flat_hr()
@@ -1030,3 +1030,102 @@ def test_closed_lists_act_only_inside_the_targets_of_the_spec_that_states_them()
     attributes[4]["tags"] = "cde=Another Invention"
     assert ah._v383_purge_fabricated_lookup_tags(attributes) == 1
     assert attributes[1]["tags"] == "cde=Invented Thing" and attributes[4]["tags"] == ""
+
+
+def test_vibe_constraints_without_the_llm_classification_read_nothing_from_the_vibe():
+    config = {"PROMPT_VARIABLES": {"business_config": {"vibe_modelling_instructions": "Remediation mode: do not remove any domain, add more tables."}}}
+    out = ah._get_vibe_constraints_impl(config)
+    assert out["source"] == "not_interpreted"
+    assert (out["is_remediation"], out["no_domain_removal"], out["no_enrichment"], out["min_overlap_for_removal_pct"]) == (False, False, True, 85)
+    classified = ah._get_vibe_constraints_impl({"REQUIRED_ACTIONS_FROM_CLASSIFICATION": {"allow_domain_removal": False, "enrich_model_content": True}})
+    assert classified["source"] == "classification" and classified["no_domain_removal"] is True and classified["no_enrichment"] is False
+
+
+def _step_req(rid, text):
+    return ah.VibeRequirement(id=rid, original_text=text, intent=text, scope="table", scope_targets=[], verification_strategy="deterministic")
+
+
+def test_the_step_check_marks_only_what_a_spec_names_and_never_a_count_change():
+    before = ah.capture_vibe_model_snapshot([{"domain": "hr"}], [{"domain": "hr", "product": "employee"}], [])
+    after = ah.capture_vibe_model_snapshot([{"domain": "hr"}, {"domain": "ops"}],
+                                           [{"domain": "hr", "product": "employee"}, {"domain": "hr", "product": "badge"},
+                                            {"domain": "ops", "product": "shift"}], [])
+    model = ah.widgets_flat_to_model([{"domain": "hr"}], [{"domain": "hr", "product": "employee", "primary_key": "employee_id"}], [])
+    vs.register(ah, model, vs.spec("Q1", "add_product", ["hr.badge"]), vs.spec("Q2", "add_product", ["hr.visitor"]),
+                vs.spec("Q3", "add_domain", ["ops"]), vs.spec("Q4", "set_fields", ["hr"], fields=[vs.field("domains", "description")]))
+    reqs = [_step_req("Q1", "add a badge table"), _step_req("Q2", "add a visitor table"), _step_req("Q3", "add an ops domain"),
+            _step_req("Q4", "add more tables and enrich hr"), _step_req("Q5", "add more tables")]
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch._quick_deterministic_check(reqs, before, after, "step_x")
+    assert [r.status for r in reqs] == ["fulfilled", "pending", "fulfilled", "pending", "pending"]
+    assert "vreq-spec-quick-check FIRED" in reqs[0].evidence
+
+
+def test_a_foreign_key_suffix_spec_sets_the_convention_and_is_verified():
+    flat = _flat_hr()
+    idx = ah._vreq_spec_index(ah.widgets_flat_to_model(*flat))
+    empty = ah._normalize_vreq_spec(dict(vs.spec("F0", "other", [], breadth="model"), policy="foreign_key_suffix"), idx)
+    assert empty["interpretable"] is False and empty["reason"] == "foreign_key_suffix names no value"
+    _register_flat(flat, dict(vs.spec("F1", "other", [], breadth="model"), policy="foreign_key_suffix", policy_value="ref"))
+    config = {"MODEL_CONVENTIONS": {"foreign_key_suffix": "_id"}}
+    assert ah._vreq_spec_apply_key_conventions(config) == "_ref" and config["MODEL_CONVENTIONS"]["foreign_key_suffix"] == "_ref"
+    d, p, a = flat
+    assert ah._verify_from_spec(ah.vreq_spec("F1"), d, p, a)["status"] == "failed"
+    for row in a:
+        if row.get("foreign_key_to"):
+            row["attribute"] = row["attribute"].rsplit("_", 1)[0] + "_ref"
+    assert ah._verify_from_spec(ah.vreq_spec("F1"), d, p, a)["status"] == "fulfilled"
+    ah.vov_ledger_reset()
+    assert ah._vreq_spec_apply_key_conventions({"MODEL_CONVENTIONS": {}}) is None
+
+
+def test_the_contract_reads_no_keyword_from_requirement_text():
+    manifest = ah.VibeManifest(raw_text="x", requirements=[_step_req("C1", "PII classification tags on every column; do not drop any domains")],
+                               overall_mode="surgical", parse_method="llm")
+    contract = manifest.to_contract({})
+    assert [c.verifier for c in contract.verification_clauses] == ["spec_verifier"]
+    assert not contract.forbidden_ops and not contract.requested_transforms
+    nb = json.load(open(Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"))
+    src = "\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+    assert "_fk_suf_match" not in src and "parse_user_vibes_to_requirements" not in src and "fallback_substring" not in src
+
+
+def test_the_glossary_coverage_gate_fires_on_a_glossary_spec_and_never_on_the_word_in_the_vibe():
+    domains, products, attributes = _flat_hr()
+    config = {"PROMPT_VARIABLES": {"model_vibes": "keep the glossary of this model short", "user_special_requirements": "glossary"}}
+
+    def _categories():
+        result = ah.run_metamodel_static_analysis(copy.deepcopy(domains), copy.deepcopy(products), copy.deepcopy(attributes), config,
+                                                  logging.getLogger("t"))
+        return {i["category"] for i in result.get("issues") or []}
+    assert "missing_glossary_tag" not in _categories()
+    _register_flat((domains, products, attributes),
+                   dict(vs.spec("G1", "set_fields", [], breadth="model", fields=[vs.field("attributes", "business_glossary_term")])))
+    assert "missing_glossary_tag" in _categories()
+
+
+def test_the_pk_consistency_pass_keeps_a_primary_key_a_spec_sets():
+    """Live r3a 975496194017273: the model set product.digital_asset's key to dam_asset_code, then the PK-consistency pass
+    reset it to digital_asset_id 15 s before the DDL, so the physical table kept the old key."""
+    flat = _flat_hr()
+    products, attributes = flat[1], flat[2]
+    products[0]["primary_key"] = "badge_number"
+    config = {"MODEL_CONVENTIONS": {"primary_key_suffix": "_id", "data_asset_naming_convention": "snake_case"}}
+    plain = copy.deepcopy((products, attributes))
+    ah.enforce_configured_pk_consistency(plain[0], plain[1], config, logger=logging.getLogger("t"))
+    assert plain[0][0]["primary_key"] == "employee_id"
+    _register_flat(flat, vs.spec("K1", "set_primary_key", ["hr.employee.badge_number"]))
+    ah.enforce_configured_pk_consistency(products, attributes, config, logger=logging.getLogger("t"))
+    assert products[0]["primary_key"] == "badge_number"
+    assert [a["attribute"] for a in attributes if a["product"] == "employee"] == ["employee_id", "badge_number", "position_id"]
+    assert next(a for a in attributes if a["attribute"] == "employee_ref")["foreign_key_to"] == "hr.employee.badge_number"
+    assert products[1]["primary_key"] == "position_id"
+    assert ah._vreq_spec_user_pk("HR", "Employee") == "badge_number" and ah._vreq_spec_user_pk("hr", "position") is None
+
+
+def test_the_qa_and_fk_gate_pk_fixes_leave_a_user_primary_key_alone():
+    nb = json.load(open(Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"))
+    src = "\n".join("".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code")
+    assert "(pk_name != expected_pk and _vov285_san(pk_name) != _vov285_san(_user_pk))" in src
+    assert "if pk != expected_pk and _vov285_san(pk) != _vov285_san(_vreq_spec_user_pk(domain_name, name)):" in src
+    assert "if _pk_like_cols and not _vreq_spec_user_pk(p_domain, p_product):" in src
