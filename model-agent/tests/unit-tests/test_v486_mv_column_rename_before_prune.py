@@ -151,3 +151,13 @@ def test_the_agent_version_is_at_least_the_one_that_shipped_this_fix():
     m = re.search(r'__AGENT_VERSION__ = "(\d)\.(\d)\.(\d)"', agent_version_line())
     assert m, agent_version_line()
     assert tuple(int(g) for g in m.groups()) >= (4, 8, 6), agent_version_line()
+
+
+def test_a_column_named_like_a_yaml_key_is_renamed_in_values_only():
+    """Live r17b 813502887397133: renaming the missing column `name` onto preferred_supplier_name also rewrote the `- name:` key of
+    the block, and Unity Catalog rejected the view with 'Unrecognized field preferred_supplier_name'."""
+    out, drops, renames = run_one([("name", "name"), ("Supplier", "name")], ["preferred_supplier_name", "ingredient_id"])
+    assert "- preferred_supplier_name:" not in out and "\n      preferred_supplier_name:" not in out
+    assert '- name: "preferred_supplier_name"' in out and '- name: "Supplier"' in out
+    assert out.count("expr: preferred_supplier_name") == 2
+    assert drops == [] and renames
