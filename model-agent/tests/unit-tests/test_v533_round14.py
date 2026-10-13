@@ -202,3 +202,25 @@ def test_a_date_parameter_default_is_a_literal_or_a_function_call():
     assert default("CURRENT_DATE", "STRING") == "\"'CURRENT_DATE'\""
     assert default("USD", "STRING") == "\"'USD'\""
     assert default("0.1", "DOUBLE") == "0.1"
+
+
+def test_a_dimension_gets_only_a_temporal_or_boolean_format():
+    """Live r16b 2277631092136: six customer views installed as row-count fallbacks with COLUMN_FORMAT_INCOMPATIBLE_WITH_COLUMN_TYPE,
+    because the LLM gave STRING dimensions such as Account Status a number format. Checked live: a number format on a STRING
+    column is rejected, a date format needs date_format and a date_time format needs date_format and time_format."""
+    products = {"loyalty_account": {"table_name": "loyalty_account", "domain": "customer", "product": "loyalty_account"}}
+    columns = {"loyalty_account": {"columns": {"loyalty_account_id", "account_status", "enrolled_on", "points_balance"},
+                                   "string_columns": {"account_status"}, "boolean_columns": set(), "col_rewrite_map": {}}}
+    spec = {"metric_views": [{"view_name": "metrics_loyalty_account", "source_product": "loyalty_account",
+                              "dimensions": [{"name": "account_status", "display_name": "Account Status", "expr": "account_status",
+                                              "format": {"type": "number", "decimal_places": {"type": "all"}}},
+                                             {"name": "enrolled_on", "display_name": "Enrolled On", "expr": "enrolled_on", "format": {"type": "date"}}],
+                              "measures": [{"name": "Points", "expr": "SUM(points_balance)", "format": {"type": "number"}}]}]}
+    out = ah._render_metric_sql_for_domain_from_llm_spec("cat", "customer", "customer", spec, products, LOG, product_columns=columns, config={})
+    text = "\n".join(out[0] if isinstance(out, tuple) else out)
+    status = text.split('name: "account_status"', 1)[1].split("- name:", 1)[0]
+    enrolled = text.split('name: "enrolled_on"', 1)[1].split("measures:", 1)[0]
+    points = text.split('name: "Points"', 1)[1]
+    assert "format:" not in status
+    assert "type: date" in enrolled and "date_format: year_month_day" in enrolled
+    assert "type: number" in points

@@ -204,11 +204,15 @@ def test_a_metric_view_format_always_carries_its_required_properties():
     lines = ah._emit_mv_format_yaml({"type": "currency"}, 6)
     assert "      format:" in lines and "        type: number" in lines and "currency" not in "".join(lines)
     assert "        currency_code: EUR" in ah._emit_mv_format_yaml({"type": "currency", "currency_code": "EUR"}, 6)
-    assert ah._emit_mv_format_yaml({"type": "date"}, 6) == ["      format:", "        type: date"]
-    assert "        date_format: year_month_day" in ah._emit_mv_format_yaml({"type": "date_time"}, 6)
-    assert "        date_format: year_month_day" in ah._emit_mv_format_yaml({"type": "date_time", "date_format": "no_date", "time_format": "no_time"}, 6)
+    assert ah._emit_mv_format_yaml({"type": "date"}, 6) == ["      format:", "        type: date", "        date_format: year_month_day"]
+    bare = ah._emit_mv_format_yaml({"type": "date_time"}, 6)
+    assert "        date_format: year_month_day" in bare and "        time_format: locale_hour_minute_second" in bare
+    hidden = ah._emit_mv_format_yaml({"type": "date_time", "date_format": "no_date", "time_format": "no_time"}, 6)
+    assert "        date_format: year_month_day" in hidden and "        time_format: no_time" in hidden
     only_time = ah._emit_mv_format_yaml({"type": "date_time", "time_format": "locale_hour_minute"}, 6)
-    assert "        time_format: locale_hour_minute" in only_time and not any("date_format" in line for line in only_time)
+    assert "        time_format: locale_hour_minute" in only_time and "        date_format: year_month_day" in only_time
+    only_date = ah._emit_mv_format_yaml({"type": "date_time", "date_format": "locale_long_month"}, 6)
+    assert "        date_format: locale_long_month" in only_date and "        time_format: locale_hour_minute_second" in only_date
     assert not any("time_format" in line for line in ah._emit_mv_format_yaml({"type": "date", "time_format": "locale_hour_minute"}, 6))
     assert ah._emit_mv_format_yaml({"type": "string"}, 6) == []
 
