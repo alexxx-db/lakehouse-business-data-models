@@ -147,7 +147,7 @@ def test_hooks_are_noops_without_a_runtime():
     assert len(fence.report()["rename_ledger"]) == 2
     assert ah._vibe_scope_note_rename("product", "a.b", "a.c")["new_p"] == "c"
     assert {"kind": "product", "old": "a.b", "new": "a.c", "cause": ""} in ah.vov_rename_events()
-    assert ah._vibe_scope_active() is False and ah.get_vibe_scope_runtime() is None
+    assert ah.get_vibe_scope_runtime() is None
 
 
 def test_drop_is_dangling_until_reconcile_applies_p2():

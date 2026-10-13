@@ -12,7 +12,7 @@ v2.3.0 ships ONE fix per class, plus this behavioural test suite that proves eac
 EXISTS and CHANGES OBSERVABLE BEHAVIOR (per CLAUDE.md \xa78.10 - no observability-only
 patches). Tests use static parse + behavioral simulation since the sandbox subprocess
 runner needs a live AIAgent; behavioral checks here exercise the deterministic helpers
-(diff_within_summary_scope, _v204_ast_class_hints, ALLOWED_AST_NODES, SYNTHESIS_SYSTEM_PROMPT).
+(diff_within_requirement_scope, _v204_ast_class_hints, ALLOWED_AST_NODES, SYNTHESIS_SYSTEM_PROMPT).
 """
 from __future__ import annotations
 
@@ -25,6 +25,11 @@ from pathlib import Path
 import pytest
 
 from notebook_source_util import vov_ledger_globals
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -45,12 +50,11 @@ def src() -> str:
 @pytest.fixture(scope="module")
 def module_ns(src: str) -> dict:
     """Compile + exec a SUBSET of the agent source so we can call deterministic
-    helpers like diff_within_summary_scope and _v204_ast_class_hints directly.
+    helpers like _v204_ast_class_hints directly.
     We isolate only the pure-Python region needed for the tests (no Spark, no DBR).
     """
     tree = ast.parse(src)
     keep_names = {
-        "diff_within_summary_scope",
         "diff_models_summary",
         "_v204_ast_class_hints",
         "ALLOWED_AST_NODES",
@@ -131,74 +135,50 @@ def test_fix1_v204_pre_patch_would_have_returned_empty(module_ns):
 
 
 # --- FIX 2: scope_mismatch rename pattern -------------------------------------------
-
-def test_fix2_rename_pattern_in_scope_alias_present(src):
-    assert "v230-rename-pattern-in-scope" in src
-    # Verify the implementation: must check both rename language AND balance
-    m = re.search(r"def diff_within_summary_scope[\s\S]+?_is_rename_summary[\s\S]+?_balanced_rename", src)
-    assert m, "rename-pattern detection logic missing in diff_within_summary_scope"
+def _gate(diff, *specs):
+    ah.vov_ledger_reset()
+    vs.register(ah, {"model": {"domains": []}}, *specs)
+    return ah.diff_within_requirement_scope(diff, [s["id"] for s in specs])
 
 
-def test_fix2_rename_balanced_is_in_scope(module_ns):
-    """Behavioral: a 'rename' summary with equal products_removed and
-    products_added MUST be in scope (the v219 sandbox rejection mode)."""
-    fn = module_ns["diff_within_summary_scope"]
+def test_fix2_a_rename_batch_may_remove_the_tables_its_specs_rename():
     diff = {
         "domains_added": [], "domains_removed": [],
         "products_added": [("project", "pse_user_information"), ("project", "pse_project_category")],
         "products_removed": [("project", "pse_user"), ("project", "specification_applicability")],
         "fks_removed": 0, "metric_views_delta": 0, "n_products_modified": 0,
     }
-    summary = "Rename project.specification_applicability to pse_project_category and project.pse_user to pse_user_information in place"
-    ok, msg = fn(diff, summary)
-    assert ok is True, f"rename pattern should be in-scope: {msg}"
+    renames = (vs.spec("V1", "rename_product", ["project.pse_user"], new_name="pse_user_information"),
+               vs.spec("V2", "rename_product", ["project.specification_applicability"], new_name="pse_project_category"))
+    ok, msg = _gate(diff, *renames)
+    assert ok is True, msg
+    ok, msg = _gate(diff, renames[0])
+    assert ok is False and "table project.specification_applicability removed" in msg and "project.pse_user removed" not in msg
 
 
-def test_fix2_imbalanced_remove_still_out_of_scope(module_ns):
-    """Negative control: if more products are removed than added, treat as
-    suspicious - the imbalance could hide deletion masquerading as rename."""
-    fn = module_ns["diff_within_summary_scope"]
+def test_fix2_a_rename_of_one_table_does_not_cover_other_removals():
     diff = {
         "domains_added": [], "domains_removed": [],
         "products_added": [("p", "x")],
         "products_removed": [("p", "x1"), ("p", "x2"), ("p", "x3")],
         "fks_removed": 0, "metric_views_delta": 0, "n_products_modified": 0,
     }
-    ok, msg = fn(diff, "rename x1,x2,x3 to single x")
-    assert ok is False, "imbalanced rename should still trigger scope rejection"
-    assert "products_removed" in msg
+    ok, msg = _gate(diff, vs.spec("V1", "rename_product", ["p.x1"], new_name="x"))
+    assert ok is False and "table p.x2 removed" in msg and "table p.x3 removed" in msg and "table p.x1 removed" not in msg
 
 
-def test_fix2_non_rename_remove_still_out_of_scope(module_ns):
-    """Negative control: removed products with a non-rename summary remains rejected."""
-    fn = module_ns["diff_within_summary_scope"]
+def test_fix2_a_removal_needs_a_spec_that_removes_that_table():
     diff = {
         "domains_added": [], "domains_removed": [],
         "products_added": [("p", "new")],
         "products_removed": [("p", "old")],
         "fks_removed": 0, "metric_views_delta": 0, "n_products_modified": 0,
     }
-    ok, msg = fn(diff, "consolidate two products into one")
-    # 'consolidate' is not a rename keyword - balanced rename guard does NOT fire
-    assert ok is False, "non-rename language with products_removed should be rejected"
-
-
-def test_fix2_pre_patch_would_have_rejected(src):
-    """Static-grep proof: the pre-patch diff_within_summary_scope (without
-    _balanced_rename guard) would have rejected the gov_transport v219 batches. The
-    new code must contain the v230 guard before the products_removed check."""
-    body_match = re.search(
-        r"def diff_within_summary_scope[\s\S]+?return True, \"\"",
-        src,
-    )
-    assert body_match, "diff_within_summary_scope body not found"
-    body = body_match.group(0)
-    # The new code must check `_balanced_rename` before flagging products_removed
-    assert "_balanced_rename" in body
-    # Verify it appears in the products_removed conditional
-    products_removed_lines = [l for l in body.splitlines() if "products_removed" in l and "diff[" in l]
-    assert any("_balanced_rename" in l for l in products_removed_lines), \
-        "products_removed branch must reference _balanced_rename"
+    assert _gate(diff, vs.spec("V1", "other", [], breadth="model"))[0] is False
+    assert _gate(diff, vs.spec("V1", "set_fields", ["p.old"], fields=[vs.field("products", "description")]))[0] is False
+    ok, msg = _gate(diff, vs.spec("V1", "merge_products", ["p.old"], merge_into="p.new"))
+    assert ok is True, msg
+    assert ah.diff_within_requirement_scope(diff, ["V9"])[0] is False
 
 
 # --- FIX 3: synth target-must-touch -------------------------------------------------
@@ -279,13 +259,11 @@ def test_fix4_ast_delete_is_in_allowed_set_runtime(module_ns):
 def test_all_four_v230_fixes_each_appear_exactly_in_one_definition_site(src):
     """Each fix alias should appear in source code (not just comments). Counts:
        - v230-ast-class-hint-noop-failed: in _v204_ast_class_hints body
-       - v230-rename-pattern-in-scope: in diff_within_summary_scope body
        - v230-synth-target-must-touch: in SYNTHESIS_SYSTEM_PROMPT
        - v230-allow-ast-delete: in ALLOWED_AST_NODES def + class hint
     """
     for alias, min_count in [
         ("v230-ast-class-hint-noop-failed", 2),  # def + version-header
-        ("v230-rename-pattern-in-scope", 2),
         ("v230-allow-ast-delete", 2),
         ("v230-synth-target-must-touch", 2),
     ]:

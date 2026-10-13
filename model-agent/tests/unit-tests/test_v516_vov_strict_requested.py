@@ -497,15 +497,18 @@ def _removal_diff(*removed):
             "attributes_removed": [], "attributes_added": [], "fks_removed": 0, "fks_added": 0, "metric_views_delta": 0, "tags_added_estimate": 0}
 
 
-@pytest.mark.parametrize("summary,ok", [
-    ("Drops the order.return_line product from the order domain; returns are tracked at return_request level", True),
-    ("Removes the order.return_line product from the order domain", True),
-    ("drop product return_line", True),
-    ("Drops obsolete products from the order domain", False),
-    ("Adds a column to order.sales_order", False),
+@pytest.mark.parametrize("spec,ok", [
+    (vs.spec("V1", "drop_product", ["order.return_line"]), True),
+    (vs.spec("V1", "drop_product", ["order.return_line", "order.sales_order"]), True),
+    (vs.spec("V1", "merge_products", ["order.return_line"], merge_into="order.sales_order"), True),
+    (vs.spec("V1", "drop_product", ["order"], breadth="set"), False),
+    (vs.spec("V1", "add_column", ["order.sales_order.note"], columns=[{"name": "note", "type": "STRING"}]), False),
+    (vs.spec("V1", "drop_product", ["order.sales_order"]), False),
 ])
-def test_a_drop_the_summary_names_is_in_scope_and_an_unnamed_one_is_not(summary, ok):
-    in_scope, _diag = ah.diff_within_summary_scope(_removal_diff(("order", "return_line")), summary)
+def test_a_drop_a_spec_names_is_in_scope_and_an_unnamed_one_is_not(spec, ok):
+    ah.vov_ledger_reset()
+    vs.register(ah, {"model": _model()}, spec)
+    in_scope, _diag = ah.diff_within_requirement_scope(_removal_diff(("order", "return_line")), ["V1"])
     assert in_scope is ok
 
 

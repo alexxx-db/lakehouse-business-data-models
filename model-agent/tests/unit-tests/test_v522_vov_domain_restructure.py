@@ -144,11 +144,17 @@ def test_the_scope_guard_accepts_a_rehomed_domain_and_rejects_a_lossy_one():
     diff = ah.diff_models_summary(before, _renamed(before))
     assert diff["products_in_removed_domains"] == [("vendor", "publisher"), ("vendor", "supplier")]
     assert diff["products_in_added_domains"] == [("partner", "publisher"), ("partner", "supplier")]
-    assert ah.diff_within_summary_scope(diff, "Renames the domain vendor to partner in place", ["partner"]) == (True, "")
-    ok, diag = ah.diff_within_summary_scope(ah.diff_models_summary(before, _renamed(before, lose=True)), "Renames the domain vendor to partner", ["partner"])
-    assert not ok and "domains_removed=['vendor']" in diag
-    ok, diag = ah.diff_within_summary_scope(diff, "Renames a domain in place", ["partner"])
-    assert not ok and "domains_removed=['vendor']" in diag
+    ah.vov_ledger_reset()
+    vs.register(ah, before, vs.spec("VREQ-0001", "rename_domain", ["vendor"], new_name="partner"),
+                vs.spec("VREQ-0002", "set_fields", ["vendor"], fields=[vs.field("domains", "description")]),
+                vs.spec("VREQ-0003", "drop_domain", ["vendor"]))
+    assert ah.diff_within_requirement_scope(diff, ["VREQ-0001"]) == (True, "")
+    ok, diag = ah.diff_within_requirement_scope(ah.diff_models_summary(before, _renamed(before, lose=True)), ["VREQ-0001"])
+    assert not ok and "domain vendor removed" in diag
+    ok, diag = ah.diff_within_requirement_scope(diff, ["VREQ-0002"])
+    assert not ok and "domain vendor removed" in diag and "domain partner added" in diag
+    ok, diag = ah.diff_within_requirement_scope(diff, ["VREQ-0003"])
+    assert not ok and "domain partner added" in diag and "vendor removed" not in diag
 
 
 def test_the_serialized_ledger_keeps_only_events_that_landed():

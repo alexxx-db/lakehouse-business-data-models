@@ -304,8 +304,10 @@ def test_f2_create_without_remove_is_rejected_after_retries_with_the_rename_hint
     assert all("CREATE them in your mutator" not in u and "RENAME OR MOVE BATCH" in u for u in retries)
 
 
-def test_f2_in_place_rename_with_dangling_fks_is_rejected_and_the_correct_one_lands():
+def test_f2_in_place_rename_with_dangling_fks_is_rejected_and_the_correct_one_lands(monkeypatch):
     model = _engine()
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.member"], new_name="crew_member"))
+    monkeypatch.setattr(ah, "_v337_deterministic_mutate", lambda *_a, **_k: (None, ""))
     inv = ah.capture_invariants(model, [], [])
     _m, bad = ah._apply_handler_with_retry(_handler(IN_PLACE_NO_FK_MUTATOR), _rename_batch(), model, inv,
                                            _FakeLLM(mutator=IN_PLACE_NO_FK_MUTATOR), 1, (), (), 600.0, PAIRS)

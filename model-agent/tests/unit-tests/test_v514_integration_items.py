@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conftest  # noqa: F401,E402
 import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 from published_models import published_json  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
@@ -377,25 +378,35 @@ def _p(name, attrs):
     return {"name": name, "attributes": [{"name": a} for a in attrs]}
 
 
-def test_summary_scope_rejects_an_unexplained_attribute_drop():
+def test_requirement_scope_rejects_an_attribute_drop_no_spec_asks_for():
     before = _diff_model([_p("member", ["member_id", "full_name", "legacy_code"])])
     after = _diff_model([_p("member", ["member_id", "full_name"])])
     diff = ah.diff_models_summary(before, after)
     assert diff["attributes_removed"] == [("crew", "member", "legacy_code")]
-    ok, msg = ah.diff_within_summary_scope(diff, "Describe crew.member for crew control")
-    assert not ok and "attributes_removed" in msg
-    assert ah.diff_within_summary_scope(diff, "Drop the legacy_code column from crew.member")[0]
+    vs.register(ah, before, vs.spec("V1", "set_fields", ["crew.member"], fields=[vs.field("products", "description")]),
+                vs.spec("V2", "drop_column", ["crew.member.legacy_code"]),
+                vs.spec("V3", "rename_column", ["crew.member.legacy_code"], new_name="legacy_ref"),
+                vs.spec("V4", "drop_column", ["crew.member.full_name"]),
+                vs.spec("V5", "drop_column", ["crew.member"], breadth="set"))
+    ok, msg = ah.diff_within_requirement_scope(diff, ["V1"])
+    assert not ok and "column crew.member.legacy_code removed" in msg
+    assert ah.diff_within_requirement_scope(diff, ["V2"])[0] and ah.diff_within_requirement_scope(diff, ["V5"])[0]
+    assert not ah.diff_within_requirement_scope(diff, ["V4"])[0]
     renamed = ah.diff_models_summary(before, _diff_model([_p("member", ["member_id", "full_name", "legacy_ref"])]))
-    assert ah.diff_within_summary_scope(renamed, "Rename legacy_code -> legacy_ref on crew.member")[0]
+    assert ah.diff_within_requirement_scope(renamed, ["V3"])[0]
 
 
-def test_summary_scope_merge_must_name_every_removed_product():
+def test_requirement_scope_merge_must_cover_every_removed_product():
     before = _diff_model([_p("member", ["member_id"]), _p("licence", ["licence_id"]), _p("roster", ["roster_id"])])
     after = _diff_model([_p("member", ["member_id"])])
     diff = ah.diff_models_summary(before, after)
-    assert not ah.diff_within_summary_scope(diff, "Merge duplicate tags on crew.member")[0]
-    assert not ah.diff_within_summary_scope(diff, "Merge crew.licence into crew.member")[0]
-    assert ah.diff_within_summary_scope(diff, "Merge crew.licence and crew roster into crew.member")[0]
+    vs.register(ah, before, vs.spec("V1", "set_fields", ["crew.member"], fields=[vs.field("products", "tags")]),
+                vs.spec("V2", "merge_products", ["crew.licence"], merge_into="crew.member"),
+                vs.spec("V3", "merge_products", ["crew.licence", "crew.roster"], merge_into="crew.member"))
+    assert not ah.diff_within_requirement_scope(diff, ["V1"])[0]
+    ok, msg = ah.diff_within_requirement_scope(diff, ["V2"])
+    assert not ok and "table crew.roster removed" in msg and "crew.licence removed" not in msg
+    assert ah.diff_within_requirement_scope(diff, ["V3"])[0]
 
 
 def test_deterministic_v337_path_runs_the_invariants_for_unscoped_runs(monkeypatch):
@@ -403,6 +414,7 @@ def test_deterministic_v337_path_runs_the_invariants_for_unscoped_runs(monkeypat
     model = _model()
     invariants = ah.capture_invariants(model, [], [("crew", "licence")])
     quote = "**PRIORITY 1 — rename_product: crew.licence** — rename to crew_licence"
+    vs.register(ah, model, vs.spec("V1", "rename_product", ["crew.licence"], new_name="crew_licence"))
     batch = ah.Batch(batch_id="B1", vreq_ids=("V1",), intent_summary=quote, target_entities=(("crew", "licence"),),
                      data_payload=({"intent": quote, "target": "crew.licence", "source_quote": quote},))
     det_model, det_summary = ah._v337_deterministic_mutate(batch, model, LOG)
@@ -437,8 +449,10 @@ def test_selffixer_rejects_a_fix_that_loses_columns_unless_the_requirement_asks(
     shrunk["model"]["domains"][0]["products"][0]["attributes"].pop()
     shrunk["model"]["domains"][0]["products"][0]["description"] = "Crew member."
     fixer, req = _selffixer(shrunk, "Describe crew.member")
+    vs.register(ah, model, vs.spec("REQ-1", "set_fields", ["crew.member"], fields=[vs.field("products", "description")]))
     ok, applied, evidence = fixer._fix_one_req(copy.deepcopy(model), req, per_req_retries=0)
     assert not ok and not applied
     fixer, req = _selffixer(shrunk, "Remove the rank column from crew.member")
+    vs.register(ah, model, vs.spec("REQ-1", "drop_column", ["crew.member.rank"]))
     ok, applied, _ = fixer._fix_one_req(copy.deepcopy(model), req, per_req_retries=0)
     assert ok and applied
