@@ -253,3 +253,147 @@ def test_a_view_requirement_does_not_open_its_table_and_a_view_only_vibe_still_b
     _register(vs.spec("VREQ-003", "set_fields", [table], fields=[vs.field("products", "description")], field_values=[]))
     mixed, _wide = ah._vibe_scope_requested_spec(reqs + [types.SimpleNamespace(vreq_id="VREQ-003")], RAW)
     assert mixed.entries == (table,)
+
+
+def test_a_window_without_an_order_is_not_emitted():
+    """Live r22a 548569728863809: the regenerated order_sales_order failed with 'Cannot coerce empty String ("") to WindowSpec',
+    because a window entry without an order rendered as a bare '-' item; the install then fell back to a row count."""
+    assert ah._emit_mv_window_yaml([{}], 6) == []
+    assert ah._emit_mv_window_yaml([{"order": "", "range": "trailing 7 day"}], 6) == []
+    assert ah._emit_mv_window_yaml([{"order": "order_date", "range": "trailing 7 day"}, {}], 6) == [
+        "      window:", "        - order: order_date", "          range: trailing 7 day"]
+
+
+def test_the_triage_keeps_a_requirement_that_names_a_view_in_scope():
+    """Live r22a: the triage rejected all three view requirements as out of scope, because their tables are frozen."""
+    import types
+    drop_v, change_v, other = _views()
+    table = f"{other['owner_domain']}.{other['owner_product']}"
+    _register(vs.spec("VREQ-001", "drop_metric_view", [table], metric_views=[drop_v["view_name"]]),
+              vs.spec("VREQ-002", "change_metric_view", [table], metric_views=[change_v["view_name"]]),
+              vs.spec("VREQ-003", "add_metric_view", [table], metric_views=["weekly fuel burn by aircraft"]))
+    reqs = [types.SimpleNamespace(vreq_id=v, target=table, intent="") for v in ("VREQ-001", "VREQ-002", "VREQ-003")]
+    spec, _wide = ah._vibe_scope_requested_spec(reqs, RAW)
+    fence = ah.build_vibe_scope_fence(spec, RAW, VOV, LOG)
+    ah.set_vibe_scope_runtime(fence)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, reqs, RAW, LOG)
+    assert [r.vreq_id for r in kept] == ["VREQ-001", "VREQ-002", "VREQ-003"] and rejected == [] and outcomes == []
+    ambiguous = dict(ah.vreq_spec("VREQ-002"), metric_views=["baggage"])
+    assert ah._vreq_spec_views_in_scope(fence, ambiguous) is False
+    assert ah._vreq_spec_views_in_scope(fence, dict(ah.vreq_spec("VREQ-002"), interpretable=False)) is False
+
+
+def test_a_drop_removes_the_view_from_every_run_list(caplog):
+    drop_v, _change_v, other = _views()
+    _fence()
+    _register(vs.spec("VREQ-001", "drop_metric_view", [f"{other['owner_domain']}.{other['owner_product']}"], metric_views=[drop_v["view_name"]]))
+    keep_sql = f"CREATE OR REPLACE VIEW `c`.`_metrics`.`{other['view_name']}` WITH METRICS LANGUAGE YAML AS $$\n$$"
+    drop_sql = f"CREATE OR REPLACE VIEW `c`.`_metrics`.`{drop_v['view_name']}` WITH METRICS LANGUAGE YAML AS $$\n$$"
+    wv = {"metric_views": [copy.deepcopy(drop_v), copy.deepcopy(other)], "_metric_view_records": [{"view_name": drop_v["view_name"]}, {"view_name": other["view_name"]}],
+          "metric_view_statements": [drop_sql, keep_sql], "metric_view_count": 2}
+    with caplog.at_level(logging.INFO):
+        assert ah._vreq_spec_apply_view_drops(wv, LOG) == [drop_v["view_name"]]
+    assert [m["view_name"] for m in wv["metric_views"]] == [other["view_name"]]
+    assert wv["_metric_view_records"] == [{"view_name": other["view_name"]}]
+    assert wv["metric_view_statements"] == [keep_sql] and wv["metric_view_count"] == 1
+    assert any("[mv-spec-drop FIRED v5.3.3] removed 1 metric view(s)" in r.getMessage() for r in caplog.records)
+    ah.set_vibe_scope_runtime(None)
+    untouched = {"metric_views": [copy.deepcopy(drop_v)]}
+    assert ah._vreq_spec_apply_view_drops(untouched, LOG) == [] and len(untouched["metric_views"]) == 1
+    main = SRC[SRC.index("def main("):]
+    assert main.index("_vreq_spec_apply_view_drops(widgets_values, logger)") < main.index('_vibe_scope_checkpoint_widgets("after_metric_views", widgets_values, logger)')
+
+
+def test_the_exact_view_list_loses_a_view_a_requirement_drops(monkeypatch, caplog):
+    """Live r22a: the sizing read 'exactly 3 metric views' from the three named views, so KPI-first was told to produce
+    order_note, the view the user asked to drop."""
+    drop_v, _change_v, other = _views()
+    _fence()
+    _register(vs.spec("VREQ-001", "drop_metric_view", [f"{other['owner_domain']}.{other['owner_product']}"], metric_views=[drop_v["view_name"]]))
+
+    class _Stop(Exception):
+        pass
+
+    def _stop(*a, **k):
+        raise _Stop()
+    monkeypatch.setitem(ah.__dict__, "_vibe_exact_metric_view_directive", lambda wv: (2, [drop_v["view_name"], "weekly fuel burn by aircraft"]))
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_model_summary", lambda *a, **k: "summary")
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_fk_summary", _stop)
+    wv = {"logger": LOG, "config": {"TARGET_CATALOG": "cat"}, "domains": [{"domain": other["owner_domain"]}],
+          "products": [{"domain": other["owner_domain"], "product": other["owner_product"]}], "attributes": []}
+    with caplog.at_level(logging.INFO), pytest.raises(_Stop):
+        ah.step_generate_kpi_first_metric_views(wv)
+    assert wv["_exact_mv_names"] == ["weekly fuel burn by aircraft"] and wv["_exact_mv_count"] == 1
+    assert any("[mv-exact-spec-drop FIRED v5.3.3]" in r.getMessage() for r in caplog.records)
+
+
+def test_a_window_without_an_order_is_not_emitted():
+    """Live r22a 548569728863809: the regenerated order_sales_order failed with 'Cannot coerce empty String ("") to WindowSpec',
+    because a window entry without an order rendered as a bare '-' item; the install then fell back to a row count."""
+    assert ah._emit_mv_window_yaml([{}], 6) == []
+    assert ah._emit_mv_window_yaml([{"order": "", "range": "trailing 7 day"}], 6) == []
+    assert ah._emit_mv_window_yaml([{"order": "order_date", "range": "trailing 7 day"}, {}], 6) == [
+        "      window:", "        - order: order_date", "          range: trailing 7 day"]
+
+
+def test_the_triage_keeps_a_requirement_that_names_a_view_in_scope():
+    """Live r22a: the triage rejected all three view requirements as out of scope, because their tables are frozen."""
+    import types
+    drop_v, change_v, other = _views()
+    table = f"{other['owner_domain']}.{other['owner_product']}"
+    _register(vs.spec("VREQ-001", "drop_metric_view", [table], metric_views=[drop_v["view_name"]]),
+              vs.spec("VREQ-002", "change_metric_view", [table], metric_views=[change_v["view_name"]]),
+              vs.spec("VREQ-003", "add_metric_view", [table], metric_views=["weekly fuel burn by aircraft"]))
+    reqs = [types.SimpleNamespace(vreq_id=v, target=table, intent="") for v in ("VREQ-001", "VREQ-002", "VREQ-003")]
+    spec, _wide = ah._vibe_scope_requested_spec(reqs, RAW)
+    fence = ah.build_vibe_scope_fence(spec, RAW, VOV, LOG)
+    ah.set_vibe_scope_runtime(fence)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, reqs, RAW, LOG)
+    assert [r.vreq_id for r in kept] == ["VREQ-001", "VREQ-002", "VREQ-003"] and rejected == [] and outcomes == []
+    ambiguous = dict(ah.vreq_spec("VREQ-002"), metric_views=["baggage"])
+    assert ah._vreq_spec_views_in_scope(fence, ambiguous) is False
+    assert ah._vreq_spec_views_in_scope(fence, dict(ah.vreq_spec("VREQ-002"), interpretable=False)) is False
+
+
+def test_a_drop_removes_the_view_from_every_run_list(caplog):
+    drop_v, _change_v, other = _views()
+    _fence()
+    _register(vs.spec("VREQ-001", "drop_metric_view", [f"{other['owner_domain']}.{other['owner_product']}"], metric_views=[drop_v["view_name"]]))
+    keep_sql = f"CREATE OR REPLACE VIEW `c`.`_metrics`.`{other['view_name']}` WITH METRICS LANGUAGE YAML AS $$\n$$"
+    drop_sql = f"CREATE OR REPLACE VIEW `c`.`_metrics`.`{drop_v['view_name']}` WITH METRICS LANGUAGE YAML AS $$\n$$"
+    wv = {"metric_views": [copy.deepcopy(drop_v), copy.deepcopy(other)], "_metric_view_records": [{"view_name": drop_v["view_name"]}, {"view_name": other["view_name"]}],
+          "metric_view_statements": [drop_sql, keep_sql], "metric_view_count": 2}
+    with caplog.at_level(logging.INFO):
+        assert ah._vreq_spec_apply_view_drops(wv, LOG) == [drop_v["view_name"]]
+    assert [m["view_name"] for m in wv["metric_views"]] == [other["view_name"]]
+    assert wv["_metric_view_records"] == [{"view_name": other["view_name"]}]
+    assert wv["metric_view_statements"] == [keep_sql] and wv["metric_view_count"] == 1
+    assert any("[mv-spec-drop FIRED v5.3.3] removed 1 metric view(s)" in r.getMessage() for r in caplog.records)
+    ah.set_vibe_scope_runtime(None)
+    untouched = {"metric_views": [copy.deepcopy(drop_v)]}
+    assert ah._vreq_spec_apply_view_drops(untouched, LOG) == [] and len(untouched["metric_views"]) == 1
+    main = SRC[SRC.index("def main("):]
+    assert main.index("_vreq_spec_apply_view_drops(widgets_values, logger)") < main.index('_vibe_scope_checkpoint_widgets("after_metric_views", widgets_values, logger)')
+
+
+def test_the_exact_view_list_loses_a_view_a_requirement_drops(monkeypatch, caplog):
+    """Live r22a: the sizing read 'exactly 3 metric views' from the three named views, so KPI-first was told to produce
+    order_note, the view the user asked to drop."""
+    drop_v, _change_v, other = _views()
+    _fence()
+    _register(vs.spec("VREQ-001", "drop_metric_view", [f"{other['owner_domain']}.{other['owner_product']}"], metric_views=[drop_v["view_name"]]))
+
+    class _Stop(Exception):
+        pass
+
+    def _stop(*a, **k):
+        raise _Stop()
+    monkeypatch.setitem(ah.__dict__, "_vibe_exact_metric_view_directive", lambda wv: (2, [drop_v["view_name"], "weekly fuel burn by aircraft"]))
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_model_summary", lambda *a, **k: "summary")
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_fk_summary", _stop)
+    wv = {"logger": LOG, "config": {"TARGET_CATALOG": "cat"}, "domains": [{"domain": other["owner_domain"]}],
+          "products": [{"domain": other["owner_domain"], "product": other["owner_product"]}], "attributes": []}
+    with caplog.at_level(logging.INFO), pytest.raises(_Stop):
+        ah.step_generate_kpi_first_metric_views(wv)
+    assert wv["_exact_mv_names"] == ["weekly fuel burn by aircraft"] and wv["_exact_mv_count"] == 1
+    assert any("[mv-exact-spec-drop FIRED v5.3.3]" in r.getMessage() for r in caplog.records)
