@@ -362,10 +362,41 @@ def test_a_count_measure_never_gets_a_date_format():
 
 
 def test_a_requested_value_matches_whatever_the_trailing_period_and_spacing():
-    """Live r18a 286160361756502 and r17a 161181967549574: the asked description landed as written plus a closing period, and the
-    spec verifier scored it 0/1 because it compared the strings exactly."""
+    """Live r18a 286160361756502, r17a 161181967549574 and r18g 954079209332463: the asked description landed as written plus a closing
+    period, or with an article the spec value left out, and the spec verifier scored it 0/1 because it compared the strings exactly."""
     spec = {"action": "set_fields", "tags": [], "field_values": {("products", "description"): "one physical parcel sent to a customer address,  with its carrier and tracking"}}
     landed = {"description": "One physical parcel sent to a customer address, with its carrier and tracking."}
     other = {"description": "A parcel."}
     assert ah._verify_spec_value_ok(spec, "products", "description", landed) is True
     assert ah._verify_spec_value_ok(spec, "products", "description", other) is False
+    worded = {"action": "set_fields", "tags": [], "field_values": {("products", "description"): "customer request to send items back for a refund or exchange"}}
+    r18g = {"description": "A customer request to send items back for a refund or an exchange."}
+    old = {"description": "Manages customer return requests, including reason, disposition, refund amounts, and resolution status."}
+    assert ah._verify_spec_value_ok(worded, "products", "description", r18g) is True
+    assert ah._verify_spec_value_ok(worded, "products", "description", old) is False
+    steward = {"action": "set_fields", "tags": [], "field_values": {("products", "steward"): "order desk"}}
+    assert ah._verify_spec_value_ok(steward, "products", "steward", {"steward": "Order Desk."}) is True
+    assert ah._verify_spec_value_ok(steward, "products", "steward", {"steward": "the order desk team"}) is False
+
+
+def test_an_exact_view_list_keeps_the_views_the_requirement_specs_name(monkeypatch, caplog):
+    """Live r18e 484205915066667: the sizing directive read 'exactly 2 metric views' for the two new reports, KPI-first produced only
+    those, and the four report views the same vibe asked for were missing (0/4 named metric views exist)."""
+    class _Stop(Exception):
+        pass
+
+    def _stop(*a, **k):
+        raise _Stop()
+    monkeypatch.setitem(ah.__dict__, "_vibe_exact_metric_view_directive", lambda wv: (2, ["yearly ingredient cost report", "new loyalty sign-ups this month"]))
+    monkeypatch.setitem(ah.__dict__, "_vreq_spec_metric_view_names",
+                        lambda: ["daily sales by shop and product", "yearly ingredient cost report", "pre-order volumes by pickup day"])
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_model_summary", lambda *a, **k: "summary")
+    monkeypatch.setitem(ah.__dict__, "_build_compact_global_fk_summary", _stop)
+    wv = {"logger": LOG, "config": {"TARGET_CATALOG": "cat"}, "domains": [{"domain": "sales"}],
+          "products": [{"domain": "sales", "product": "shop_sale"}], "attributes": []}
+    with caplog.at_level(logging.INFO), pytest.raises(_Stop):
+        ah.step_generate_kpi_first_metric_views(wv)
+    assert wv["_exact_mv_names"] == ["yearly ingredient cost report", "new loyalty sign-ups this month",
+                                     "daily sales by shop and product", "pre-order volumes by pickup day"]
+    assert wv["_exact_mv_count"] == 4
+    assert any("[mv-exact-spec-union FIRED v5.3.3] the exact view list missed 2 view(s)" in r.getMessage() for r in caplog.records)
