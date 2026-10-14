@@ -22,6 +22,9 @@ import re
 
 import pytest
 
+import agent_helpers as ah
+import vreq_spec_util as vs
+
 NB = os.path.join(os.path.dirname(__file__), "..", "..", "agent", "dbx_vibe_modelling_agent.ipynb")
 
 
@@ -30,34 +33,12 @@ def _load_src():
     return "".join("".join(c.get("source", [])) for c in nb["cells"] if c.get("cell_type") == "code")
 
 
-def _slice_module_def(full, def_name):
-    """Slice a column-0 `def <name>` block: the def line plus all following
-    indented/blank lines, stopping at the first column-0 non-blank line."""
-    start = full.index(f"def {def_name}")
-    lines = full[start:].split("\n")
-    out = [lines[0]]
-    for ln in lines[1:]:
-        if ln.strip() == "" or ln[:1] in (" ", "\t"):
-            out.append(ln)
-        else:
-            break
-    return "\n".join(out)
-
-
-def _load_completeness_fn():
-    full = _load_src()
-    src = _slice_module_def(full, "_v320_vibe_completeness_requeue")
-    ns = {}
-    exec(src, {"re": re}, ns)
-    return ns["_v320_vibe_completeness_requeue"]
-
-
 def _load_call_cap_block():
     full = _load_src()
     i = full.index("import threading as _v320_threading")
     j = full.index("def run_vov_pipeline(")
     block = full[i:j]
-    ns = {}
+    ns = {"re": re}
     exec(block, ns)  # single namespace so `global` + closures resolve module-level names
     return ns
 
@@ -140,10 +121,19 @@ def test_old_exact_match_would_tag_only_one():
     assert sum(1 for (d, p, a) in attrs if _old_exact_match("hr.employee.ssn", d, p, a)) == 1
 
 
-def test_notebook_contains_wildcard_matcher():
-    src = _load_src()
-    assert "alias=vov-add-tag-wildcard" in src
-    assert "_v320_segs[0] in ('*', _ad)" in src
+def test_add_tag_mutation_tags_every_attribute_the_wildcard_names():
+    def _run(name):
+        attrs = [{"domain": d, "product": p, "attribute": a, "tags": ""} for d, p, a in
+                 [("hr", "employee", "name"), ("hr", "employee", "ssn"), ("project", "task", "due_date"), ("project", "task", "owner_id")]]
+        ok, info = ah.apply_mutation_command({"action": "add_tag", "scope": "attribute", "name": name, "target_state": "source=x"},
+                                             [], [], attrs, {}, logging.getLogger("t"))
+        assert ok, info
+        return info["applied"], sorted(f"{a['domain']}.{a['product']}.{a['attribute']}" for a in attrs if a["tags"] == "source=x")
+    assert _run("*.*.*") == (4, ["hr.employee.name", "hr.employee.ssn", "project.task.due_date", "project.task.owner_id"])
+    assert _run("hr.employee.*") == (2, ["hr.employee.name", "hr.employee.ssn"])
+    assert _run("project.*.*") == (2, ["project.task.due_date", "project.task.owner_id"])
+    assert _run("hr.employee.ssn") == (1, ["hr.employee.ssn"])
+    assert _run("crm.contact.*") == (0, [])
 
 
 # ---------------------------------------------------------------------------
@@ -166,49 +156,60 @@ def _model_with_attr_tags(tagged_fraction):
     ], "metric_views": []}}
 
 
+def _register_every_column_tag():
+    vs.register(ah, {"model": {"domains": []}}, dict(
+        vs.spec("VREQ-001", "set_fields", [], breadth="model", fields=[vs.field("attributes", "tags")]),
+        tags=[{"key": "source_attribute", "value": "<original column name>"}]))
+
+
+def _register_mv_count(n):
+    vs.register(ah, {"model": {"domains": []}},
+                vs.spec("VREQ-002", "other", [], kind="count_target", count={"entity": "metric_views", "op": "exactly", "value": n}))
+
+
 def test_requeue_fires_on_tag_gap():
-    fn = _load_completeness_fn()
     model = _model_with_attr_tags(0.25)  # only 1/4 attrs tagged
+    assert ah._v320_vibe_completeness_requeue(model, {}, logging.getLogger("t")) == 0
+    _register_every_column_tag()
     wv = {}
-    vibe = "Every column must carry a tag source_attribute=<original column name>."
-    added = fn(model, vibe, wv, logging.getLogger("t"))
-    assert added >= 1
+    added = ah._v320_vibe_completeness_requeue(model, wv, logging.getLogger("t"))
+    assert added == 1
     reqs = wv.get("_unfulfilled_for_next_vibe", [])
-    ids = [r["id"] for r in reqs]
-    assert any(i.startswith("COMPLETENESS-TAG-source_attribute") for i in ids)
+    assert [r["id"] for r in reqs] == ["COMPLETENESS-TAG-source_attribute-column"]
     # evidence must enumerate the missing entities (the SelfFixer reads this)
-    ev = next(r["evidence"] for r in reqs if r["id"].startswith("COMPLETENESS-TAG-source_attribute"))
-    assert "hr.employee" in ev
+    ev = reqs[0]["evidence"]
+    assert ev.startswith("1/4 columns carry tag 'source_attribute'")
+    assert "hr.employee.ssn" in ev and "hr.employee.name" not in ev
 
 
 def test_requeue_silent_when_fully_covered():
-    fn = _load_completeness_fn()
     model = _model_with_attr_tags(1.0)  # all attrs tagged
+    _register_every_column_tag()
     wv = {}
-    vibe = "Every column must carry a tag source_attribute=<original column name>."
-    added = fn(model, vibe, wv, logging.getLogger("t"))
+    added = ah._v320_vibe_completeness_requeue(model, wv, logging.getLogger("t"))
     assert added == 0
     assert not wv.get("_unfulfilled_for_next_vibe")
 
 
 def test_requeue_mv_count_shortfall():
-    fn = _load_completeness_fn()
     model = {"model": {"domains": [], "metric_views": [{"name": "mv1"}]}}
+    _register_mv_count(1)
+    assert ah._v320_vibe_completeness_requeue(model, {}, logging.getLogger("t")) == 0
+    _register_mv_count(5)
     wv = {}
-    vibe = "The model must contain exactly 5 metric views."
-    added = fn(model, vibe, wv, logging.getLogger("t"))
-    assert added >= 1
-    ids = [r["id"] for r in wv.get("_unfulfilled_for_next_vibe", [])]
-    assert "COMPLETENESS-MV-COUNT" in ids
+    added = ah._v320_vibe_completeness_requeue(model, wv, logging.getLogger("t"))
+    assert added == 1
+    reqs = wv.get("_unfulfilled_for_next_vibe", [])
+    assert [r["id"] for r in reqs] == ["COMPLETENESS-MV-COUNT"]
+    assert reqs[0]["evidence"].startswith("have=1 want=5 shortfall=4; the model: 1/5")
 
 
 def test_requeue_dedups_existing_ids():
-    fn = _load_completeness_fn()
     model = _model_with_attr_tags(0.25)
+    _register_every_column_tag()
     pre = {"id": "COMPLETENESS-TAG-source_attribute-column", "text": "x", "evidence": "y", "attempts": 1}
     wv = {"_unfulfilled_for_next_vibe": [pre]}
-    vibe = "Every column must carry a tag source_attribute=<original column name>."
-    added = fn(model, vibe, wv, logging.getLogger("t"))
+    added = ah._v320_vibe_completeness_requeue(model, wv, logging.getLogger("t"))
     assert added == 0  # already queued, must not duplicate
     assert len(wv["_unfulfilled_for_next_vibe"]) == 1
 

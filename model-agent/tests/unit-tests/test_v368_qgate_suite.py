@@ -7,7 +7,7 @@ Covers:
        missing_subdomain_tag, missing_glossary_tag, fk_pk_type_mismatch,
        low_quality_description)
   g2  new gate categories wired into the SelfFixer requeue whitelist
-  g3  _verify_bulk_coverage authoritative deterministic override
+  g3  coverage verdicts from the requirement spec (_verify_from_spec)
       (glossary/subdomain/division coverage read from the real after-state)
 
 These run the REAL shipped code (sliced from the notebook), assert OBSERVABLE
@@ -19,12 +19,13 @@ from __future__ import annotations
 import ast
 import json
 import logging
-import textwrap
 from collections import defaultdict
 import re as _re
 
 import pytest
 
+import agent_helpers as ah
+import vreq_spec_util as vs
 from notebook_source_util import (
     notebook_concat_source,
     slice_function_source,
@@ -148,7 +149,7 @@ def _requeue_ns(issues):
         return {"issues": issues, "severity_counts": {}, "summary_by_category": {}, "model_stats": {}}
     return exec_function_namespace(
         "_v366_sa_findings_requeue",
-        extra_globals={"run_metamodel_static_analysis": _stub_sa},
+        extra_globals={"run_metamodel_static_analysis": _stub_sa, "_VIBE_SCOPE_RUNTIME": None},
     )
 
 
@@ -176,91 +177,86 @@ def test_g2_new_categories_requeue_to_selffixer(cat, sev):
 
 
 # --------------------------------------------------------------------------- #
-# g3 — _verify_bulk_coverage authoritative override (extract class method)
+# g3 — coverage verdicts from the requirement spec (_verify_from_spec reads
+#      glossary/subdomain/division coverage from the real after-state)
 # --------------------------------------------------------------------------- #
-def _load_bulk_coverage():
-    src = notebook_concat_source()
-    tree = ast.parse(src)
-    lines = src.splitlines(keepends=True)
-    target = None
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "_verify_bulk_coverage":
-            target = node
-    assert target is not None, "_verify_bulk_coverage method must exist (g3 shipped)"
-    seg = textwrap.dedent("".join(lines[target.lineno - 1:target.end_lineno]))
-    ns = {"re": _re}
-    exec(compile(seg, "nb", "exec"), ns)
-    return ns["_verify_bulk_coverage"]
+def _g3_verdict(spec, domains=(), products=(), attributes=()):
+    domains, products, attributes = list(domains), list(products), list(attributes)
+    vs.register(ah, ah.widgets_flat_to_model(domains, products, attributes), spec)
+    return ah._verify_from_spec(ah.vreq_spec(spec["id"]), domains, products, attributes, _LOGGER, spec["id"])
 
 
-class _FakeSelf:
-    logger = _LOGGER
-
-
-class _Req:
-    def __init__(self, text, rid="VREQ-T"):
-        self.original_text = text
-        self.id = rid
-        self.scope = "attribute"
-        self.scope_targets = ["*"]
+def _coverage(level, field):
+    return vs.spec("VREQ-T", "set_fields", breadth="model", fields=[vs.field(level, field)])
 
 
 def test_g3_glossary_full_coverage_is_fulfilled():
-    fn = _load_bulk_coverage()
     attrs = [
         {"domain": "d", "product": "p", "attribute": "a1", "tags": {"d_business_glossary_term": "x"}},
         {"domain": "d", "product": "p", "attribute": "a2", "tags": {"d_business_glossary_term": "y"}},
         {"domain": "d", "product": "p", "attribute": "id", "is_primary_key": True},   # excluded
         {"domain": "d", "product": "p", "attribute": "p_id", "foreign_key_to": "d.q.id"},  # excluded
     ]
-    v = fn(_FakeSelf(), _Req("Tag every business attribute with a glossary term"), [], [], attrs)
+    products = [{"domain": "d", "product": "p", "primary_key": "id"}]
+    v = _g3_verdict(_coverage("attributes", "business_glossary_term"), products=products, attributes=attrs)
     assert v is not None and v["status"] == "fulfilled"
+    assert "2/2" in v["evidence"], v
 
 
 def test_g3_glossary_zero_coverage_is_failed():
-    fn = _load_bulk_coverage()
     attrs = [
         {"domain": "d", "product": "p", "attribute": "a1"},
         {"domain": "d", "product": "p", "attribute": "a2"},
     ]
-    v = fn(_FakeSelf(), _Req("Tag every business attribute with a glossary term"), [], [], attrs)
+    v = _g3_verdict(_coverage("attributes", "business_glossary_term"), attributes=attrs)
     assert v is not None and v["status"] == "failed"
 
 
 def test_g3_subdomain_partial():
-    fn = _load_bulk_coverage()
     products = [
         {"domain": "d", "product": "p1", "subdomain": "s"},
         {"domain": "d", "product": "p2"},  # missing -> 50% coverage
     ]
-    v = fn(_FakeSelf(), _Req("Every table must carry a subdomain tag"), [], products, [])
+    v = _g3_verdict(_coverage("products", "subdomain"), products=products)
     assert v is not None and v["status"] == "partial"
 
 
 def test_g3_division_full_coverage_fulfilled():
-    fn = _load_bulk_coverage()
+    half = [{"domain": "ops"}, {"domain": "biz", "division": "business"}]
+    assert _g3_verdict(_coverage("domains", "division"), domains=half)["status"] != "fulfilled"
     domains = [
         {"domain": "ops", "division": "operations"},
         {"domain": "biz", "division": "business"},
     ]
-    v = fn(_FakeSelf(), _Req("Classify every domain into a division"), domains, [], [])
-    assert v is not None and v["status"] == "fulfilled"
+    v = _g3_verdict(_coverage("domains", "division"), domains=domains)
+    assert v is not None and v["status"] == "fulfilled", v
 
 
 def test_g3_does_not_hijack_rename_vreq():
-    fn = _load_bulk_coverage()
-    # mentions 'division' but is a rename op -> must defer (return None)
-    v = fn(_FakeSelf(), _Req("Rename domain division_ops to operations"),
-           [{"domain": "x"}], [], [])
-    assert v is None
+    spec = vs.spec("VREQ-T", "rename_domain", ["division_ops"], new_name="operations")
+    covered = [{"domain": "division_ops", "division": "operations"}, {"domain": "x", "division": "business"}]
+    vs.register(ah, ah.widgets_flat_to_model(covered, [], []), spec)
+    for domains in ([{"domain": "x"}], covered):
+        v = ah._verify_from_spec(ah.vreq_spec("VREQ-T"), domains, [], [], _LOGGER, "VREQ-T")
+        assert v["status"] == "failed" and "domain division_ops -> operations" in v["evidence"], v
+    renamed = [{"domain": "operations", "division": "operations"}, {"domain": "x", "division": "business"}]
+    assert ah._verify_from_spec(ah.vreq_spec("VREQ-T"), renamed, [], [], _LOGGER, "VREQ-T")["status"] == "fulfilled"
+    ghost = vs.spec("VREQ-G", "rename_domain", ["division_opz"], new_name="operations")
+    vs.register(ah, ah.widgets_flat_to_model(covered, [], []), ghost)
+    v = ah._verify_from_spec(ah.vreq_spec("VREQ-G"), renamed, [], [], _LOGGER, "VREQ-G")
+    assert v["status"] == "failed" and "not in the model the requirement was read against" in v["evidence"], v
 
 
 def test_g3_does_not_hijack_non_coverage_vreq():
-    fn = _load_bulk_coverage()
-    # no coverage property keyword present -> None
-    v = fn(_FakeSelf(), _Req("Add a column order_total to finance.invoice"),
-           [], [], [])
-    assert v is None
+    spec = vs.spec("VREQ-T", "add_column", ["finance.invoice"], columns=[{"name": "order_total", "type": ""}])
+    invoice = [{"domain": "finance", "product": "invoice", "primary_key": "invoice_id"}]
+    tagged = [{"domain": "finance", "product": "invoice", "attribute": "amount",
+               "tags": {"finance_business_glossary_term": "invoice amount"}}]
+    for products, attrs in (([], []), (invoice, tagged)):
+        v = _g3_verdict(spec, products=products, attributes=attrs)
+        assert v["status"] == "failed" and "ordertotal" in v["evidence"], v
+    added = tagged + [{"domain": "finance", "product": "invoice", "attribute": "order_total"}]
+    assert _g3_verdict(spec, products=invoice, attributes=added)["status"] == "fulfilled"
 
 
 # --------------------------------------------------------------------------- #

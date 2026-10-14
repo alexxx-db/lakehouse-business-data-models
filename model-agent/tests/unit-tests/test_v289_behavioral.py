@@ -25,10 +25,16 @@ itself reported correctly; raising adherence (FIX 3/7) raises it. "Fixing" the g
 import re
 import sys
 import types
+from pathlib import Path
 
-from notebook_source_util import notebook_concat_source, exec_function_namespace
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source, exec_function_namespace  # noqa: E402
 
 SRC = notebook_concat_source()
+NO_MODEL = {"model": {"domains": []}}
 
 
 # ============================ version + alias contract ============================
@@ -50,20 +56,23 @@ def test_version_289_and_all_aliases_present():
 # ============================ FIX 7/8: user-product-name SSOT ============================
 
 def test_user_product_tokens_extracts_vibe_and_musthave():
-    ns = exec_function_namespace("_vov_user_product_tokens")
-    fn = ns["_vov_user_product_tokens"]
+    vs.register(ah, NO_MODEL, vs.spec("V1", "add_product", ["project.project_material", "project.project_schedule"]),
+                vs.spec("V2", "rename_product", ["hr.eeo_report"], new_name="eoo_compliance"),
+                vs.spec("V3", "add_product", ["hr.payroll_audit"], interpretable=False, reason="two readings"))
     cfg = {
         "PROMPT_VARIABLES": {"business_config": {
-            "vibe_modelling_instructions": "project domain has project_material and project_schedule; hr has eoo_compliance",
+            "vibe_modelling_instructions": "project domain has project_material and project_schedule; hr has eoo_compliance, payroll_audit and leave_ledger",
             "must_have_data_products": "vendor_contract; pay_estimate",
         }},
     }
-    toks = fn(cfg)
+    toks = ah._vov_user_product_tokens(cfg)
     assert "project_material" in toks and "project_schedule" in toks and "eoo_compliance" in toks
     assert "vendor_contract" in toks and "pay_estimate" in toks
+    assert "payroll_audit" not in toks and "leave_ledger" not in toks
+    ah.vov_ledger_reset()
     # control: empty/None config -> empty set (no false protection)
-    assert fn(None) == set()
-    assert fn({}) == set()
+    assert ah._vov_user_product_tokens(None) == set()
+    assert ah._vov_user_product_tokens({}) == set()
 
 
 def test_levenshtein_distances():
@@ -100,31 +109,27 @@ def test_enforce_naming_restores_user_literal_end_to_end():
     """End-to-end on the REAL enforce_naming_conventions: with the user vibe naming
     'project_material', the strip that produced 'material' is REVERSED back to 'project_material'.
     Pre-patch (no config / name not in vibe) the strip stands — proving non-tautology."""
-    import re as _re, copy as _copy
-    deps = {"re": _re, "copy": _copy}
-    for dep in ("strip_domain_prefix", "apply_convention", "get_pk_suffix", "strip_product_prefix",
-                "_vov_user_product_tokens", "_vov_levenshtein", "_vov_match_user_token"):
-        try:
-            deps.update({k: v for k, v in exec_function_namespace(dep, extra_globals=dict(deps)).items() if k == dep})
-        except LookupError:
-            pass
-    ns = exec_function_namespace("enforce_naming_conventions", extra_globals=deps)
-    enforce = ns["enforce_naming_conventions"]
+    vs.register(ah, NO_MODEL, vs.spec("V1", "add_product", ["project.project_material", "project.project_schedule"]))
     cfg = {"PROMPT_VARIABLES": {"business_config": {
         "vibe_modelling_instructions": "the project domain product list includes project_material and project_schedule",
     }}, "MODEL_CONVENTIONS": {"data_asset_naming_convention": "snake_case"}}
 
     # the model came out of generation with the prefix STRIPPED (the bug)
     prods = [{"domain": "project", "product": "material", "primary_key": "material_id"}]
-    enforce(prods, [], logger=None, config=cfg)
+    ah.enforce_naming_conventions(prods, [], logger=None, config=cfg)
     assert prods[0]["product"] == "project_material", \
         f"§3c restore failed: got {prods[0]['product']!r}"
 
     # CONTROL (pre-patch behavior): same product, but user vibe does NOT name it -> normal strip stands
     prods2 = [{"domain": "project", "product": "project_temp", "primary_key": "project_temp_id"}]
-    enforce(prods2, [], logger=None, config={"MODEL_CONVENTIONS": {"data_asset_naming_convention": "snake_case"}})
+    ah.enforce_naming_conventions(prods2, [], logger=None, config={"MODEL_CONVENTIONS": {"data_asset_naming_convention": "snake_case"}})
     assert prods2[0]["product"] == "temp", \
         f"control failed: redundant prefix should still strip without user protection, got {prods2[0]['product']!r}"
+
+    ah.vov_ledger_reset()
+    prods3 = [{"domain": "project", "product": "material", "primary_key": "material_id"}]
+    ah.enforce_naming_conventions(prods3, [], logger=None, config=cfg)
+    assert prods3[0]["product"] == "material", "the vibe text alone must never restore a name; only an LLM spec names it"
 
 
 def test_naming_loop_wires_restore_decision():
@@ -167,33 +172,38 @@ def test_retry_feedback_surfaces_sandbox_diag():
 
 # ============================ FIX 1: import-strip + stdlib superset ============================
 
-def _slice_nested(def_line, end_marker):
-    i = SRC.find(def_line)
-    assert i != -1, f"{def_line} not found"
-    j = SRC.find(end_marker, i)
-    assert j != -1
-    block = SRC[i:j]
-    # dedent to module level
-    lines = block.split("\n")
-    base = len(lines[0]) - len(lines[0].lstrip())
-    return "\n".join(l[base:] if len(l) >= base else l for l in lines)
+class _LineLogger:
+    def __init__(self):
+        self.lines = []
+
+    def info(self, msg, *a, **k):
+        self.lines.append(str(msg))
+
+    warning = error = info
 
 
-def test_strip_import_lines_drops_imports_keeps_usage():
-    body = _slice_nested("def _vov_strip_import_lines(_src):",
-                         "    mutator_src, _vov_msd = _vov_strip_import_lines")
-    ns = {}
-    exec(compile(body, "<strip>", "exec"), ns)
-    strip = ns["_vov_strip_import_lines"]
+def _source_reaching_ast_validation(monkeypatch, mutator_src):
+    seen, log = [], _LineLogger()
+
+    def _stop(src):
+        seen.append(src)
+        raise ah.UnsafeCodeError("captured before the subprocess")
+    monkeypatch.setattr(ah, "validate_ast", _stop)
+    monkeypatch.setattr(ah, "logger", log, raising=False)
+    ah._execute_in_sandbox_impl(mutator_src, "", {"model": {"domains": []}})
+    return seen[0], log.lines
+
+
+def test_strip_import_lines_drops_imports_keeps_usage(monkeypatch):
     src = "import math\nfrom collections import OrderedDict\nx = re.search('a','b')\nreturn model"
-    out, dropped = strip(src)
-    assert dropped == 2, f"expected 2 import lines dropped, got {dropped}"
+    out, lines = _source_reaching_ast_validation(monkeypatch, src)
+    assert any("stripped mutator_imports=2 verifier_imports=0" in line for line in lines), lines
     assert "import" not in out, "import lines must be gone"
     assert "re.search" in out and "return model" in out, "real logic must be preserved"
     # control: no imports -> unchanged, zero dropped
     clean = "x = json.dumps({})\nreturn model"
-    out2, d2 = strip(clean)
-    assert d2 == 0 and out2 == clean
+    out2, lines2 = _source_reaching_ast_validation(monkeypatch, clean)
+    assert out2 == clean and not any("vov-strip-import-pre-ast" in line for line in lines2)
 
 
 def test_sandbox_prefix_preinjects_stdlib_superset():
@@ -203,29 +213,6 @@ def test_sandbox_prefix_preinjects_stdlib_superset():
 
 
 # ============================ FIX 6: bridge retry on empty/None ============================
-
-def _slice_bridge_complete_json():
-    """The v2.8.9 bridge complete_json is the one referencing 'vov_2_0_sandbox'. Slice it as a
-    standalone function and dedent so we can exec + call with a fake self."""
-    anchor = "def complete_json(self, system: str, user: str, temperature: float = 0.0, response_schema: Any = None) -> Any:"
-    i = SRC.find(anchor)
-    assert i != -1
-    # back up to the start of the def line to capture its leading indentation
-    line_start = SRC.rfind("\n", 0, i) + 1
-    lines = SRC[line_start:].split("\n")
-    def_indent = len(lines[0]) - len(lines[0].lstrip())
-    out = [lines[0]]
-    for l in lines[1:]:
-        if l.strip():
-            ind = len(l) - len(l.lstrip())
-            # stop at the next sibling method / dedent below the def's own indent
-            if ind <= def_indent:
-                break
-        out.append(l)
-    if def_indent:
-        out = [l[def_indent:] if len(l) >= def_indent else l for l in out]
-    return "\n".join(out)
-
 
 class _FakeAgent:
     def __init__(self, responses):
@@ -244,13 +231,6 @@ class _FakeLogger:
     def error(self, *a, **k): pass
 
 
-def _make_bridge_fn():
-    block = _slice_bridge_complete_json()
-    ns = {"Any": object, "json": __import__("json")}
-    exec(compile(block, "<bridge>", "exec"), ns)
-    return ns["complete_json"]
-
-
 def test_bridge_retries_empty_then_succeeds(monkeypatch_time=True):
     # speed up: stub time.sleep so backoff doesn't wait
     real_time = sys.modules.get("time")
@@ -258,13 +238,8 @@ def test_bridge_retries_empty_then_succeeds(monkeypatch_time=True):
     fake_time.sleep = lambda *_: None
     sys.modules["time"] = fake_time
     try:
-        fn = _make_bridge_fn()
-        bridge = types.SimpleNamespace(
-            ai_agent=_FakeAgent([None, "", '{"ok": 1}']),
-            system_prompt_id="VOV_2_SANDBOX",
-            logger=_FakeLogger(),
-        )
-        out = fn(bridge, "sys", "user")
+        bridge = ah.AIAgentLLMBridge(_FakeAgent([None, "", '{"ok": 1}']), _FakeLogger())
+        out = bridge.complete_json("sys", "user")
         assert out == {"ok": 1}, f"bridge should recover after 2 empty responses, got {out!r}"
         assert bridge.ai_agent.calls == 3, "should have retried twice before success"
     finally:
@@ -278,15 +253,10 @@ def test_bridge_raises_after_all_empty():
     fake_time.sleep = lambda *_: None
     sys.modules["time"] = fake_time
     try:
-        fn = _make_bridge_fn()
-        bridge = types.SimpleNamespace(
-            ai_agent=_FakeAgent([None, None, None]),
-            system_prompt_id="VOV_2_SANDBOX",
-            logger=_FakeLogger(),
-        )
+        bridge = ah.AIAgentLLMBridge(_FakeAgent([None, None, None]), _FakeLogger())
         raised = False
         try:
-            fn(bridge, "sys", "user")
+            bridge.complete_json("sys", "user")
         except RuntimeError as e:
             raised = True
             assert "vov-bridge-no-silent-empty" in str(e)

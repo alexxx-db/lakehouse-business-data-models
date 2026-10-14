@@ -120,8 +120,8 @@ class TestResponseFormatEnvelope:
 
     def test_the_two_verifier_schemas_are_still_authored_raw(self):
         """If these ever gain their own envelope the fix above stops being load-bearing."""
-        text = _cell_with("_v103_extract_schema = {")
-        for name in ("_v100_schema = {", "_v103_extract_schema = {"):
+        text = _cell_with("_v100_schema = {")
+        for name in ("_v100_schema = {",):
             body = text[text.index(name) : text.index(name) + 400]
             assert '"name"' not in body.split("properties")[0]
 

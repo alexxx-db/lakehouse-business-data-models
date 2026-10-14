@@ -6,7 +6,7 @@ test that demonstrates the patch changes observable state. Static-grep assertion
 ("alias=foo is in the source") are SMOKE checks only — paired with behavioural tests.
 
 These tests:
-1. Extract the SelfFixer cell from the notebook (no notebook execution).
+1. Load the SelfFixer through agent_helpers (every notebook code cell, Databricks runtime stubbed).
 2. Inject minimal stubs for execute_in_sandbox, ai_agent, logger.
 3. Drive `fix_all_unfulfilled` through realistic unfulfilled REQ scenarios.
 4. Assert observable state changes on the canonical `model` dict.
@@ -20,12 +20,26 @@ All aliases tested:
 import copy
 import json
 import re
+import sys
 from collections import namedtuple
 from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+
 NB_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_sizing_bounds():
+    saved = dict(ah._USER_SIZING_BOUNDS_RUNTIME)
+    ah._USER_SIZING_BOUNDS_RUNTIME.clear()
+    yield
+    ah._USER_SIZING_BOUNDS_RUNTIME.clear()
+    ah._USER_SIZING_BOUNDS_RUNTIME.update(saved)
 
 
 # ---------------------------------------------------------------------------
@@ -103,11 +117,8 @@ class _FakeAIAgent:
 
 
 def _build_selffixer_namespace():
-    """Execute the SelfFixer cell in an isolated namespace and return it."""
-    src = _load_selffixer_cell()
-    ns = {"__name__": "__test_selffixer__"}
-    exec(compile(src, "<selffixer-cell>", "exec"), ns)
-    return ns
+    """The SelfFixer surface as the notebook defines it, with every helper it calls."""
+    return dict(vars(ah))
 
 
 # ---------------------------------------------------------------------------

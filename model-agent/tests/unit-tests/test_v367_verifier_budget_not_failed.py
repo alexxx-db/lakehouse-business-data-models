@@ -87,7 +87,7 @@ def _req():
 
 def test_alias_present_in_source():
     src = _concat_code()
-    assert src.count("verifier-budget-empty-not-failed") >= 3, "Fix#4 alias must be present (FIRED + return + comment)"
+    assert src.count("verifier-budget-empty-not-failed FIRED") >= 1 and src.count("verifier-budget-empty-not-failed") >= 3, "Fix#4 alias must be present (FIRED + alias + return)"
 
 
 def test_budget_induced_empty_returns_skipped_not_failed():

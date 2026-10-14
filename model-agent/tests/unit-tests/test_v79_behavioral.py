@@ -37,7 +37,7 @@ AGENT_NB = REPO_ROOT / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
 
 def _load_engine():
-    from notebook_source_util import slice_function_source
+    from notebook_source_util import notebook_concat_source, slice_function_source
 
     ns = {
         "__name__": "_v79test",
@@ -70,6 +70,9 @@ def _load_engine():
     }
     for fn in ("_preseed_rename_maps", "_llm_fallback_apply_mutations"):
         exec(compile(slice_function_source(fn), f"<v79_{fn}>", "exec"), ns)
+    src = notebook_concat_source()
+    start = src.index("_VALID_SPARK_TYPES_SET = frozenset({")
+    exec(src[start:src.index("})", start) + 2], ns)
     return ns
 
 

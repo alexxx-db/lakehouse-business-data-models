@@ -1,0 +1,2615 @@
+"""v5.3.3: the defects the live validation of 5.3.2 found.
+
+- R34 651377744624962, R35 155237215962513 and R43 902627616694840: the final artifact carry-over copied the base
+  version's schemas/ and metrics/ files into the new version folder, so the folder carried domains the model no longer
+  has (client, inventory, audience, partner), a stale cross-domain FK file and, in time, an old vibe_scope drop file.
+"""
+import copy
+import io
+import json
+import re
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vibe_scope_deploy_harness as h  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+
+GLOSSARY_FILL = vs.field("attributes", "business_glossary_term", fill=True)
+TABLE_DESCRIPTION = vs.field("products", "description")
+
+
+@pytest.fixture(autouse=True)
+def _reset():
+    ah.set_vibe_scope_runtime(None)
+    ah.vov_ledger_reset()
+    yield
+    ah.set_vibe_scope_runtime(None)
+    ah.vov_ledger_reset()
+
+
+class _Entry:
+    def __init__(self, path):
+        self.path = path
+        self.is_directory = False
+
+
+class _Files:
+    def __init__(self, tree):
+        self.tree = tree
+        self.uploads = []
+
+    def list_directory_contents(self, directory):
+        if directory not in self.tree:
+            raise FileNotFoundError(directory)
+        return [_Entry(f"{directory}/{name}") for name in self.tree[directory]]
+
+    def download(self, path):
+        directory, name = path.rsplit("/", 1)
+        if name not in self.tree.get(directory, {}):
+            raise FileNotFoundError(path)
+        return types.SimpleNamespace(contents=io.BytesIO(self.tree[directory][name]))
+
+    def upload(self, file_path, contents, overwrite=False):
+        self.uploads.append(file_path)
+
+
+def test_carry_over_never_copies_another_versions_ddl(monkeypatch):
+    prev, cur = "/Volumes/c/_metamodel/vol_root/business/b/v1/mvm", "/Volumes/c/_metamodel/vol_root/business/b/v2/mvm"
+    files = _Files({
+        f"{prev}/schemas": {"b_gone_schema_v1_mvm.sql": b"CREATE TABLE gone", "b_cross_domain_foreign_keys_v1_mvm.sql": b"ALTER TABLE x",
+                            "b_vibe_scope_removed_v1_mvm.sql": b"DROP TABLE IF EXISTS `c`.`kept`.`t`;"},
+        f"{prev}/metrics": {"b_gone_metrics_v1_mvm.sql": b"CREATE VIEW gone"},
+        f"{prev}/docs": {"b_model_v1_mvm.csv": b"a,b"},
+        f"{cur}/schemas": {"b_kept_schema_v2_mvm.sql": b"CREATE TABLE kept"},
+        f"{cur}/metrics": {"b_kept_metrics_v2_mvm.sql": b"CREATE VIEW kept"},
+    })
+    sdk = types.ModuleType("databricks.sdk")
+    sdk.WorkspaceClient = lambda *a, **k: types.SimpleNamespace(files=files)
+    monkeypatch.setitem(sys.modules, "databricks", types.ModuleType("databricks"))
+    monkeypatch.setitem(sys.modules, "databricks.sdk", sdk)
+    wv = {"operation": h.VOV, "base_version_for_review": "1", "current_version": "2", "model_scope": "mvm"}
+    ah._carry_over_missing_artifacts_from_previous_version(wv, {"TARGET_VOLUME": cur}, h.LOG)
+    assert files.uploads == [f"{cur}/docs/b_model_v2_mvm.csv"]
+
+
+VIEWS = ["crew_roster_kpis", "flight_crew_coverage", "asset_utilization"]
+
+
+def _rename_view(model):
+    view = next(v for v in model["model"]["metric_views"] if v["view_name"] == "fleet_utilization")
+    view["view_name"] = "asset_utilization"
+    view["sql"] = view["sql"].replace("`fleet_utilization`", "`asset_utilization`")
+    return model
+
+
+def _scoped_root():
+    root = _rename_view(h.scoped_final_model())
+    root["_vibe_scope"] = h.scoped_facts()
+    return root
+
+
+def _deploy(monkeypatch, dry_run=False):
+    base = _rename_view(h.base_model())
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG))
+    spark = h.FakeSpark(h.base_physical_tables(), views=VIEWS)
+    root = _scoped_root()
+    wv = h.flat_widgets(root, spark=spark, facts=h.scoped_facts(), dry_run=dry_run, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    if dry_run:
+        ah._vibe_scope_dry_run_metric_artifacts(wv, h.LOG)
+    res["files"] = {Path(p).name: t for p, t in res["artifacts"].items()}
+    return res
+
+
+def test_the_artifact_carries_the_fks_tags_and_views_of_kept_tables_for_an_empty_catalog(monkeypatch, caplog):
+    caplog.set_level("INFO")
+    res = _deploy(monkeypatch)
+    completion = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_v2_mvm.sql"])
+    executed = res["statements"]
+    assert ("ALTER TABLE `skyline`.`flight`.`scheduled_flight` ADD CONSTRAINT `fk_flight_scheduled_flight_aircraft_id` FOREIGN KEY "
+            "(`aircraft_id`) REFERENCES `skyline`.`fleet`.`aircraft`(`aircraft_id`)") in completion
+    assert any("`fleet`.`aircraft` ALTER COLUMN `tail_number` SET TAGS" in s for s in completion)
+    assert any(s.startswith("ALTER SCHEMA `skyline`.`fleet` SET TAGS") for s in completion)
+    assert not set(completion) & {s.rstrip(";") for s in executed}, "the completion statements were also run on the base"
+    views = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_metrics_v2_mvm.sql"])
+    assert [ah._extract_metric_view_name_from_statement(s) for s in views] == ["asset_utilization"]
+    fleet = res["files"]["skyline_air_fleet_metrics_v2_mvm.sql"]
+    assert "preserved from the base version" in fleet and "failed validation" not in fleet
+    assert "Step 1d: Creating 6 physical tables (3 CREATE OR REPLACE, 3 CREATE TABLE IF NOT EXISTS)." in caplog.text
+
+
+def test_a_dry_run_writes_the_same_completion_files(monkeypatch):
+    res = _deploy(monkeypatch, dry_run=True)
+    assert "skyline_air_vibe_scope_preserved_v2_mvm.sql" in res["files"]
+    views = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_metrics_v2_mvm.sql"])
+    assert [ah._extract_metric_view_name_from_statement(s) for s in views] == ["asset_utilization"]
+    assert not [s for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "DROP"))]
+
+
+def test_an_install_into_an_empty_catalog_drops_the_scoped_plan():
+    plan = object()
+    assert ah._vibe_scope_effective_install_plan(plan, "fresh", h.LOG) is None
+    assert ah._vibe_scope_effective_install_plan(plan, "base_match", h.LOG) is plan
+    assert ah._vibe_scope_effective_install_plan(plan, "new_base", h.LOG) is plan
+    assert ah._vibe_scope_effective_install_plan(None, "fresh", h.LOG) is None
+    deploy = h.notebook_concat_source()
+    call = deploy.index("_vs_precondition = _scoped_install_precondition(")
+    assert deploy.index("_vs_install = _vibe_scope_effective_install_plan(_vs_install, _vs_precondition, _dlog)", call) < deploy.index(
+        'if _vs_install is not None and _vs_precondition == "base_match":', call)
+
+
+def test_a_full_install_of_the_scoped_model_creates_every_fk_and_view():
+    spark = h.FakeSpark({}, views=[])
+    rec, result, plan = h.run_install(_scoped_root(), spark, use_plan=False)
+    assert result["error"] is None and plan is None
+    ddl = spark.statements
+    assert not [s for s in ddl if "CREATE TABLE IF NOT EXISTS" in s]
+    assert any("ADD CONSTRAINT `fk_flight_scheduled_flight_aircraft_id`" in s for s in ddl)
+    assert "asset_utilization" in " ".join(rec.phase("metric_views"))
+
+
+def _shift_base():
+    model = h.base_model()
+    model["model"]["domains"][1]["products"][0]["attributes"].append(
+        {"name": "assigned_crew_shift_id", "type": "BIGINT", "tags": "", "column_name": "assigned_crew_shift_id", "foreign_key_to": "", "description": "Shift"})
+    return model
+
+
+def _shift_model(link):
+    model = _shift_base()
+    crew = model["model"]["domains"][0]
+    crew["products"].append({"name": "crew_shift", "subdomain": "crew_scheduling", "primary_key": "crew_shift_id", "table_name": "crew_shift",
+                             "description": "Crew shift", "tags": "", "type": "entity",
+                             "attributes": [{"name": "crew_shift_id", "type": "BIGINT", "tags": "primary_key", "column_name": "crew_shift_id",
+                                             "foreign_key_to": "", "description": "Primary key"}]})
+    if link:
+        sched = model["model"]["domains"][1]["products"][0]
+        next(a for a in sched["attributes"] if a["name"] == "assigned_crew_shift_id")["foreign_key_to"] = "crew.crew_shift.crew_shift_id"
+    return model
+
+
+def test_a_p3_link_made_after_the_engine_survives_the_engine_result_restore():
+    """Live R41 705242797106879: the engine created order.gift_registry, the linker then set customer.household.gift_registry_id
+    (P3), and the engine-result restore at logical_schema_review cleared it because the engine baseline already held the new
+    product."""
+    base = _shift_base()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    fence.narrow_to_named({("crew", "crewshift")}, set(), set(), h.LOG)
+    fence.record_change("create", "crew", "crew_shift", "engine:VREQ-0001")
+    d, p, a, mv = ah.model_to_widgets_flat(_shift_model(link=False))
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    d, p, a, mv = ah.model_to_widgets_flat(_shift_model(link=True))
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    linked = next(r for r in wv["attributes"] if r["product"] == "scheduled_flight" and r["attribute"] == "assigned_crew_shift_id")
+    assert linked["foreign_key_to"] == "crew.crew_shift.crew_shift_id"
+    assert fence.check_flat(wv["domains"], wv["products"], wv["attributes"], wv["_metric_view_records"]).summary()["by_kind"] == {"P3": 1}
+
+
+def test_a_link_from_an_out_of_scope_product_named_with_its_in_scope_target_is_p4():
+    """Live R41: 'In the product customer.profile, add a foreign key column gift_registry_id that references
+    order.gift_registry' named both products, was split as a mixed requirement and its out-of-scope part rejected."""
+    base = h.base_model()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    text = "In the product flight.scheduled_flight, add a foreign key column standby_member_id that references crew.member."
+    link = vs.spec("VREQ-0002", "add_column", ["flight.scheduled_flight.standby_member_id"], columns=[{"name": "standby_member_id", "type": "BIGINT"}],
+                   fk_target="crew.member")
+    vs.register(ah, base, link, dict(link, id="P-1"),
+                vs.spec("VREQ-0004", "add_column", ["flight.scheduled_flight.standby_note"], columns=[{"name": "standby_note", "type": "STRING"}]))
+    vreq = ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="flight.scheduled_flight, crew.member", source_quote=text, source_chunk_id="c1")
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq], base, h.LOG)
+    assert [v.vreq_id for v in kept] == ["VREQ-0002"] and kept[0].target == vreq.target
+    assert rejected == [] and outcomes == []
+    auth = fence.report()["authorizations"]
+    assert [(x["oos"], x["target"], x["column"]) for x in auth] == [("flight.scheduled_flight", "crew.member.member_id", "standby_member_id")]
+    priority = {"vreq_id": "P-1", "action": "connect_table", "target": "flight.scheduled_flight, crew.member", "reason": text}
+    kept_p, rejected_p = ah._vibe_scope_triage_priorities(fence, [priority], base, h.LOG)
+    assert kept_p == [priority] and rejected_p == []
+    assert len(fence.report()["authorizations"]) == 2
+    plain = ah.RawVREQ(vreq_id="VREQ-0004", intent="In flight.scheduled_flight, add a column standby_note.", target="flight.scheduled_flight",
+                       source_quote="In flight.scheduled_flight, add a column standby_note.", source_chunk_id="c1")
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [plain], base, h.LOG)
+    assert kept == [] and [v.vreq_id for v in rejected] == ["VREQ-0004"] and [o.status for o in outcomes] == ["scope_rejected"]
+    assert len(fence.report()["authorizations"]) == 2
+
+
+def test_a_mixed_requirement_without_a_link_is_still_split():
+    base = h.base_model()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    text = "Rename crew.member to crew_member and add a description to flight.scheduled_flight."
+    vreq = ah.RawVREQ(vreq_id="VREQ-0003", intent=text, target="crew.member, flight.scheduled_flight", source_quote=text, source_chunk_id="c1")
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq], base, h.LOG)
+    assert [v.target for v in kept] == ["crew.member"]
+    assert [v.vreq_id for v in rejected] == ["VREQ-0003#oos"] and outcomes[0].status == "scope_rejected"
+    assert fence.report()["authorizations"] == []
+
+
+def test_a_derived_name_on_a_record_the_base_stores_without_one_is_not_a_frozen_change():
+    """Live R41: next_vibes reported 'frozen_product_changed product.product_bundle (fields association_edges,table_name)'
+    while model.json carried the base record unchanged."""
+    base = h.base_model()
+    aircraft = base["model"]["domains"][2]["products"][0]
+    aircraft.pop("table_name")
+    aircraft["attributes"][2].pop("column_name")
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    craft = cur["model"]["domains"][2]["products"][0]
+    craft["table_name"] = "aircraft"
+    craft["association_edges"] = ["fleet.aircraft->crew.base"]
+    craft["attributes"][2]["column_name"] = "tail_number"
+    assert fence.check(cur).ok and not fence.check(cur).violations
+    assert fence.changed_in_scope_products(cur) == set()
+    craft["table_name"] = "aircraft_v2"
+    assert [v["kind"] for v in fence.check(cur).violations] == ["frozen_product_changed"]
+
+
+def test_an_all_domains_keep_tables_run_marks_its_model_json_as_a_delta_on_its_base():
+    """The 2B deploy plan wrote a delta (unchanged tables as CREATE TABLE IF NOT EXISTS) while model.json carried no
+    _vibe_scope block, so neither install path could tell the artifact needed its base version."""
+    import test_v514_vibe_scope_parse as PS
+    new = copy.deepcopy(PS.RAW)
+    next(p for d in new["model"]["domains"] if d["name"] == "flight" for p in d["products"] if p["name"] == "scheduled_flight")["attributes"].append(
+        {"name": "gate_code", "type": "STRING"})
+    wv = {"business_context_raw": copy.deepcopy(PS.RAW), "operation": h.VOV, "base_version_for_review": "7", "model_scope": "mvm",
+          "config": {"TARGET_CATALOG": "cat", "MODEL_SCOPE": "mvm"}}
+    assert ah._vibe_scope_model_json_facts(new["model"], dict(wv), h.LOG) is None
+    wv["_vov_keep_tables"] = True
+    facts = ah._vibe_scope_model_json_facts(new["model"], wv, h.LOG)
+    assert facts["mode"] == "all" and facts["label"] == "All Domains" and facts["changed_in_scope_products"] == ["flight.scheduled_flight"]
+    assert (facts["base_version"], facts["base_scope"], facts["base_catalog"]) == ("7", "mvm", "cat")
+    assert wv["_vov_unfenced_facts"] is facts
+    plan = ah._vibe_scope_install_plan({"_vibe_scope": facts, "model": new["model"]}, new["model"])
+    assert plan.state("flight", "scheduled_flight") == "replace" and plan.state("fleet", "aircraft") == "preserve"
+    src = h.notebook_concat_source()
+    assert "_vs_facts = _vibe_scope_model_json_facts(data_model, widgets_values, logger)" in src
+
+
+def test_an_all_domains_dry_run_on_the_installed_head_keeps_tables_like_the_full_run(monkeypatch):
+    calls = []
+    monkeypatch.setitem(ah.__dict__, "_vov_keeps_installed_tables", lambda *a, **k: calls.append(a) or True)
+    monkeypatch.setitem(ah.__dict__, "_schema_ownership_snapshot", lambda *a, **k: {"owned": {"cat.crew"}, "versions": {}, "rows": []})
+    monkeypatch.setitem(ah.__dict__, "_schema_ownership_state", lambda snap, key: "owned")
+    spark = types.SimpleNamespace(sql=lambda q: types.SimpleNamespace(collect=lambda: [("crew",)]))
+    wv = {"operation": h.VOV, "_dry_run": True, "base_version_for_review": "3"}
+    plan = ah._staging_catalog_teardown(spark, {"TARGET_CATALOG": "cat", "MODEL_SCOPE": "mvm"}, wv, h.LOG)
+    assert plan["drop"] == ["crew"] and wv.get("_vov_keep_tables") is True and len(calls) == 1
+
+
+def _wide(text, vid="VREQ-0001"):
+    return ah.RawVREQ(vreq_id=vid, intent=text, target="*", source_quote=text, source_chunk_id="c1")
+
+
+def test_a_set_target_requirement_opens_only_the_fields_it_names():
+    """Live R36 1102287390591033: 'Make sure every table in the model has a non-empty description' turned the fence off; the run
+    replaced all 97 tables (every sentinel row lost), rewrote 97 descriptions and moved 70 products to other subdomains."""
+    base = h.base_model()
+    idx = ah._vreq_spec_index(base)
+    every = ah._normalize_vreq_spec(vs.spec("V1", "set_fields", breadth="model", fields=[vs.field("domains", "description"), TABLE_DESCRIPTION,
+                                                                                         vs.field("attributes", "description")]), idx)
+    assert ah._vreq_spec_open_fields(every) == {("domains", "description"), ("products", "description"), ("attributes", "description")}
+    pii = ah._normalize_vreq_spec(vs.spec("V1", "set_fields", breadth="model", fields=[vs.field("attributes", "tags")],
+                                          tags=[{"key": "pii", "value": "true"}]), idx)
+    assert ah._vreq_spec_open_fields(pii) == {("attributes", "tags"), ("attributes", "tag_set")}
+    snake = ah._normalize_vreq_spec(vs.spec("V1", "other", breadth="model", policy="naming_convention", policy_value="snake_case"), idx)
+    assert ah._vreq_spec_open_fields(snake) == frozenset()
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[vs.field("products", "description", fill=True)]))
+    spec, wide = ah._vibe_scope_requested_spec([_wide("Make sure every table in the model has a non-empty description.")], base)
+    assert wide == [] and spec.mode == "requested" and spec.entries == ()
+    assert spec.open_fields == {("products", "description")} and spec.open_field_vreqs == ("VREQ-0001",)
+    assert spec.fill_only_fields == {("products", "description")}
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[TABLE_DESCRIPTION]))
+    spec, _wide_list = ah._vibe_scope_requested_spec([_wide("Rewrite every table description in plain business English.")], base)
+    assert spec.open_fields == {("products", "description")} and spec.fill_only_fields == frozenset()
+    vs.register(ah, base, vs.spec("VREQ-0001", "other", breadth="model"))
+    spec, wide = ah._vibe_scope_requested_spec([_wide("Add an audit column to every table.")], base)
+    assert wide == ["VREQ-0001: model other"] and spec.whole_domains == {ah._vov285_san(d["name"]) for d in base["model"]["domains"]}
+    assert spec.open_fields == frozenset() and spec.open_columns == frozenset()
+
+
+def _rewrite_descriptions(base, vid="VREQ-0001"):
+    vs.register(ah, base, vs.spec(vid, "set_fields", breadth="model", fields=[TABLE_DESCRIPTION]))
+    return _wide("Rewrite every table description in plain business English.", vid)
+
+
+def _field_fence():
+    base = h.base_model()
+    spec, _wide_list = ah._vibe_scope_requested_spec([_rewrite_descriptions(base)], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    return base, fence
+
+
+def _described(base, subdomain=False):
+    cur = copy.deepcopy(base)
+    craft = cur["model"]["domains"][2]["products"][0]
+    craft["description"] = "Every aircraft the airline operates, with its home base and tail number."
+    if subdomain:
+        craft["subdomain"] = "aircraft_registry"
+    return cur
+
+
+def test_the_fence_keeps_an_open_field_and_restores_everything_else():
+    base, fence = _field_fence()
+    result = fence.check(_described(base, subdomain=True))
+    assert result.summary()["by_kind"] == {"P6": 1, "frozen_product_changed": 1}
+    assert [v["detail"] for v in result.violations] == ["fields subdomain"]
+    d, p, a, mv = ah.model_to_widgets_flat(_described(base, subdomain=True))
+    fence.restore_flat(d, p, a, mv, "test")
+    craft = next(r for r in p if r["product"] == "aircraft")
+    assert craft["subdomain"] == "fleet_assets" and craft["description"].startswith("Every aircraft")
+    model = _described(base)
+    fence.splice_and_verify(model, h.LOG)
+    spliced = model["model"]["domains"][2]["products"][0]
+    assert spliced["description"].startswith("Every aircraft") and spliced["subdomain"] == "fleet_assets"
+    facts = fence.scope_facts(model, "passed")
+    p6 = [d for d in facts["permitted_deltas"] if d["kind"] == "P6"]
+    assert [(d["domain"], d["product"], d["attribute"], d["fields"]) for d in p6] == [("fleet", "aircraft", "", ["description"])]
+    assert "fleet.aircraft" in facts["preserved_products"] and facts["changed_in_scope_products"] == []
+
+
+def test_a_metadata_only_change_keeps_the_table_and_its_rows(monkeypatch):
+    base, fence = _field_fence()
+    final = _described(base)
+    fence.splice_and_verify(final, h.LOG)
+    tail = next(x for x in final["model"]["domains"][2]["products"][0]["attributes"] if x["name"] == "tail_number")
+    facts = fence.scope_facts(final, "passed")
+    facts["permitted_deltas"].append({"kind": "P6", "domain": "fleet", "product": "aircraft", "attribute": "tail_number", "old_fk": "", "new_fk": "",
+                                      "view_name": "", "fields": ["business_glossary_term", "description"], "old": {"business_glossary_term": "Tail Number"},
+                                      "new": {"business_glossary_term": "", "description": "Registration mark"}, "cause": "test"})
+    tail["business_glossary_term"], tail["description"] = "", "Registration mark"
+    root = dict(final, _vibe_scope=facts)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization"])
+    wv = h.flat_widgets(root, spark=spark, facts=facts, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    ddl = [s.rstrip(";") for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "COMMENT", "DROP"))]
+    assert not [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE")], "a description-only change replaced a table"
+    assert "COMMENT ON TABLE `skyline`.`fleet`.`aircraft` IS 'Every aircraft the airline operates, with its home base and tail number.'" in ddl
+    assert "ALTER TABLE `skyline`.`fleet`.`aircraft` ALTER COLUMN `tail_number` COMMENT 'Registration mark'" in ddl
+    assert "ALTER TABLE `skyline`.`fleet`.`aircraft` ALTER COLUMN `tail_number` UNSET TAGS ('business_glossary_term')" in ddl
+    files = {Path(p).name: t for p, t in res["artifacts"].items()}
+    assert "COMMENT ON TABLE `skyline`.`fleet`.`aircraft`" in files["skyline_air_fleet_schema_v2_mvm.sql"]
+
+
+def test_in_a_scoped_run_a_set_target_opens_fields_only_inside_the_scope():
+    base = h.base_model()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "fleet"), base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    ah._vibe_scope_narrow_scoped(fence, [_rewrite_descriptions(base)], base)
+    assert fence.spec.named_only and fence.spec.open_fields == {("products", "description")}
+    cur = _described(base)
+    cur["model"]["domains"][1]["products"][0]["description"] = "rewritten outside the scope"
+    kinds = fence.check(cur).summary()["by_kind"]
+    assert kinds == {"P6": 1, "frozen_product_changed": 1}
+    assert [v["path"] for v in fence.check(cur).violations] == ["flight.scheduled_flight"]
+
+
+def test_requirements_a_later_corrective_applied_count_as_applied():
+    """Live R41: the engine batch failed on a fence violation, a corrective then created order.gift_registry with every
+    requested column, yet next_vibes listed the columns under MISSED VIBES and reported 16.7% in-scope adherence."""
+    model = _shift_model(link=False)
+    model["model"]["domains"][0]["products"][-1]["attributes"].append(
+        {"name": "shift_label", "type": "STRING", "column_name": "shift_label", "foreign_key_to": "", "description": "Shift label"})
+    vs.register(ah, _shift_base(), vs.spec("VREQ-0001", "add_product", ["crew.crew_shift"]),
+                vs.spec("VREQ-0002", "add_column", ["crew.crew_shift"], columns=[{"name": "shift_label", "type": "STRING"}]),
+                vs.spec("VREQ-0003", "add_column", ["crew.crew_shift"], columns=[{"name": "shift_code", "type": "STRING"}]),
+                vs.spec("VREQ-0004", "add_column", ["flight.scheduled_flight"], columns=[{"name": "x", "type": "STRING"}]))
+    d, p, a, mv = ah.model_to_widgets_flat(model)
+    raw = [{"vreq_id": "VREQ-0001", "intent": "Create a new product crew_shift in the crew domain", "target": "crew.crew_shift", "source_quote": ""},
+           {"vreq_id": "VREQ-0002", "intent": "Add column shift_label to crew.crew_shift", "target": "crew.crew_shift.shift_label", "source_quote": ""},
+           {"vreq_id": "VREQ-0003", "intent": "Add column shift_code to crew.crew_shift", "target": "crew.crew_shift.shift_code", "source_quote": ""},
+           {"vreq_id": "VREQ-0004", "intent": "Add column x to flight.scheduled_flight", "target": "flight.scheduled_flight.duty_member_id", "source_quote": ""}]
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a, "_vov_2_raw_vreqs": raw,
+          "_vov_vreq_status": {"VREQ-0001": {"status": "failed", "reason": "x"}, "VREQ-0002": {"status": "scope_fence_violation", "reason": "y"},
+                               "VREQ-0003": {"status": "failed", "reason": "z"}, "VREQ-0004": {"status": "scope_rejected", "reason": "oos"}},
+          "_v296_deferred_vreqs": [{"vreq_id": "VREQ-0001", "intent": "create"}, {"vreq_id": "VREQ-0003", "intent": "shift_code"}],
+          "_vibe_scope_outcomes": {"scope_rejected": [{"vreq_id": "VREQ-0004"}], "scope_fence_violation": [{"vreq_id": "VREQ-0002"}],
+                                   "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0},
+          "_vibe_input_map": {"items": {"i1": {"target": "crew.crew_shift", "spans": [[0, 10]]}},
+                              "vreqs": {"VREQ-0001": {"item_ids": ["i1"]}, "VREQ-0002": {"item_ids": ["i1"]}}}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001", "VREQ-0002"]
+    assert wv["_vov_vreq_status"]["VREQ-0003"]["status"] == "failed" and wv["_vov_vreq_status"]["VREQ-0004"]["status"] == "scope_rejected"
+    assert [x["vreq_id"] for x in wv["_v296_deferred_vreqs"]] == ["VREQ-0003"]
+    assert wv["_vibe_scope_outcomes"]["scope_fence_violation"] == [] and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 66.67
+    assert [o["status"] for o in wv["_vibe_input_outcomes"]] == ["applied"]
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == []
+    src = h.notebook_concat_source()
+    assert "_vov_reconcile_final_outcomes(widgets_values, logger)\n        _vi_outcomes = _vibe_input_model_json_outcomes(widgets_values)" in src
+
+
+def test_a_run_that_fails_before_inserting_its_business_row_deletes_no_registry_row():
+    """Live e5 203035110094916 (refused at setup) and a1 769409395543761 ran at the same time on one business: e5 computed
+    the same next version, never inserted its row, and its failure rollback deleted a1's v26 business row, so the next run
+    reused v26 and overwrote a1's artifacts."""
+    src = h.notebook_concat_source()
+    insert = src.index("_vibe_writer.insert_business_row({")
+    owned = src.index('widgets_values["_registry_row_owned"] = True', insert)
+    assert owned < src.index("_vibe_writer.initialize_session()", insert)
+    rollback = src.index("# ROLLBACK: Delete all metamodel records for this failed run (all-or-nothing)")
+    guard = src.index('and not widgets_values.get("_registry_row_owned"):', rollback)
+    first_delete = src.index("DELETE FROM {main_tables['ATTRIBUTE']}", rollback)
+    assert rollback < guard < first_delete
+    assert "[registry-rollback-owned FIRED v5.3.3]" in src[guard:first_delete]
+    assert src[guard:first_delete].count("elif current_version and biz_name and spark and main_tables:") == 1
+
+
+def test_a_landed_domain_rename_is_verified_as_fulfilled():
+    """Live b1 907726038170799: the domain rename alliance -> vendor_network landed (model and Unity Catalog), yet the
+    physical ground-truth audit scored it failed, model.json reported 50% adherence and next_vibes listed it under
+    MISSED VIBES."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    v = _bare_orch(ah.VibeOrchestrator)
+    catalog = {"model": {"domains": [{"name": "alliance", "products": []}, {"name": "campaign", "products": []},
+                                     {"name": "order", "products": [{"name": "carrier", "attributes": []}]}]}}
+    vs.register(ah, catalog, vs.spec("VREQ-001", "rename_domain", ["alliance"], new_name="vendor_network"),
+                vs.spec("VREQ-003", "rename_product", ["order.carrier"], new_name="shipping_carrier"))
+    req = _Req("Rename the domain 'alliance' to 'vendor_network'.", "VREQ-001", ["alliance"])
+    renamed = [{"domain": "vendor_network"}, {"domain": "campaign"}]
+    assert v._verify_deterministic(req, renamed, [], [])["status"] == "fulfilled"
+    assert v._verify_deterministic(req, [{"domain": "alliance"}, {"domain": "campaign"}], [], [])["status"] == "failed"
+    assert v._verify_deterministic(req, [{"domain": "alliance"}, {"domain": "vendor_network"}], [], [])["status"] == "partial"
+    unread = _Req("Rename the alliance domain to vendor_network.", "VREQ-002", ["alliance"])
+    assert v._verify_deterministic(unread, renamed, [], [])["status"] == "failed"
+    product = _Req("Rename the product carrier in the order domain to shipping_carrier.", "VREQ-003", ["order.carrier"])
+    verdict = v._verify_deterministic(product, [{"domain": "order"}], [{"domain": "order", "product": "shipping_carrier"}], [])
+    assert verdict["status"] == "fulfilled" and "table order.carrier -> shipping_carrier" in verdict["evidence"], verdict
+
+
+def test_after_the_engine_only_the_engine_changes_an_open_field():
+    """Live c1 834012025262118: 'Add a business glossary term to every column that has none' opened the glossary field; the
+    engine filled the 7 empty terms, then the finalize tag cleanup cleared 1269 other terms on frozen columns, and the open
+    field let those clears reach model.json and Unity Catalog (1269 UNSET TAGS)."""
+    base = h.base_model()
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    assert spec.open_fields == {("attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    engine = copy.deepcopy(base)
+    roster_date = next(a for a in engine["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster_date["business_glossary_term"] = "Crew Roster Date"
+    d, p, a, mv = ah.model_to_widgets_flat(engine)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    final = copy.deepcopy(engine)
+    tail = next(x for x in final["model"]["domains"][2]["products"][0]["attributes"] if x["name"] == "tail_number")
+    tail["business_glossary_term"] = ""
+    fence.splice_and_verify(final, h.LOG)
+    attrs = {(dd["name"], pp["name"], aa["name"]): aa for dd in final["model"]["domains"] for pp in dd["products"] for aa in pp["attributes"]}
+    assert attrs[("crew", "roster", "roster_date")]["business_glossary_term"] == "Crew Roster Date"
+    assert attrs[("fleet", "aircraft", "tail_number")]["business_glossary_term"] == "Tail Number"
+    facts = fence.scope_facts(final, "passed")
+    assert [(x["product"], x["attribute"], x["new"]) for x in facts["permitted_deltas"] if x["kind"] == "P6"] == [
+        ("roster", "roster_date", {"business_glossary_term": "Crew Roster Date"})]
+    wv = {"domains": d, "products": p, "attributes": copy.deepcopy(a), "_metric_view_records": mv}
+    for row in wv["attributes"]:
+        if row["product"] == "aircraft" and row["attribute"] == "tail_number":
+            row["business_glossary_term"] = ""
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in wv["attributes"] if r["attribute"] == "tail_number")["business_glossary_term"] == "Tail Number"
+
+
+def test_a_metadata_change_on_a_column_the_table_does_not_have_is_skipped_and_reported():
+    """Live c1 834012025262118: 15 UNSET TAGS statements failed with COLUMN_NOT_FOUND on columns the published model names
+    but the installed tables do not have."""
+    facts = h.scoped_facts()
+    facts["permitted_deltas"] = [{"kind": "P6", "domain": "fleet", "product": "aircraft", "attribute": attr, "old_fk": "", "new_fk": "",
+                                  "view_name": "", "fields": ["business_glossary_term"], "old": {"business_glossary_term": "Old"},
+                                  "new": {"business_glossary_term": ""}, "cause": "test"} for attr in ("tail_number", "home_base")]
+    plan = ah._scope_deploy_plan(facts, h.scoped_final_model(), h.LOG, use_runtime=False)
+    plan.columns["skyline.fleet.aircraft"] = {"aircraft_id": "bigint", "home_base": "string"}
+    out = plan._metadata_statements(("fleet", "aircraft"), "`skyline`.`fleet`.`aircraft`",
+                                    [("tail_number", "`tail_number` STRING"), ("home_base", "`home_base` STRING")], "x")
+    assert out == ["ALTER TABLE `skyline`.`fleet`.`aircraft` ALTER COLUMN `home_base` UNSET TAGS ('business_glossary_term');"]
+    assert plan.summary()["absent_columns"] == ["skyline.fleet.aircraft.tail_number"]
+    assert plan.counts["metadata_absent_column"] == 1
+
+
+def test_a_column_introduced_with_named_or_called_is_verified_by_its_name():
+    """Live a7 954014908148594: 'add a new column named anniversary_plan_id with type BIGINT' landed in model.json and in
+    Unity Catalog, yet the verifier read the column name as 'named', did not see an add verb, fell back to the count diff
+    ('No model changes detected') and scored it failed: 50% adherence in model.json and the requirement in MISSED VIBES."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    with_col = [{"domain": "customer", "product": "household", "attribute": "household_id", "foreign_key_to": ""},
+                {"domain": "customer", "product": "household", "attribute": "anniversary_plan_id", "foreign_key_to": ""}]
+    without = [with_col[0], {"domain": "customer", "product": "household", "attribute": "x", "foreign_key_to": ""}]
+    prods = [{"domain": "customer", "product": "household"}]
+    domains = [{"domain": "customer"}]
+    catalog = {"model": {"domains": [{"name": "customer", "products": [{"name": "household", "primary_key": "household_id",
+                                                                         "attributes": [{"name": "household_id"}, {"name": "x"}]}]}]}}
+    column = [{"name": "anniversary_plan_id", "type": "BIGINT"}]
+    vs.register(ah, catalog, vs.spec("VREQ-001", "add_column", ["customer.household"], columns=column),
+                vs.spec("VREQ-002", "add_column", ["customer.household.anniversary_plan_id"], columns=column),
+                vs.spec("VREQ-003", "drop_column", ["customer.household.anniversary_plan_id"]))
+    text = "In the product customer.household (within the customer domain), add a new column named anniversary_plan_id with type BIGINT."
+    req = _Req(text, "VREQ-001", ["customer.household"])
+    assert orch._verify_deterministic(req, domains, prods, with_col)["status"] == "fulfilled"
+    assert orch._verify_deterministic(req, domains, prods, without)["status"] == "failed"
+    called = _Req("Add a BIGINT column called anniversary_plan_id to customer.household.", "VREQ-002")
+    assert orch._verify_deterministic(called, domains, prods, with_col)["status"] == "fulfilled"
+    assert orch._verify_deterministic(called, domains, prods, without)["status"] == "failed"
+    removal = _Req("In customer.household, remove the column named anniversary_plan_id.", "VREQ-003", ["customer.household"])
+    assert orch._verify_deterministic(removal, domains, prods, with_col)["status"] == "failed"
+    assert orch._verify_deterministic(removal, domains, prods, without)["status"] == "fulfilled"
+    idx = ah._vreq_spec_index(catalog)
+    phrase = ah._normalize_vreq_spec(vs.spec("V1", "rename_column", ["order.order_note.note_lang"], new_name="named note_language"), idx)
+    assert not phrase["interpretable"] and ah._vreq_spec_det_op(phrase) is None
+    good = ah._normalize_vreq_spec(vs.spec("V1", "rename_column", ["order.order_note.note_lang"], new_name="note_language"), idx)
+    assert ah._vreq_spec_det_op(good) == ("rename_attribute", "order", "order_note", "note_lang", "note_language")
+
+
+def test_a_placeholder_glossary_term_is_not_coverage_and_is_reported():
+    """Live c1 834012025262118: the engine filled the empty glossary terms with 'TODO' and the coverage verifier counted
+    every glossary tag key as covered whatever its value."""
+    vs.register(ah, h.base_model(), vs.spec("VREQ-001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec = ah.vreq_spec("VREQ-001")
+    real = [{"domain": "d", "product": "p", "attribute": f"a{i}", "tags": f"dbx_business_glossary_term=Term {i}"} for i in range(9)]
+    todo = real + [{"domain": "d", "product": "p", "attribute": "a9", "tags": "dbx_business_glossary_term=TODO"}]
+    assert ah._verify_from_spec(spec, [], [], real + [{"domain": "d", "product": "p", "attribute": "a9", "tags": "dbx_business_glossary_term=Last"}])["status"] == "fulfilled"
+    assert " 9/10 " in ah._verify_from_spec(spec, [], [], todo)["evidence"]
+    by_field = [{"domain": "d", "product": "p", "attribute": "a0", "business_glossary_term": "TBD"},
+                {"domain": "d", "product": "p", "attribute": "a1", "business_glossary_term": "Order Date"}]
+    assert " 1/2 " in ah._verify_from_spec(spec, [], [], by_field)["evidence"]
+    findings = ah._v381_verify_tag_semantics([], [], [{"domain": "menu", "product": "menu_modifier_group", "attribute": "menu_id", "business_glossary_term": "TODO"},
+                                                    {"domain": "menu", "product": "menu_modifier_group", "attribute": "name", "business_glossary_term": "Modifier Group Name"}])
+    assert findings == ["[SA:tag_placeholder_value] menu.menu_modifier_group.menu_id: business glossary term has placeholder value 'TODO'"]
+
+
+def test_a_requirement_about_empty_values_changes_only_empty_values():
+    """Live a9 116734783973928: for 'Make sure every table in the model has a non-empty description' the verification-sweep
+    corrective rewrote 83 descriptions that were already filled."""
+    base = h.base_model()
+    base["model"]["domains"][0]["products"][1]["description"] = ""
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[vs.field("products", "description", fill=True)]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Make sure every table in the model has a non-empty description.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = _described(base)
+    cur["model"]["domains"][0]["products"][1]["description"] = "Who flies which duty on which day."
+    result = fence.check(cur)
+    assert result.summary()["by_kind"] == {"P6": 1, "frozen_product_changed": 1}
+    assert [v["path"] for v in result.violations] == ["fleet.aircraft"]
+    fence.splice_and_verify(cur, h.LOG)
+    assert cur["model"]["domains"][0]["products"][1]["description"] == "Who flies which duty on which day."
+    assert cur["model"]["domains"][2]["products"][0]["description"] == base["model"]["domains"][2]["products"][0]["description"]
+
+
+def test_open_fields_settle_at_the_review_checkpoint():
+    """The verification-sweep corrective applies set-target requirements after the engine; what it sets by the review checkpoint
+    is kept, and a later pass cannot change it."""
+    base = h.base_model()
+    roster = next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster["business_glossary_term"] = ""
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
+    assert ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = ""
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "Rota Day"
+    ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
+    final = ah.widgets_flat_to_model(d, p, a, mv)
+    final = {"model": final} if "model" not in final else final
+    next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] = ""
+    fence.splice_and_verify(final, h.LOG)
+    assert next(x for x in final["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "roster_date")["business_glossary_term"] == "Crew Roster Date"
+
+
+def test_a_run_with_no_metric_view_to_deploy_still_writes_the_kept_views(monkeypatch):
+    """Live a9 116734783973928 and a10 179605726850868: no metric view was in scope, the metric step returned before writing
+    metrics/, so the version folder had no file with the 85 kept views and an install into an empty catalog would create none."""
+    real = ah._vibe_scope_metric_view_deploy_set
+
+    def _all_kept(plan, statements, records, spark, logger, catalog):
+        deploy, kept, frozen = real(plan, statements, records, spark, logger, catalog)
+        return [], kept, frozen
+
+    monkeypatch.setitem(ah.__dict__, "_vibe_scope_metric_view_deploy_set", _all_kept)
+    res = _deploy(monkeypatch)
+    mv_step = res["statements"][res["marks"]["tags"]:res["marks"]["mv"]]
+    assert not [s for s in mv_step if "VIEW" in s.upper() and s.upper().startswith("CREATE")], mv_step
+    views = ah.parse_sql_statements(res["files"]["skyline_air_vibe_scope_preserved_metrics_v2_mvm.sql"])
+    assert [ah._extract_metric_view_name_from_statement(s) for s in views] == ["asset_utilization"]
+    assert "preserved from the base version" in res["files"]["skyline_air_fleet_metrics_v2_mvm.sql"]
+
+
+def test_a_named_table_whose_only_changes_are_metadata_keeps_its_rows(monkeypatch):
+    """Decision 2A: a named table whose description or column glossary changed was replaced, which drops its rows; it now
+    stays in place and the change deploys as COMMENT and tag statements."""
+    base = h.base_model()
+    vreqs = [ah.RawVREQ(vreq_id="VREQ-0001", intent="Improve the description and the glossary terms of fleet.aircraft", target="fleet.aircraft",
+                        source_quote="Improve the description and the glossary terms of fleet.aircraft", source_chunk_id="c1"),
+             ah.RawVREQ(vreq_id="VREQ-0002", intent="In crew.roster add a column rest_hours", target="crew.roster.rest_hours",
+                        source_quote="In crew.roster add a column rest_hours", source_chunk_id="c1")]
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["fleet.aircraft"], fields=[TABLE_DESCRIPTION, vs.field("attributes", "business_glossary_term")]),
+                vs.spec("VREQ-0002", "add_column", ["crew.roster.rest_hours"], columns=[{"name": "rest_hours", "type": "INT"}]))
+    spec, wide = ah._vibe_scope_requested_spec(vreqs, base)
+    assert wide == [] and spec.mode == "requested"
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    final = _described(base)
+    craft = final["model"]["domains"][2]["products"][0]
+    next(a for a in craft["attributes"] if a["name"] == "tail_number")["business_glossary_term"] = "Registration Mark"
+    final["model"]["domains"][0]["products"][1]["attributes"].append(
+        {"name": "rest_hours", "type": "INT", "tags": "", "column_name": "rest_hours", "foreign_key_to": "", "description": "Rest hours"})
+    fence.splice_and_verify(final, h.LOG)
+    facts = fence.scope_facts(final, "passed")
+    assert facts["changed_in_scope_products"] == ["crew.roster"]
+    assert "fleet.aircraft" in facts["preserved_products"]
+    assert sorted((d["product"], d["attribute"], tuple(d["fields"])) for d in facts["permitted_deltas"] if d["kind"] == "P6") == [
+        ("aircraft", "", ("description",)), ("aircraft", "tail_number", ("business_glossary_term",))]
+    root = dict(final, _vibe_scope=facts)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization"])
+    wv = h.flat_widgets(root, spark=spark, facts=facts, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    ddl = [s.rstrip(";") for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "COMMENT", "DROP"))]
+    assert [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE")] == [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE `skyline`.`crew`.`roster`")]
+    assert not [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE `skyline`.`fleet`.`aircraft`")]
+    assert "COMMENT ON TABLE `skyline`.`fleet`.`aircraft` IS 'Every aircraft the airline operates, with its home base and tail number.'" in ddl
+
+
+def test_a_rewrite_requirement_on_open_fields_is_verified_from_the_changed_values():
+    """Live a11 619920396866994: 'Rewrite the description of every table' changed 84 descriptions (deployed as 84 COMMENT ON
+    TABLE), yet no deterministic verifier covered a rewrite, the LLM judge read the fence text as a refusal and model.json
+    reported 0% adherence."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    base = h.base_model()
+    text = "Rewrite the description of every table in plain business English, one short sentence each."
+    rewrite = vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[TABLE_DESCRIPTION])
+    vs.register(ah, base, rewrite, dict(rewrite, id="VREQ-001"),
+                vs.spec("VREQ-002", "set_fields", breadth="model", fields=[vs.field("products", "description", fill=True)]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    req = _Req(text, "VREQ-001", ["*"])
+    assert orch._verify_deterministic(req, d, p, a)["status"] == "failed"
+    for row in p:
+        row["description"] = f"{row['product']} in plain English."
+    verdict = orch._verify_deterministic(req, d, p, a)
+    assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith(f"[verifier-open-fields FIRED v5.3.3] {len(p)}/{len(p)}")
+    for row in p[1:]:
+        row["description"] = next(x for x in ah.model_to_widgets_flat(base)[1] if x["product"] == row["product"])["description"]
+    assert orch._verify_deterministic(req, d, p, a)["status"] == "partial"
+    assert ah._vibe_scope_open_field_verdict(_Req("Make sure every table has a non-empty description.", "VREQ-002", ["*"]), d, p, a) is None
+    ah.set_vibe_scope_runtime(None)
+    assert ah._vibe_scope_open_field_verdict(req, d, p, a) is None
+
+
+def test_a_placeholder_is_never_an_open_field_value():
+    """Live c2 933723576430631: for 'Add a business glossary term to every column that has none' the engine filled all 1269
+    empty terms with 'TODO'; the fence accepted them as P6 and the deploy set 1269 TODO glossary tags in Unity Catalog."""
+    base = h.base_model()
+    roster = next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")
+    roster["business_glossary_term"] = ""
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide("Add a business glossary term to every column that has none.")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    for value, kinds in (("TODO", {"frozen_attr_changed": 1}), ("N/A", {"frozen_attr_changed": 1}), ("Crew Roster Date", {"P6": 1})):
+        cur = copy.deepcopy(base)
+        next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+        assert fence.check(cur).summary()["by_kind"] == kinds, value
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] = "TODO"
+    fence.restore_flat(d, p, a, mv, "test")
+    assert next(r for r in a if r["attribute"] == "roster_date")["business_glossary_term"] == ""
+    roster["business_glossary_term"] = "TBD"
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
+    assert fence.check(cur).summary()["by_kind"] == {"P6": 1}, "a placeholder in the base counts as no value for a fill-only requirement"
+
+
+def test_requirements_that_name_different_tables_are_never_duplicates():
+    """Live a13 940565594073673: four 'remove the foreign key on campaign_id' lines differed only in the table; the extraction
+    auditor recovered the customer.campaign line and the quote dedupe dropped it as a copy of the product.campaign one, so
+    the fence never opened customer.campaign."""
+    quotes = {t: f"In {t}, remove the foreign key on the column campaign_id; it points to customer.survey_campaign by mistake."
+              for t in ("customer.campaign", "product.campaign", "product.collection")}
+    existing = [ah.RawVREQ(vreq_id="VREQ-0003", intent="remove fk", target="product.campaign.campaign_id", source_quote=quotes["product.campaign"],
+                           source_chunk_id="c1")]
+    assert ah._v292_duplicate_of(quotes["customer.campaign"], existing) is None
+    assert ah._v292_duplicate_of(quotes["product.campaign"], existing) == "VREQ-0003"
+    vreqs = [ah.RawVREQ(vreq_id=f"VREQ-000{i}", intent="Remove the foreign key on campaign_id", target=f"{t}.campaign_id", source_quote=q,
+                        source_chunk_id="c1") for i, (t, q) in enumerate(quotes.items(), 1)]
+    assert len(ah.dedupe_vreqs(vreqs)) == 3
+    same = [vreqs[0], ah.RawVREQ(vreq_id="VREQ-0009", intent=vreqs[0].intent, target=vreqs[0].target, source_quote=vreqs[0].source_quote,
+                                 source_chunk_id="c2")]
+    assert len(ah.dedupe_vreqs(same)) == 1
+
+
+def test_every_function_that_logs_without_a_logger_argument_has_the_vov_logger():
+    """Live a13 940565594073673: the sandbox repair passed a free name 'logger' that _apply_handler_with_retry never defined;
+    the NameError halted the run. Eight other VOV runtime functions logged through the same free name inside try blocks,
+    so their log lines were dropped."""
+    import ast
+    import logging
+    tree = ast.parse(h.notebook_concat_source())
+    module_logger = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "logger" for t in n.targets) for n in tree.body)
+    free = []
+    for node in tree.body:
+        fns = [node] if isinstance(node, ast.FunctionDef) else [b for b in getattr(node, "body", []) if isinstance(b, ast.FunctionDef)] if isinstance(node, ast.ClassDef) else []
+        for fn in fns:
+            bound = {a.arg for a in fn.args.args + fn.args.kwonlyargs} | {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+            if "logger" not in bound and any(isinstance(n, ast.Name) and n.id == "logger" for n in ast.walk(fn)):
+                free.append(fn.name)
+    assert "_apply_handler_with_retry" in free and module_logger
+    assert isinstance(ah.__dict__.get("logger"), logging.Logger) and ah.__dict__["logger"].name == "vov2-pipeline"
+
+
+def test_the_mutation_engine_sets_glossary_terms_and_stewards_as_fields_not_tags():
+    """Live c3 135313671686372: the verification-sweep corrective could not set business_glossary_term, since the mutation
+    engine knew neither the field nor told the LLM about it; a modify of it became a 'business_glossary_term=...' tag and
+    the LLM fell back to placeholder terms."""
+    import logging
+    domains = [{"domain": "order"}]
+    products = [{"domain": "order", "product": "sales_order", "description": "Orders", "tags": "", "steward": ""}]
+    attributes = [{"domain": "order", "product": "sales_order", "attribute": "order_date", "type": "DATE", "tags": "", "business_glossary_term": "", "steward": ""}]
+    column_name = [{"entity_type": "attribute", "operation": "modify", "entity_ref": "order.sales_order.order_date", "field": "business_glossary_term", "new_value": "Order Date"}]
+    assert ah._llm_fallback_apply_mutations(column_name, domains, products, attributes, [], logging.getLogger("t533")) == 0
+    assert attributes[0]["business_glossary_term"] == "" and attributes[0]["tags"] == ""
+    mutations = [{"entity_type": "attribute", "operation": "modify", "entity_ref": "order.sales_order.order_date", "field": "business_glossary_term", "new_value": "Sales Order Date"},
+                 {"entity_type": "attribute", "operation": "modify", "entity_ref": "order.sales_order.order_date.steward", "new_value": "sales_ops"},
+                 {"entity_type": "product", "operation": "modify", "entity_ref": "order.sales_order", "field": "steward", "new_value": "order_desk"}]
+    ah._llm_fallback_apply_mutations(mutations, domains, products, attributes, [], logging.getLogger("t533"))
+    assert attributes[0]["business_glossary_term"] == "Sales Order Date" and attributes[0]["steward"] == "sales_ops" and attributes[0]["tags"] == ""
+    assert products[0]["steward"] == "order_desk" and products[0]["tags"] == ""
+    assert "business_glossary_term, steward" in h.notebook_concat_source()
+
+
+def test_a_set_target_requirement_that_changed_no_open_field_is_not_counted_applied():
+    """Live c3 135313671686372: every glossary value the corrective wrote was a placeholder, the fence put them all back,
+    yet the in-scope adherence said 100% while the verifiers said 0%."""
+    def _wv(base, status="applied"):
+        d, p, a, mv = ah.model_to_widgets_flat(base)
+        return {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+                "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": "glossary", "target": "*", "source_quote": ""}],
+                "_vov_vreq_status": {"VREQ-0001": {"status": status, "reason": ""}},
+                "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+
+    text = "Add a business glossary term to every column that has none."
+    base = h.base_model()
+    next(a for a in base["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "TODO"
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    fence.splice_and_verify(copy.deepcopy(base), h.LOG)
+    wv = _wv(base)
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "noop_failed" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    filled = h.base_model()
+    for attr in (a for d in filled["model"]["domains"] for p in d["products"] for a in p["attributes"]):
+        attr["business_glossary_term"] = f"Enterprise {attr['name'].replace('_', ' ').title()}"
+    spec, _w = ah._vibe_scope_requested_spec([_wide(text)], filled)
+    fence = ah.build_vibe_scope_fence(spec, filled, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    fence.splice_and_verify(copy.deepcopy(filled), h.LOG)
+    wv = _wv(filled)
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == [], "a requirement the base already satisfies stays applied"
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied"
+
+
+def test_an_fk_removal_is_scored_on_the_final_model_and_follows_renames():
+    """Live a14 909307094667756: 'remove the foreign key on campaign_id' landed nowhere; on two tables a pass renamed the
+    column to survey_campaign_id and kept the FK, yet the verifier scored 'FK removed' because campaign_id was gone, and the
+    in-scope adherence said 100%."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    text = "In product.collection, remove the foreign key on the column campaign_id; it points to customer.survey_campaign by mistake."
+    catalog = {"model": {"domains": [{"name": "product", "products": [{"name": "collection", "primary_key": "collection_id", "attributes": [
+        {"name": "collection_id"}, {"name": "campaign_id", "foreign_key_to": "customer.survey_campaign.survey_campaign_id"}]}]}]}}
+    vs.register(ah, catalog, vs.spec("VREQ-001", "remove_fk", ["product.collection.campaign_id"]))
+    req = _Req(text, "VREQ-001", ["product.collection.campaign_id"])
+    prods = [{"domain": "product", "product": "collection"}]
+    renamed = [{"domain": "product", "product": "collection", "attribute": "collection_id", "foreign_key_to": ""},
+               {"domain": "product", "product": "collection", "attribute": "survey_campaign_id", "foreign_key_to": "customer.survey_campaign.survey_campaign_id"}]
+    assert orch._verify_deterministic(req, [{"domain": "product"}], prods, renamed)["status"] == "failed"
+    removed = [renamed[0], {"domain": "product", "product": "collection", "attribute": "campaign_id", "foreign_key_to": ""}]
+    assert orch._verify_deterministic(req, [{"domain": "product"}], prods, removed)["status"] == "fulfilled"
+
+    base = h.base_model()
+    sched = base["model"]["domains"][1]["products"][0]
+    column = next(a for a in sched["attributes"] if a.get("foreign_key_to"))
+    vs.register(ah, base, vs.spec("VREQ-0001", "remove_fk", [f"flight.scheduled_flight.{column['name']}"]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=f"In flight.scheduled_flight remove the foreign key on {column['name']}",
+                                                         target=f"flight.scheduled_flight.{column['name']}", source_quote="", source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    final = copy.deepcopy(base)
+    moved = next(a for a in final["model"]["domains"][1]["products"][0]["attributes"] if a["name"] == column["name"])
+    moved["name"] = moved["column_name"] = "assigned_" + column["name"]
+    ah._vov_note_attribute_rename("flight", "scheduled_flight", column["name"], moved["name"], "pass:test")
+    d, p, a, mv = ah.model_to_widgets_flat(final)
+    raw = [{"vreq_id": "VREQ-0001", "intent": f"In flight.scheduled_flight remove the foreign key on {column['name']}",
+            "target": f"flight.scheduled_flight.{column['name']}", "source_quote": ""}]
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a, "_vov_2_raw_vreqs": raw,
+          "_vov_vreq_status": {"VREQ-0001": {"status": "applied", "reason": ""}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "failed" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    next(r for r in a if r["attribute"] == moved["name"])["foreign_key_to"] = ""
+    wv["_vov_vreq_status"] = {"VREQ-0001": {"status": "applied", "reason": ""}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == []
+
+
+def test_a_set_target_column_addition_keeps_the_fence_and_adds_only_that_column(monkeypatch):
+    """Decision 2A: 'add a column X to every table' turned the fence off, so every changed table was replaced and lost its
+    rows; now only the named column may be added to frozen tables (P7) and it deploys with ALTER TABLE ADD COLUMNS."""
+    base = h.base_model()
+    idx = ah._vreq_spec_index(base)
+    load_ts = ah._normalize_vreq_spec(vs.spec("V1", "add_column", breadth="model", columns=[{"name": "load_ts", "type": "TIMESTAMP"}]), idx)
+    assert ah._vreq_spec_open_columns(load_ts) == {"loadts"}
+    audit = ah._normalize_vreq_spec(vs.spec("V1", "add_column", breadth="model"), idx)
+    assert not audit["interpretable"] and ah._vreq_spec_open_columns(audit) == frozenset()
+    assert ah._vreq_spec_open_columns(ah._normalize_vreq_spec(vs.spec("V1", "drop_column", breadth="model", columns=[{"name": "load_ts"}]), idx)) == frozenset()
+    vs.register(ah, base, vs.spec("VREQ-0009", "add_column", ["crew.roster"], columns=[{"name": "created_at", "type": "TIMESTAMP"}]))
+    named, _w = ah._vibe_scope_requested_spec([_wide("Add a column created_at to the roster table.", "VREQ-0009")], base)
+    assert named.open_columns == frozenset() and named.products == {("crew", "roster")}
+    text = "Add a column created_at (TIMESTAMP) to every table."
+    every = vs.spec("VREQ-0001", "add_column", breadth="model", columns=[{"name": "created_at", "type": "TIMESTAMP"}])
+    vs.register(ah, base, every, dict(every, id="VREQ-001"))
+    spec, wide = ah._vibe_scope_requested_spec([_wide(text)], base)
+    assert wide == [] and spec.open_columns == {"createdat"} and spec.open_field_vreqs == ("VREQ-0001",)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    col = {"name": "created_at", "type": "TIMESTAMP", "tags": "", "column_name": "created_at", "foreign_key_to": "", "description": "Created at"}
+    for d in cur["model"]["domains"]:
+        for p in d["products"]:
+            p["attributes"].append(copy.deepcopy(col))
+    cur["model"]["domains"][2]["products"][0]["attributes"].append(dict(col, name="extra_col", column_name="extra_col"))
+    result = fence.check(cur)
+    kinds = result.summary()["by_kind"]
+    n_products = sum(len(d["products"]) for d in base["model"]["domains"])
+    assert kinds == {"P7": n_products, "frozen_attr_added": 1}
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    fence.restore_flat(d, p, a, mv, "test")
+    assert sum(1 for r in a if r["attribute"] == "created_at") == n_products and not [r for r in a if r["attribute"] == "extra_col"]
+    final = copy.deepcopy(cur)
+    final["model"]["domains"][2]["products"][0]["attributes"].pop()
+    fence.splice_and_verify(final, h.LOG)
+    facts = fence.scope_facts(final, "passed")
+    p7 = [x for x in facts["permitted_deltas"] if x["kind"] == "P7"]
+    assert len(p7) == n_products and {x["attribute"] for x in p7} == {"created_at"}
+    assert facts["changed_in_scope_products"] == []
+    from test_v406_verifier_false_negatives import _Req
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["*"]), d, p, a)
+    assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith(f"[verifier-open-columns FIRED v5.3.3] {n_products}/{n_products}")
+    root = dict(final, _vibe_scope=facts)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "flight_crew_coverage", "fleet_utilization"])
+    wv = h.flat_widgets(root, spark=spark, facts=facts, statement_model=base)
+    res = h.run_deploy_steps(wv, spark, root, lambda name, value: monkeypatch.setitem(ah.__dict__, name, value))
+    ddl = [s.rstrip(";") for s in res["statements"] if s.upper().startswith(("CREATE", "ALTER", "COMMENT", "DROP"))]
+    assert not [s for s in ddl if s.startswith("CREATE OR REPLACE TABLE")], "a column addition replaced a table"
+    assert len([s for s in ddl if s.startswith("ALTER TABLE") and "ADD COLUMNS (`created_at` TIMESTAMP" in s]) == n_products
+
+
+def test_the_verification_sweep_changes_to_named_products_are_kept_until_review():
+    """Decision 1A: a named product was frozen at its engine result after the engine, so the verification sweep's fixes to it
+    were put back (b4 116870625878074: 857 glossary mutations on the finance domain, 0 changes in the final model)."""
+    base = h.base_model()
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew"], breadth="set", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent="Add a glossary term to every crew column that has none",
+                                                         target="crew", source_quote="", source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+    row["business_glossary_term"] = "Roster Day"
+    ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    assert next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Day"
+    next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] = "Changed later"
+    ah._vibe_scope_checkpoint_widgets("after_metric_views", wv, h.LOG)
+    assert next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")["business_glossary_term"] == "Roster Day"
+
+
+def test_only_a_structural_placeholder_glossary_term_is_a_placeholder():
+    """Live b5 583010004363545: the verification sweep filled 202 finance glossary terms with 'GlossaryTerm_<column>'. User
+    decision 1A: code keeps only the structural rules (a placeholder word, an unfilled template, the column's own name); an
+    LLM verifier judges whether a term such as 'GlossaryTerm_<column>' is a real business term."""
+    for value in ("TODO", "N/A", "<value>", "{column}", ""):
+        assert ah._v381_is_placeholder_tag_value(value), value
+    for value in ("GlossaryTerm_cost_center_id", "Glossary Term: allocation method", "term_billable_flag", "Cost Center", "Terminal Identifier",
+                  "Term Length", "Billable Flag"):
+        assert not ah._v381_is_placeholder_tag_value(value), value
+    rows = [{"domain": "finance", "product": "cost_center", "attribute": "cost_center_id", "business_glossary_term": "GlossaryTerm_cost_center_id"},
+            {"domain": "finance", "product": "cost_center", "attribute": "cost_center_code", "business_glossary_term": "<value>"}]
+    findings = ah._v381_verify_tag_semantics([], [], rows)
+    assert findings == ["[SA:tag_placeholder_value] finance.cost_center.cost_center_code: business glossary term has placeholder value '<value>'"]
+
+
+def test_a_requirement_that_names_a_target_and_only_fields_opens_only_those_fields_there():
+    """Decision 4A (live b5 583010004363545): 'Add a business glossary term to every column of the finance domain that has
+    none' opened the whole finance domain, so the verification sweep also dropped 3 FK columns and 3 tables were replaced."""
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    vreq = ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew", source_quote=text, source_chunk_id="c1")
+    crew_glossary = vs.spec("VREQ-0001", "set_fields", ["crew"], breadth="set", fields=[GLOSSARY_FILL])
+    vs.register(ah, base, crew_glossary, dict(crew_glossary, id="VREQ-001"))
+    spec, wide = ah._vibe_scope_requested_spec([vreq], base)
+    assert wide == [] and spec.products == frozenset() and spec.whole_domains == frozenset() and spec.entries == ("crew",)
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+    assert spec.fill_only_targets == {("crew", "", "attributes", "business_glossary_term")} and spec.open_field_vreqs == ("VREQ-0001",)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    dropped = roster["attributes"].pop()
+    next(a for a in cur["model"]["domains"][2]["products"][0]["attributes"] if a["name"] == "tail_number")["business_glossary_term"] = ""
+    kinds = fence.check(cur).summary()["by_kind"]
+    assert kinds.get("P6") == len(roster["attributes"]) and kinds.get("frozen_attr_removed") == 1 and kinds.get("frozen_attr_changed") == 1
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    fence.restore_flat(d, p, a, mv, "test")
+    crew_roster = [r for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert any(r["attribute"] == dropped["name"] for r in crew_roster), "the dropped column came back"
+    assert next(r for r in a if r["attribute"] == "tail_number")["business_glossary_term"] == "Tail Number"
+    from test_v406_verifier_false_negatives import _Req
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew"]), d, p, a)
+    assert verdict["status"] in ("fulfilled", "partial") and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3]")
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0}}
+    for r in a:
+        if r["domain"] == "crew" and not r.get("business_glossary_term"):
+            r["business_glossary_term"] = "Crew " + r["attribute"].replace("_", " ").title()
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "applied" and wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 100.0
+
+
+def test_a_domain_wildcard_target_is_the_domain_and_an_opened_requirement_passes_triage():
+    """Live b6 813685565341565: the extractor gave the target 'finance.*'; the spec builder read '*' as an invalid name and
+    opened the glossary model-wide, then the triage judged finance frozen and rejected the requirement."""
+    base = h.base_model()
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    vreq = ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.*", source_quote=text, source_chunk_id="c1")
+    vs.register(ah, base, dict(vs.spec("VREQ-0001", "set_fields", breadth="set", fields=[GLOSSARY_FILL]),
+                               targets=[{"domain": "crew", "product": "*", "column": ""}]),
+                vs.spec("VREQ-0002", "set_fields", breadth="model", fields=[GLOSSARY_FILL]),
+                vs.spec("VREQ-0003", "set_fields", ["crew"], breadth="set", fields=[GLOSSARY_FILL], interpretable=False, reason="two readings"))
+    assert ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0003", intent=text, target="crew", source_quote=text, source_chunk_id="c1")],
+                                         base) == (None, [])
+    spec, wide = ah._vibe_scope_requested_spec([vreq], base)
+    assert wide == [] and spec.entries == ("crew",) and spec.open_fields == frozenset()
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, [vreq], base, h.LOG)[:3]
+    assert [v.vreq_id for v in kept] == ["VREQ-0001"] and not rejected
+    wide_spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="*", source_quote=text, source_chunk_id="c1")], base)
+    wide_fence = ah.build_vibe_scope_fence(wide_spec, base, h.VOV, h.LOG)
+    named_text = ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="crew.member, crew.roster", source_quote=text, source_chunk_id="c1")
+    kept, rejected = ah._vibe_scope_triage_vreqs(wide_fence, [named_text], base, h.LOG)[:2]
+    assert [v.vreq_id for v in kept] == ["VREQ-0002"] and not rejected, "a requirement the spec opened fields for is never rejected"
+
+
+def test_each_clause_opens_its_own_field_and_a_target_less_verdict_uses_the_open_targets():
+    """Live a17 511127613148987: 'Improve the description of the table X and give each of its columns a business glossary
+    term' also opened column descriptions, and with no concrete target on the requirement the verifier fell back to
+    model-wide glossary coverage (35%) and reported 0%."""
+    text = "Improve the description of the table crew.roster and give each of its columns a business glossary term."
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    clauses = [TABLE_DESCRIPTION, vs.field("attributes", "business_glossary_term")]
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=clauses),
+                vs.spec("VREQ-001", "set_fields", breadth="set", fields=clauses))
+    assert ah._vreq_spec_open_fields(ah.vreq_spec("VREQ-0001")) == {("products", "description"), ("attributes", "business_glossary_term")}
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    assert {(lv, f) for _d, _p, lv, f in spec.open_field_targets} == {("products", "description"), ("attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    roster["description"] = "Who flies which duty on which day."
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    d, p, a, mv = ah.model_to_widgets_flat(cur)
+    from test_v406_verifier_false_negatives import _Req
+    for targets in (["*"], ["roster"], ["crew.roster"]):
+        verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", targets), d, p, a)
+        assert verdict["status"] == "fulfilled" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3]"), (targets, verdict)
+
+
+def test_a_field_limited_target_is_shown_to_the_engine_and_the_sweep_with_its_open_fields():
+    """Live a18 492254310643790: the engine digest marked customer.survey_campaign frozen ('never modify'), the engine
+    no-op'd three times, and the verification sweep's per-product batch ignored its product filter, so the domain
+    snapshot was cut at 60,000 characters before survey_campaign and carried no glossary values."""
+    base = h.base_model()
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    block = fence.prompt_block()
+    assert "may change ONLY these fields on these records" in block and "crew.roster: attributes.business_glossary_term" in block
+    frozen, shown = ah._vibe_scope_digest_marks(base)
+    assert ("crew", "roster") in frozen and ("crew", "roster") in shown
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    a = [dict(r, business_glossary_term="Duty Roster Date") if r.get("attribute") == "roster_date" else r for r in a]
+    snap = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter="roster")
+    assert "TABLE: crew.roster" in snap and "TABLE: crew.member" not in snap
+    assert "roster_date (type: DATE)  [glossary: Duty Roster Date]" in snap and snap.count("[glossary:") == 1
+    whole = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew")
+    assert "TABLE: crew.member" in whole
+    text = "Add a business glossary term to every column of the crew domain that has none."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew"], breadth="set", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    frozen, shown = ah._vibe_scope_digest_marks(base)
+    assert {("crew", "member"), ("crew", "roster"), ("crew", "base")} <= frozen & shown
+    assert ("fleet", "maintenance") in frozen and ("fleet", "maintenance") not in shown
+    assert "crew (every table): attributes.business_glossary_term" in ah.get_vibe_scope_runtime().prompt_block()
+
+
+def test_a_glossary_term_is_refused_only_for_a_structural_defect():
+    """Live b7 309339185517965: the verification sweep replaced 127 'GlossaryTerm_<column>' placeholders with description
+    sentences ('Unique surrogate identifier for a cost center record, used as the primary key ...'). User decision 1A: code
+    refuses only a structural defect (a placeholder word, an unfilled template, the column's own name); whether a sentence
+    or a 'GlossaryTerm_<column>' value is a real business term is for the LLM verifier to judge."""
+    defect = ah._v533_glossary_term_defect
+    assert defect("TODO") == "placeholder" and defect("<term>") == "placeholder"
+    assert defect("Roster Date", "roster_date") == "column name" and defect("Crew Roster Date", "roster_date") is None
+    for good in ("GlossaryTerm_cost_center_id", "Unique surrogate identifier for a cost center record, used as the primary key for the cost_center entity.",
+                 "Currency Code", "Customer Lifetime Value (CLTV) Band", "Quantity Before Adjustment (Stock on Hand)",
+                 "California Consumer Privacy Act (CCPA) / California Privacy Rights Act (CPRA) Sale Opt-Out Flag", "", None):
+        assert defect(good) is None, good
+    assert ah._vibe_scope_bad_value("business_glossary_term", "TBD")
+    assert not ah._vibe_scope_bad_value("business_glossary_term", "Date on which the payment was initiated.")
+    assert ah._vibe_scope_bad_value("description", "TODO") and not ah._vibe_scope_bad_value("business_glossary_term", "Payment Date")
+    assert ah._v533_attr_glossary_value({"business_glossary_term": "TODO", "tags": {"dbx_business_glossary_term": "Payment Date"}}) == "Payment Date"
+    assert ah._v533_attr_glossary_value({"attribute": "payment_date", "business_glossary_term": "Payment Date"}) == ""
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]),
+                vs.spec("VREQ-001", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    for value, kinds in (("TODO", {"frozen_attr_changed": 1}), ("<term>", {"frozen_attr_changed": 1}),
+                         ("Date on which the roster applies.", {"P6": 1}), ("Crew Roster Date", {"P6": 1})):
+        cur = copy.deepcopy(base)
+        next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+        assert fence.check(cur).summary()["by_kind"] == kinds, value
+    rows = [{"domain": "d", "product": "p", "attribute": f"a{i}", "business_glossary_term": f"Term {i}"} for i in range(9)]
+    rows.append({"domain": "d", "product": "p", "attribute": "a9", "business_glossary_term": "TODO"})
+    assert " 9/10 " in ah._verify_from_spec(ah.vreq_spec("VREQ-001"), [], [], rows)["evidence"]
+    rows[-1]["business_glossary_term"] = "Date on which the payment was initiated."
+    assert " 10/10 " in ah._verify_from_spec(ah.vreq_spec("VREQ-001"), [], [], rows)["evidence"]
+
+
+def test_the_static_analysis_reports_glossary_terms_that_are_placeholders_or_column_names_and_requeues_them():
+    """Live b7 309339185517965: lane 2 carried 416 'GlossaryTerm_<column>' values and then 127 sentences, and
+    missing_glossary_tag passed because it only checks that a glossary tag exists. User decision 1A: the gate reports the
+    structural defects; a sentence or a 'GlossaryTerm_<column>' value is left to the LLM verifier."""
+    from test_v368_qgate_suite import _clean_model, _requeue_ns, _run_sa
+    d, p, a = _clean_model()
+    cats, _ = _run_sa(d, p, a)
+    assert "invalid_glossary_term" not in cats
+    a = [dict(r) for r in a]
+    a[1]["business_glossary_term"] = "TODO"
+    a[4]["business_glossary_term"] = "Weight"
+    a[0]["business_glossary_term"] = "GlossaryTerm_deal_id"
+    a[2]["business_glossary_term"] = "Gross weight of the shipment in kilograms as measured at origin."
+    _cats, issues = _run_sa(d, p, a)
+    issue = next(i for i in issues if i["category"] == "invalid_glossary_term")
+    assert issue["details"]["count"] == 2 and issue["details"]["by_reason"] == {"placeholder": 1, "column name": 1}
+    assert issue["details"]["attributes"] == ["sales.deal.amount", "logistics.shipment.weight"]
+    ns = _requeue_ns([{"category": "invalid_glossary_term", "severity": "warning", "message": "x", "details": {"entity": "finance.invoice.vendor_name"}}])
+    wv = {"domains": [{"name": "finance"}], "products": [{"domain": "finance", "product": "invoice"}],
+          "attributes": [{"domain": "finance", "product": "invoice", "attribute": "vendor_name"}], "_unfulfilled_for_next_vibe": []}
+    assert ns["_v366_sa_findings_requeue"](wv, {}, h.LOG) == 1
+
+
+def test_the_fallback_refuses_a_glossary_term_that_is_a_placeholder_or_the_column_name():
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+    row["business_glossary_term"] = ""
+
+    def mutation(value):
+        return [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster.roster_date", "field": "business_glossary_term",
+                 "new_value": value}]
+    for value in ("TODO", "<term>", "Roster Date"):
+        assert ah._llm_fallback_apply_mutations(mutation(value), d, p, a, [], h.LOG) == 0
+        assert row["business_glossary_term"] == "", value
+    assert ah._llm_fallback_apply_mutations(mutation("Duty Roster Date"), d, p, a, [], h.LOG) == 1
+    assert row["business_glossary_term"] == "Duty Roster Date"
+    assert ah._llm_fallback_apply_mutations(mutation("GlossaryTerm_roster_date"), d, p, a, [], h.LOG) == 1
+    assert row["business_glossary_term"] == "GlossaryTerm_roster_date"
+
+
+def test_the_verification_sweep_plans_batches_from_the_tables_it_names_and_fits_them(monkeypatch):
+    """Live b7 309339185517965: the classifier chose per_domain but listed ten finance tables; the per-domain branch matched
+    the table refs against domain names, found none and ran every domain, starting with campaign, so the LLM never saw a
+    finance table. Live a19 284506174299098: batch=single sent the whole model, cut at 60,000 characters."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+
+    def plan(strategy, affected):
+        return ah._llm_fallback_plan_batches(strategy, affected, d, p, a, h.LOG)
+    assert [b["label"] for b in plan("per_domain", ["crew.roster", "crew.member"])] == ["domain:crew"]
+    assert [b["label"] for b in plan("per_domain", [])] == ["domain:crew", "domain:flight", "domain:fleet"]
+    assert [b["label"] for b in plan("per_product", ["crew"])] == ["domain:crew"]
+    assert [b["label"] for b in plan("per_product", ["crew.roster", "crew"])] == ["domain:crew"]
+    assert [(b["domain_filter"], b["product_filter"]) for b in plan("per_product", ["crew.roster", "fleet.aircraft"])] == [
+        ("crew", "roster"), ("fleet", "aircraft")]
+    assert plan("single", ["crew.roster", "fleet"]) == [{"domain_filter": None, "refs": [("crew", "roster"), ("fleet", None)],
+                                                         "label": "entities:crew.roster,fleet"}]
+    assert plan("single", ["crew.roster", "nowhere"]) == [{"domain_filter": None, "label": "all"}]
+    assert plan("single", []) == [{"domain_filter": None, "label": "all"}]
+    monkeypatch.setattr(ah, "_LLM_FALLBACK_BATCH_CHARS", 160)
+    fitted = plan("per_domain", ["crew"])
+    assert len(fitted) > 1 and all(b["label"].startswith("domain:crew#") for b in fitted)
+    assert sorted(t for b in fitted for t in b["product_filter"]) == ["base", "member", "roster"]
+    for b in fitted:
+        size = len(ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter=b["product_filter"]))
+        assert size <= 160 or len(b["product_filter"]) == 1, (b, size)
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    assert [b["product_filter"] for b in plan("per_domain", ["crew"])] == [["roster"]], "only tables the run may change are sent"
+
+
+def test_the_verification_sweep_shows_the_llm_only_the_named_table_with_its_glossary_terms():
+    """Live a18 492254310643790 and a19 284506174299098: 'the table does not appear in the provided model-state snapshot'."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+
+    class _Agent:
+        def __init__(self, strategy, affected):
+            self.prompts = []
+            self.classification = {"scope": "attribute", "affected_entities": affected, "batch_strategy": strategy, "operation_type": "mutate",
+                                   "validation_hint": {"check_type": "none", "target_description": "", "expected_outcome": ""}}
+
+        def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+            self.prompts.append((prompt_name, prompt))
+            if prompt_name == "LLM_FALLBACK_CLASSIFY_PROMPT":
+                return json.dumps(self.classification)
+            return json.dumps({"summary": "filled", "mutations": [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster.roster_date",
+                                                                   "field": "business_glossary_term", "new_value": "Duty Roster Date"}]})
+    action = {"action": "set_property", "scope": "crew.roster", "name": "glossary", "target_state": "every column has a term", "reason": "vibe"}
+    for strategy, shown in (("single", {"crew.roster"}), ("per_product", {"crew.roster"}), ("per_domain", {"crew.member", "crew.roster", "crew.base"})):
+        row["business_glossary_term"] = ""
+        agent = _Agent(strategy, ["crew.roster"])
+        ctx = {"logger": h.LOG, "domains_data": d, "products_data": p, "attributes_data": a, "config": {}}
+        assert ah._llm_fallback_handler(action, ctx, agent, "Give every column of crew.roster a glossary term.")
+        executes = [prompt for name, prompt in agent.prompts if name == "LLM_FALLBACK_EXECUTE_PROMPT"]
+        assert len(executes) == 1, strategy
+        state = executes[0].split("CURRENT MODEL STATE", 1)[1].split("CROSS-DOMAIN FK TARGETS", 1)
+        assert len(state) == 2, f"{strategy}: the FK target registry follows the snapshot"
+        assert set(re.findall(r"TABLE: (\w+\.\w+)", state[0])) == shown, strategy
+        assert "business_glossary_term = the business term for the column in Title Case" in executes[0]
+        assert row["business_glossary_term"] == "Duty Roster Date", strategy
+
+
+def _roster_glossary_fence():
+    base = h.base_model()
+    roster = base["model"]["domains"][0]["products"][1]
+    roster["attributes"].append(dict(copy.deepcopy(next(a for a in roster["attributes"] if a["name"] == "roster_date")), name="shift_code", type="STRING"))
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    roster_glossary = vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL])
+    vs.register(ah, base, roster_glossary, dict(roster_glossary, id="VREQ-001"))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+    cur = copy.deepcopy(base)
+    next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = "Crew Roster Date"
+    return text, cur
+
+
+def test_every_scoring_path_reads_a_field_limited_target_with_the_deterministic_verdict():
+    """Live a19 284506174299098: the physical ground-truth audit scored 'give every column of customer.survey_campaign that
+    has no business glossary term one' from model-wide glossary coverage (1015/2855, 35%), because its rows carry the
+    glossary term only as a column tag; validate then sent the requirement to the LLM audit, which reported the table
+    'byte-identical', and the run closed it as failed with 2 of the 4 columns filled."""
+    from test_v406_verifier_false_negatives import _Req, _bare_orch
+    text, cur = _roster_glossary_fence()
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    phys = [{"domain": "crew", "product": "roster", "attribute": "roster_id", "foreign_key_to": "", "data_type": "bigint"},
+            {"domain": "crew", "product": "roster", "attribute": "member_id", "foreign_key_to": "crew.member.member_id", "data_type": "bigint"},
+            {"domain": "crew", "product": "roster", "attribute": "roster_date", "foreign_key_to": "", "data_type": "date",
+             "tags": "dbx_business_glossary_term=Crew Roster Date;dbx_value_regex=^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            {"domain": "crew", "product": "roster", "attribute": "shift_code", "foreign_key_to": "", "data_type": "string",
+             "tags": "dbx_value_regex=^[A-Z]{3}$;dbx_business_glossary_term=TBD"}]
+    products = [{"domain": "crew", "product": "roster", "primary_key": "roster_id"}]
+    verdict = orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)
+    assert verdict["status"] == "partial" and verdict["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2"), verdict
+    phys[3]["tags"] = "dbx_value_regex=^[A-Z]{3}$;dbx_business_glossary_term=Crew Shift Code, Day or Night;dbx_internal=true"
+    assert orch._verify_deterministic(_Req(text, "VREQ-001", ["crew.roster"]), [{"domain": "crew"}], products, phys)["status"] == "fulfilled"
+
+    class _AuditLLM:
+        calls = 0
+
+        def _call_ai_query(self, **_kw):
+            _AuditLLM.calls += 1
+            return json.dumps({"verification_results": [{"requirement_id": "VREQ-001", "status": "failed", "evidence": "byte-identical"}],
+                               "remediation_actions": [], "summary": {}})
+    full = ah.VibeOrchestrator({"logger": h.LOG, "config": {}, "vibe_modelling_instructions": text, "operation": h.VOV})
+    req = ah.VibeRequirement(id="VREQ-001", original_text=text, intent="glossary", scope="table", scope_targets=["crew.roster"],
+                             verification_strategy="llm_verify")
+    full.manifest = ah.VibeManifest(raw_text=text, requirements=[req])
+    assert full.is_enabled
+    full.ai_agent = _AuditLLM()
+    full._llm_verify_enabled = True
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    full.widgets_values.update({"domains": d, "products": p, "attributes": a})
+    full.validate()
+    assert req.status == "partial" and req.evidence.startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2"), (req.status, req.evidence)
+    assert _AuditLLM.calls == 0, "a deterministic open-field verdict is not handed to the LLM audit"
+    req.verification_strategy = "state_diff"
+    assert full._verify_requirement(req, d, p, a)["evidence"].startswith("[verifier-open-field-targets FIRED v5.3.3] 1/2")
+
+
+def test_a_partly_met_set_target_requirement_is_partial_not_failed():
+    text, cur = _roster_glossary_fence()
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew.roster", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}},
+          "_vibe_input_map": {"items": {"i1": {"target": "crew.roster", "spans": [(0, 10)]}}, "vreqs": {"VREQ-0001": {"item_ids": ["i1"]}}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 0.0}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "partial"
+    assert [(o["status"], o["vreq_ids"]) for o in wv["_vibe_input_outcomes"]] == [("partial", ["VREQ-0001"])]
+    assert wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 0.0
+    assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "partial"})])[0] == "partial"
+    assert ah._vibe_input_fold([("V1", {"status": "failed"}), ("V2", {"status": "deferred"})])[0] == "failed"
+
+
+def test_a_glossary_value_is_never_blanked_and_only_a_structural_placeholder_counts_as_empty():
+    """Live b8 640584420933318: the sweep replaced 211 'GlossaryTerm_<column>' values with real terms, but the VOV reviewer
+    finalization (P12, deleted in v5.3.3) cleared every term equal to its column name on every run, so 75 terms such as
+    'Annual Budget Amount' became blank and the fence accepted the blanks. User decision 1A: only a structural placeholder
+    counts as an empty value, so a fill-only requirement fills 'TODO' but leaves a 'GlossaryTerm_<column>' value for the LLM
+    verifier to judge, and the sweep's snapshot shows every term that is not a placeholder or the column's own name."""
+    defect = ah._v533_glossary_term_defect
+    for value in ("Finance Column: budget_owner_name", "Primary Key for guest_visit", "Preferred Store Identifier (PREFERRED_STORE_ID)"):
+        assert defect(value) is None, value
+    assert ah._v533_glossary_is_column_name("Annual Budget Amount", "annual_budget_amount")
+    assert not ah._v533_glossary_is_column_name("Cost Center Annual Budget Amount", "annual_budget_amount")
+    assert not ah._vibe_scope_bad_value("business_glossary_term", "Annual Budget Amount")
+    assert ah._v533_identifier_term("guest_visit", "Identifier") == "Guest Visit Identifier"
+    src = open(conftest.NOTEBOOK_PATH, encoding="utf-8").read()
+    assert "Primary Key for {" not in src and "Reference to {best_target" not in src and "Reference to {forced_target" not in src
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    for base_value, cases in (("TODO", (("", {"frozen_attr_changed": 1}), ("Crew Duty Date", {"P6": 1}))),
+                              ("GlossaryTerm_roster_date", (("", {"frozen_attr_changed": 1}), ("Crew Duty Date", {"frozen_attr_changed": 1})))):
+        base = h.base_model()
+        roster = base["model"]["domains"][0]["products"][1]
+        for attr in roster["attributes"]:
+            attr["business_glossary_term"] = "GlossaryTerm_" + attr["name"]
+        next(a for a in roster["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = base_value
+        vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+        spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                             source_chunk_id="c1")], base)
+        fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+        ah.set_vibe_scope_runtime(fence)
+        for value, kinds in cases:
+            cur = copy.deepcopy(base)
+            next(a for a in cur["model"]["domains"][0]["products"][1]["attributes"] if a["name"] == "roster_date")["business_glossary_term"] = value
+            assert fence.check(cur).summary()["by_kind"] == kinds, (base_value, value)
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    rows = {r["attribute"]: r for r in a if r["domain"] == "crew" and r["product"] == "roster"}
+    rows["roster_id"]["business_glossary_term"] = "TODO"
+    rows["member_id"]["business_glossary_term"] = "Crew Duty Date"
+    snap = ah._llm_fallback_build_model_snapshot(d, p, a, domain_filter="crew", product_filter="roster")
+    assert snap.count("[glossary:") == 2 and "[glossary: Crew Duty Date]" in snap and "[glossary: GlossaryTerm_roster_date]" in snap
+    assert "TODO" not in snap
+
+
+def test_the_serializer_and_the_attribute_factory_never_invent_a_glossary_term():
+    """Decision 5A (live b8 640584420933318): the model.json serializer wrote the column name in Title Case into every empty
+    glossary term, about 20% of the terms in base models, and the attribute factory wrote 'Product - Column', so coverage
+    counted terms nobody wrote; every VOV then cleared every term equal to its column name, real ones included."""
+    assert ah._modeljson_attr_obj({"attribute": "currency_code", "business_glossary_term": ""})["business_glossary_term"] == ""
+    assert ah._modeljson_attr_obj({"attribute": "currency_code", "business_glossary_term": " Settlement Currency "})["business_glossary_term"] == "Settlement Currency"
+    assert ah.make_attribute_dict("b", "crew", "roster", "shift_code")["business_glossary_term"] == ""
+    assert ah.make_attribute_dict("b", "crew", "roster", "roster_id", glossary="Crew Roster Identifier")["business_glossary_term"] == "Crew Roster Identifier"
+
+
+def test_a_set_or_empty_requirement_target_falls_back_to_the_target_its_vibe_item_names():
+    """Live b9 399314237946296: the vibe item was anchored 'target=finance', but the extractor gave the requirement a set
+    target, so the fence opened the glossary field on every frozen record and named nothing."""
+    base = h.base_model()
+    vibe = ("## Domain: crew\n- (high) [crew] Add a business glossary term to every column of the crew domain that has none. "
+            "<!-- vi:7f8dd164-a4ab-400a-be44-54b04e4b8dc2 target=crew -->\n")
+    stripped, items = ah._vibe_input_strip(vibe)
+    input_map = {"sha": ah._vibe_input_sha(stripped), "chars": len(stripped), "items": items, "vreqs": {}}
+    quote = "[crew] Add a business glossary term to every column of the crew domain that has none."
+    vreqs = [ah.RawVREQ(vreq_id=f"VREQ-000{i}", intent="In the crew domain, add a glossary term to every column that has none.", target=target,
+                        source_quote=quote, source_chunk_id="c1") for i, target in enumerate(("*", "", "crew domain"), 1)]
+    vreqs.append(ah.RawVREQ(vreq_id="VREQ-0004", intent="Describe crew.roster.", target="crew.roster", source_quote=quote, source_chunk_id="c1"))
+    anchors = ah._vreq_spec_anchors(input_map, stripped, vreqs)
+    assert sorted(anchors) == ["VREQ-0001", "VREQ-0002", "VREQ-0003", "VREQ-0004"] and {a["anchor"] for a in anchors.values()} == {"crew"}
+    assert all("Add a business glossary term to every column of the crew domain" in a["anchor_text"] for a in anchors.values())
+    assert ah._vreq_spec_anchors({}, stripped, vreqs) == {}, "no vibe item, no anchor"
+    assert ah._vreq_spec_anchors(input_map, stripped + "\nedited", vreqs) == {}, "an anchor needs the vibe text the map was built from"
+    items = ah._vreq_spec_items(vreqs[:1], anchors)
+    assert items[0]["target"] == "*" and items[0]["anchor"] == "crew"
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew"], breadth="set", fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec(vreqs[:1], base)
+    assert spec.entries == ("crew",) and spec.open_fields == frozenset()
+    assert spec.open_field_targets == {("crew", "", "attributes", "business_glossary_term")}
+
+
+def test_the_engine_cannot_call_an_open_field_requirement_already_satisfied_while_values_are_missing():
+    """Live b9 399314237946296: the engine's handler returned an empty diff with 'already satisfied: ... targets the frozen
+    out-of-scope finance domain', and the empty diff was counted as applied, so no corrective ran and nothing changed."""
+    from test_v514_vibe_scope_vov_engine import _CannedLLM
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    text = "Give every column of the table crew.roster that has no business glossary term one."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    noop = "def mutator(model, data):\n    return model\n"
+    summary = "already satisfied: the table is frozen and no operation may add glossary terms"
+    batch = ah.Batch(batch_id="B1", vreq_ids=("VREQ-0001",), intent_summary=text, target_entities=(("crew", "roster"),),
+                     data_payload=({"intent": text, "target": "crew.roster", "source_quote": text},))
+    handler = ah.Handler(batch_id="B1", mutator_src=noop, verifier_src="", expected_changes_summary=summary, target_entities=(("crew", "roster"),))
+    model = copy.deepcopy(base)
+    invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
+    llm = _CannedLLM(mutator=noop, summary=summary)
+    new_model, outcome = ah._apply_handler_with_retry(handler, batch, model, invariants, llm, 3, (), (), 60.0)
+    assert new_model is None and outcome.status == "noop_failed" and "already satisfied" in outcome.diagnostic, outcome
+    assert fence.open_fields_needed(ah._vibe_scope_index(model)) == 3
+    for attr in model["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    assert fence.open_fields_needed(ah._vibe_scope_index(model)) == 0
+    invariants = ah.capture_invariants(model, [], [], scope_fence=fence)
+    done, outcome = ah._apply_handler_with_retry(handler, batch, model, invariants, llm, 3, (), (), 60.0)
+    assert outcome.status == "applied", "a requirement whose values are all present is already satisfied"
+
+
+def test_model_json_carries_the_in_scope_adherence_after_the_final_outcomes():
+    """Live b9 399314237946296: model.json said adherence_in_scope_pct 100.0 while the final outcomes failed the only
+    requirement, because the scope facts are a copy taken before the final outcomes ran."""
+    text, cur = _roster_glossary_fence()
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    outcomes = {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-0001", "intent": text, "target": "crew.roster", "source_quote": text}],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "noop_failed", "reason": "engine"}}, "_vibe_scope_outcomes": outcomes,
+          "_vibe_scope_facts": {"mode": "requested", "outcomes": json.loads(json.dumps(outcomes))}}
+    assert ah._vov_reconcile_final_outcomes(wv, h.LOG) == ["VREQ-0001"]
+    assert wv["_vibe_scope_facts"]["outcomes"]["adherence_in_scope_pct"] == 0.0
+    assert wv["_vibe_scope_facts"]["outcomes"] is not wv["_vibe_scope_outcomes"]
+
+
+def test_only_the_clause_about_empty_values_is_fill_only():
+    """Found while planning live run a21: in 'Improve the description of the table X and give each of its columns that has no
+    business glossary term one' the empty-values phrase made the description fill-only too, so the description could not
+    change, and the verifier would have counted the unchanged description as filled."""
+    text = "Improve the description of the table crew.roster and give each of its columns that has no business glossary term one."
+    base = h.base_model()
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    both = vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[TABLE_DESCRIPTION, GLOSSARY_FILL])
+    vs.register(ah, base, both, dict(both, id="VREQ-001"),
+                vs.spec("VREQ-0002", "set_fields", ["crew.roster"], fields=[TABLE_DESCRIPTION]))
+    assert ah._vreq_spec_fill_fields(ah.vreq_spec("VREQ-0001")) == {("attributes", "business_glossary_term")}
+    assert ah._vreq_spec_fill_fields(ah.vreq_spec("VREQ-0002")) == frozenset()
+    only_empty = ah._normalize_vreq_spec(vs.spec("V1", "set_fields", breadth="model", fields=[{"level": "attributes", "field": "business_glossary_term"}],
+                                                 fill_only=True), ah._vreq_spec_index(base))
+    assert ah._vreq_spec_fill_fields(only_empty) == {("attributes", "business_glossary_term")}
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    assert spec.fill_only_fields == frozenset() and spec.fill_only_targets == {("crew", "roster", "attributes", "business_glossary_term")}
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    roster = cur["model"]["domains"][0]["products"][1]
+    for attr in roster["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    from test_v406_verifier_false_negatives import _Req
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    verdict = ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew.roster"]), d, p, a)
+    assert verdict["status"] == "partial" and "filled or changed" in verdict["evidence"], "the unchanged description is not counted"
+    roster["description"] = "Which crew member flies which duty on which day."
+    assert fence.check(cur).summary()["by_kind"] == {"P6": 4}
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    assert ah._vibe_scope_open_field_verdict(_Req(text, "VREQ-001", ["crew.roster"]), d, p, a)["status"] == "fulfilled"
+
+
+def test_the_physical_glossary_reader_splits_the_unity_catalog_tag_string():
+    """Live b10 742675119383300: the physical ground-truth audit joins a column's Unity Catalog tags with ';', but the glossary
+    reader split on ',' only, so a glossary term followed by another tag read as 'Term;dbx_value_regex=...', was taken
+    for a placeholder, and 63 of the 302 filled finance columns scored as empty (239/305 instead of 302/305)."""
+    read = ah._v533_attr_glossary_value
+    assert read({"tags": "dbx_business_glossary_term=Crew Roster Date;dbx_value_regex=^[0-9]+$"}) == "Crew Roster Date"
+    assert read({"tags": "dbx_value_regex=x;dbx_business_glossary_term=Customer Lifetime Value (CLTV) Band, Monthly"}) == (
+        "Customer Lifetime Value (CLTV) Band, Monthly")
+    assert read({"tags": "owner=crew,dbx_business_glossary_term=Roster Day"}) == "Roster Day"
+    assert read({"tags": "dbx_business_glossary_term=GlossaryTerm_roster_date;dbx_internal=true"}) == "GlossaryTerm_roster_date"
+    assert read({"tags": "dbx_business_glossary_term=TODO;dbx_internal=true"}) == ""
+    assert read({"attribute": "roster_date", "tags": "dbx_business_glossary_term=Roster Date;dbx_internal=true"}) == ""
+
+
+def test_a_pass_cannot_rename_a_column_the_sweep_added_for_the_vibe():
+    """Live a21 143392724040284: the verification sweep added 'journey_channel_code' to customer.journey for 'add a new column
+    named journey_channel_code', then the finalize prefix-strip pass renamed it to 'channel_code' before the review checkpoint
+    settled the sweep's work, so the renamed column was kept and the requirement failed. The fence now settles right after the
+    sweep, so the review checkpoint puts the pass rename back."""
+    base = h.base_model()
+    text = "In crew.roster, add a new column named roster_shift_code (STRING)."
+    vs.register(ah, base, vs.spec("VREQ-0001", "add_column", ["crew.roster"], columns=[{"name": "roster_shift_code", "type": "STRING"}]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    a.append(dict(next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "roster_date"),
+                  attribute="roster_shift_code", column_name="roster_shift_code", type="STRING", business_glossary_term="Roster Shift Code"))
+    assert ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
+    row = next(r for r in a if r["attribute"] == "roster_shift_code")
+    row["attribute"] = row["column_name"] = "shift_code"
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    names = [r["attribute"] for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert "roster_shift_code" in names and "shift_code" not in names, names
+
+
+def test_an_fk_removal_that_names_the_table_is_checked_on_the_column_the_text_names():
+    """Live a21 143392724040284: 'Remove the foreign key on household_id from customer.preference' had the target
+    'customer.preference'; the final check read only three-part targets, and the engine's 'already satisfied: household_id
+    foreign key already removed' was counted applied while both foreign keys stayed."""
+    base = h.base_model()
+    model = copy.deepcopy(base)
+    text = "Remove the foreign key on member_id from crew.roster."
+    vreq = {"vreq_id": "VREQ-0001", "intent": text, "target": "crew.roster", "source_quote": text}
+    vs.register(ah, base, vs.spec("VREQ-0001", "remove_fk", ["crew.roster.member_id"]), vs.spec("VREQ-0002", "remove_fk", ["crew.roster.ghost_id"]),
+                vs.spec("VREQ-0003", "check_only", ["crew.roster.member_id"]), vs.spec("VREQ-0004", "remove_fk", ["crew.roster"]))
+    assert ah._vov_vreq_still_missing(vreq, model)
+    for other in ("VREQ-0002", "VREQ-0003", "VREQ-0004"):
+        assert not ah._vov_vreq_still_missing(dict(vreq, vreq_id=other), model), other
+    assert not ah._vov_vreq_still_missing(dict(vreq, vreq_id="VREQ-0009"), model), "a requirement with no spec is never read from its text"
+    next(x for x in model["model"]["domains"][0]["products"][1]["attributes"] if x["name"] == "member_id")["foreign_key_to"] = ""
+    assert not ah._vov_vreq_still_missing(vreq, model)
+    from test_v514_vibe_scope_vov_engine import _CannedLLM
+    noop, summary = "def mutator(model, data):\n    return model\n", "already satisfied: the member_id foreign key is already removed"
+    batch = ah.Batch(batch_id="B1", vreq_ids=("VREQ-0001",), intent_summary=text, target_entities=(("crew", "roster"),),
+                     data_payload=({"intent": text, "target": "crew.roster", "source_quote": text},))
+    handler = ah.Handler(batch_id="B1", mutator_src=noop, verifier_src="", expected_changes_summary=summary, target_entities=(("crew", "roster"),))
+    current = copy.deepcopy(base)
+    new_model, outcome = ah._apply_handler_with_retry(handler, batch, current, ah.capture_invariants(current, [], []), _CannedLLM(mutator=noop, summary=summary),
+                                                      3, (), (), 60.0)
+    assert new_model is None and outcome.status == "noop_failed" and "foreign key the requirement removes is still present" in outcome.diagnostic
+
+
+def test_each_applied_set_target_requirement_is_scored_on_its_own_fields():
+    """Live a21 143392724040284: the steward requirement on customer.* changed nothing, but 30 glossary P6 changes of another
+    requirement landed, and the final outcomes only asked whether any open-field change landed, so it stayed applied."""
+    base = h.base_model()
+    texts = {"VREQ-0001": ("crew", "Give every table in the crew domain that has no data steward the steward Crew Data Office."),
+             "VREQ-0002": ("crew.roster", "Give every column of the table crew.roster that has no business glossary term one.")}
+    for attr in base["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = ""
+    vreqs = [ah.RawVREQ(vreq_id=v, intent=t, target=tg, source_quote=t, source_chunk_id="c1") for v, (tg, t) in texts.items()]
+    steward = dict(vs.field("products", "steward", fill=True), value="Crew Data Office")
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew"], breadth="set", fields=[steward]),
+                vs.spec("VREQ-0002", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec(vreqs, base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    cur = copy.deepcopy(base)
+    for attr in cur["model"]["domains"][0]["products"][1]["attributes"]:
+        attr["business_glossary_term"] = "Crew " + attr["name"].replace("_", " ").title()
+    fence.splice_and_verify(cur, h.LOG)
+    d, p, a, _mv = ah.model_to_widgets_flat(cur)
+    wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+          "_vov_2_raw_vreqs": [{"vreq_id": v, "intent": t, "target": tg, "source_quote": t} for v, (tg, t) in texts.items()],
+          "_vov_vreq_status": {"VREQ-0001": {"status": "applied", "reason": ""}, "VREQ-0002": {"status": "applied", "reason": ""}},
+          "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+    ah._vov_reconcile_final_outcomes(wv, h.LOG)
+    assert wv["_vov_vreq_status"]["VREQ-0001"]["status"] == "noop_failed", wv["_vov_vreq_status"]
+    assert wv["_vov_vreq_status"]["VREQ-0002"]["status"] == "applied"
+    assert wv["_vibe_scope_outcomes"]["adherence_in_scope_pct"] == 50.0
+
+
+def test_stewards_survive_the_flat_round_trip_and_reach_model_json():
+    """Live a21 143392724040284: the engine set 24 stewards, but model_to_widgets_flat and widgets_flat_to_model did not carry
+    the product or attribute steward, and the model.json writer had no steward field, so every steward was dropped."""
+    base = h.base_model()
+    base["model"]["domains"][0]["products"][1]["steward"] = "Crew Data Office"
+    base["model"]["domains"][0]["products"][1]["attributes"][0]["steward"] = "Rostering Team"
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    assert next(r for r in p if r["product"] == "roster")["steward"] == "Crew Data Office"
+    back = ah.widgets_flat_to_model(d, p, a, mv)
+    roster = next(pp for dd in back.get("model", back)["domains"] for pp in dd["products"] if pp["name"] == "roster")
+    assert roster["steward"] == "Crew Data Office" and roster["attributes"][0]["steward"] == "Rostering Team"
+    assert ah._modeljson_attr_obj({"attribute": "roster_id", "steward": "Rostering Team"})["steward"] == "Rostering Team"
+    assert "steward" not in ah._modeljson_attr_obj({"attribute": "roster_id"})
+
+
+def test_a_column_addition_within_a_domain_is_not_scored_as_a_thin_table_enrichment():
+    """Live d4 897744475246938: 'In the order.channel table (within the order domain), add a new column named
+    channel_region_code' matched the 'thin' keyword inside 'within', so the stub/thin enrichment check scored it fulfilled
+    from 0/13 products below 9 data attributes, whether or not the column existed."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    attrs = [{"domain": "order", "product": "channel", "attribute": f"c{i}"} for i in range(12)]
+    prods = [{"domain": "order", "product": "channel", "primary_key": "c0"}]
+    add = ah.VibeRequirement(id="VREQ-001", original_text="In the order.channel table (within the order domain), add a new column named "
+                             "channel_region_code with data type STRING.", intent="add", scope="attribute", scope_targets=["order.channel"])
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": "order"}], prods, attrs),
+                vs.spec("VREQ-001", "add_column", ["order.channel"], columns=[{"name": "channel_region_code", "type": "STRING"}]))
+    verdict = orch._verify_deterministic(add, [{"domain": "order"}], prods, attrs)
+    assert verdict["status"] == "failed" and "0/1 table(s) carry" in verdict["evidence"], verdict
+    attrs.append({"domain": "order", "product": "channel", "attribute": "channel_region_code"})
+    assert orch._verify_deterministic(add, [{"domain": "order"}], prods, attrs)["status"] == "fulfilled"
+
+
+def test_the_verifiers_read_the_column_a_table_level_requirement_names():
+    """Live a22 755485820980568: with the target 'customer.journey' the attribute verifier looked for an attribute named
+    'customer.journey' and failed a column that existed, and 'Remove the foreign key on household_id from the table
+    customer.preference' failed because the table kept other foreign keys."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    attrs = [{"domain": "customer", "product": "journey", "attribute": "journey_touch_count", "foreign_key_to": ""},
+             {"domain": "customer", "product": "preference", "attribute": "household_id", "foreign_key_to": ""},
+             {"domain": "customer", "product": "preference", "attribute": "profile_id", "foreign_key_to": "customer.profile.profile_id"}]
+    prods = [{"domain": "customer", "product": "journey", "primary_key": "journey_id"}, {"domain": "customer", "product": "preference", "primary_key": "preference_id"}]
+
+    catalog = ah.widgets_flat_to_model([{"domain": "customer"}], prods, attrs)
+
+    def req(text, scope, target, spec):
+        vs.register(ah, catalog, spec)
+        return ah.VibeRequirement(id="VREQ-001", original_text=text, intent="x", scope=scope, scope_targets=[target], verification_strategy="deterministic")
+    add = req("In the table customer.journey, add a new column named journey_touch_count with type INT.", "attribute", "customer.journey",
+              vs.spec("VREQ-001", "add_column", ["customer.journey"], columns=[{"name": "journey_touch_count", "type": "INT"}]))
+    assert orch._verify_deterministic(add, [{"domain": "customer"}], prods, attrs)["status"] == "fulfilled"
+    missing = req("In the table customer.journey, add a new column named journey_stage_code.", "attribute", "customer.journey",
+                  vs.spec("VREQ-001", "add_column", ["customer.journey"], columns=[{"name": "journey_stage_code", "type": ""}]))
+    assert orch._verify_deterministic(missing, [{"domain": "customer"}], prods, attrs)["status"] == "failed"
+    remove = req("Remove the foreign key on household_id from the table customer.preference.", "relation", "customer.preference",
+                 vs.spec("VREQ-001", "remove_fk", ["customer.preference.household_id"]))
+    assert orch._verify_deterministic(remove, [{"domain": "customer"}], prods, attrs)["status"] == "fulfilled"
+    attrs[1]["foreign_key_to"] = "customer.household.household_id"
+    assert orch._verify_deterministic(remove, [{"domain": "customer"}], prods, attrs)["status"] == "failed"
+
+
+def test_an_add_on_an_existing_column_never_writes_its_type_as_the_description():
+    """Live a22 755485820980568: the sweep sent 'add journey_touch_count' with field='description' and new_value='INT' for a
+    column that already existed, and the upsert set the column's description to 'INT' (DDL: COMMENT 'INT')."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["attribute"] == "roster_date")
+    row["description"] = "Date of the duty roster."
+    mutation = [{"entity_type": "attribute", "operation": "add", "entity_ref": "crew.roster.roster_date", "field": "description", "new_value": "DATE"}]
+    ah._llm_fallback_apply_mutations(mutation, d, p, a, [], h.LOG)
+    assert row["description"] == "Date of the duty roster." and row["type"] == "DATE"
+
+
+def test_a_requirement_target_outside_its_vibe_item_target_is_dropped_unless_the_item_names_it():
+    """Live b12 891881212343739: the item 'Give each column that has no business glossary term one.' was anchored to
+    contract.term, but the extractor gave a second requirement the target 'media' from the next item's domain header, so the
+    fence opened the glossary field on all 12 media tables."""
+    base = h.base_model()
+    vibe = ("- (high) Give each column that has no business glossary term one. <!-- vi:21df8b30-6a92-488e-af23-133749b52165 target=crew.roster -->\n"
+            "## Domain: fleet\n- (high) [crew.duty_period] Remove the foreign key on aircraft_id from crew.duty_period. "
+            "<!-- vi:1ae5afa8-64d3-48df-8263-e272b9f2f401 target=crew.duty_period -->\n")
+    stripped, items = ah._vibe_input_strip(vibe)
+    input_map = {"sha": ah._vibe_input_sha(stripped), "chars": len(stripped), "items": items, "vreqs": {}}
+    q1, q2 = "Give each column that has no business glossary term one.", "[crew.duty_period] Remove the foreign key on aircraft_id from crew.duty_period."
+
+    def raw(vid, target, quote):
+        return ah.RawVREQ(vreq_id=vid, intent="x", target=target, source_quote=quote, source_chunk_id="c1")
+    vreqs = [raw("VREQ-0001", "*", q1), raw("VREQ-0004", "fleet", q1), raw("VREQ-0005", "crew.roster, fleet", q1),
+             raw("VREQ-0006", "roster", q1), raw("VREQ-0007", "crew.roster.shift_code", q1),
+             raw("VREQ-0002", "fleet.aircraft", q2), raw("VREQ-0003", "crew.duty_period", q2)]
+    anchors = ah._vreq_spec_anchors(input_map, stripped, vreqs)
+    assert {vid: a["anchor"] for vid, a in anchors.items()} == {"VREQ-0001": "crew.roster", "VREQ-0004": "crew.roster", "VREQ-0005": "crew.roster",
+                                                              "VREQ-0006": "crew.roster", "VREQ-0007": "crew.roster",
+                                                              "VREQ-0002": "crew.duty_period", "VREQ-0003": "crew.duty_period"}
+    assert "fleet" not in anchors["VREQ-0004"]["anchor_text"] and q1 in anchors["VREQ-0004"]["anchor_text"]
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]),
+                vs.spec("VREQ-0004", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec(vreqs[:2], base)
+    assert spec.open_field_targets == {("crew", "roster", "attributes", "business_glossary_term")}
+
+
+def test_an_open_field_verdict_counts_only_records_where_the_requirement_field_is_open():
+    """Live b12 891881212343739: the glossary requirement had no target of its own, and its verdict pooled every open-field
+    target, so media.ad_format, opened only for its description, was counted in the glossary verdict (229/398)."""
+    base = h.base_model()
+    vibe = ("- (high) [crew.roster] Give each column of crew.roster that has no business glossary term one.\n"
+            "- (high) [crew.duty_period] Improve the description of the table crew.duty_period.\n")
+    spec = ah.VibeScopeSpec(mode="requested", raw_mode="All Domains", entries=("crew.roster", "crew.duty_period"), domains=frozenset({"crew"}),
+                            products=frozenset({("crew", "roster"), ("crew", "dutyperiod")}),
+                            open_field_targets=frozenset({("crew", "roster", "attributes", "business_glossary_term"),
+                                                          ("crew", "dutyperiod", "products", "description")}),
+                            fill_only_fields=frozenset({("attributes", "business_glossary_term")}))
+    fence = ah.VibeScopeFence(spec, base, "vibe modeling of version", h.LOG)
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    for row in a:
+        if row["domain"] == "crew" and row["product"] == "roster" and not str(row.get("foreign_key_to") or "").strip():
+            row["business_glossary_term"] = "Crew Roster " + row["attribute"].replace("_", " ").title() + " Measure"
+        elif row["domain"] == "crew" and row["product"] == "duty_period":
+            row["business_glossary_term"] = ""
+    req = ah.VibeRequirement(id="VREQ-001", original_text="For every column that has no business glossary term, add one.", intent="x",
+                             scope="attribute", scope_targets=[], verification_strategy="deterministic")
+    vs.register(ah, base, vs.spec("VREQ-001", "set_fields", breadth="set", fields=[GLOSSARY_FILL]))
+    prior = ah._VIBE_SCOPE_RUNTIME
+    ah._VIBE_SCOPE_RUNTIME = fence
+    try:
+        verdict = ah._vibe_scope_open_field_verdict(req, d, p, a, h.LOG)
+    finally:
+        ah._VIBE_SCOPE_RUNTIME = prior
+    pk = next(r["primary_key"] for r in p if r["domain"] == "crew" and r["product"] == "roster")
+    n = sum(1 for r in a if r["domain"] == "crew" and r["product"] == "roster" and not str(r.get("foreign_key_to") or "").strip() and r["attribute"] != pk)
+    assert verdict["status"] == "fulfilled", verdict
+    assert f" {n}/{n} " in verdict["evidence"] and "('crew', 'dutyperiod')" not in verdict["evidence"], verdict
+
+
+def test_after_the_settle_a_pass_cannot_rename_a_column_of_a_named_base_table():
+    """Live a23 911767371287003: right after the sweep settled, the pre-static-analysis pass p075 renamed carrier_id to
+    shipping_carrier_id on order.shipment and order.return_case and payment_id to payment_transaction_id on order.refund.
+    The rename ledger recorded them as legitimate in-scope renames, so the checkpoints kept them and the tables were replaced."""
+    base = h.base_model()
+    text = "Remove the foreign key on member_id from crew.roster."
+    vs.register(ah, base, vs.spec("VREQ-0001", "remove_fk", ["crew.roster.member_id"]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    fence = ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:p075_fk_target_pk_suffix") is not None, "before the engine"
+    ah.vov_ledger_reset()
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:llm_fallback_mutation") is not None, "the sweep, until it settles"
+    ah.vov_ledger_reset()
+    assert ah._vibe_scope_settle_sweep(d, p, a, mv, h.LOG)
+    row = next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "member_id")
+    row["attribute"] = row["column_name"] = "crew_member_id"
+    assert ah._vov_note_attribute_rename("crew", "roster", "member_id", "crew_member_id", "pass:p075_fk_target_pk_suffix") is None
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "pass:llm_fallback_mutation") is None, "the sweep after it settled"
+    assert not [e for e in ah._VOV_LEDGER["renames"] if e["new"].endswith(("crew_member_id", "roster_day"))]
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "roster_day", "VREQ-0002") is not None
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    names = [r["attribute"] for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert "member_id" in names and "crew_member_id" not in names, names
+
+
+def test_an_in_scope_table_whose_only_structural_change_is_a_foreign_key_keeps_its_rows():
+    """Live a23 911767371287003: 'Remove the foreign key on loyalty_account_id from order.refund' replaced order.refund, so its
+    rows were lost (sentinel row count 1 -> 0) although only an informational constraint changed. Such a table is now kept and
+    the constraint is dropped, re-pointed or added in place (P2, P1, P3 with cause FK-in-scope)."""
+    base = h.base_model()
+    cur = copy.deepcopy(base)
+    prods = {(dd["name"], pp["name"]): pp for dd in cur["model"]["domains"] for pp in dd["products"]}
+    roster, flight = prods[("crew", "roster")], prods[("flight", "scheduled_flight")]
+    roster["steward"] = "Crew Data Office"
+    next(x for x in roster["attributes"] if x["name"] == "member_id")["foreign_key_to"] = ""
+    next(x for x in flight["attributes"] if x["name"] == "aircraft_id")["foreign_key_to"] = "fleet.maintenance.maintenance_id"
+    next(x for x in roster["attributes"] if x["name"] == "roster_date")["foreign_key_to"] = "crew.base.base_id"
+    typed = prods[("fleet", "aircraft")]
+    next(x for x in typed["attributes"] if x["name"] == "home_base_id")["foreign_key_to"] = ""
+    next(x for x in typed["attributes"] if x["name"] != "home_base_id" and x["name"] != typed["primary_key"])["type"] = "DOUBLE"
+    b = ah._vibe_scope_index(base)
+    c = ah._vibe_scope_index(cur)
+    keys = {("crew", "roster"), ("flight", "scheduledflight"), ("fleet", "aircraft")}
+    out = ah._vibe_scope_metadata_only_deltas(b, c, keys)
+    assert set(out) == {("crew", "roster"), ("flight", "scheduledflight")}, set(out)
+    kinds = sorted((dl["kind"], dl["attribute"]) for dl in out[("crew", "roster")])
+    assert kinds == [("P2", "member_id"), ("P3", "roster_date"), ("P6", "")], kinds
+    assert [(dl["kind"], dl["old_fk"], dl["new_fk"]) for dl in out[("flight", "scheduledflight")]] == [
+        ("P1", "fleet.aircraft.aircraft_id", "fleet.maintenance.maintenance_id")]
+    assert all(dl["cause"] == ah._VIBE_SCOPE_PERMIT_CAUSES["FK-in-scope"] for dl in out[("crew", "roster")] if dl["kind"] != "P6")
+    facts = {"changed_in_scope_products": ["fleet.aircraft"], "preserved_products": [f"{dd['name']}.{pp['name']}" for dd in cur["model"]["domains"]
+                                                                                     for pp in dd["products"] if pp["name"] != "aircraft"],
+             "permitted_deltas": [dl for key in sorted(out) for dl in out[key]]}
+    plan = ah.VibeScopeDeployPlan(facts, cur)
+    assert plan.state("crew", "roster") == "preserve" and plan.state("fleet", "aircraft") == "replace"
+    drops = plan.p2_drops("crew", "roster", lambda name: name, "`cat`.`crew`.`roster`")
+    assert drops == [ah._vibe_scope_drop_constraint_sql("`cat`.`crew`.`roster`", ah._vibe_scope_fk_constraint_name("crew", "roster", "member_id"))]
+    assert plan.fk_action("flight", "scheduled_flight", ("aircraft_id",), "fleet", "maintenance") == "drop_add"
+    assert plan.fk_action("crew", "roster", ("roster_date",), "crew", "base") == "drop_add"
+    assert plan.fk_action("flight", "scheduled_flight", ("duty_member_id",), "crew", "member") == "skip"
+
+
+def test_a_model_wide_structural_requirement_changes_only_what_the_engine_applies():
+    """Decision 6A, live a24 298051143023142: 'Make sure no table in the model has a foreign key on its own primary key column'
+    needed no change, but it turned the fence off, so the collision, naming and FK passes changed 88 of 90 products (two table
+    renames, 40 column renames) and the deploy replaced 89 of 90 tables. The fence now stays on with every base domain open to
+    the engine, and after it every base product is frozen at its engine result."""
+    base = h.base_model()
+    text = "Make sure no table in the model has a foreign key on its own primary key column."
+    log = h.LOG
+    assert ah._vibe_scope_start_requested([_wide(text)], base, log, base) is None, "a requirement no LLM read opens nothing"
+    vs.register(ah, base, vs.spec("VREQ-0001", "remove_fk", breadth="model"))
+    fence = ah._vibe_scope_start_requested([_wide(text)], base, log, base)
+    assert fence is not None and fence.spec.whole_domains == {ah._vov285_san(d["name"]) for d in base["model"]["domains"]}
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, log)
+    assert ah._vibe_scope_settle_sweep(d, p, a, mv, log)
+    roster = next(r for r in p if r["domain"] == "crew" and r["product"] == "roster")
+    roster["description"] = "Rewritten by a pass."
+    row = next(r for r in a if r["domain"] == "flight" and r["product"] == "scheduled_flight" and r["attribute"] == "aircraft_id")
+    row["attribute"] = row["column_name"] = "fleet_aircraft_id"
+    ah._vov_note_attribute_rename("flight", "scheduled_flight", "aircraft_id", "fleet_aircraft_id", "pass:p075_fk_target_pk_suffix")
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, log)
+    assert roster["description"] != "Rewritten by a pass."
+    assert "aircraft_id" in [r["attribute"] for r in a if r["domain"] == "flight" and r["product"] == "scheduled_flight"]
+    final = ah.widgets_flat_to_model(d, p, a, mv)
+    facts = fence.scope_facts({"model": final} if "model" not in final else final, "passed")
+    assert facts["changed_in_scope_products"] == [], facts["changed_in_scope_products"]
+
+
+def test_the_sweep_asks_once_more_by_column_when_a_batch_leaves_open_values_empty():
+    """Live b14 782248298811258: for 'Give each column that has no business glossary term one' on contract.sla the sweep's LLM
+    returned an attribute mutation whose ref named only the table; it was skipped as ref_too_few_parts and 28 terms stayed empty.
+    The batch is now asked once more, listing each column still missing its value."""
+    base = h.base_model()
+    d, p, a, _mv = ah.model_to_widgets_flat(base)
+    row = next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "roster_date")
+    text = "Give each column of crew.roster that has no business glossary term one."
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["crew.roster"], fields=[GLOSSARY_FILL]))
+    spec, _w = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="crew.roster", source_quote=text,
+                                                         source_chunk_id="c1")], base)
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(spec, base, h.VOV, h.LOG))
+
+    class _Agent:
+        def __init__(self, answers):
+            self.answers, self.prompts = list(answers), []
+
+        def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+            self.prompts.append((prompt_name, prompt))
+            if prompt_name == "LLM_FALLBACK_CLASSIFY_PROMPT":
+                return json.dumps({"scope": "attribute", "affected_entities": ["crew.roster"], "batch_strategy": "per_product",
+                                   "operation_type": "mutate", "validation_hint": {"check_type": "none", "target_description": "", "expected_outcome": ""}})
+            return json.dumps({"summary": "x", "mutations": self.answers.pop(0)})
+    table_ref = [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster", "field": "business_glossary_term", "new_value": "Crew Roster Term"}]
+    by_column = [{"entity_type": "attribute", "operation": "modify", "entity_ref": "crew.roster.roster_date", "field": "business_glossary_term", "new_value": "Duty Roster Date"}]
+    action = {"action": "create_attribute", "scope": "crew.roster", "name": "business_glossary_term", "target_state": "terms set", "reason": "vibe"}
+    for answers, calls in (([table_ref, by_column], 2), ([by_column], 1)):
+        row["business_glossary_term"] = ""
+        agent = _Agent(answers)
+        ctx = {"logger": h.LOG, "domains_data": d, "products_data": p, "attributes_data": a, "config": {}}
+        ah._llm_fallback_handler(action, ctx, agent, text)
+        executes = [prompt for name, prompt in agent.prompts if name == "LLM_FALLBACK_EXECUTE_PROMPT"]
+        assert len(executes) == calls and row["business_glossary_term"] == "Duty Roster Date", (calls, row["business_glossary_term"])
+        if calls == 2:
+            assert "STILL MISSING after your previous answer: crew.roster.roster_date business_glossary_term" in executes[1]
+    assert ah._vibe_scope_fill_missing(None, p, a, [("crew", "roster")]) == []
+    assert ah._llm_fallback_batch_refs({"domain_filter": "crew", "product_filter": ["roster"]}, p) == [("crew", "roster")]
+
+
+def test_without_a_sweep_a_pass_still_cannot_rename_a_base_column_after_the_engine():
+    """Live a25 564397793184322: no corrective sweep ran, so the run never settled, and right after the engine snapshot the p016
+    and p73i passes renamed base columns across the model (order.charge.charge_name to name, the user's new
+    order.order_note.order_note_source_code to source_code); the rename ledger accepted them and the checkpoints restored 0."""
+    base = h.base_model()
+    text = "Make sure every foreign key in the model points to a primary key."
+    vs.register(ah, base, vs.spec("VREQ-0001", "other", breadth="model"))
+    fence = ah._vibe_scope_start_requested([_wide(text)], base, h.LOG, base)
+    d, p, a, mv = ah.model_to_widgets_flat(base)
+    fence.requested_snapshot(d, p, a, mv, h.LOG)
+    row = next(r for r in a if r["domain"] == "crew" and r["product"] == "roster" and r["attribute"] == "roster_date")
+    row["attribute"] = row["column_name"] = "date"
+    assert ah._vov_note_attribute_rename("crew", "roster", "roster_date", "date", "pass:p73i_prefix_strip") is None
+    wv = {"domains": d, "products": p, "attributes": a, "_metric_view_records": mv}
+    ah._vibe_scope_checkpoint_widgets("logical_schema_review", wv, h.LOG)
+    names = [r["attribute"] for r in a if r["domain"] == "crew" and r["product"] == "roster"]
+    assert "roster_date" in names and "date" not in names, names
+
+
+def test_a_target_that_names_the_whole_model_is_wide_unless_the_model_has_such_an_entity():
+    """Live a26 323311128142849: the extractor gave 'Make sure every foreign key in the model points to a primary key' the target
+    'model', which read as the name of a new domain, so the fence admitted an entity 'model' instead of opening every base domain
+    to the engine (decision 6A)."""
+    base = h.base_model()
+    text = "Make sure every foreign key in the model points to a primary key."
+    vs.register(ah, base, dict(vs.spec("VREQ-0001", "other", breadth="model"), targets=[{"domain": "model", "product": "", "column": ""}]))
+    spec, wide = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0001", intent=text, target="model", source_quote=text, source_chunk_id="c1")], base)
+    assert wide == ["VREQ-0001: model other"] and "model" not in spec.new_names
+    assert spec.whole_domains == {ah._vov285_san(d["name"]) for d in base["model"]["domains"]}
+    named_model = copy.deepcopy(base)
+    named_model["model"]["domains"][0]["name"] = "model"
+    vs.register(ah, named_model, vs.spec("VREQ-0002", "other", ["model"]))
+    spec, wide = ah._vibe_scope_requested_spec([ah.RawVREQ(vreq_id="VREQ-0002", intent=text, target="model", source_quote=text, source_chunk_id="c1")],
+                                               named_model)
+    assert wide == [] and spec.entries == ("model",) and spec.whole_domains == {"model"} and "model" not in spec.new_names, "a real domain named model is a target"
+    vibe = f"- (high) Give each column that has no business glossary term one. <!-- vi:5f2b0a8e-1c1d-4d55-9a37-0f1b6c8e2d11 target=crew.roster -->\n"
+    stripped, items = ah._vibe_input_strip(vibe)
+    input_map = {"sha": ah._vibe_input_sha(stripped), "chars": len(stripped), "items": items, "vreqs": {}}
+    quote = "Give each column that has no business glossary term one."
+    anchors = ah._vreq_spec_anchors(input_map, stripped, [ah.RawVREQ(vreq_id="VREQ-0003", intent="x", target="model", source_quote=quote, source_chunk_id="c1")])
+    assert anchors["VREQ-0003"]["anchor"] == "crew.roster"
+
+
+def test_an_open_field_requirement_on_a_table_in_scope_for_another_reason_is_scored_by_its_own_verdict():
+    """Live a27 867113767175039: 'Improve the description of the table order.store_shift' changed the description, but a model-wide
+    requirement put every domain in scope (decision 6A), so the change was no P6 delta and the final-outcomes check reported
+    'no open-field change reached the final model' for it."""
+    base = h.base_model()
+    texts = [("VREQ-0001", "*", "Make sure every foreign key in the model points to a primary key."),
+             ("VREQ-0002", "crew.roster", "Improve the description of the table crew.roster.")]
+    vreqs = [ah.RawVREQ(vreq_id=v, intent=t, target=tg, source_quote=t, source_chunk_id="c1") for v, tg, t in texts]
+    vs.register(ah, base, vs.spec("VREQ-0001", "other", breadth="model"), vs.spec("VREQ-0002", "set_fields", ["crew.roster"], fields=[TABLE_DESCRIPTION]))
+    for new_description, expected in (("Which crew member flies which duty on which day, and from which base.", "applied"), (None, "noop_failed")):
+        ah.set_vibe_scope_runtime(None)
+        fence = ah._vibe_scope_start_requested(vreqs, base, h.LOG, base)
+        assert "VREQ-0002" in fence.spec.open_field_vreqs and fence.spec.whole_domains
+        final = copy.deepcopy(base)
+        if new_description:
+            final["model"]["domains"][0]["products"][1]["description"] = new_description
+        fence.splice_and_verify(copy.deepcopy(final), h.LOG)
+        d, p, a, _mv = ah.model_to_widgets_flat(final)
+        wv = {"operation": h.VOV, "domains": d, "products": p, "attributes": a,
+              "_vov_2_raw_vreqs": [{"vreq_id": v, "intent": t, "target": tg, "source_quote": t} for v, tg, t in texts],
+              "_vov_vreq_status": {"VREQ-0001": {"status": "applied", "reason": ""}, "VREQ-0002": {"status": "applied", "reason": ""}},
+              "_vibe_scope_outcomes": {"scope_rejected": [], "scope_fence_violation": [], "scope_dependency_conflict": [], "adherence_in_scope_pct": 100.0}}
+        ah._vov_reconcile_final_outcomes(wv, h.LOG)
+        assert wv["_vov_vreq_status"]["VREQ-0002"]["status"] == expected, (new_description, wv["_vov_vreq_status"])
+
+
+def test_a_wide_requirement_in_a_subdomain_scope_opens_the_subdomain_products_and_splices_the_rest_from_the_base():
+    """Live S2 271559109433984 (Some Subdomains media.delivery_trafficking with a model-wide requirement): the scope named the
+    whole media domain, so the splice took that domain's current record wholesale and the 10 media products outside the
+    subdomain lost their tag_set and column stewards in model.json."""
+    base = h.base_model()
+    member = base["model"]["domains"][0]["products"][0]
+    member["tag_set"] = [{"key": "dbx_data_type", "value": "master_data", "kind": "key_value", "source": "derived"}]
+    member["attributes"][0]["tag_set"] = [{"key": "primary_key", "value": "", "kind": "label", "source": "derived"}]
+    member["attributes"][0]["steward"] = ""
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Subdomains", "crew.crew_scheduling"), copy.deepcopy(base), h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    text = "Make sure every foreign key in the model points to a primary key."
+    assert ah._vibe_scope_start_requested([_wide(text)], copy.deepcopy(base), h.LOG, copy.deepcopy(base)) is fence
+    assert fence.spec.named_only and not fence.spec.products and not fence.spec.whole_domains, "a requirement no LLM read opens nothing"
+    assert fence.is_frozen_product("crew", "roster") and fence.is_frozen_product("crew", "member")
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Subdomains", "crew.crew_scheduling"), copy.deepcopy(base), h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+    vs.register(ah, base, vs.spec("VREQ-0001", "other", breadth="model"))
+    assert ah._vibe_scope_start_requested([_wide(text)], copy.deepcopy(base), h.LOG, copy.deepcopy(base)) is fence
+    assert fence.spec.whole_domains == frozenset() and ("crew", "roster") in fence.spec.products
+    assert fence.is_frozen_product("crew", "member") and not fence.is_frozen_product("crew", "roster")
+    cur = copy.deepcopy(base)
+    cmember = cur["model"]["domains"][0]["products"][0]
+    cmember["tag_set"] = None
+    cmember["attributes"][0]["tag_set"] = None
+    cmember["attributes"][0].pop("steward")
+    fence.splice_and_verify(cur, h.LOG)
+    spliced = cur["model"]["domains"][0]["products"][0]
+    assert spliced["tag_set"] == member["tag_set"] and spliced["attributes"][0]["tag_set"] == member["attributes"][0]["tag_set"]
+    assert spliced["attributes"][0].get("steward") == ""
+
+
+def test_a_field_requirement_aimed_only_outside_the_scope_is_rejected():
+    """Live S1 280806806558309 (Some Domains order): 'Improve the description of the table customer.household' was an open-field
+    requirement, so the triage kept it although customer is out of scope; the engine ran it, the fence put the change back, and
+    the feedback item was reported applied."""
+    base = h.base_model()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    ah.set_vibe_scope_runtime(fence)
+
+    def raw(vid, target, text):
+        return ah.RawVREQ(vreq_id=vid, intent=text, target=target, source_quote=text, source_chunk_id="c1")
+    vreqs = [raw("VREQ-0001", "fleet.aircraft", "Improve the description of the table fleet.aircraft."),
+             raw("VREQ-0002", "crew.roster", "Improve the description of the table crew.roster."),
+             raw("VREQ-0003", "*", "Give every column that has no business glossary term one.")]
+    vs.register(ah, base, vs.spec("VREQ-0001", "set_fields", ["fleet.aircraft"], fields=[TABLE_DESCRIPTION]),
+                vs.spec("VREQ-0002", "set_fields", ["crew.roster"], fields=[TABLE_DESCRIPTION]),
+                vs.spec("VREQ-0003", "set_fields", breadth="model", fields=[GLOSSARY_FILL]))
+    assert ah._vibe_scope_start_requested(vreqs, copy.deepcopy(base), h.LOG, copy.deepcopy(base)) is fence
+    assert {"VREQ-0001", "VREQ-0002", "VREQ-0003"} <= set(fence.spec.open_field_vreqs)
+    kept, rejected, outcomes = ah._vibe_scope_triage_vreqs(fence, vreqs, base, h.LOG)
+    assert [v.vreq_id for v in kept] == ["VREQ-0002", "VREQ-0003"], [v.vreq_id for v in kept]
+    assert [v.vreq_id for v in rejected] == ["VREQ-0001"] and [o.status for o in outcomes] == ["scope_rejected"]
+
+
+def test_an_fk_removal_scored_by_state_diff_is_checked_on_the_column():
+    """Live S1 280806806558309: the orchestrator gave 'Remove the foreign key on associate_id from the order.sales_order table' the
+    state_diff strategy, which compares domain, table and attribute counts, so the removal scored failed with 'No model changes
+    detected' although the FK was gone."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    orch._llm_verify_enabled, orch.ai_agent = False, None
+    attrs = [{"domain": "order", "product": "sales_order", "attribute": "associate_id", "foreign_key_to": ""},
+             {"domain": "order", "product": "sales_order", "attribute": "location_id", "foreign_key_to": "product.location.location_id"}]
+    prods = [{"domain": "order", "product": "sales_order", "primary_key": "sales_order_id"}]
+    catalog = ah.widgets_flat_to_model([{"domain": "order"}], prods, [dict(attrs[0], foreign_key_to="order.associate.associate_id"), attrs[1]])
+    vs.register(ah, catalog, vs.spec("VREQ-002", "remove_fk", ["order.sales_order.associate_id"]), vs.spec("VREQ-003", "preserve", ["order.sales_order"]))
+    req = ah.VibeRequirement(id="VREQ-002", original_text="Remove the foreign key on associate_id from the order.sales_order table.", intent="x",
+                             scope="relation", scope_targets=["order.sales_order"], verification_strategy="state_diff")
+    assert orch._verify_requirement(req, [{"domain": "order"}], prods, attrs)["status"] == "fulfilled"
+    attrs[0]["foreign_key_to"] = "order.associate.associate_id"
+    assert orch._verify_requirement(req, [{"domain": "order"}], prods, attrs)["status"] == "failed"
+    keep = ah.VibeRequirement(id="VREQ-003", original_text="Keep every foreign key of order.sales_order.", intent="x", scope="relation",
+                              scope_targets=["order.sales_order"], verification_strategy="state_diff")
+    kept = orch._verify_requirement(keep, [{"domain": "order"}], prods, attrs)
+    assert kept["status"] == "fulfilled" and "Deterministic" not in str(kept.get("evidence"))
+
+
+def test_a_product_rename_follows_the_users_words_when_the_table_has_a_column_of_its_own_name():
+    """Live R1 722967603447623: 'Rename the product sales_channel to order_channel' became the extractor's 'rename the product
+    attribute sales_channel', and because order.sales_channel has a column named sales_channel the deterministic pre-apply
+    renamed that column; the product kept its name and the feedback item was reported applied."""
+    base = h.base_model()
+    roster = base["model"]["domains"][0]["products"][1]
+    roster["attributes"].append({"name": "roster", "column_name": "roster", "type": "STRING", "description": "Roster label", "foreign_key_to": "", "tags": ""})
+    vreq = ah.RawVREQ(vreq_id="VREQ-0001", intent="In the crew domain, rename the product attribute roster to duty_roster.", target="crew.roster",
+                      source_quote="[crew.roster] Rename the product roster to duty_roster.", source_chunk_id="c1")
+
+    def op(spec):
+        vs.register(ah, base, spec)
+        return ah._vreq_spec_det_ops(ah.vreq_spec(vreq), base)
+    assert op(vs.spec("VREQ-0001", "rename_product", ["crew.roster"], new_name="duty_roster")) == [("rename_product", "crew", "roster", "duty_roster")]
+    misread = op(vs.spec("VREQ-0001", "rename_product", ["crew.roster.roster"], new_name="duty_roster"))
+    assert misread == [] and not ah.vreq_spec(vreq)["interpretable"] and "needs a column action" in ah.vreq_spec(vreq)["reason"]
+    assert op(vs.spec("VREQ-0001", "rename_column", ["crew.roster.roster"], new_name="roster_label")) == [
+        ("rename_attribute", "crew", "roster", "roster", "roster_label")]
+
+
+class _RegistrySpark(h.FakeSpark):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.saved = {}
+
+    def createDataFrame(self, data, schema=None):
+        df = super().createDataFrame(data, schema)
+        spark, original = self, df.write.saveAsTable
+
+        def save(name):
+            spark.saved.setdefault(str(name).rsplit(".", 1)[-1], []).extend(list(data))
+            return original(name)
+
+        df.write.saveAsTable = save
+        return df
+
+
+def test_registry_rows_keep_the_business_name_when_tags_need_classification(monkeypatch):
+    """Live T1 261921636092291 and T2 490876358520740: every VOV wrote a second set of _metamodel.domain and product rows
+    with business '' (3 + 90 per lane 1 version), because the tag-classification block of stage 1 overwrote business_name
+    with config.get('BUSINESS_NAME', ''), a key no code sets, before the domain and product registration."""
+    root = h.base_model()
+    for d in root["model"]["domains"]:
+        for p in d["products"]:
+            p.pop("data_type", None)
+    spark = _RegistrySpark(h.base_physical_tables())
+    wv = h.flat_widgets(root, spark=spark)
+    wv["config"].pop("BUSINESS_NAME")
+    for name, value in (("write_to_dbfs", lambda *a, **k: None), ("read_file_for_ddl", lambda *a, **k: json.dumps(root)),
+                        ("WorkspaceClient", lambda *a, **k: h.FakeWorkspace({})), ("_check_physical_deployment_clash", lambda *a, **k: None)):
+        monkeypatch.setitem(ah.__dict__, name, value)
+    ah.step_create_physical_schema_stage1(wv)
+    assert spark.saved.get("domain") and spark.saved.get("product")
+    assert {r["business"] for r in spark.saved["domain"]} == {"skyline_air"}
+    assert {r["business"] for r in spark.saved["product"]} == {"skyline_air"}
+
+
+class _SqliteSpark:
+    def __init__(self, tables):
+        import sqlite3
+        self.db = sqlite3.connect(":memory:")
+        self.columns = {}
+        for fqn, (columns, rows) in tables.items():
+            name = fqn.replace("`", "").rsplit(".", 1)[-1]
+            self.columns[name] = columns
+            self.db.execute(f"CREATE TABLE {name} ({', '.join(columns)})")
+            self.db.executemany(f"INSERT INTO {name} VALUES ({', '.join('?' for _ in columns)})", rows)
+        self.catalog = types.SimpleNamespace(tableExists=lambda fqn: fqn.replace("`", "").rsplit(".", 1)[-1] in self.columns)
+
+    def table(self, fqn):
+        return types.SimpleNamespace(columns=self.columns[fqn.replace("`", "").rsplit(".", 1)[-1]])
+
+    def sql(self, query):
+        q = re.sub(r"[A-Za-z0-9_]+\._metamodel\.`?([a-z]+)`?", r"\1", query)
+        n = self.db.execute(q).rowcount
+        return types.SimpleNamespace(collect=lambda: [(n,)])
+
+    def rows(self, name):
+        return self.db.execute(f"SELECT business, version, model_scope FROM {name} ORDER BY version, business").fetchall()
+
+
+def test_setup_deletes_only_the_registry_rows_with_a_blank_business():
+    cols = ["business", "version", "model_scope", "domain"]
+    spark = _SqliteSpark({"c._metamodel.domain": (cols, [("", "51", None, "order"), (None, "51", None, "customer"), ("  ", "52", None, "order"),
+                                                        ("Vs514 Retail", "51", "mvm", "order"), ("", "52", "mvm", "order")]),
+                          "c._metamodel.product": (cols + ["product"], [("", "51", None, "order", "refund"), ("Vs514 Retail", "51", "mvm", "order", "refund")])})
+    deleted = ah._registry_drop_blank_business_rows(spark, "c._metamodel")
+    assert deleted == {"domain": 4, "product": 1}
+    assert spark.rows("domain") == [("Vs514 Retail", "51", "mvm")]
+    assert spark.rows("product") == [("Vs514 Retail", "51", "mvm")]
+    legacy = _SqliteSpark({"c._metamodel.domain": (["business", "version", "domain"], [("", "3", "order"), ("Retail", "3", "order")])})
+    assert ah._registry_drop_blank_business_rows(legacy, "c._metamodel") == {"domain": 1}
+    assert ah._registry_drop_blank_business_rows(_SqliteSpark({}), "c._metamodel") == {}
+
+
+def test_setup_runs_the_blank_business_cleanup():
+    src = h.notebook_concat_source()
+    setup = src[src.index("def step_setup_and_clean("):]
+    setup = setup[:setup.index("\ndef ", 10)]
+    assert "_registry_drop_blank_business_rows(spark, metamodel_db)" in setup
+    assert 'config.get("BUSINESS_NAME"' not in src
+
+
+def test_a_scoped_run_keeps_its_own_model_location():
+    """Live I1 183752569345786: v53 was registered at .../v1/mvm. Every VOV model.json carried the base's model.location
+    (the v1 folder), and a scoped run would splice it back from the base because location was frozen model metadata."""
+    base = h.base_model()
+    base["model"]["location"] = "/Volumes/skyline/_metamodel/vol_root/business/skyline_air/v1/mvm"
+    base["model"]["common_business_jargons"] = "AOG, MEL"
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    cur["model"]["location"] = "/Volumes/skyline/_metamodel/vol_root/business/skyline_air/v2/mvm"
+    result = fence.check(cur)
+    assert result.ok and "model_metadata_changed" not in {v["kind"] for v in result.violations}
+    fence.splice_and_verify(cur, h.LOG)
+    assert cur["model"]["location"].endswith("/v2/mvm")
+    leak = copy.deepcopy(base)
+    leak["model"]["common_business_jargons"] = "leak"
+    assert "model_metadata_changed" in {v["kind"] for v in fence.check(leak).violations}
+
+
+def test_model_json_records_the_folder_it_is_written_to(monkeypatch):
+    import test_v514_vibe_scope_passes as passes
+    queries, uploads = [], {}
+    rows = [dict(passes._BUSINESS_ROW, version="1", location="/Volumes/c/_metamodel/vol_root/business/airlines/v1/mvm")]
+
+    class _Files:
+        def delete(self, file_path):
+            uploads.pop(file_path, None)
+
+        def upload(self, file_path, contents, overwrite=True):
+            uploads[file_path] = contents.read()
+
+    cfg = passes._cfg()
+    cfg.update({"TARGET_VOLUME": "/Volumes/c/_metamodel/vol_root/business/airlines/v2/mvm", "MAIN_METAMODEL_TABLES": {"BUSINESS": "c._metamodel.business"}})
+    d, p, a, mv = passes._flat(passes._perturbed())
+    wv = {"spark": None, "logger": passes._Log(), "config": cfg, "business_name": "airlines", "operation": passes.VOV, "current_version": "2",
+          "base_version_for_review": "1", "model_scope": "mvm", "domains": d, "products": p, "attributes": a, "metric_views": mv,
+          "_metric_view_records": [dict(x) for x in mv], "metric_view_statements": [x["sql"] for x in mv], "_run_start_time": "2026-01-01T00:00:00",
+          "_widget_raw_values": {"business_name": "airlines", "operation": passes.VOV}, "_run_start_timestamp": 0}
+    monkeypatch.setitem(ah.__dict__, "WorkspaceClient", lambda *a, **k: types.SimpleNamespace(files=_Files()))
+    monkeypatch.setitem(ah.__dict__, "execute_sql", lambda spark, query, logger=None: (queries.append(query), [dict(r) for r in rows])[1])
+    passes._with_spark_type_stand_ins(lambda: ah.step_generate_data_model_json(wv))
+    root = json.loads(uploads[f"{cfg['TARGET_VOLUME']}/model.json"])
+    assert root["model"]["location"] == cfg["TARGET_VOLUME"]
+    business_query = next(q for q in queries if "c._metamodel.business" in q and "SELECT *" in q)
+    assert "ORDER BY TRY_CAST(version AS DOUBLE) ASC" in business_query
+
+
+def test_install_registers_the_folder_the_artifact_is_in():
+    src = h.notebook_concat_source()
+    deploy = src[src.index("def _run_deploy_model("):]
+    call = deploy[deploy.index("_mm_reg = _register_model_json_in_metamodel("):][:400]
+    assert "model_folder or data_model.get('location', '')" in call
+    assert "data_model.get('location', model_folder)" not in call
+
+
+def test_uninstall_reads_the_conventions_of_the_version_it_removes():
+    src = h.notebook_concat_source()
+    i = src.index("_undeploy_biz_row = spark.sql(")
+    query = src[i:i + 400]
+    assert "AND version = '{_escape_sql(model_version)}'{scope_sql}" in query
+
+
+def _mv_record(view, owner_domain, owner_product, source, exprs):
+    dims = "\n".join(f'    - name: "{e}"\n      expr: {e}' for e in exprs)
+    sql = (f"CREATE OR REPLACE VIEW `skyline`.`_metrics`.`{view}`\nWITH METRICS\nLANGUAGE YAML\nAS $$\n  version: 1.1\n"
+           f'  source: "{source}"\n  dimensions:\n{dims}\n  measures:\n    - name: "Rows"\n      expr: COUNT(1)\n$$')
+    return {"view_name": view, "owner_domain": owner_domain, "owner_product": owner_product, "sql": sql}
+
+
+def _mv_widgets(records):
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    return {"domains": d, "products": p, "attributes": a, "_metric_view_records": records,
+            "metric_view_statements": [r["sql"] for r in records]}
+
+
+def test_a_metric_view_reading_a_table_outside_the_model_is_repointed_to_its_owner():
+    """Live T1/T2 heads: lane 1 product_buyer and product_merchandise_buyer read product.buyer and lane 2 campaign_annotation
+    read campaign.campaign_note, tables that 5.2.0 and 5.2.3 renames left behind; no gate saw it and every version since carried them."""
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`",
+                       ["base_code", "DATE_TRUNC('quarter', base_code)", "COUNT(DISTINCT base_id)"])
+    fine = _mv_record("crew_member_kpis", "crew", "member", "`skyline`.`crew`.`member`", ["full_name"])
+    wv = _mv_widgets([stale, fine])
+    assert [i["view_name"] for i in ah._metric_view_source_issues(wv["domains"], wv["products"], wv["_metric_view_records"])] == ["crew_base_kpis"]
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"] and not reported
+    assert 'source: "`skyline`.`crew`.`base`"' in wv["_metric_view_records"][0]["sql"]
+    assert wv["metric_view_statements"][0] == wv["_metric_view_records"][0]["sql"]
+    assert wv["_metric_view_records"][1]["sql"] == fine["sql"] and wv["metric_view_statements"][1] == fine["sql"]
+
+
+def test_a_metric_view_is_not_repointed_when_its_columns_or_joins_do_not_fit():
+    missing_col = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_region"])
+    joined = _mv_record("crew_roster_kpis", "crew", "roster", "`skyline`.`crew`.`crew_roster`", ["roster_date"])
+    joined["sql"] = joined["sql"].replace("  dimensions:", "  joins:\n    - name: r\n      source: skyline.crew.crew_roster\n      on: source.roster_id = r.roster_id\n  dimensions:")
+    wv = _mv_widgets([missing_col, joined])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert not repaired and sorted(i["view_name"] for i in reported) == ["crew_base_kpis", "crew_roster_kpis"]
+    assert [r["sql"] for r in wv["_metric_view_records"]] == [missing_col["sql"], joined["sql"]]
+
+
+def test_a_frozen_metric_view_reading_a_stale_table_is_left_for_next_vibes():
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(h.base_model()), h.VOV, h.LOG))
+    frozen = _mv_record("fleet_aircraft_kpis", "fleet", "aircraft", "`skyline`.`fleet`.`plane`", ["tail_number"])
+    open_view = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code"])
+    wv = _mv_widgets([frozen, open_view])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"]
+    assert [i["view_name"] for i in reported] == ["fleet_aircraft_kpis"]
+    assert wv["_metric_view_records"][0]["sql"] == frozen["sql"]
+
+
+def test_static_analysis_reports_a_metric_view_whose_source_is_not_in_the_model():
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code"])
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    issues = ah.run_metamodel_static_analysis(d, p, a, {}, h.LOG, metric_views=[stale])["issues"]
+    hits = [i for i in issues if i["category"] == "metric_view_source_missing"]
+    assert len(hits) == 1 and hits[0]["severity"] == "error" and hits[0]["details"]["source"] == "crew.crew_base"
+    assert "metric_view_source_missing" not in {i["category"] for i in ah.run_metamodel_static_analysis(d, p, a, {}, h.LOG)["issues"]}
+
+
+def test_the_pipeline_repairs_metric_view_sources_after_the_checkpoint_and_next_vibes_reports_them():
+    """Live L1 502698880027571: the repair ran before the after_metric_views checkpoint, when a scoped run's records held
+    only the views it regenerated (0); the checkpoint restored all 87 afterwards, so the repair saw none of them."""
+    src = h.notebook_concat_source()
+    i = src.index('_vibe_scope_checkpoint_widgets("after_metric_views", widgets_values, logger)')
+    assert "_repair_metric_view_sources(widgets_values, logger)" in src[i:i + 400]
+    assert "_repair_metric_view_sources(widgets_values, logger)" not in src[i - 600:i]
+    nv = src[src.index("def step_generate_next_vibes("):]
+    nv = nv[:nv.index("\ndef ", 10)]
+    assert nv.count('metric_views=widgets_values.get("_metric_view_records")') == 2
+
+
+def _base_with_two_crew_views():
+    base = h.base_model()
+    roster = next(mv for mv in base["model"]["metric_views"] if mv["view_name"] == "crew_roster_kpis")
+    member = dict(roster, view_name="crew_member_kpis", owner_product="member",
+                  sql=roster["sql"].replace("crew_roster_kpis", "crew_member_kpis").replace("`crew`.`roster`", "`crew`.`member`"))
+    base["model"]["metric_views"].append(member)
+    return base
+
+
+def test_scope_facts_list_the_in_scope_metric_views_whose_sql_did_not_change():
+    """Live T2 490876358520740 re-created client_segment and S4 227253937276118 re-created media_schedule although
+    neither view changed: the scoped deploy re-created every in-scope view."""
+    base = _base_with_two_crew_views()
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(base), h.VOV, h.LOG)
+    cur = copy.deepcopy(base)
+    views = {mv["view_name"]: mv for mv in cur["model"]["metric_views"]}
+    views["crew_roster_kpis"]["sql"] = views["crew_roster_kpis"]["sql"].replace("`skyline`.", "`skyline_dev`.")
+    views["crew_member_kpis"]["sql"] = views["crew_member_kpis"]["sql"].replace('expr: "1"', "expr: full_name")
+    facts = fence.scope_facts(cur, "passed")
+    assert facts["unchanged_metric_views"] == ["crew_roster_kpis"]
+
+
+def test_the_scoped_deploy_keeps_an_unchanged_in_scope_view_that_is_installed():
+    base = _base_with_two_crew_views()
+    views = {mv["view_name"]: mv for mv in base["model"]["metric_views"]}
+    facts = dict(h.scoped_facts(), unchanged_metric_views=["crew_roster_kpis"])
+    plan = ah._scope_deploy_plan(facts, base, h.LOG, use_runtime=False)
+    spark = h.FakeSpark(h.base_physical_tables(), views=["crew_roster_kpis", "crew_member_kpis"])
+    statements = [views["crew_roster_kpis"]["sql"], views["crew_member_kpis"]["sql"]]
+    deploy, kept, _frozen = ah._vibe_scope_metric_view_deploy_set(plan, statements, list(views.values()), spark, h.LOG, h.CATALOG)
+    names = [ah._extract_metric_view_name_from_statement(s) for s in deploy]
+    assert "crew_roster_kpis" in kept and "crew_roster_kpis" not in names and "crew_member_kpis" in names
+    absent = ah._scope_deploy_plan(facts, base, h.LOG, use_runtime=False)
+    absent_spark = h.FakeSpark(h.base_physical_tables(), views=["crew_member_kpis"])
+    deploy2, kept2, _f = ah._vibe_scope_metric_view_deploy_set(absent, statements, list(views.values()), absent_spark, h.LOG, h.CATALOG)
+    assert "crew_roster_kpis" in [ah._extract_metric_view_name_from_statement(s) for s in deploy2] and "crew_roster_kpis" not in kept2
+
+
+class _CaptureAgent:
+    def __init__(self):
+        self.prompts = []
+
+    def _call_ai_query(self, prompt_name=None, prompt=None, **_kw):
+        self.prompts.append(str(prompt))
+        return {"evaluations": []}
+
+
+def _crew_fence():
+    ah.set_vibe_scope_runtime(ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), copy.deepcopy(h.base_model()), h.VOV, h.LOG))
+
+
+def test_passes_may_change_only_tables_inside_the_fence():
+    assert ah._vibe_scope_pass_may_change("fleet", "aircraft")
+    _crew_fence()
+    assert not ah._vibe_scope_pass_may_change("fleet", "aircraft")
+    assert ah._vibe_scope_pass_may_change("crew", "roster")
+    assert ah._vibe_scope_pass_may_change("crew", "brand_new_product")
+
+
+def test_the_fk_semantic_gate_reviews_only_fks_of_tables_the_run_may_change():
+    """Live T1 261921636092291: MV15 evaluated 529 cross-domain FKs model-wide, removed out-of-scope FKs the fence put back,
+    and removed performance.viewability_measurement.spec_id, a P3 link the run had just made."""
+    _d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a.append({"domain": "crew", "product": "base", "attribute": "home_aircraft_id", "foreign_key_to": "fleet.aircraft.aircraft_id",
+              "type": "BIGINT", "description": "Aircraft based here"})
+    cfg = {"PROMPT_VARIABLES": {"business_config": {"business": "skyline_air"}}}
+    _crew_fence()
+    agent = _CaptureAgent()
+    ah.run_fk_semantic_correctness_gate({"ai_agent": agent}, p, copy.deepcopy(a), cfg, h.LOG)
+    joined = "\n".join(agent.prompts)
+    assert "home_aircraft_id" in joined
+    assert "duty_member_id" not in joined and "home_base_id" not in joined and '"roster_id"' not in joined
+    ah.set_vibe_scope_runtime(None)
+    unfenced = _CaptureAgent()
+    ah.run_fk_semantic_correctness_gate({"ai_agent": unfenced}, p, copy.deepcopy(a), cfg, h.LOG)
+    assert "duty_member_id" in "\n".join(unfenced.prompts)
+
+
+def test_the_missing_fk_finder_investigates_only_tables_the_run_may_change(monkeypatch):
+    """Live T1: FK_FIND_MISSING_PROMPT renamed record_batch_id to record_batch_code on 96 frozen columns and dropped two P2
+    columns; every change was refused or put back by the fence."""
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a += [{"domain": "crew", "product": "base", "attribute": "depot_id", "foreign_key_to": "", "type": "BIGINT"},
+          {"domain": "fleet", "product": "aircraft", "attribute": "record_batch_id", "foreign_key_to": "", "type": "BIGINT"}]
+    seen = []
+    monkeypatch.setitem(ah.__dict__, "smart_worker_loop",
+                        lambda **kw: (seen.append(json.dumps(kw.get("prompt_vars"), default=str)), (False, None, []))[1])
+    _crew_fence()
+    ah._run_find_missing_fk_links(d, p, a, ah.build_pk_map(p, {}), h.LOG, object(), {})
+    joined = "\n".join(seen)
+    assert "depot_id" in joined and "record_batch_id" not in joined
+
+
+def test_autofix_renames_fk_columns_only_on_tables_the_run_may_change():
+    """Live T2 490876358520740: p075 renamed 13 FK columns of frozen tables and P73-I stripped 37 prefixes; the fence refused
+    every rename (settled-rename-refused)."""
+    d, p, a, _mv = ah.model_to_widgets_flat(h.base_model())
+    a += [{"domain": "fleet", "product": "aircraft", "attribute": "base_ref", "foreign_key_to": "crew.base.base_id", "type": "BIGINT", "tags": ""},
+          {"domain": "crew", "product": "base", "attribute": "aircraft_ref", "foreign_key_to": "fleet.aircraft.aircraft_id", "type": "BIGINT", "tags": ""}]
+    _crew_fence()
+    ah._pre_static_analysis_autofix(d, p, a, {}, h.LOG)
+    names = {(x["domain"], x["product"], x["attribute"]) for x in a}
+    assert ("fleet", "aircraft", "base_ref") in names
+    assert ("crew", "base", "aircraft_ref") not in names
+
+
+def test_the_renaming_passes_check_the_fence_before_they_rename():
+    src = h.notebook_concat_source()
+    for cause in ("pass:p016_ambiguous_fk_rename", "pass:p73i_prefix_strip"):
+        i = src.index(f'"{cause}")')
+        assert "_vibe_scope_pass_may_change(" in src[i - 2500:i], cause
+
+
+def _relation_req(text, target):
+    return ah.VibeRequirement(id="VREQ-002", original_text=text, intent="x", scope="relation", scope_targets=[target],
+                              verification_strategy="deterministic")
+
+
+def test_the_fk_check_matches_the_named_table_exactly():
+    """Live L3 744923690951768: 'Remove the foreign key on vendor_id from product.sku' was scored failed (FK still present)
+    after the deploy dropped it, because product.sku_location.vendor_id contains 'product.sku' as a substring."""
+    from test_v406_verifier_false_negatives import _bare_orch
+    orch = _bare_orch(ah.VibeOrchestrator)
+    orch.config = {}
+    domains = [{"domain": "product"}]
+    prods = [{"domain": "product", "product": p} for p in ("sku", "sku_location", "vendor")]
+    attrs = [{"domain": "product", "product": "sku", "attribute": "vendor_id", "foreign_key_to": ""},
+             {"domain": "product", "product": "sku_location", "attribute": "vendor_id", "foreign_key_to": "product.vendor.vendor_id"}]
+    catalog = ah.widgets_flat_to_model(domains, [dict(p, primary_key=f"{p['product']}_id") for p in prods], attrs)
+    unlink = vs.spec("VREQ-002", "remove_fk", ["product.sku.vendor_id"])
+    link = vs.spec("VREQ-002", "add_fk", ["product.sku.vendor_id"], fk_target="product.vendor")
+
+    def verdict(text, target, spec):
+        vs.register(ah, catalog, spec)
+        return orch._verify_deterministic(_relation_req(text, target), domains, prods, attrs)
+    removed = verdict("Remove the foreign key on vendor_id from product.sku.", "product.sku", unlink)
+    assert removed["status"] == "fulfilled", removed
+    linked = verdict("Link product.sku to product.vendor with a foreign key.", "product.sku", link)
+    assert linked["status"] == "failed", linked
+    attrs[0]["foreign_key_to"] = "product.vendor.vendor_id"
+    assert verdict("Link product.sku to product.vendor with a foreign key.", "product.sku", link)["status"] == "fulfilled"
+    still = verdict("Remove the foreign key on vendor_id from product.sku.", "product.sku.vendor_id", unlink)
+    assert still["status"] == "failed", still
+
+
+def test_a_metric_view_whose_measures_reference_other_measures_by_name_is_repointed():
+    """Live L4 1107281376750990: campaign_annotation was left for next_vibes because its derived measure
+    AGG(`Annotation Count CM`) - AGG(`Annotation Count PM`) was read as the columns annotation, count, cm and pm."""
+    stale = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["base_code", "COUNT(DISTINCT `base_id`)"])
+    stale["sql"] = stale["sql"].replace('  measures:\n    - name: "Rows"\n      expr: COUNT(1)',
+                                        '  measures:\n    - name: "Rows"\n      expr: COUNT(1)\n    - name: "Base Count CM"\n      expr: COUNT(base_id)\n'
+                                        '    - name: "Growth"\n      expr: (AGG(`Base Count CM`) - AGG(`Rows`)) / NULLIF(AGG(`Rows`), 0)')
+    wv = _mv_widgets([stale])
+    repaired, reported = ah._repair_metric_view_sources(wv, h.LOG)
+    assert [i["view_name"] for i in repaired] == ["crew_base_kpis"] and not reported
+    unknown = _mv_record("crew_base_kpis", "crew", "base", "`skyline`.`crew`.`crew_base`", ["`base_region`"])
+    assert ah._repair_metric_view_sources(_mv_widgets([unknown]), h.LOG)[0] == []
+
+
+def test_an_fk_the_engine_removed_is_marked_so_no_pass_re_links_it(monkeypatch):
+    """Live L4 1107281376750990: the engine removed campaign_annotation.campaign_id's FK as asked; the deterministic linker
+    re-linked it right after (ends_with match) and the LLM re-link added campaign_kpi_target_id, an FK nobody asked for."""
+    initial = h.base_model()
+    final = copy.deepcopy(initial)
+    roster = next(p for p in final["model"]["domains"][0]["products"] if p["name"] == "roster")
+    next(a for a in roster["attributes"] if a["name"] == "member_id")["foreign_key_to"] = ""
+    sched = next(p for d in final["model"]["domains"] for p in d["products"] if p["name"] == "scheduled_flight")
+    next(a for a in sched["attributes"] if a["name"] == "aircraft_id")["foreign_key_to"] = "fleet.maintenance.maintenance_id"
+    removed = ah._vov_engine_removed_fk_keys(initial, final)
+    assert removed == {("crew", "roster", "memberid"): "crew.member.member_id"}
+    d, p, a, _mv = ah.model_to_widgets_flat(final)
+    seen = []
+    monkeypatch.setitem(ah.__dict__, "smart_worker_loop",
+                        lambda **kw: (seen.append(json.dumps(kw.get("prompt_vars"), default=str)), (False, None, []))[1])
+    assert ah._vov_apply_user_fk_markers(a, removed, h.LOG) == (["crew.roster.memberid"], [])
+    ah._run_find_missing_fk_links(d, p, a, ah.build_pk_map(p, {}), h.LOG, object(), {})
+    assert "crew.roster.member_id" not in "\n".join(seen) and "- crew.roster: member_id" not in "\n".join(seen)
+    linked = copy.deepcopy(a)
+    ah._post_normalization_deterministic_fk_linker(d, p, linked, {}, h.LOG)
+    assert next(x for x in linked if (x["domain"], x["product"], x["attribute"]) == ("crew", "roster", "member_id"))["foreign_key_to"] == ""
+
+
+def test_the_engine_writeback_marks_the_removed_fks_and_the_llm_relink_skips_frozen_tables():
+    src = h.notebook_concat_source()
+    i = src.index("    new_domains, new_products, new_attrs, new_mvs = model_to_widgets_flat(result.final_model)")
+    block = src[i:i + 2500]
+    mark = block.index("_vov_apply_user_fk_markers(new_attrs, _vov_engine_removed_fk_keys(initial_model, result.final_model), logger)")
+    assert mark < block.index(".requested_snapshot(new_domains, new_products, new_attrs, new_mvs, logger)")
+    relink = src[src.index("def _pre_static_analysis_llm_relink("):]
+    relink = relink[:relink.index("\ndef ", 10)]
+    assert "_vibe_scope_pass_may_change(a_domain, a_product)" in relink
+
+
+_KPI_TARGET = "campaign.campaign_kpi_target.campaign_kpi_target_id"
+
+
+class _Rec:
+    def __init__(self):
+        self.lines = []
+
+    def info(self, msg):
+        self.lines.append(("info", msg))
+
+    def warning(self, msg):
+        self.lines.append(("warning", msg))
+
+
+def _col(name, fk="", pk=False, removed=""):
+    attr = {"name": name, "column_name": name, "type": "BIGINT", "foreign_key_to": fk, "description": f"The {name}.", "tags": "primary_key" if pk else ""}
+    if removed:
+        attr["user_removed_fk"] = removed
+    return attr
+
+
+def _unlinked_campaign(marked=True):
+    return {"model": {"domains": [{"name": "campaign", "products": [
+        {"name": "campaign_annotation", "primary_key": "campaign_annotation_id",
+         "attributes": [_col("campaign_annotation_id", pk=True), _col("campaign_kpi_target_id", removed=_KPI_TARGET if marked else ""), _col("note_text")]},
+        {"name": "campaign_kpi_target", "primary_key": "campaign_kpi_target_id",
+         "attributes": [_col("campaign_kpi_target_id", pk=True), _col("campaign_plan_id", fk="campaign.campaign_plan.campaign_plan_id")]},
+        {"name": "campaign_plan", "primary_key": "campaign_plan_id", "attributes": [_col("campaign_plan_id", pk=True)]},
+    ]}]}}
+
+
+def _product(model, name):
+    return next(p for d in model["model"]["domains"] for p in d["products"] if p["name"] == name)
+
+
+def _attr(model, product, name):
+    return next(a for a in _product(model, product)["attributes"] if a["name"] == name)
+
+
+def test_the_silo_repair_at_the_model_json_write_leaves_a_table_the_user_unlinked():
+    """Live L5 927266035211208: the user removed campaign_annotation.campaign_kpi_target_id's FK, the model.json export had
+    783 FKs, then G7 at the serialization boundary saw a siloed table and linked it again; the parity gate copied that FK
+    into memory, so v41 shipped 784 FKs while the requirement was reported applied."""
+    control = _unlinked_campaign(marked=False)
+    ah._v443_structural_hardening(control, h.LOG)
+    linked = [a["name"] for a in _product(control, "campaign_annotation")["attributes"] if a.get("foreign_key_to")]
+    assert linked, "without the marker G7 must still repair the silo, otherwise this test proves nothing"
+    model = _unlinked_campaign()
+    before = copy.deepcopy(_product(model, "campaign_annotation")["attributes"])
+    ah._v443_structural_hardening(model, h.LOG)
+    assert _product(model, "campaign_annotation")["attributes"] == before
+
+
+def test_the_silo_repair_does_not_wire_an_inbound_fk_into_a_table_the_user_unlinked():
+    def model(marked):
+        return {"model": {"domains": [{"name": "geo", "products": [
+            {"name": "region", "primary_key": "region_id", "attributes": [_col("region_id", pk=True), _col("region_name")]},
+            {"name": "city", "primary_key": "city_id", "attributes": [_col("city_id", pk=True)]},
+            {"name": "store", "primary_key": "store_id",
+             "attributes": [_col("store_id", pk=True), _col("city_id", fk="geo.city.city_id"), _col("region_id", removed="geo.region.region_id" if marked else "")]},
+        ]}]}}
+    control = model(False)
+    ah._v443_structural_hardening(control, h.LOG)
+    assert _attr(control, "store", "region_id")["foreign_key_to"] == "geo.region.region_id"
+    kept = model(True)
+    ah._v443_structural_hardening(kept, h.LOG)
+    assert _attr(kept, "store", "region_id")["foreign_key_to"] == ""
+
+
+def test_a_user_removed_fk_is_written_to_model_json_and_loaded_by_the_next_version():
+    flat = {"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "type": "BIGINT", "foreign_key_to": ""}
+    plain_keys = set(ah._modeljson_attr_obj(dict(flat)))
+    assert "user_removed_fk" not in plain_keys
+    written = ah._modeljson_attr_obj(dict(flat, user_removed_fk=_KPI_TARGET))
+    assert written["user_removed_fk"] == _KPI_TARGET and set(written) - plain_keys == {"user_removed_fk"}
+    model = _unlinked_campaign()
+    d, p, a, mv = ah.model_to_widgets_flat(model, quiet=True)
+    row = next(x for x in a if x["product"] == "campaign_annotation" and x["attribute"] == "campaign_kpi_target_id")
+    assert row["user_removed_fk"] == _KPI_TARGET and row["llm_fk_skip"] is True
+    assert row["llm_fk_skip_reason"].startswith(ah._USER_REMOVED_FK_REASON)
+    other = next(x for x in a if x["product"] == "campaign_annotation" and x["attribute"] == "note_text")
+    assert not {"user_removed_fk", "llm_fk_skip", "llm_fk_skip_reason"} & set(other)
+    nested = ah.widgets_flat_to_model(d, p, a, mv)
+    back = _attr(nested, "campaign_annotation", "campaign_kpi_target_id")
+    assert back["user_removed_fk"] == _KPI_TARGET and "llm_fk_skip" not in back
+    assert "user_removed_fk" not in _attr(nested, "campaign_annotation", "note_text")
+
+
+def test_the_engine_writeback_marks_a_removed_fk_and_clears_the_marker_when_a_requirement_links_it_again():
+    attrs = [
+        {"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "foreign_key_to": ""},
+        dict({"domain": "crew", "product": "roster", "attribute": "member_id", "foreign_key_to": "crew.member.member_id"},
+             **ah._user_removed_fk_fields("crew.member.member_id", flat=True)),
+        {"domain": "crew", "product": "roster", "attribute": "base_id", "foreign_key_to": "crew.base.base_id", "user_removed_fk": "crew.base.base_id",
+         "llm_fk_skip": True, "llm_fk_skip_reason": "KEEP_AS_IS: external code"},
+    ]
+    rec = _Rec()
+    marked, relinked = ah._vov_apply_user_fk_markers(attrs, {("campaign", "campaignannotation", "campaignkpitargetid"): _KPI_TARGET}, rec)
+    assert marked == ["campaign.campaignannotation.campaignkpitargetid"]
+    assert attrs[0]["user_removed_fk"] == _KPI_TARGET and attrs[0]["llm_fk_skip"] is True
+    assert sorted(relinked) == ["crew.roster.baseid", "crew.roster.memberid"]
+    assert not {"user_removed_fk", "llm_fk_skip", "llm_fk_skip_reason"} & set(attrs[1])
+    assert "user_removed_fk" not in attrs[2] and attrs[2]["llm_fk_skip"] is True and attrs[2]["llm_fk_skip_reason"] == "KEEP_AS_IS: external code"
+    assert [kind for kind, _ in rec.lines] == ["info", "info"]
+
+
+def test_the_model_json_write_clears_an_fk_a_pass_added_to_a_column_the_user_unlinked():
+    flat = [dict({"domain": "campaign", "product": "campaign_annotation", "attribute": "campaign_kpi_target_id", "foreign_key_to": _KPI_TARGET},
+                 **ah._user_removed_fk_fields(_KPI_TARGET, flat=True)),
+            {"domain": "campaign", "product": "campaign_kpi_target", "attribute": "campaign_plan_id", "foreign_key_to": "campaign.campaign_plan.campaign_plan_id"}]
+    rec = _Rec()
+    cleared = ah._enforce_user_removed_fks(ah._vov_flat_attr_rows(flat), rec, "memory")
+    assert cleared == [f"campaign.campaign_annotation.campaign_kpi_target_id -> {_KPI_TARGET}"]
+    assert flat[0]["foreign_key_to"] == "" and flat[1]["foreign_key_to"] == "campaign.campaign_plan.campaign_plan_id"
+    assert rec.lines[0][0] == "warning" and "alias=user-removed-fk-enforce" in rec.lines[0][1]
+    model = _unlinked_campaign()
+    _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] = _KPI_TARGET
+    assert len(ah._enforce_user_removed_fks(ah._vov_model_attr_rows(model), None, "model.json")) == 1
+    assert _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] == ""
+    clean = _Rec()
+    assert ah._enforce_user_removed_fks(ah._vov_model_attr_rows(model), clean, "model.json") == [] and clean.lines[0][0] == "info"
+    src = h.notebook_concat_source()
+    step = src[src.index("def step_generate_data_model_json("):]
+    step = step[:step.index("\ndef ", 10)]
+    assert step.index('_enforce_user_removed_fks(_vov_flat_attr_rows(widgets_values.get("attributes")), logger, "memory")') < step.index(
+        'attributes_for_export = [dict(a) for a in widgets_values.get("attributes", [])]')
+    assert step.index("_v443_structural_hardening(data_model, logger)") < step.index(
+        '_enforce_user_removed_fks(_vov_model_attr_rows(data_model), logger, "model.json")') < step.index(
+        "_vibe_scope_model_json_facts(data_model, widgets_values, logger)")
+
+
+def _flat_unlinked():
+    products = [{"domain": "d", "product": "a", "primary_key": "a_id"}, {"domain": "d", "product": "b", "primary_key": "b_id"},
+                {"domain": "d", "product": "c", "primary_key": "c_id"}]
+    attrs = [{"domain": "d", "product": "a", "attribute": "a_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"},
+             dict({"domain": "d", "product": "a", "attribute": "b_id", "foreign_key_to": "", "tags": ""}, **ah._user_removed_fk_fields("d.b.b_id", flat=True)),
+             {"domain": "d", "product": "b", "attribute": "b_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"},
+             {"domain": "d", "product": "c", "attribute": "c_id", "foreign_key_to": "", "is_primary_key": True, "tags": "primary_key"}]
+    return [{"domain": "d"}], products, attrs
+
+
+def test_the_silo_detectors_and_static_analysis_leave_out_tables_the_user_unlinked():
+    domains, products, attrs = _flat_unlinked()
+    assert ah._get_siloed_products_list(attrs, products, h.LOG) == ["d.c"]
+    assert ah._check_siloed_tables_after_cycle_break(products, attrs, h.LOG) == ["d.c"]
+    siloed = {i["details"]["table"] for i in ah.run_metamodel_static_analysis(domains, products, attrs, {}, h.LOG)["issues"] if i["category"] == "siloed_table"}
+    assert siloed == {"d.c"}
+    for a in attrs:
+        ah._vov_clear_user_removed_fk(a)
+    assert sorted(ah._get_siloed_products_list(attrs, products, h.LOG)) == ["d.a", "d.b", "d.c"]
+
+
+def test_the_flat_linkers_skip_a_column_the_user_removed_the_fk_from():
+    for marked in (False, True):
+        _domains, products, attrs = _flat_unlinked()
+        if not marked:
+            ah._vov_clear_user_removed_fk(attrs[1])
+        pk_map = ah.build_pk_map(products, {})
+        ah._run_deterministic_silo_pk_linking(["d.b"], products, attrs, pk_map, h.LOG, {})
+        assert attrs[1]["foreign_key_to"] == ("" if marked else "d.b.b_id")
+        _domains, products, attrs = _flat_unlinked()
+        if not marked:
+            ah._vov_clear_user_removed_fk(attrs[1])
+        assert ah._v458_assign_fk_if_acyclic(attrs[1], "d.b.b_id", attrs, h.LOG, "user-removed-fk-test") is (not marked)
+        assert attrs[1]["foreign_key_to"] == ("" if marked else "d.b.b_id")
+
+
+def test_every_pass_that_creates_a_link_honors_the_user_removed_marker():
+    src = h.notebook_concat_source()
+
+    def body(name):
+        start = src.index(f"def {name}(")
+        nxt = re.search(r"\n(?:def |class )", src[start + 10:])
+        return src[start:start + 10 + nxt.start()] if nxt else src[start:]
+
+    assert "def _v441_reviewer_finalization(" not in src
+    for name in ("_v443_structural_hardening", "_run_deterministic_silo_pk_linking", "_run_pairwise_silo_remediation",
+                 "run_in_domain_linking_parallel", "_run_deterministic_fk_linking_file_based", "_v458_assign_fk_if_acyclic", "_run_single_norm_batch",
+                 "_process_ambiguous_fk_batch"):
+        assert "_fk_user_removed(" in body(name), name
+    for name in ("_get_siloed_products_list", "_check_siloed_tables_after_cycle_break", "run_quality_assurance_checks", "run_metamodel_static_analysis",
+                 "_v443_structural_hardening"):
+        assert "_vov_user_unlinked_products(" in body(name), name
+    for name in ("_run_in_domain_linking_smart_worker", "_run_cross_domain_linking_smart_worker", "_run_find_missing_fk_links",
+                 "_post_normalization_deterministic_fk_linker", "_pre_static_analysis_llm_relink", "step_finalize_model_before_physical_schema"):
+        assert "llm_fk_skip" in body(name), name
+    for name in ("model_to_widgets_flat", "widgets_flat_to_model", "_modeljson_attr_obj"):
+        assert "_user_removed_fk_fields(" in body(name), name
+    assert src.count("_selffix_user_fk_markers(") == 3
+
+
+def test_a_selffixer_fix_cannot_link_a_column_the_user_unlinked_but_a_user_requirement_can():
+    fixer = object.__new__(ah.SelfFixer)
+    fixer.logger = h.LOG
+
+    def link(model, req, per_req_retries=2):
+        _attr(model, "campaign_annotation", "campaign_kpi_target_id")["foreign_key_to"] = _KPI_TARGET
+        return True, True, "linked"
+
+    def unlink(model, req, per_req_retries=2):
+        _attr(model, "campaign_kpi_target", "campaign_plan_id")["foreign_key_to"] = ""
+        return True, True, "unlinked"
+
+    fixer._fix_one_req = link
+    blocked = fixer._compute_one_req(_unlinked_campaign(), {"id": "sa-siloed_table-campaign.campaign_annotation"})
+    assert blocked["ok"] is False and blocked["evidence"].startswith("blocked:")
+    user = fixer._compute_one_req(_unlinked_campaign(), {"id": "VREQ-0001"})
+    attr = _attr(user["new_model"], "campaign_annotation", "campaign_kpi_target_id")
+    assert user["ok"] is True and attr["foreign_key_to"] == _KPI_TARGET and "user_removed_fk" not in attr
+    fixer._fix_one_req = unlink
+    removed = fixer._compute_one_req(_unlinked_campaign(), {"id": "VREQ-0002"})
+    assert _attr(removed["new_model"], "campaign_kpi_target", "campaign_plan_id")["user_removed_fk"] == "campaign.campaign_plan.campaign_plan_id"
+    serial = h.notebook_concat_source()
+    serial = serial[serial.index("                    _fk_before = _vov_fk_snapshot(model)"):]
+    assert serial.index("ok, _, evidence = self._fix_one_req(model, req, per_req_retries=per_req_retries)") < serial.index(
+        "if ok and _selffix_user_fk_markers(model, _fk_before, rid, self.logger)[0]:") < serial.index('per_req[rid]["fixed"] = ok')

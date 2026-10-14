@@ -25,7 +25,7 @@
 - [15. Vibe System Architecture](#15-vibe-system-architecture)
 - [16. DAG Enforcement Deep Dive](#16-dag-enforcement-deep-dive)
 - [17. Static Analysis Checks](#17-static-analysis-checks)
-- [18. Complete Widget Reference (29 Widgets)](#18-complete-widget-reference-29-widgets)
+- [18. Complete Widget Reference (30 Widgets)](#18-complete-widget-reference-30-widgets)
 - [19. Output Artifacts (Complete Reference)](#19-output-artifacts-complete-reference)
 - [20. Error Handling Patterns](#20-error-handling-patterns)
 - [22. Surgical Mode Architecture (v0.4.0 — v0.5.1)](#22-surgical-mode-architecture-v040--v051)
@@ -191,7 +191,7 @@ The pipeline executes a series of stages, each with a specific purpose, quality 
 ### Stage 2: Interpreting Instructions (Vibe mode only)
 - **Purpose:** Parse natural-language vibes into structured action plan
 - **Duration:** 10-30 seconds
-- **What happens:** The vibe text is analyzed and translated into 190+ specific actions. Hard constraints are extracted ("do not", "must not", "never" -> forbidden operations). Mode is classified (surgical/holistic/generative) based on keywords.
+- **What happens:** An LLM reads the vibe text into discrete requirements and classifies the mode (surgical/holistic/generative). A second LLM call then states, for each requirement, exactly what it changes as a structured spec (action, targets, fields, values, counts, policies, closed value lists). Every deterministic pass reads those specs; no code reads the vibe text with keywords or regex. A requirement the LLM cannot read after retries is marked not interpreted and reported, never guessed. The same parse states which cleanup changes the user permits or forbids (removing, renaming or merging domains and tables, junction tables, enrichment, reduction), and every cleanup pass reads those permissions. When a long vibe with several heading sections comes back with two requirements or fewer, each section is parsed on its own. A spec can also clear metadata fields, merge a table into another (its missing columns and every foreign key move to the target), retype several columns with a type each, or set a structural rule such as a primary key on every table, resolvable foreign keys or no foreign key cycles. In a vibe that mixes PRIORITY blocks with the user's own lines, with or without the merge sentinels, every line outside the PRIORITY and REVIEWER blocks is read as the user's requirements, except the lines copied from the parent version's next_vibes, which setup reads as generated text (agent 5.3.3). A foreign key references the parent's primary key, a Unity Catalog constraint, so a spec whose target names another column is not interpreted and says why. A requirement that states two counts lists both and is verified on both, and a requirement that asks for reports names one metric view per report: the KPI-first step must produce each and the verifier checks they exist. When the vibe also fixes an exact list of views, that list takes in every view such a requirement names, so the exact-count trim cannot drop it (`mv-exact-spec-union`). A requested description is checked by its words, ignoring case, punctuation and articles. A requirement that gives a view a query parameter or writes out a measure records both in the spec (`metric_view_parameters`, `metric_view_measures`); KPI-first is told each one (`kpi-first-spec-details`), and the spec verifier and the physical audit read the view's YAML for them (`gt-mv-detail-verify`). The parse is told to copy SQL expressions and quoted values exactly as the user writes them, and KPI-first is asked for each written measure as valid Databricks SQL with its string literals quoted, since the KPI-first prompt carries the specs, not the raw vibe. A metric-view requirement names its views and needs no table target. A drop of a metric view is verified by the view's absence (`gt-mv-drop-verify`). A corrective action whose spec the LLM could not read is never applied. A requirement that only states a rule carries the action other; a spec that pairs the primary-key rule with set_primary_key and names no column is read as the rule.
 - **Quality check:** Constraint extraction, requirement parsing
 - **Progress budget:** 1.0%
 
@@ -353,9 +353,10 @@ sequenceDiagram
 - **Duration:** 30 seconds - 5 minutes
 - **Quality check:** No nested aggregates, max 16 dimensions, max 12 numeric measures, ineligible column filtering
 - **Progress budget:** 2.0%
-- **Note:** Can emit stage_warning on partial failure
+- **Note:** Can emit stage_warning on partial failure. A view that installs only as a row-count fallback, or with every measure reduced to COUNT(1), is not a delivered view (agent 5.3.3): the fallback log names the error the designed view hit (`mv-fallback-emit-live`), and no verifier counts it (`gt-mv-fallback-not-delivered`), so a requirement for that view is partial or failed with the reason. Unity Catalog rejects a currency format without a currency code, so a measure the model formats as currency without one is written as a number format, a date format always carries its date format and a date-time format both its date and time formats (both are required), and a dimension gets only a date, date-time or boolean format, never a numeric one, because a numeric format on a STRING column makes the view invalid. A DATE or TIMESTAMP query parameter defaults to a quoted date or to a function call such as `current_date()`; a bare `CURRENT_DATE` or a quoted function name makes the view invalid.
 
 ### Stage 16: Generating Sample Data (when configured)
+- **Status:** Not run by agent 4.8.0 or later. The standalone model installer (`model-installer/data-model-installer.ipynb`) generates sample data instead. The rest of this entry describes older agents.
 - **Purpose:** Generate synthetic records respecting FK relationships
 - **Duration:** 1-15 minutes
 - **Quality check:** Exact record count, sequential PK from 10001, FK random from [10001, 10001+N-1], regex compliance, 3-letter country codes, no Lorem Ipsum, realistic business data
@@ -686,22 +687,22 @@ erDiagram
 ### Diagram: Folder Layout
 
 ```
-/Volumes/{catalog}/_metamodel/vol_root/
-└── business/
-    └── {business}/
-        ├── mvm_v1/
-        │   ├── model.json
-        │   ├── domains/ products/ attributes/ fk_links/
-        │   ├── artifacts/ (README, Excel, DBML, ontology)
-        │   ├── samples/ (CSV per table)
-        │   └── next_vibes.txt
-        └── ecm_v1/
-            ├── model.json
-            ├── domains/ products/ attributes/ fk_links/
-            ├── artifacts/ (README, Excel, DBML, ontology)
-            ├── samples/ (CSV per table)
-            └── next_vibes.txt
+/Volumes/{metamodel_catalog}/_metamodel/vol_root/
+├── business/
+│   └── {business}/
+│       └── v{N}/
+│           ├── mvm/
+│           │   ├── model.json
+│           │   ├── readme.md
+│           │   ├── schemas/ metrics/ docs/ diagram/ ontology/
+│           │   └── vibes/ (current_vibes.txt, next_vibes.txt)
+│           └── ecm/
+│               └── (same layout)
+└── logs/
+    └── {business}/v{N}/{scope}/ (info and error logs)
 ```
+
+> `{metamodel_catalog}` is widget 10; blank means the installation catalog. The layout is `v{N}/{scope}/` since agent 3.5.2. To apply a version's suggestions in a later `vibe modeling of version`, pass `.../business/{business}/v{N}/{scope}/vibes/next_vibes.txt` in widget 08. A PRIORITY that asks for a rename the run already applied, or restates an applied domain or product rename under the old name, is dropped from `next_vibes.txt` (`next-vibes-landed-drop`, agent 5.2.9).
 
 ### Diagram: Operation State Machine
 
@@ -722,12 +723,19 @@ stateDiagram-v2
 | Operation | Purpose | Key Requirements |
 |---|---|---|
 | new base model | Generate brand-new model | Business name + description |
-| vibe modeling of version | Apply NL refinements | Version + vibes |
+| vibe modeling of version | Apply NL refinements | Version (blank = latest version that is not a Dry Run) + vibes (required) |
 | shrink ecm | Convert ECM to MVM | Version + catalog |
 | enlarge mvm | Expand MVM to ECM | Version + catalog |
 | install model | Deploy to UC | Model JSON file (widget 11) + catalog |
 | uninstall model version | Remove physical artifacts | Business + version + catalog |
-| generate sample data | Generate synthetic records | Model JSON file (widget 11) + catalog |
+
+Sample data is no longer an agent operation. Since agent 4.8.0 the standalone model installer (`model-installer/data-model-installer.ipynb`) generates it.
+
+**Head version and Dry Runs.** The head of a business and scope is its highest-numbered completed version whose `deploy_status` is not `dry_run` and whose domains are registered in `_metamodel.domain`. A run that fails still ends its session at 100%, but it never registers its domains, so it is never head, never the default base and never the latest installed version. A registry row that is touched later, for example by a refused install, does not move the head. A Dry Run version is a draft: it never counts as head, and a `vibe modeling of version` with a blank widget 04 never picks it as its base. A scoped run (widget 06a) is refused when its base is behind the head; see [Vibe Scope Semantics](#vibe-scope-semantics-widget-06a).
+
+**Registry rows and locations.** From agent 5.3.3 setup deletes the `_metamodel.domain` and `_metamodel.product` rows whose business is blank (`registry-blank-business-cleanup`). Stage 1 of earlier agents wrote such a nameless second set for every version whose tags needed classification, because the classification block overwrote the business name. `model.location` in `model.json` is the folder the file is written to, and `install model` registers the folder its artifact is in, so the registry row of an installed version points at that version's folder (an install of a VOV artifact used to register the folder of version 1). The reads of the business row for `model.json`, the README and the Excel export take the rows in version order, and `uninstall model version` reads the conventions of the version it removes. An install of a version into a catalog other than the one the version is already deployed in adds its own business and domain rows and keeps the other deployment's rows, stamping that deployment's catalog onto its domain rows (`install-registry-keeps-deployment`, agent 5.3.3); before 5.3.3 the install replaced them, so the version's own schemas lost their owner and the next VOV into that catalog was refused. A failed install then removes only the rows it wrote.
+
+**Catalog teardown.** At setup, `vibe modeling of version`, `shrink ecm` and `enlarge mvm` clear the old schemas of this business from the target catalog before the new version is deployed. The teardown drops only schemas the business owns, that is, schemas a version of this business that is not a Dry Run registered in `_metamodel.domain`. It never runs on a Dry Run or in a scoped run. If the new model needs a schema name that already exists and is not owned by this business, a Full Run is refused and nothing is dropped; a Dry Run only warns.
 
 ### Resize Rules
 **Shrink (ECM->MVM):**
@@ -737,11 +745,15 @@ stateDiagram-v2
 4. Consolidate domains
 5. Verify within +/-tolerance%
 - MUST NOT invent new domains or products
+- Every base metric view whose tables survive is carried (agent 5.3.3, `resize-mv-carry`)
 
 **Enlarge (MVM->ECM):**
 - ALL existing domains MUST be retained
 - ALL existing products MUST be retained
 - Can only ADD new products and domains
+- Every base metric view is carried (agent 5.3.3, `resize-mv-carry`)
+- A new domain keeps the tables the enlarge plan lists; only a new domain the plan leaves empty gets generated tables (agent 5.3.3, `resize-seed-plan-kept`). Before 5.3.3 every new domain also got a full generated set on top of its planned tables, so an enlarge planned at 107 tables shipped 212.
+- An enlarge does not re-read the vibe the model was created with; size and domain limits for the enlarge go in the enlarge run's own vibe (decision 2B)
 
 ---
 
@@ -759,9 +771,13 @@ Safety rules:
 - System/audit columns ineligible as dimensions
 - PK and boolean columns ineligible as measures
 
+The global KPI-first views are generated first and the per-domain step adds its views next to them; it replaces only a view it regenerates under the same name (agent 5.3.3, `mv-gapfill-merge`). Before agent 5.3.3 the per-domain step replaced the whole list, so no KPI-first view, including the report views a user asked for, reached the model unless the vibe fixed an exact view count. A shrink or an enlarge reads the base model's metric views before generation and carries every view whose tables survive (`resize-mv-carry`); renamed columns are rewritten from the rename ledger as in the surgical path. A measure, dimension or filter may use a query parameter the view declares: the column checks at render and at install accept the declared parameter names, which Unity Catalog takes by bare name (`:name` fails). A conditional aggregate such as `SUM(CASE WHEN ... THEN amount ELSE 0 END)` keeps its numeric type; only a boolean argument is cast to INT. A bare date unit in `date_trunc` or `date_part` is quoted (`mv-date-unit-quote`), because Databricks reads a bare first argument there as a column; a column of that name is left alone. A window entry without an `order` is not emitted. A view left with no designed measure carries the row-count fallback comment (`mv-render-rowcount-placeholder`), so the install counts it as a fallback and no verifier counts it as delivered.
+
 ---
 
 ## 10. Sample Data Generation Rules
+
+Since agent 4.8.0 the agent writes no sample data; the standalone model installer (`model-installer/data-model-installer.ipynb`, widgets `9. generate samples` and `10. sample rows`) does. The rules below describe the agent's generator before 4.8.0.
 
 - Exact N records per table (configurable)
 - BIGINT PKs: sequential from 10001, never NULL
@@ -884,7 +900,7 @@ The agent uses 49 specialized LLM prompt templates. Each prompt is mapped to a m
 | # | Prompt Name | Model Type | Size | Temp | Purpose |
 |---|---|---|---|---|---|
 | 29 | TAG_CLASSIFY_PROMPT | worker | small | 0 | Classify attributes with PII tags and data classification levels |
-| 30 | SAMPLE_GENERATE_PROMPT | worker | tiny | 0.5 | Generate synthetic sample records per table, respecting FK relationships and regex patterns |
+| 30 | SAMPLE_GENERATE_PROMPT | worker | tiny | 0.5 | Generate synthetic sample records per table, respecting FK relationships and regex patterns (removed in agent 4.8.0) |
 | 31 | DOMAIN_METRICS_PROMPT | worker | large | 0 | Generate Databricks metric view definitions (dimensions, measures, filters) per domain |
 | 32 | SUBDOMAIN_ALLOCATE_PROMPT | worker | large | 0 | Group products within each domain into semantic subdomains |
 | 33 | VIBE_CREATE_NEXT_PROMPT | thinker | large | 0.3 | Generate next-vibe recommendations based on static analysis findings and model health |
@@ -960,9 +976,9 @@ The pipeline runs many LLM calls in parallel (product generation across domains,
 When a user provides natural-language vibes, the system follows a six-phase lifecycle:
 
 1. **Parse** — Analyze the vibe text into structured requirements: each with an intent (drop, create, rename, merge, etc.), scope (model, domain, product, attribute), mode classification, and priority.
-2. **Plan** — Route each requirement to an action primitive, build an execution plan respecting mutation budgets and hard constraints extracted from phrases like "do not", "must not", "never".
+2. **Plan** — Route each requirement to an action primitive and build an execution plan within the mutation budgets and the cleanup permissions the LLM read from the vibe.
 3. **Execute** — Apply mutations within the budget, respecting constraints. Each pipeline step is wrapped to pin requirements and track progress.
-4. **Validate** — Run verification checks against the modified model to confirm each requirement was fulfilled.
+4. **Validate** — Run verification checks against the modified model to confirm each requirement was fulfilled. After a deploy the physical ground-truth audit re-scores them from Unity Catalog and is authoritative; Unity Catalog stores no primary key or steward, so the audit takes those from the model, and it reads a table's COMMENT as its description (`gt-table-comment`).
 5. **Remediate** — Auto-fix failed verifications where possible.
 6. **Score** — Compute an overall fulfillment score and report any unfulfilled requirements.
 
@@ -1005,6 +1021,16 @@ flowchart TD
 ### Vibe Parsing and Execution
 
 The vibe system translates natural-language instructions into structured model modifications. A single vibe session can contain multiple requirements spanning different scopes and intent types.
+
+### Renames
+
+A rename changes a product or column in place. Agent 5.1.4 or later holds three rules:
+
+- **In place.** After a rename the old name is gone and the new name exists. A renamed product's primary key follows the new name, and every `foreign_key_to` that pointed at the old name points at the new one. A change that adds the new product and leaves the old one behind is not a rename.
+- **Post-condition.** Wherever a change is accepted (the LLM sandbox, the deterministic path, the parallel merge and SelfFixer), a post-condition checks the rule above. A change that fails it is rejected and retried with an in-place hint, and is never counted as applied.
+- **Heading-anchored directives.** The model app compiles feedback under headings (`## Domain: d`, `### Subdomain: s`, `#### Product: p`, `##### Attribute: a`). A bullet such as `- (medium) Rename to new_name.` renames the product or attribute named by the nearest heading above it, even though the bullet itself never names it.
+
+The static gate `rename_leftover_original` (QGATE-RUL-018, see [Quality Gates](quality-gates.md#11-scope-fence-and-rename-gates)) catches an old-and-new pair that still reaches the model. Every pass that renames or moves a product, column or domain records it in the same rename ledger, so the gate, the entity_changes report and the scope fence all see the rename whichever pass made it.
 
 ### Rollout Modes
 
@@ -1080,7 +1106,7 @@ Numbered catalog of every action name the vibe system accepts, with the entity t
 | 44 | `set_nullable` | A | Set attribute nullable flag |
 | 45 | `set_default_value` | A | Set attribute default value |
 | 46 | `set_table_type` | P | Set product `data_type` (master / transactional / reference / …) |
-| 47 | `generate_samples` | M | Generate synthetic sample CSV data per table |
+| 47 | `generate_samples` | M | Generate synthetic sample CSV data per table (removed in agent 4.8.0; the model installer generates sample data) |
 | 48 | `generate_readme` | M | Generate README.md for the model |
 | 49 | `generate_data_model_json` | M | Regenerate model.json |
 | 50 | `generate_ontology` | M | Emit RDF/Turtle ontology file |
@@ -1204,7 +1230,7 @@ All of the following action names are accepted in vibe text. They route to the l
 `set_data_retention`, `set_data_owner`, `set_update_frequency`, `set_table_comment`, `mark_as_pii`, `mark_as_sensitive`, `mark_as_encrypted`, `mark_as_deprecated`, `set_fk_cardinality`, `set_fk_description`, `add_check_constraint`, `set_unique_constraint`, `classify_table_tier`, `set_nullable`, `set_default_value`, `set_table_type`
 
 **Artifact generation:**
-`generate_samples`, `generate_readme`, `generate_data_model_json`, `generate_ontology`, `generate_dbml`, `generate_release_notes`, `generate_excel`, `generate_data_dictionary`, `generate_test_cases`, `generate_erd_diagram`, `export_model_report`
+`generate_readme`, `generate_data_model_json`, `generate_ontology`, `generate_dbml`, `generate_release_notes`, `generate_excel`, `generate_data_dictionary`, `generate_test_cases`, `generate_erd_diagram`, `export_model_report`
 
 **Query / report actions:**
 `find_tables_with_column`, `find_unlinked_columns`, `list_all_fks`, `list_all_pks`, `list_all_tags`, `count_entities`, `search_model`, `report_domain_summary`, `report_model_stats`, `impact_analysis`, `analyze_fk_coverage`, `check_model_health`, `validate_model`, `estimate_storage`, `compare_domains`, `compare_tables`, `find_duplicate_column_names`, `find_similar_tables`, `find_merge_candidates`, `find_columns_by_pattern`, `find_by_tag`, `validate_required_columns`, `validate_fk_targets`, `find_tables_without_column`, `evaluate_column_overlap`, `cross_domain_column_audit`
@@ -1294,10 +1320,13 @@ The agent performs comprehensive code-based validation of the model without LLM 
 | **Missing PKs** | Products without a primary key column | Every table must have exactly one PK |
 | **FK cycles** | Circular dependency chains in the FK graph | DAG topology is mandatory (see Section 16) |
 | **Orphaned domain references** | FKs pointing to products in domains that no longer exist | Prevents stale references after domain removal |
+| **Leftover rename original** (`rename_leftover_original`) | An old product that survived next to its renamed copy in the same domain | A rename must replace the product, not duplicate it (see [Renames](#renames)) |
+| **Scope fence** (`vibe_scope_*`, 5 categories) | Changes outside the `vibe_scope` widget's scope in a scoped run | The fence repairs them itself; see [Quality Gates](quality-gates.md#11-scope-fence-and-rename-gates) |
+| **Metric view source** (`metric_view_source_missing`, agent 5.3.3) | A metric view whose source table is not a table of the model, for example one a rename left behind | The view reads data the model no longer describes; a deterministic repair re-points it to its owner's table when every column it uses is there, otherwise the finding goes to next_vibes |
 
 ---
 
-## 18. Complete Widget Reference (29 Widgets)
+## 18. Complete Widget Reference (30 Widgets)
 
 Widgets are the Databricks notebook input parameters that configure each agent run. Below is the complete reference:
 
@@ -1306,34 +1335,114 @@ Widgets are the Databricks notebook input parameters that configure each agent r
 | 01 | business_name | Name of the business being modeled | Text |
 | 02 | business_description | Detailed description of the business (processes, products, org structure) | Text |
 | 03 | operation | Pipeline operation to execute (see Section 8) | Dropdown |
-| 03a | run_type | `Full Run` (default; deploy to Unity Catalog) or `Dry Run` (build the model and all volume artifacts, including the runnable `schemas/*.sql` DDL, but skip the UC deploy). Applies to generative ops only; install/uninstall always deploy | Dropdown |
-| 04 | model_version | Version identifier for the model (e.g., v1, v2) | Text |
+| 03a | run_type | `Full Run` (default; deploy to Unity Catalog) or `Dry Run` (build the model and all volume artifacts, including the runnable `schemas/*.sql` DDL, but skip the UC deploy). Applies to generative ops only; install/uninstall always deploy. A Dry Run version is registered with `deploy_status = dry_run` and never counts as the head version. A Dry Run skips the physical ground-truth audit, because Unity Catalog still holds the previous version; its adherence comes from the model verdicts | Dropdown |
+| 04 | model_version | Version to build on (`vibe modeling of version`, `shrink ecm`, `enlarge mvm`) or to uninstall: blank or `1` to `100`. A `vibe modeling of version` with a blank value builds on the latest completed version that is not a Dry Run | Dropdown |
 | 05 | data_model_scopes | MVM or ECM scope selection | Dropdown |
-| 06 | business_domains | Optional: pre-specified domain names (comma-separated) | Text |
-| 07 | org_divisions | Optional: custom division names and allocation | Text |
-| 08 | model_vibes | Natural-language refinement instructions — inline text (max 2,000 chars) or file path to `.txt` on a UC Volume | Multiline Text |
+| 06 | business_domains | Domain names, comma-separated. With vibe_scope `All Domains`: optional pre-specified domains, kept verbatim. Under a scope: required, and it is the scope list, `d1, d2` for `Some Domains` or `d1.s1, d2.s2` (domain.subdomain) for `Some Subdomains` | Text |
+| 06a | vibe_scope | `All Domains` (default), `Some Domains` or `Some Subdomains`. A scoped value limits a `vibe modeling of version` or `new base model` run to the entries in `business_domains`; other operations reject it. A scoped `vibe modeling of version` is refused when its base is behind the head version. See [Vibe Scope Semantics](#vibe-scope-semantics-widget-06a) | Dropdown |
+| 07 | org_divisions | Divisions to include: `Operations`, `Operations and Business` (default) or `Operations, Business and Corporate` | Dropdown |
+| 08 | model_vibes | Natural-language refinement instructions: inline text (max 2,000 chars) or file path to `.txt` on a UC Volume. Required for `vibe modeling of version`: an empty value fails preflight. It is the only instruction source: a version's `vibes/next_vibes.txt` is never applied automatically, only when this widget names its path | Multiline Text |
 | 09 | deployment_catalog | Unity Catalog target catalog for physical deployment | Text |
-| 09a | cataloging_style | Catalog naming strategy: one_catalog, per_division, per_domain | Dropdown |
+| 09a | cataloging_style | Catalog layout: `One Catalog` (default), `Catalog per Division` or `Catalog per Domain` | Dropdown |
 | 09b | catalog_prefix | Optional prefix applied to catalog names | Text |
 | 09c | catalog_suffix | Optional suffix applied to catalog names | Text |
-| 10 | generate_samples | Whether to generate sample data (true/false) | Dropdown |
+| 10 | metamodel_catalog | Catalog that holds the `_metamodel` registry schema and its `vol_root` volume (model.json, logs, next_vibes). Blank = the installation catalog (widget 09). Physical tables always land in the installation catalog | Text |
 | 11 | context_file | Path to a previously generated model.json file (for install/continuation operations) | Text |
-| 12 | naming_convention | Naming convention: snake_case, camelCase, PascalCase | Dropdown |
-| 13 | primary_key_suffix | PK column suffix (default: _id) | Text |
+| 12 | naming_convention | Naming convention: `snake_case` (default), `camelCase`, `PascalCase` or `SCREAMING_CASE` | Dropdown |
+| 13 | primary_key_suffix | PK column suffix (default: `_id`). Used for every primary key and FK column name the agent writes or repairs | Text |
 | 15 | schema_prefix | Optional prefix applied to schema names | Text |
 | 15a | schema_suffix | Optional suffix applied to schema names | Text |
-| 16 | tag_prefix | Optional prefix applied to UC tags | Text |
+| 16 | tag_prefix | Optional prefix applied to UC tags (default `dbx_`) | Text |
 | 16a | tag_suffix | Optional suffix applied to UC tags | Text |
-| 17 | table_id_type | PK data type: BIGINT, STRING (UUID), INT | Dropdown |
-| 18 | boolean_format | Boolean representation: true/false, 1/0, yes/no, Y/N | Dropdown |
-| 19 | date_format | Date format pattern (e.g., yyyy-MM-dd) | Text |
-| 20 | timestamp_format | Timestamp format pattern (e.g., yyyy-MM-dd HH:mm:ss) | Text |
-| 21 | classification_levels | Data classification levels (comma-separated) | Text |
-| 22 | housekeeping_columns | Columns to add to every table (e.g., created_at, updated_at) | Text |
-| 23 | history_tracking_columns | SCD/temporal columns to add to every table | Text |
+| 17 | table_id_type | PK data type: `BIGINT` (default), `INT`, `LONG` or `STRING` | Dropdown |
+| 18 | boolean_format | Boolean representation: `Boolean (True/False)` (default), `Int (0/1)` or `String (Y/N)` | Dropdown |
+| 19 | date_format | Date format pattern: `yyyy-MM-dd` (default), `dd/MM/yyyy`, `MM/dd/yyyy`, `yyyy/MM/dd` or `dd-MM-yyyy` | Dropdown |
+| 20 | timestamp_format | Timestamp format pattern, e.g. `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` (default) or `yyyy-MM-dd HH:mm:ss` | Dropdown |
+| 21 | classification_levels | Data classification levels as `key=label` pairs (comma-separated) | Text |
+| 22 | housekeeping_columns | `Yes` adds audit columns (e.g. created_at, updated_at) to every table; default `No` | Dropdown |
+| 23 | history_tracking_columns | `Yes` adds SCD/temporal columns to every table; default `No` | Dropdown |
 | 24 | vibe_session_id | Unique session identifier for progress tracking | Text |
 
-Note: Widget 14 is intentionally skipped in the numbering.
+Note: Widget 14 is intentionally skipped in the numbering. Widget 10 used to be `generate_samples`; since agent 4.8.0 the standalone model installer generates sample data.
+
+**Conventions in `vibe modeling of version`:** the base model's `model_conventions` win over the convention widgets (12, 13, 15, 16, 17, 18, 19, 20 and 21). An `All Domains` run uses a widget value only where the base leaves that convention empty; a scoped run keeps the base conventions exactly. The run logs a WARN (`vov-base-conventions-win`) that lists every widget value it ignored, with the base value that won. To change a convention, edit `model_conventions` in the base model.json, or ask for the change in the vibes of an `All Domains` run.
+
+### Vibe Scope Semantics (Widget 06a)
+
+`vibe_scope` sets how much of the model a run may change. `All Domains` (the default) puts no widget fence on the run. `Some Domains` and `Some Subdomains` fence the run to the entries in `business_domains`. The fence is deterministic code. It checks every change when it is made, and again before `model.json` is written. Every LLM prompt also carries the scope, but only to cut wasted retries.
+
+**`All Domains` VOV changes only what the vibe names (agent 5.1.6):** right after the requirements are extracted, the run builds a fence of mode `requested` from their targets (`vov-strict-requested`). A product the vibe names (at any depth, `d.p` or `d.p.column`) is in scope, a domain named on its own puts that whole domain in scope, and a bare name puts every product with that name in scope (or admits a new product of that name). New names that a requirement creates through a rename, a move or a split are admitted too. Every other product of the base model is frozen with all its columns, so the same machinery as a scoped run applies: the engine gate, the P1 to P5 deltas, the checkpoints and the `model.json` splice. Autofix and finalize passes cannot change any base product in this mode, not even a named one; they still shape the products the run creates. Static-analysis findings on base entities go to `next_vibes` instead of the repair loop. A requirement whose target is a set, the whole model or empty (`every product`, `Model-wide`) keeps the fence on (agent 5.3.3, decision 6A, `vov-strict-requested-wide`; a single word such as `model` or `all` names the whole model unless the model has a domain or table of that name): every base domain is open to the VOV engine, and after the engine every base product is frozen at its engine result, so no later pass (autofix, naming, the collision rename) changes a base product and the deploy replaces only the tables the engine changed. A24 asked for a check that needed no change; with the fence off, the passes had changed 88 of 90 products and the deploy replaced 89 of 90 tables. From agent 5.3.3 (decision 2A, `vibe-scope-open-fields`) a set-target requirement that names descriptions, glossary terms, tags or classification, stewards, value regexes or subdomains keeps the fence on: those fields may change on every frozen record (delta P6, narrowed to domains, tables or columns when the text names them) and nothing else may. A requirement about empty values (`has none`, `missing`, `empty`, `non-empty`, `without`) changes a field only where the base value is empty; the phrase applies to the fields of its own clause, so in `Improve the description of the table X and give each of its columns that has no glossary term one` only the glossary terms are fill-only. The engine and the verification sweep after it apply the requirement; right after the sweep the run settles (`vibe-scope-sweep-settled`, decision 1A): the open fields and the named products keep what the engine and the verification sweep set, and from there on no pass may change them, so neither the finalize tag cleanup nor a naming pass (the prefix strip that turned `journey_channel_code` into `channel_code`) can change them, and a pass rename of a base entity recorded after the settle is refused (`vibe-scope-settled-rename-refused`), so the FK-suffix pass p075 cannot rename `carrier_id` to `shipping_carrier_id` on a named table; the `logical_schema_review` checkpoint puts such changes back. A set-target requirement that adds a named column to every table (`Add a column created_at TIMESTAMP to every table`) also keeps the fence on (decision 2A, `vibe-scope-open-columns`): that column may be added to the frozen tables (delta P7) and nothing else may change; the deploy adds it with `ALTER TABLE ... ADD COLUMNS`, so the rows stay. A structural set-target requirement without a column name, or one that drops, renames, splits, merges or moves, opens every base domain to the engine the same way. A requirement that names a target but asks only for fields (`Add a business glossary term to every column of the finance domain that has none`) opens only those fields on that target (decision 4A, `vibe-scope-open-field-targets`): the rest of the target stays frozen, so a column the verification sweep drops there is put back, a placeholder is refused, and the verifier scores the requirement over that target only. A placeholder (`TODO`, `TBD`, `N/A`, `unknown`, `<...>`) is never accepted as an open-field value, and a requirement about empty values treats a placeholder already in the base as no value. The verification-sweep mutations set `business_glossary_term` and `steward` as fields, not as tags, and an add whose value is a SQL type sets the column type, never its description. A glossary term must be a business term: a value that ends like a sentence (`.`, `!` or `?`) or has more than 12 words outside parentheses is refused like a placeholder by the fence, the verifier, the coverage gate and the verification-sweep mutations (`llm-fallback-glossary-shape`), and the static gate `invalid_glossary_term` reports and requeues every such value. A value that holds a raw column or table identifier outside parentheses (`Finance Column: budget_name`, `Primary Key for guest_visit`) is a placeholder too, and the key and reference terms the agent writes itself read `Guest Visit Identifier` and `Guest Visit Reference`. The agent never invents a glossary term (decision 5A): the attribute factory and the model.json serializer leave an attribute without a term empty, and the VOV reviewer finalization clears terms equal to their column name only when one line or sentence of the vibe asks for a glossary cleanup (`glossary_cleanup_requested` in its P12 log line), so a glossary item next to an FK removal item does not. An open field may not be blanked, and the verification-sweep snapshot shows only valid glossary terms, so a column that holds a placeholder or a sentence reads as having none. When the extractor gives a requirement a set or empty target while its vibe item names one (`target=finance`), the item target is used (`vov-target-from-anchor`); a target outside the item target that the item text does not name is dropped when the requirement quotes the item (`vov-target-outside-anchor`), so a requirement that picked up the next item's domain header does not open that domain. The engine may not report a set-target field requirement as already satisfied while a value it opens is still empty or invalid (`vibe-scope-already-satisfied-refused`), and the in-scope adherence in model.json follows the final outcomes. Each applied set-target field requirement is scored on its own fields and target, so one that changed nothing is not carried by another that did, and a field change on a record that is in scope for another reason (a named table, or every table under decision 6A) counts; an FK removal or a column addition whose target names only the table is checked on the column its text names, also when the orchestrator gave a relation requirement the `state_diff` strategy; a column addition `within` a domain is not scored as a thin-table enrichment; the physical audit reads the glossary term out of the `;`-joined Unity Catalog tag string; and product and attribute stewards survive the flat lists and reach model.json. The engine digest shows the open-field targets with the fields they open. The verification sweep builds its batches from the tables its classification names: `per_domain` with table refs runs only their domains, `per_product` with a domain runs that domain, and `single` runs one batch over the named tables and domains. A domain batch over 30,000 characters is split into batches of whole tables the run may change (`llm-fallback-batch-fit`), and a snapshot still cut at 60,000 characters is logged (`llm-fallback-snapshot-cut`). Every scoring path (validate, the LLM audit, the per-step verifier and the physical ground-truth audit, which reads the glossary term from the column tag) scores a set-target field requirement with the deterministic verdict over its target, counting only the records where the requirement's field is open, and a requirement that is partly met ends `partial`, not `failed`. A set-target requirement that names no field, or that adds, drops, renames, splits, merges or moves columns, tables, keys or domains, opens every base domain to the engine (decision 6A). Since agent 5.3.0 (decision 2B, `vov-keep-unchanged-tables`) a Full Run whose base is the latest installed version of the catalog keeps the owned schemas instead of the setup teardown: the deploy plan replaces only the tables the run changes, keeps every other table with its data, and drops the tables of removed products, including those in a schema the model no longer uses (an owned schema left empty is dropped too, `vibe-scope-removed-schema`). A run without a fence (a VOV whose requirements name nothing) takes its plan from a diff of the base and the new `model.json` (`vov-unfenced-deploy-plan`). A run on a base that is not the installed head still rebuilds the owned schemas. A domain rename or merge that the vibe names moves every product of that domain to the new one, and the FK columns that point into it follow as P1 deltas; the requirement fails when a product of the old domain does not reach the new one. A move of products named in free text (`Move the products a and b from the x domain to the y domain`) is applied deterministically. A product rename follows the user's words: `Rename the product sales_channel to order_channel` renames the table even when the table has a column named `sales_channel` and the extractor paraphrased it as a column rename; a user text that names a column renames the column. The metric views of a renamed, moved or merged table follow it: their owner, their SQL references and their `{domain}_{product}` name change with the table, the old view is dropped from `_metrics`, a view keeps its old name only when the new name is already taken, and the fence still re-points a frozen view through P5 without renaming it. A base product that the run only re-homes (its domain is renamed or merged, or it is moved) keeps the protection of a base product: autofix and finalize passes cannot change it, the engine snapshot freezes it, and a static-analysis finding on it goes to `next_vibes`. From agent 5.3.2 the verification sweep after the engine reads the engine's outcomes (`vov_engine` entries in its action log), and a corrective it proposes for a rename the rename ledger already holds, and the model shows, is skipped (`vibe-corrective-landed-skip`). From agent 5.3.3 a requirement the base already meets, such as a count target already reached or a primary-key rule every table already follows, opens no scope, survives the scope triage and is reported applied, and a corrective whose targets belong only to a requirement the LLM could not read is skipped (`vibe-corrective-unread-requirement`). Nothing acts on such a requirement later either: the SelfFixer reports it and does not fix it (`selffixer-not-interpreted-skip`), and the LLM fallback of a corrective applies only the mutations on what that corrective names (`llm-fallback-own-targets`). The feedback outcomes re-check every change the engine reported applied against the final model with the verifier the scoring uses, so a drop a later pass undid is reported failed, not applied. A metric view that an add, change or drop requirement names is in scope on its own (agent 5.3.3, decision 2A); the requirement does not open the view's tables, which stay frozen. A dropped view leaves `model.json` and Unity Catalog, a changed view is produced again by KPI-first from its base definition under the same name, and a change that produces no view keeps the base view and is reported not met (`vibe-scope-change-kept-base`). A vibe whose requirements name only metric views still builds a requested fence with no table entries, so every table stays frozen.
+
+**Entries:** `Some Domains` takes `d1, d2`; an entry with a dot is an error. `Some Subdomains` takes `d1.s1, d2.s2`; each entry needs exactly one dot. Entries match exactly after normalization: lowercase, letters and digits only. So `Customer Service` matches the domain `customer_service`, but `customer` does not. In a `vibe modeling of version` (VOV) run, an entry that is not in the base model is accepted as a new container, and the run logs a WARN with the closest existing names. A typo cannot change anything outside the scope. It can leave the intended domain frozen, though, so check that WARN.
+
+**In scope:**
+
+- `Some Domains`: each listed domain with its record, products and attributes, plus the metric views whose `owner_domain` is that domain.
+- `Some Subdomains`: the products whose `subdomain` is listed for their domain, plus the metric views those products own. The domain record (description, division, tags, `database_name`) stays frozen. A requirement that names a whole domain, or the whole model, opens only the products of the listed subdomains, and the products outside them keep their base records in model.json. New products must use a listed subdomain.
+- Everything else is frozen. That includes the model-level metadata: description, glossary, systems of record, governing body and `model_conventions`. Run-stamped fields such as `agent_version` and `version` still update.
+- A metric view with no `owner_domain` is out of scope. Under `Some Subdomains`, so is one with no `owner_product`.
+- Inside the scope a VOV changes only what its vibe names (agent 5.3.0, decision 1A, `vibe-scope-named-only`). After the requirements are extracted, the in-scope products and whole domains they name stay open; every other in-scope base product is frozen with all its columns and metric views, exactly like the `All Domains` rule below: its FK columns may only be re-pointed (P1), autofix and finalize passes cannot change any base product, the engine snapshot freezes the named products after the engine, and static-analysis findings on base entities go to `next_vibes`. A requirement whose target is a set, the whole model or empty opens every in-scope product to the VOV engine, and after the engine every base product is frozen at its engine result (agent 5.3.3, decision 6A, `vibe-scope-named-wide`); when it names fields, only those fields open on the unnamed in-scope records (P6) and everything else stays frozen. A P4 link may still point at an unnamed in-scope product. From agent 5.3.1 the model.json serialize gate copies every unnamed in-scope product from the base, the deploy keeps their metric views and the schema tags of a domain whose record is frozen, and the `_vibe_scope` block records the named products so an install of the artifact applies the same rule.
+
+**Operations that honor the scope:**
+
+- VOV: the vibe changes only the in-scope part. Out-of-scope domains, products and metric views are carried over verbatim from the base model, apart from P1 to P5 below. In-scope domains stay pinned, so the run cannot drop one as a whole.
+- `new base model` with `Some Domains`: builds exactly the listed domains. With fewer than 4 domains, the division-balance and no-early-corporate gates only report.
+- `new base model` with `Some Subdomains`: builds the named domains and gives each listed subdomain at least one product. If a listed subdomain stays empty, the run retries, then fails with a clear message. Products in other subdomains are then removed.
+- `Some Subdomains` subdomain allocation: if it fails, the run halts before `model.json` is written. A new in-scope product without a subdomain is never pruned: in a VOV it gets the only subdomain listed for its domain, otherwise the constrained allocation assigns one, otherwise the run fails with a clear message.
+- Every other operation rejects a scoped value at preflight. To install a scoped model, leave widget 06a on `All Domains`. The scope travels inside `model.json`.
+
+**Allowed outside the scope (VOV only):** outside the scope, only FK columns that point into the scope may change, and only because of an explicit in-scope drop, rename or add. Metric-view re-pointing (P5) is the one exception. The fence ledger records each explicit change with its cause: the requirement id, or the deterministic operation that applied it. `_vibe_scope` lists every delta below with its cause.
+
+| Delta | What may change | Only when |
+|---|---|---|
+| P1 re-link | An existing FK column gets a new `foreign_key_to`. Its name and type stay. | Its in-scope target was renamed or moved, and the rename is in the ledger |
+| P2 unlink | An existing FK column has its `foreign_key_to` cleared. The column stays. | Its in-scope target table was dropped, and the drop is in the ledger |
+| P3 link existing | An existing unlinked column gets a `foreign_key_to` | The target is a product created in scope during this run by an explicit add (a ledger create) |
+| P4 new FK column | A new FK column is added to an out-of-scope product, pointing into the scope | A vibe requirement names that product and that link |
+| P5 metric-view re-point | In an out-of-scope view's SQL, the names of renamed or moved in-scope tables, and of renamed in-scope columns, are substituted | Nothing else in the view changes |
+| P6 open field (agent 5.3.3) | A frozen domain, product or column record gets a new value in a field a set-target requirement names (for example `description`) | The requirement names that field; no other field of the record changes |
+
+**Unrequested drop:** an in-scope table that out-of-scope FKs reference may only disappear because of an explicit drop or rename. If it disappears or moves without one, the fence restores it from the base model (or moves it back) and flags it: a WARN (`vibe-scope-unrequested-drop`), an entry in `_vibe_scope.unrequested_drops`, and the run outcome `unrequested_drop_of_referenced`. The out-of-scope FKs keep their target. The passes apply the same rule before they act: the architect review drops any proposal that would remove, rename, merge, split or move such a product without an explicit drop (`vibe-scope-architect-referenced-guard`), and the deterministic FK linker links an out-of-scope column only to a product the run created on request. From agent 5.3.3 a P3 link must come from a column whose name ends with the new table's key and that is not the key of its own table; any other link a pass makes from an out-of-scope column to a new product is restored. From agent 5.3.3 the model-wide passes leave the tables the run may not change alone instead of editing them for the fence to put back (`vibe-scope-pass-scope`): the FK semantic gate (MV15) reviews only the foreign keys of tables the run may change, `FK_FIND_MISSING_PROMPT` investigates only their unlinked key columns, and the autofix renames (P0.16, P0.75, P73-I, FK naming, `alt_` prefixes, self-references and stub `_id` products) skip frozen tables. Before, one scoped run restored 396 records at the `logical_schema_review` checkpoint, refused 138 pass renames, and lost a P3 link the FK semantic gate removed.
+
+**Blocked:** an in-scope change is blocked when it breaks an out-of-scope artifact in a way P1 to P5 cannot repair. Its outcome is `scope_dependency_conflict`. The blocked cases are:
+
+- dropping an in-scope table or column that an out-of-scope metric view reads;
+- renaming an in-scope column that an out-of-scope metric view reads, when the new name cannot be substituted in the view's SQL (a rename that can be substituted is re-pointed by P5);
+- changing the type of an in-scope primary key that out-of-scope FKs reference;
+- moving a product across the scope boundary, in either direction.
+
+**Rejected and reported:** a vibe requirement that targets an out-of-scope artifact is not applied. Its outcome is `scope_rejected`, also when it asks only for fields (`Improve the description of the table customer.household` in a `Some Domains` run on `order`); a set-target field requirement that also reaches in-scope records stays in scope. A requirement whose change keeps touching frozen artifacts after its retries ends as `scope_fence_violation`; from agent 5.3.3 the last retry first puts back the frozen records the handler changed and keeps its in-scope changes when the result then passes the fence (`vibe-scope-sandbox-repair`). A requirement with both in-scope and out-of-scope targets is first checked as a P4 link (agent 5.3.3): when it asks for a new FK column on one out-of-scope product that points into the scope, the link is authorized and the requirement applies whole. Otherwise it is split, and only its in-scope part is applied. From agent 5.3.3 a requirement the engine did not apply, but that a later corrective applied and the final model shows, counts as applied in `input_outcomes`, MISSED VIBES and the in-scope adherence (`vov-final-outcomes`). The verifier also reads a column introduced as `named X` or `called X`, and a domain rename, from the final model, and a placeholder glossary term (`TODO`, `TBD`, `N/A`) is not coverage and is reported as `tag_placeholder_value`. A set-target requirement that changed no open field, and an FK removal whose column or its renamed successor still holds the key, count as failed. Requirements whose text differs only in the table they name are never merged or dropped as duplicates. Adherence is reported over the in-scope requirements, with the rejected and blocked counts beside it. `next_vibes.txt` starts with a scope summary and keeps the out-of-scope suggestions, so a later run scoped to that domain can apply them. Static-analysis findings on out-of-scope artifacts are reported but not repaired. Scope problems found by static analysis use five gate categories (QGATE-RUL-013 to 017). The fence repairs them itself, so they never go to the agentic repair loop (SelfFixer).
+
+**Preflight errors:** each one stops the run before it changes anything:
+
+- an unknown `vibe_scope` value;
+- a scoped value with an operation other than VOV or `new base model`;
+- a scoped value with an empty `business_domains`;
+- a `Some Domains` entry that contains a dot;
+- a `Some Subdomains` entry without exactly one dot, or with an empty domain or subdomain part;
+- an entry with no letters or digits.
+
+**Conventions:** every VOV keeps the base model's conventions (see the note under the widget table). A scoped VOV keeps them exactly, even where the base leaves one empty, and a WARN lists every convention widget value it ignored (`vov-base-conventions-win`, with `vibe-scope-convention-mismatch` as a second check). Conventions can change only in an `All Domains` run.
+
+**Stale base refused:** a scoped VOV is refused when its base is behind the head version, the latest completed version of the business and scope that is not a Dry Run. The error names the base and the head, and nothing is changed. The check runs at setup and again before `model.json` is written. Dry Run versions never count as head, and a VOV with a blank widget 04 never picks one as its base. An `All Domains` VOV may still build on an older version; `lineage.base_version` in `model.json` records the base it branched from.
+
+**`_vibe_scope` in model.json:** a scoped run, and an `All Domains` VOV whose `requested` fence is on, writes a root key `_vibe_scope` after `agent_version` and `release_version` (`mode` is `requested` for the latter). From agent 5.3.3 an `All Domains` Full Run or Dry Run that keeps unchanged tables (decision 2B) writes it too, with `mode` `all`, its base fields and the changed, preserved and removed products, so both install paths treat the artifact as a delta on that base. Other `All Domains` runs do not write it. It holds:
+
+- `mode`, `label`, `entries` and `resolved` (the entries found in the base, the new containers, and the `closest` existing names);
+- `base_version`, `base_scope` and `base_catalog` (the VOV base; null for a new base model);
+- `changed_in_scope_products` and `preserved_products` (every product whose table is kept: the out-of-scope ones, even with a boundary delta, and the unchanged in-scope ones);
+- `unchanged_metric_views` (agent 5.3.3): the in-scope metric views whose SQL equals the base apart from the catalog;
+- `permitted_deltas`, each with its cause, plus the P4 `authorizations`;
+- `rename_ledger`, `change_ledger` (explicit drops and creates with their cause) and `unrequested_drops`; both ledgers list only the renames, drops and creates that landed in this version;
+- `outcomes` (the in-scope adherence and the `scope_rejected`, `scope_dependency_conflict` and `scope_fence_violation` requirements), `restores` per checkpoint (a clean run has 0), `stale_base` and `serialize_gate`.
+
+If an out-of-scope problem is still present at the write, or a listed subdomain received no product, the write fails closed and `model.json` is not written. A failed write halts the whole run: no artifact of the base version is carried over and nothing is deployed in its place. Every run also writes `lineage`, and every VOV writes `entity_changes` and `input_outcomes`; see [Run metadata in model.json](integration-guide.md#164-run-metadata-in-modeljson).
+
+**Unity Catalog deploy:** a scoped run replaces only the in-scope tables that changed. Out-of-scope and unchanged tables get `CREATE TABLE IF NOT EXISTS`, so their rows and column tags stay. A P4 column is added with `ALTER TABLE ... ADD COLUMNS`. A frozen metric view that is already installed is kept; its SQL is moved to the deployment catalog before that check, so a view whose base SQL names another catalog is not recreated. From agent 5.3.3 an installed in-scope view listed in `_vibe_scope.unchanged_metric_views` is kept too, by the deploy and by a scoped `install model`; a changed, renamed or re-pointed view, or one that is not installed, is created. Stale-table cleanup drops only in-scope tables removed in this run. After the `model.json` splice the flat lists that the physical schema, next_vibes and the scoring read are checkpointed again (`vibe-scope-flat-resync`), so a preserved table deploys with its base columns even when a pass changed it after the last checkpoint. The setup catalog teardown (see [Operations Reference](#8-operations-reference)) never runs in a scoped run. A scoped Dry Run writes `metrics/*.sql` with the same view set the deploy would apply: in-scope views plus P5 re-pointed views. A later `install model` of a scoped `model.json` reads `_vibe_scope` and keeps the out-of-scope tables the same way. From agent 5.3.2, on its base version that install also drops the tables and metric views of products the scoped run renamed or removed, and a schema those drops leave empty; every artifact folder carries the same drops in `schemas/<business>_vibe_scope_removed_v<version>.sql`, which the installer runs last. The install accepts it only when the catalog's latest installed version equals `_vibe_scope.base_version` (for `base_scope`), or when the catalog holds none of the model's schemas; a scoped new base model needs no installed base. On its installed base, the existing schemas the business owns pass the full-install clash check, and a schema another business owns is still refused. When the physical step of an install fails, the install reverts the registry row it wrote (a Dry Run version returns to `dry_run`), so `deploy_status` never reports a version that is not deployed. Both the agent and the installer count a version as installed when its registry row is complete (`completed_percent = 100`) with `deploy_status` NULL or `installed`, or when an installer manifest recorded installing it. From agent 5.3.3 a kept table whose only changes are P6 fields stays in place: its description changes with `COMMENT ON TABLE`, its columns' with `ALTER TABLE ... ALTER COLUMN ... COMMENT`, a domain's with `COMMENT ON SCHEMA`, and its tags with `SET TAGS` and `UNSET TAGS` (`vibe-scope-metadata`), so its rows stay. The same holds for an in-scope table, and for a table of an unfenced keep-tables run, whose only changes are metadata fields (descriptions, tags, glossary terms, value regexes, stewards, subdomain): it stays in place and the change deploys the same way (cause `P6-in-scope`). An in-scope table whose only other changes are foreign keys stays in place too: the constraint is dropped, re-pointed or added with `ALTER TABLE` (P2, P1 or P3 with cause `FK-in-scope`), so an FK removal keeps the table's rows (a23 replaced `order.refund` and lost its rows). A metadata statement for a column the installed table does not have is skipped and reported (`metadata_absent_columns`). Every artifact folder also carries `schemas/<business>_vibe_scope_preserved_v<version>.sql` (the FKs and tags of the kept tables) and `metrics/<business>_vibe_scope_preserved_metrics_v<version>.sql` (the kept metric views), also when the run deploys no metric view (`vibe-scope-mv-artifacts-no-deploy`). The installer runs them only into a catalog that holds none of the model's schemas (`installer-scope-completion`), and an agent `install model` of a scoped `model.json` into such a catalog installs in full (`scoped-install-fresh-full`). The final artifact carry-over no longer copies `schemas/` or `metrics/` files from the base version (`carry-over-no-ddl`), so a folder never carries a domain the model no longer has, another version's cross-domain FKs or another version's drops.
+
+### Vibe Scope App Contract
+
+The model app integrates the agent on its own. Its contract lives in the integration guide: [16. Model App Contract](integration-guide.md#16-model-app-contract). In short: re-vendor agent 5.1.4 or later (the app is pinned to 4.9.9), pass `vibe_scope`, `business_domains` and `run_type`, mark each feedback item with a K1 marker, resolve only items whose `input_outcomes` status is `applied`, carry the rest along `lineage.base_version`, persist the run metadata in Lakebase, and treat Dry Run versions as drafts.
 
 ---
 
@@ -1343,7 +1452,7 @@ Note: Widget 14 is intentionally skipped in the numbering.
 
 | Artifact | Format | Description |
 |---|---|---|
-| model.json | JSON | Complete model state including all domains, products, attributes, FK links, subdomains, and metadata. The canonical serialization of the model. |
+| model.json | JSON | Complete model state including all domains, products, attributes, FK links, subdomains, and metadata. The canonical serialization of the model. Agent 5.1.4 adds the root keys `lineage`, `entity_changes`, `input_outcomes` and, for scoped runs, `_vibe_scope` (see [Run metadata in model.json](integration-guide.md#164-run-metadata-in-modeljson)). |
 | SQL DDL -- Domains | .sql | CREATE SCHEMA statements for each domain |
 | SQL DDL -- Products | .sql | CREATE TABLE statements for each product with all columns and data types |
 | SQL DDL -- Foreign Keys | .sql | ALTER TABLE ADD CONSTRAINT statements for all FK relationships |
@@ -1357,7 +1466,7 @@ Note: Widget 14 is intentionally skipped in the numbering.
 | Model Overview | .md | High-level summary of the model scope, tier, and key statistics |
 | Release Notes | .md | Version-specific changes, additions, and removals relative to the previous version |
 | Next Vibes | .md | Auto-generated suggestions for the next vibe iteration based on model analysis |
-| Sample Data CSVs | .csv | One CSV per table with synthetic sample records |
+| Sample Data CSVs | .csv | One CSV per table with synthetic sample records (agents before 4.8.0; now the standalone model installer) |
 | AI Observations Log | .csv | Complete audit trail of all LLM interactions (prompt, model, latency, honesty score, outcome) |
 | Data Dictionary | .md/.xlsx | Complete column-level documentation with descriptions, types, tags, and business glossary terms |
 | Test Cases | .md | Generated test cases for model validation (structural, referential, data quality) |
@@ -1373,7 +1482,7 @@ Note: Widget 14 is intentionally skipped in the numbering.
 | FK Constraints | Table Constraints | Physical foreign key constraints between tables |
 | Tags | UC Tags | Classification tags on schemas, tables, and columns |
 | Metric Views | Views | SQL views implementing KPI metric definitions |
-| Sample Data Rows | Table Data | Inserted sample records in each physical table (when sample generation is enabled) |
+| Sample Data Rows | Table Data | Inserted sample records in each physical table (by the standalone model installer since agent 4.8.0) |
 | Vibe Progress | Table in `_metamodel` schema | `_vibe_progress` table with real-time stage tracking for the session |
 
 ---
@@ -1556,7 +1665,7 @@ Custom tags from vibes are injected at two points:
 
 ```mermaid
 flowchart TD
-    V["Vibe text"] --> CHK{"Classify<br/>keywords"}
+    V["Vibe text"] --> CHK{"LLM classifies<br/>the vibe"}
     CHK -->|"'new base model' or<br/>'rebuild', 'regenerate all',<br/>'restructure'"| GEN["GENERATIVE<br/>12 rewrites / 100 domains<br/>1,000 products / 50,000 attrs<br/>Full pipeline from scratch"]
     CHK -->|"'rename all', 'add PII<br/>everywhere', broad patterns<br/>across many domains"| HOL["HOLISTIC<br/>4 rewrites / 30 domains<br/>400 products / 12,000 attrs<br/>Pattern-based, full pipeline"]
     CHK -->|"'add column', 'rename X',<br/>'link A to B', targeted<br/>discrete actions"| SURG["SURGICAL<br/>0 rewrites / 4 domains<br/>80 products / 1,200 attrs<br/>Fast path: skip stages 11/15/19"]
@@ -1573,7 +1682,7 @@ The vibe interpreter classifies every vibe session into one of three execution m
 | **HOLISTIC** | Vibe text that touches multiple domains or requests broad changes (e.g., "rename all tables", "add PII tags everywhere") | Medium (4 global rewrites, 30 domains, 400 products, 12,000 attributes) | Full pipeline, but constrained mutation budgets prevent runaway changes |
 | **SURGICAL** | Vibe text that targets specific entities (e.g., "add email column to customer", "rename billing.invoice to billing.bill", "link order to warehouse") | Lowest (0 global rewrites, 4 domains, 80 products, 1,200 attributes) | **Fast path**: skips subdomain allocation and metric view generation |
 
-Mode classification is deterministic based on keyword analysis in the vibe text. Keywords like "add column", "rename", "drop attribute", "link X to Y" trigger surgical mode. Keywords like "rebuild", "regenerate all", "restructure" trigger generative mode. Everything else defaults to holistic.
+The LLM vibe parse classifies the mode from what the requirements ask: targeted changes such as adding a column, renaming one table or linking two tables are surgical; a request to rebuild or regenerate the model is generative; broad changes across many domains are holistic. No keyword rule decides the mode.
 
 ### Diagram: Surgical Iteration Flow
 
@@ -1630,6 +1739,10 @@ Self-referencing FKs (where a table points to itself, e.g., `category.parent_cat
 ### Bidirectional FK Protection for User-Vibed Links
 
 The QA stage includes a bidirectional FK removal pass that detects A->B + B->A FK pairs and removes one direction. In v0.4.1+, any FK link that was **explicitly requested by the user via vibe instructions** is protected from this removal. The bidirectional check skips protected links, ensuring user intent is preserved even when the reverse direction also exists.
+
+**A foreign key the user removed stays removed (agent 5.3.3):** when a vibe requirement removes an FK, the engine writeback gives the column `user_removed_fk` (the removed target) before the engine snapshot (`vov-removed-fk-stays-removed`), `model.json` keeps it on the attribute, and the next version loads it with `llm_fk_skip`. No linking pass adds an FK to that column: the deterministic, in-domain, cross-domain, silo, normalization, ambiguous-FK and LLM linkers skip it, and the silo detectors, the static analysis (`sa-silo-user-unlinked`) and the G7 silo repair at the `model.json` write leave out a table whose links the user removed, on either side of the removed key. A SelfFixer fix for a static-analysis finding (`sa-*`) that links such a column is refused, and a fix for a user requirement that removes or links an FK sets or clears the marker (`selffixer-user-fk`). A later requirement that links the column again clears it (`vov-removed-fk-relinked`). Right before the `model.json` build and again before the splice, `user-removed-fk-enforce` clears any FK a pass still added to such a column, in memory and in the nested model, and logs a warning when it acts. Live L5 (927266035211208) removed the FK on `campaign_annotation.campaign_kpi_target_id`: the export held 783 FKs, G7 linked the now siloed table again at the `model.json` write, and the parity gate copied that FK back into memory, so v41 shipped 784 FKs while the requirement was reported applied.
+
+**What the user named stays named (agent 5.3.3):** a table or column a requirement names, including one it creates, is never renamed or removed by a heuristic pass: the name-collision qualification (P0.74), the phantom cleanup, the FK-naming, self-reference, prefix and `alt_` renames, P0.16, P0.26, P0.75, `normalize_fk_column_name`, the QA duplicate and name-overlap passes, the product-list prefix, the FK alignment to the parent key (which still points the foreign key at the key), the bare-name prefix and the shrink demotion of unlinked keys skip it (`p074-user-named-kept`, `p075-user-named-kept`, `qa-overlap-user-named-kept`, `fk-align-user-named-kept`, `bare-name-user-named-kept`, `demote-user-named-kept`). Static analysis does not propose renaming such a column back. A field the user cleared stays cleared: `user-cleared-field-enforce` clears it again in memory and in the nested model after the description backfill (G12). Fill-only and clear stay on the tables they name, so a clear on one table never cancels fill-only on another. The domain and global architects never add a table past the user's per-domain or total cap; the add is deferred to next_vibes (`architect-add-user-cap`). A requirement the base model already meets, other than a field change, opens no scope. Live r11a, r11b, r12a and r12c showed each case.
 
 ### Deterministic Scoring Formula
 

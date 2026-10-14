@@ -8,8 +8,6 @@ while keeping real adherence at 33-66%.
 
 Aliases under test (all must appear in the notebook + actually mutate behaviour):
 
-  1. vov-dedupe-include-source        (B1) include source_quote in cluster signature
-                                            so distinct rename targets aren't merged
   2. vov-extract-error-loud           (A1) log every per-chunk extraction failure
                                             instead of silently swallowing
   3. vov-merge-partial-mv-union       (K3) union metric_views from candidate so
@@ -76,7 +74,6 @@ def _strict_guard_site_source():
 # ---------------------------------------------------------------------------
 
 EXPECTED_ALIASES = [
-    "vov-dedupe-include-source",
     "vov-extract-error-loud",
     "vov-merge-partial-mv-union",
     "vov-noop-applied-guard",
@@ -105,63 +102,40 @@ def test_alias_has_fired_log(alias):
 # B1 — dedupe must include source_quote in signature
 # ---------------------------------------------------------------------------
 
-def test_b1_cluster_vreqs_uses_source_quote_in_signature():
-    src = _vov_runtime_source()
-    m = re.search(r"sigs\s*=\s*\[_shingle_set\(([^)]+)\)\s*for\s+v\s+in\s+vreqs\]", src)
-    assert m is not None, "Could not find sigs= line"
-    expr = m.group(1)
-    assert "source_quote" in expr, (
-        f"B1 fix not applied: dedupe signature still excludes source_quote. expr={expr!r}"
-    )
+def test_b1_dedupe_signature_includes_source_quote():
+    src = "\n".join("".join(c.get("source", [])) for c in json.loads(NB_PATH.read_text())["cells"] if c.get("cell_type") == "code")
+    assert "sig = (v.intent.strip(), v.target.strip(), v.source_quote.strip())" in src
+
+
+def _dedupe():
+    import agent_helpers as ah
+    return ah.dedupe_vreqs, ah.RawVREQ
 
 
 def test_b1_distinct_rename_targets_are_preserved():
     """Behavioural: two VREQs with same intent+target but different source_quotes
-    must NOT be clustered together (would lose one rename)."""
-    ns = _build_dedupe_namespace()
-    cluster_vreqs = ns["cluster_vreqs"]
-    RawVREQ = ns["RawVREQ"]
-    v1 = RawVREQ(
-        vreq_id="VREQ-0001",
-        intent="rename",
-        target="customer",
-        source_quote="rename customer to customer_profile please",
-        source_chunk_id="c1",
-    )
-    v2 = RawVREQ(
-        vreq_id="VREQ-0002",
-        intent="rename",
-        target="customer",
-        source_quote="rename customer to customer_master in product domain",
-        source_chunk_id="c1",
-    )
-    clusters = cluster_vreqs([v1, v2], threshold=0.85)
-    assert len(clusters) == 2, (
-        f"Distinct rename targets collapsed into one cluster — would lose a VREQ. clusters={clusters}"
-    )
+    must NOT be collapsed (would lose one rename)."""
+    dedupe_vreqs, RawVREQ = _dedupe()
+    v1 = RawVREQ(vreq_id="VREQ-0001", intent="rename", target="customer",
+                 source_quote="rename customer to customer_profile please", source_chunk_id="c1")
+    v2 = RawVREQ(vreq_id="VREQ-0002", intent="rename", target="customer",
+                 source_quote="rename customer to customer_master in product domain", source_chunk_id="c1")
+    out = dedupe_vreqs([v1, v2])
+    assert [v.source_quote for v in out] == [v1.source_quote, v2.source_quote]
+    assert [v.vreq_id for v in out] == ["VREQ-0001", "VREQ-0002"]
 
 
-def test_b1_genuine_dupes_still_cluster():
-    """Inverse: identical VREQs should still cluster."""
-    ns = _build_dedupe_namespace()
-    cluster_vreqs = ns["cluster_vreqs"]
-    RawVREQ = ns["RawVREQ"]
-    v1 = RawVREQ(
-        vreq_id="VREQ-0001",
-        intent="add foreign key",
-        target="order.customer_id",
-        source_quote="add fk from order.customer_id to customer.customer_id",
-        source_chunk_id="c1",
-    )
-    v2 = RawVREQ(
-        vreq_id="VREQ-0002",
-        intent="add foreign key",
-        target="order.customer_id",
-        source_quote="add fk from order.customer_id to customer.customer_id",
-        source_chunk_id="c1",
-    )
-    clusters = cluster_vreqs([v1, v2], threshold=0.85)
-    assert len(clusters) == 1, "Identical VREQs should still cluster (B1 fix shouldn't disable dedup)"
+def test_b1_genuine_dupes_still_collapse():
+    """Inverse: identical VREQs collapse into one that keeps the strongest flags."""
+    dedupe_vreqs, RawVREQ = _dedupe()
+    quote = "add fk from order.customer_id to customer.customer_id"
+    v1 = RawVREQ(vreq_id="VREQ-0001", intent="add foreign key", target="order.customer_id", source_quote=quote,
+                 source_chunk_id="c1", severity="medium", is_user_directive=False, priority_id=7)
+    v2 = RawVREQ(vreq_id="VREQ-0002", intent="add foreign key", target="order.customer_id", source_quote=quote,
+                 source_chunk_id="c2", severity="critical", is_user_directive=True, priority_id=3)
+    out = dedupe_vreqs([v1, v2])
+    assert len(out) == 1
+    assert (out[0].vreq_id, out[0].severity, out[0].is_user_directive, out[0].priority_id) == ("VREQ-0001", "critical", True, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -352,42 +326,6 @@ def _extract_function_block(src, fn_name):
         m = re.search(pattern2, src, re.MULTILINE | re.DOTALL)
     assert m is not None, f"Could not extract function {fn_name}"
     return m.group(0)
-
-
-def _build_dedupe_namespace():
-    """Compile just enough of the dedupe module into a private namespace to call cluster_vreqs."""
-    src = _vov_runtime_source()
-    preamble = (
-        "from __future__ import annotations\n"
-        "import re\n"
-        "import json\n"
-        "from typing import Iterable, Optional\n"
-        "from dataclasses import dataclass, field\n"
-        "\n"
-        "_NORMALIZE_RE = re.compile(r\"[^a-z0-9 ]+\")\n"
-        "\n"
-        "@dataclass(frozen=True)\n"
-        "class RawVREQ:\n"
-        "    vreq_id: str\n"
-        "    intent: str\n"
-        "    target: str\n"
-        "    source_quote: str\n"
-        "    source_chunk_id: str\n"
-        "    severity: str = 'medium'\n"
-        "    is_user_directive: bool = False\n"
-        "    priority_id: int = 9999\n"
-        "\n"
-        "class LLMClient: ...\n"
-    )
-    pieces = [
-        _extract_function_block(src, "_normalize"),
-        _extract_function_block(src, "_shingle_set"),
-        _extract_function_block(src, "jaccard"),
-        _extract_function_block(src, "cluster_vreqs"),
-    ]
-    ns = {}
-    exec(compile(preamble + "\n".join(pieces), "<dedupe>", "exec"), ns)
-    return ns
 
 
 def _build_merge_partial_namespace():

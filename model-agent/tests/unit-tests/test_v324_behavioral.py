@@ -115,7 +115,7 @@ def test_already_satisfied_branch_returns_applied():
     toward landed coverage), not a miss status."""
     fn_src = _extract_fn("_apply_handler_with_retry")
     start = fn_src.find("if _is_already_satisfied and _is_noop_diff:")
-    block = fn_src[start: start + 900]
+    block = fn_src[start: fn_src.find("\n        if ", start + 10)]
     assert 'status="applied"' in block or "status='applied'" in block, (
         "already-satisfied block must return status='applied'"
     )

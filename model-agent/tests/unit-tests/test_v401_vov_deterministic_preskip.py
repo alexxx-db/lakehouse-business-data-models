@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 REPO = Path(__file__).resolve().parents[2]
 NB = REPO / "agent" / "dbx_vibe_modelling_agent.ipynb"
@@ -28,8 +29,11 @@ def _raise_synth(*a, **k):
     raise _SandboxCalled("synthesize_handler was called — pre-skip did NOT short-circuit")
 
 
-def _model(desc):
+def _model(with_note):
     # inner model dict shape: top-level 'domains' (NOT wrapped in {'model': ...})
+    attributes = [{"name": "order_id", "is_primary_key": True, "data_type": "BIGINT"}]
+    if with_note:
+        attributes.append({"name": "order_note", "data_type": "STRING"})
     return {
         "domains": [
             {
@@ -37,10 +41,8 @@ def _model(desc):
                 "data_products": [
                     {
                         "name": "order",
-                        "description": desc,
-                        "attributes": [
-                            {"name": "order_id", "is_primary_key": True, "data_type": "BIGINT"},
-                        ],
+                        "description": "Customer purchase order header.",
+                        "attributes": attributes,
                     }
                 ],
             }
@@ -48,11 +50,14 @@ def _model(desc):
     }
 
 
+NOTE_SPEC = vs.spec("VREQ-1", "add_column", ["sales.order.order_note"], columns=[{"name": "order_note", "type": "STRING"}])
+
+
 def _batch():
     return ah.Batch(
         batch_id="B1",
         vreq_ids=("VREQ-1",),
-        intent_summary="add a description / document the order table",
+        intent_summary="add an order_note column to the order table",
         target_entities=(("sales", "order"),),
         data_payload=(),
     )
@@ -74,6 +79,7 @@ def _isolate(monkeypatch):
     monkeypatch.setattr(ah, "_VOV_DETERMINISTIC_PRESKIP_ENABLED", True, raising=False)
     monkeypatch.setattr(ah, "execute_in_sandbox", _raise_sandbox, raising=False)
     monkeypatch.setattr(ah, "synthesize_handler", _raise_synth, raising=False)
+    vs.register(ah, {"model": _model(True)}, NOTE_SPEC)
     yield
 
 
@@ -93,20 +99,28 @@ def _capture_logger(monkeypatch):
 
 # ---------------- deterministic probe unit check ----------------
 
-def test_probe_true_when_description_present():
-    ok, ev = ah._vov_deterministic_satisfied(_batch(), _handler(), _model("Customer purchase order header."))
+def test_probe_true_when_the_requested_column_is_present():
+    ok, ev = ah._vov_deterministic_satisfied(_batch(), _handler(), _model(True))
     assert ok is True, ev
+    assert "1/1 table(s) carry" in ev
 
 
-def test_probe_false_when_description_missing():
-    ok, ev = ah._vov_deterministic_satisfied(_batch(), _handler(), _model(""))
+def test_probe_false_when_the_requested_column_is_missing():
+    ok, ev = ah._vov_deterministic_satisfied(_batch(), _handler(), _model(False))
     assert ok is False, ev
+    assert "0/1 table(s) carry" in ev
+
+
+def test_probe_false_for_a_requirement_the_llm_could_not_read():
+    vs.register(ah, {"model": _model(True)}, dict(NOTE_SPEC, interpretable=False, reason="names no column"))
+    ok, ev = ah._vov_deterministic_satisfied(_batch(), _handler(), _model(True))
+    assert ok is False and "no interpretable spec" in ev, ev
 
 
 # ---------------- behavioral: pre-skip avoids the LLM+sandbox ----------------
 
 def test_preskip_credits_applied_without_calling_llm():
-    m = _model("Customer purchase order header.")
+    m = _model(True)
     new_model, outcome = ah._apply_handler_with_retry(_handler(), _batch(), m, None, object())
     assert outcome.status == "applied", outcome
     assert outcome.attempts == 0, outcome
@@ -116,22 +130,22 @@ def test_preskip_credits_applied_without_calling_llm():
 
 def test_preskip_emits_fired_log(monkeypatch):
     records = _capture_logger(monkeypatch)
-    ah._apply_handler_with_retry(_handler(), _batch(), _model("documented."), None, object())
+    ah._apply_handler_with_retry(_handler(), _batch(), _model(True), None, object())
     fired = [r for r in records if "vov-deterministic-preskip FIRED v4.0.1" in r]
     assert fired, records
 
 
 def test_unsatisfied_falls_through_to_llm_sandbox():
-    # description missing -> probe False -> pre-skip does NOT fire -> sandbox is invoked (raises sentinel)
+    # column missing -> probe False -> pre-skip does NOT fire -> sandbox is invoked (raises sentinel)
     with pytest.raises(_SandboxCalled):
-        ah._apply_handler_with_retry(_handler(), _batch(), _model(""), None, object())
+        ah._apply_handler_with_retry(_handler(), _batch(), _model(False), None, object())
 
 
 def test_killswitch_disables_preskip(monkeypatch):
     monkeypatch.setattr(ah, "_VOV_DETERMINISTIC_PRESKIP_ENABLED", False, raising=False)
     # even though the model IS satisfied, the disabled pre-skip lets it fall through to the sandbox
     with pytest.raises(_SandboxCalled):
-        ah._apply_handler_with_retry(_handler(), _batch(), _model("documented."), None, object())
+        ah._apply_handler_with_retry(_handler(), _batch(), _model(True), None, object())
 
 
 # ---------------- version + fail-pre ----------------

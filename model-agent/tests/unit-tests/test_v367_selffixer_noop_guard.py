@@ -10,15 +10,15 @@ apply path is gated on pre_sig != post_sig (alias=selffixer-noop-guard). The str
 invariants are too coarse (they omit tags/descriptions/samples), so a tags-only fix would look like a
 no-op under them — hence a content signature, not the digest.
 
-These tests reuse the proven v208 harness (§3d). The §8.10 anti-tautology proof:
+These tests reuse the proven v208 fixtures (§3d) on the full notebook harness. The §8.10 anti-tautology proof:
 test_noop_blessed_by_verifier_not_counted FAILS on pre-patch HEAD (returns fixed_count==1) and PASSES
 post-patch (returns fixed_count==0).
 """
 
 import json
 
+import agent_helpers as ah
 from test_v208_selffixer import (
-    _build_selffixer_namespace,
     _CapturingLogger,
     _FakeAIAgent,
     _fake_sandbox_factory,
@@ -46,7 +46,7 @@ def _tag_add_mutator():
             "            if p.get('product') == 'p1':\n"
             "                for a in p.get('attributes', []):\n"
             "                    if a.get('name') == 'p1_id':\n"
-            "                        a['tags'] = ['pii']\n"
+            "                        a['tags'] = 'pii'\n"
             "    return model\n"
         ),
         "verifier_src": (
@@ -65,8 +65,7 @@ def _tag_add_mutator():
 
 
 def test_state_signature_helper_present_and_content_sensitive():
-    ns = _build_selffixer_namespace()
-    sig = ns["_selffixer_state_signature"]
+    sig = ah._selffixer_state_signature
     m = _starting_model_one_missing_fk()
     s1 = sig(m)
     assert isinstance(s1, str) and len(s1) == 64, "expected sha256 hexdigest"
@@ -80,8 +79,7 @@ def test_state_signature_helper_present_and_content_sensitive():
 
 
 def test_state_signature_fails_open_on_unserializable():
-    ns = _build_selffixer_namespace()
-    sig = ns["_selffixer_state_signature"]
+    sig = ah._selffixer_state_signature
 
     class Boom:
         def __iter__(self):
@@ -96,8 +94,7 @@ def test_noop_blessed_by_verifier_not_counted():
 
     Pre-patch this returns fixed_count==1 (the bug). Post-patch the noop-guard returns fixed_count==0.
     """
-    ns = _build_selffixer_namespace()
-    SelfFixer = ns["SelfFixer"]
+    SelfFixer = ah.SelfFixer
     logger = _CapturingLogger()
     ai = _FakeAIAgent([json.dumps(_noop_but_verifier_true())])
     fixer = SelfFixer(ai_agent=ai, logger=logger, sandbox_executor=_fake_sandbox_factory())
@@ -113,8 +110,7 @@ def test_noop_blessed_by_verifier_not_counted():
 
 def test_real_change_still_counts():
     """Regression guard: a genuine FK link (sigs differ) MUST still count as fixed."""
-    ns = _build_selffixer_namespace()
-    SelfFixer = ns["SelfFixer"]
+    SelfFixer = ah.SelfFixer
     logger = _CapturingLogger()
     ai = _FakeAIAgent([json.dumps(_scripted_fk_link_mutator())])
     fixer = SelfFixer(ai_agent=ai, logger=logger, sandbox_executor=_fake_sandbox_factory())
@@ -133,13 +129,12 @@ def test_tags_only_change_counts_proving_digest_too_coarse():
     The content signature counts it; a digest-based guard would have dropped it. This proves the
     design choice (full-fidelity signature, not _selffixer_model_digest).
     """
-    ns = _build_selffixer_namespace()
-    SelfFixer = ns["SelfFixer"]
-    digest = ns["_selffixer_model_digest"]
+    SelfFixer = ah.SelfFixer
+    digest = ah._selffixer_model_digest
     model = _starting_model_one_missing_fk()
     import copy
     tagged = copy.deepcopy(model)
-    tagged["model"]["domains"][0]["products"][0]["attributes"][0]["tags"] = ["pii"]
+    tagged["model"]["domains"][0]["products"][0]["attributes"][0]["tags"] = "pii"
     # The coarse digest MISSES the tag change (justifies why we need the content signature):
     assert digest(model) == digest(tagged), "precondition: digest is blind to tags"
 
@@ -149,5 +144,5 @@ def test_tags_only_change_counts_proving_digest_too_coarse():
     unfulfilled = [{"id": "REQ-tag-001", "text": "tag pii", "evidence": "no pii tag", "attempts": 1}]
     res = fixer.fix_all_unfulfilled(model, unfulfilled, max_rounds=1, per_req_retries=0)
     assert res["fixed_count"] == 1, f"tags-only change must count as a fix, got {res}"
-    assert model["model"]["domains"][0]["products"][0]["attributes"][0].get("tags") == ["pii"]
+    assert model["model"]["domains"][0]["products"][0]["attributes"][0].get("tags") == "pii"
     assert not logger.has_alias("selffixer-noop-guard"), "guard must NOT fire (sigs differ)"

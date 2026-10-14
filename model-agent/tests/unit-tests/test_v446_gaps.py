@@ -3,8 +3,8 @@
 GAP-1 (HIGH): the surgical-VOV outcome-scope guard discarded an additive new-domain-with-products
 batch as scope_mismatch because the batch summary omitted explicit "create domain" phrasing, even
 though a USER-KING domain_creates / reviewer add_domain VREQ mandated the first-class domain. Fix:
-`diff_within_summary_scope` now takes `allowed_new_domains` and whitelists additions named in the
-batch's own VREQ text (`_vov446_allowed_new_domains`).
+the outcome-scope guard (now `diff_within_requirement_scope`) permits a new domain that a requirement spec of the
+batch creates (add_domain, add_product, a rename, merge or move destination).
 
 GAP-4 (LOW): `ai_query` returns SQL NULL -> None on timeout; `_call_ai_query` then called len() on it
 and raised `TypeError: object of type 'NoneType' has no len()`. Fix: `_v446_coerce_ai_response`.
@@ -18,16 +18,24 @@ Generic: uses a NON-automotive domain name ("field_services" is generic; the tes
 "telemetry_ops") and never hardcodes an industry.
 """
 import re
+import sys
+from pathlib import Path
 
 import pytest
 
 from v435_helpers import concat_source, slice_functions
+from notebook_source_util import pk_suffix_globals
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 
-def _scope_ns():
-    return slice_functions(
-        ["diff_within_summary_scope", "_vov446_allowed_new_domains"],
-        concat_source(), extra_globals={"re": re})
+def _gate(diff, *specs):
+    ah.vov_ledger_reset()
+    vs.register(ah, {"model": {"domains": [{"name": "ops", "products": [{"name": "sensor", "attributes": []}]}]}}, *specs)
+    return ah.diff_within_requirement_scope(diff, [s["id"] for s in specs])
 
 
 def _coerce_ns():
@@ -47,60 +55,37 @@ class _Row:
 
 
 # ===================================================== GAP-1
-def test_gap1_whitelisted_new_domain_is_in_scope():
-    ns = _scope_ns()
+def test_gap1_a_new_domain_its_spec_creates_is_in_scope():
     diff = _empty_diff(domains_added={"field_services"})
-    # summary does NOT contain "create/add/new domain" -> pre-patch this rejected the batch
-    ok, diag = ns["diff_within_summary_scope"](
-        diff, "Populate field_services with its products and links.",
-        allowed_new_domains={"field_services"})
-    assert ok, "user-king new domain must be in scope: %s" % diag
+    for spec in (vs.spec("V1", "add_domain", ["field_services"]), vs.spec("V1", "add_product", ["field_services.work_order"])):
+        ok, diag = _gate(diff, spec)
+        assert ok, "a domain the requirement creates must be in scope: %s" % diag
 
 
 def test_gap1_unauthorized_new_domain_still_rejected():
-    """Anti-tautology: a domain NOT in the allow-set is still flagged out-of-scope."""
-    ns = _scope_ns()
     diff = _empty_diff(domains_added={"hallucinated_domain"})
-    ok, diag = ns["diff_within_summary_scope"](
-        diff, "Populate field_services with its products.",
-        allowed_new_domains={"field_services"})
-    assert not ok and "domains_added" in diag, diag
+    ok, diag = _gate(diff, vs.spec("V1", "add_domain", ["field_services"]))
+    assert not ok and "domain hallucinated_domain added" in diag, diag
 
 
-def test_gap1_default_no_allowlist_preserves_old_behavior():
-    """With no allow-set and no create phrasing, a domain add is still out-of-scope (backward-compat)."""
-    ns = _scope_ns()
+def test_gap1_without_a_spec_a_domain_add_is_out_of_scope():
     diff = _empty_diff(domains_added={"whatever"})
-    ok, diag = ns["diff_within_summary_scope"](diff, "some unrelated summary")
+    ok, diag = ah.diff_within_requirement_scope(diff, ["V-unknown"])
     assert not ok, diag
 
 
-def test_gap1_helper_whitelists_domain_named_in_vreq_text():
-    ns = _scope_ns()
-    payload = ({"intent": "Add a first-class field_services domain with 12 products",
-                "target": "field_services", "source_quote": "field_services should be its own domain"},)
-    out = ns["_vov446_allowed_new_domains"](payload, "surgical batch", {"field_services"})
-    assert out == {"field_services"}
+def test_gap1_only_the_domain_the_spec_names_is_allowed_not_one_the_llm_invented():
+    diff = _empty_diff(domains_added={"field_services", "marketing_extra"})
+    ok, diag = _gate(diff, vs.spec("V1", "add_domain", ["field_services"]))
+    assert not ok and "domain marketing_extra added" in diag and "field_services" not in diag
 
 
-def test_gap1_helper_excludes_domain_not_in_any_vreq():
-    ns = _scope_ns()
-    payload = ({"intent": "Add a first-class field_services domain", "target": "field_services",
-                "source_quote": ""},)
-    # LLM also invented 'marketing_extra' which no VREQ mentions -> must NOT be whitelisted
-    out = ns["_vov446_allowed_new_domains"](payload, "", {"field_services", "marketing_extra"})
-    assert out == {"field_services"}
-
-
-def test_gap1_generic_second_domain_name():
-    """Prove genericity with a different domain token."""
-    ns = _scope_ns()
-    payload = ({"intent": "create telemetry_ops domain", "target": "telemetry_ops", "source_quote": ""},)
-    out = ns["_vov446_allowed_new_domains"](payload, "", {"telemetry_ops"})
-    assert out == {"telemetry_ops"}
-    diff = _empty_diff(domains_added={"telemetry_ops"})
-    ok, _ = ns["diff_within_summary_scope"](diff, "no create phrase here", allowed_new_domains=out)
-    assert ok
+def test_gap1_a_move_into_a_new_domain_permits_that_domain():
+    diff = _empty_diff(domains_added={"telemetry_ops"}, products_added=[("telemetry_ops", "sensor")], products_removed=[("ops", "sensor")])
+    ok, diag = _gate(diff, vs.spec("V1", "move_product", ["ops.sensor"], destination_domain="telemetry_ops"))
+    assert ok, diag
+    ok, diag = _gate(diff, vs.spec("V1", "move_product", ["ops.sensor"], destination_domain="field_services"))
+    assert not ok and "domain telemetry_ops added" in diag
 
 
 # ===================================================== GAP-4
@@ -136,7 +121,7 @@ def _connect_ns():
                if isinstance(n, _ast.FunctionDef)
                and (n.name.startswith("_v251_") or n.name.startswith("_v410_"))]
     names = list(dict.fromkeys(helpers + ["_v415_complete_connect_details"]))
-    return slice_functions(names, src, extra_globals={"re": re})
+    return slice_functions(names, src, extra_globals={"re": re, **pk_suffix_globals()})
 
 
 def _automotive_connect_model():
@@ -158,18 +143,19 @@ def _automotive_connect_model():
              "attributes": [{"name": "appt_id", "primary_key": True}]}]}]}}
 
 
-def test_gap2_misresolved_connect_rescoped_to_named_domain():
-    """The FK column resolved to a same-word product in the WRONG domain (product.order_guide),
-    but the directive explicitly names the aftersales domain as the FK target. The correction
-    re-scopes to the reviewer-named domain. Fail-pre: v4.4.5 has no GAP-2 block -> stays 'product.*'."""
-    ns = _connect_ns()
-    f = ns["_v415_complete_connect_details"]
-    pr = {"action": "connect_table", "target": "mobility.predictive_maintenance_alert",
-          "intent": "add column service_order_id with FK to the aftersales service order table",
-          "source_quote": "FK to the aftersales service order table", "reason": "integration"}
-    out = f(pr, {"fk_target": "product.order_guide.order_guide_id", "column": "service_order_id"},
-            _automotive_connect_model(), None)
-    assert out["fk_target"].startswith("aftersales."), out["fk_target"]
+def test_gap2_the_fk_target_comes_from_the_spec_and_completion_only_fills_its_key():
+    model = _automotive_connect_model()
+    ah.vov_ledger_reset()
+    vs.register(ah, model, vs.spec("P001", "add_column", ["mobility.predictive_maintenance_alert.service_order_id"],
+                                   columns=[{"name": "service_order_id", "type": ""}], fk_target="aftersales.aftersales_repair_order"))
+    pr = {"vreq_id": "P001", "action": "connect_table", "target": "mobility.predictive_maintenance_alert",
+          "intent": "add column service_order_id with FK to the aftersales service order table"}
+    details = ah._v251_parse_priority_details(pr)
+    assert details["fk_target"] == "aftersales.aftersales_repair_order.repair_order_id" and details["column"] == "service_order_id"
+    out = ah._v415_complete_connect_details(pr, dict(details, fk_target="aftersales.aftersales_repair_order"), model, None)
+    assert out["fk_target"] == "aftersales.aftersales_repair_order.repair_order_id"
+    ah.vov_ledger_reset()
+    assert ah._v251_parse_priority_details(pr)["fk_target"] is None
 
 
 def test_gap2_explicit_target_domain_never_disturbed():
@@ -199,16 +185,15 @@ def test_gap2_correct_in_domain_resolution_left_alone():
 
 
 # ===================================================== GAP-3
-def _forcekeep_ns():
-    return slice_functions(["_v446_force_keep_shrink"], concat_source(), extra_globals={"re": re})
+_GAP3_KEEP = ("purchase_order", "purchase_order_line", "purchase_requisition", "supplier", "scheduling_agreement", "goods_receipt",
+              "connected_vehicle", "telemetry_event", "predictive_maintenance_alert")
 
 
-_GAP3_REVIEWER = (
-    "REVIEWER-PRIORITY 8 - strengthen Procurement and Mobility in the MVM: the MVM excludes "
-    "Procurement and Mobility entirely, which is too aggressive. When shrinking the ECM to the MVM, "
-    "keep basic Procurement in the MVM: purchase_order, purchase_order_line, purchase_requisition, "
-    "supplier, scheduling_agreement, goods_receipt. Also keep the Mobility basics in the MVM: "
-    "connected_vehicle, telemetry_event, predictive_maintenance_alert.")
+def _gap3_specs(extra=()):
+    """The spec an LLM returns for the reviewer's 'keep basic Procurement / the Mobility basics in the MVM' directive."""
+    homes = {p: "procurement" for p in _GAP3_KEEP[:6]} | {p: "mobility" for p in _GAP3_KEEP[6:]}
+    targets = [{"domain": homes[p], "product": p, "column": ""} for p in _GAP3_KEEP] + [{"domain": d, "product": p, "column": ""} for d, p in extra]
+    return [{"action": "preserve", "targets": targets}]
 
 
 def _gap3_products():
@@ -222,42 +207,30 @@ def _gap3_products():
 
 
 def test_gap3_forcekeep_readds_reviewer_named_mvm_products():
-    """The shrink heuristic excluded procurement + mobility entirely; the USER-KING 'keep ... in the
-    MVM: a, b, c' directive force-re-adds the 9 reviewer-named products. Fail-pre: v4.4.5 has no
-    _v446_force_keep_shrink -> slice raises LookupError."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    ttk = {("sales", "sales_order"), ("sales", "quote")}
-    out = f(ttk, _GAP3_REVIEWER, _gap3_products())
+    """The shrink heuristic excluded procurement + mobility entirely; the reviewer's keep directive, read by the LLM
+    into a preserve spec, re-adds the 9 reviewer-named products."""
+    out = ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order"), ("sales", "quote")}, _gap3_specs(), _gap3_products())
     kept = {p for (_d, p) in out}
-    for must in ("purchase_order", "purchase_order_line", "purchase_requisition", "supplier",
-                 "scheduling_agreement", "goods_receipt",
-                 "connected_vehicle", "telemetry_event", "predictive_maintenance_alert"):
+    for must in _GAP3_KEEP:
         assert must in kept, must
 
 
 def test_gap3_does_not_add_products_outside_the_directive():
-    """Products in those domains that the reviewer did NOT name (rfq, geofence) are NOT force-kept,
-    and phantom names (not in products_data) are never invented."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    ttk = {("sales", "sales_order")}
-    out = f(ttk, _GAP3_REVIEWER, _gap3_products())
+    """Products the reviewer did NOT name (rfq, geofence) are NOT force-kept, and names absent from products_data
+    are never invented."""
+    out = ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order")}, _gap3_specs([("procurement", "nonexistent_table")]), _gap3_products())
     assert ("procurement", "rfq") not in out
     assert ("mobility", "geofence") not in out
     assert not any(p == "nonexistent_table" for (_d, p) in out)
 
 
 def test_gap3_noop_when_no_keep_directive():
-    """No 'keep ... in the MVM' phrasing -> tables_to_keep returned unchanged (retail/other industries)."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
+    """No reviewer spec -> tables_to_keep returned unchanged."""
     ttk = {("sales", "sales_order"), ("sales", "quote")}
-    out = f(ttk, "the customer domain should be minimal: profile plus address.", _gap3_products())
-    assert set(out) == ttk
+    assert set(ah._vov_shrink_apply_reviewer_specs(ttk, [], _gap3_products())) == ttk
 
 
 def test_gap3_preserves_input_container_type():
     """Set in -> set out; list in -> list out (call-site passes a set)."""
-    f = _forcekeep_ns()["_v446_force_keep_shrink"]
-    out_set = f({("sales", "sales_order")}, _GAP3_REVIEWER, _gap3_products())
-    assert isinstance(out_set, set)
-    out_list = f([("sales", "sales_order")], _GAP3_REVIEWER, _gap3_products())
-    assert isinstance(out_list, list)
+    assert isinstance(ah._vov_shrink_apply_reviewer_specs({("sales", "sales_order")}, _gap3_specs(), _gap3_products()), set)
+    assert isinstance(ah._vov_shrink_apply_reviewer_specs([("sales", "sales_order")], _gap3_specs(), _gap3_products()), list)

@@ -25,7 +25,7 @@ def test_v350_subdomain_name_enforce_present():
     assert "SUBDOMAIN_NAME_ENFORCE" in src
     assert "_SUBDOMAIN_ROSTER_SCHEMA" in src
     # gated: only fires when the vibe actually mentions subdomains (no relabel on open rosters)
-    assert 'if ai and vibe_text and ("subdomain" in vibe_text.lower()' in src
+    assert '_roster_rules = _vreq_spec_allowed_rules("products", "subdomain")' in src and '"subdomain" in vibe_text.lower()' not in src
 
 
 def test_v350_roster_schema_shape():

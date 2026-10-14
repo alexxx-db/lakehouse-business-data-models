@@ -1,6 +1,13 @@
 import ast
+import copy
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB_PATH = Path(__file__).resolve().parents[2] / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -20,7 +27,7 @@ def _build_ns():
     keep = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name.startswith(_PREFIXES)]
     mod = ast.Module(body=keep, type_ignores=[])
     ast.fix_missing_locations(mod)
-    ns = {"re": __import__("re"), "copy": __import__("copy")}
+    ns = dict(vars(ah), re=__import__("re"), copy=__import__("copy"))
     exec(compile(mod, str(NB_PATH), "exec"), ns)
     return ns
 
@@ -80,42 +87,39 @@ def _attr(model, dom, prod, col):
     return None
 
 
+def _selffix(model, spec):
+    vs.register(ah, model, spec)
+    return ah._v410_deterministic_selffix(model, {"id": spec["id"]}, _L())
+
+
 def test_v410_fix_functions_exist():
-    # Fail-pre proof: on pre-patch HEAD these defs do not exist -> KeyError here.
     ns = _build_ns()
-    for fn in ("_v410_resolve_pk", "_v410_parse_req_to_action", "_v410_deterministic_selffix"):
+    for fn in ("_v410_resolve_pk", "_v410_deterministic_selffix", "_vreq_spec_det_ops"):
         assert fn in ns, fn
+    assert "_v410_parse_req_to_action" not in ns, "the fast path reads the requirement spec, never the requirement text"
 
 
 def test_v410_connect_table_adds_fk_deterministically():
-    ns = _build_ns()
     model = _model()
-    req = {"id": "VREQ-031",
-           "text": "P2: Connect experience.program to property by adding a property_id column (BIGINT) with an FK to property.property.property_id because programs run at a property."}
     assert _attr(model, "experience", "program", "property_id") is None
-    ok, ev = ns["_v410_deterministic_selffix"](model, req, _L())
+    ok, ev = _selffix(model, vs.spec("VREQ-031", "add_column", ["experience.program"], columns=[{"name": "property_id", "type": "BIGINT"}],
+                                     fk_target="property.property.property_id"))
     assert ok is True, ev
     a = _attr(model, "experience", "program", "property_id")
     assert a is not None and a.get("foreign_key_to") == "property.property.property_id", a
 
 
 def test_v410_two_part_fk_resolves_pk_and_links():
-    ns = _build_ns()
     model = _model()
-    req = {"id": "VREQ-023",
-           "text": "Add a missing foreign key from reservation.reservation_booking to inventory.room_type. Currently room_type_requested is just a string."}
-    ok, ev = ns["_v410_deterministic_selffix"](model, req, _L())
+    ok, ev = _selffix(model, vs.spec("VREQ-023", "add_fk", ["reservation.reservation_booking.room_type_requested"], fk_target="inventory.room_type"))
     assert ok is True, ev
-    # the existing room_type_requested column should now carry the resolved FK to the PK
     a = _attr(model, "reservation", "reservation_booking", "room_type_requested")
     assert a is not None and a.get("foreign_key_to") == "inventory.room_type.room_type_id", a
 
 
 def test_v410_move_product_relocates_deterministically():
-    ns = _build_ns()
     model = _model()
-    req = {"id": "VREQ-046", "text": "P17: Move the product procurement.benefit_plan to the workforce domain because benefit plans are an HR function."}
-    ok, ev = ns["_v410_deterministic_selffix"](model, req, _L())
+    ok, ev = _selffix(model, vs.spec("VREQ-046", "move_product", ["procurement.benefit_plan"], destination_domain="workforce"))
     assert ok is True, ev
     proc = [d for d in model["model"]["domains"] if d["name"] == "procurement"][0]
     work = [d for d in model["model"]["domains"] if d["name"] == "workforce"][0]
@@ -124,25 +128,22 @@ def test_v410_move_product_relocates_deterministically():
 
 
 def test_v410_generative_req_returns_none_stays_on_llm():
-    ns = _build_ns()
     model = _model()
-    # generative expand -> no mechanical action -> must NOT be applied deterministically
-    act = ns["_v410_parse_req_to_action"](
-        "revenue.segment_program_eligibility is a thin product with only 5 attributes; expand it with additional relevant attributes.",
-        model,
-    )
-    assert act is None
+    before = copy.deepcopy(model)
+    assert _selffix(model, vs.spec("VREQ-047", "other", ["reservation.reservation_booking"])) == (None, "no_deterministic_action")
+    assert _selffix(model, vs.spec("VREQ-048", "set_fields", ["reservation.reservation_booking"],
+                                   fields=[vs.field("attributes", "description")])) == (None, "no_deterministic_action")
+    assert ah._v410_deterministic_selffix(model, {"id": "VREQ-049"}, _L()) == (None, "no_deterministic_action")
+    assert model == before
 
 
 def test_v410_unresolvable_target_returns_none():
-    ns = _build_ns()
     model = _model()
-    # connect against a source product that does not exist -> conservative None (stay on LLM path)
-    act = ns["_v410_parse_req_to_action"](
-        "Connect ghost.missing to property by adding a property_id column with an FK to property.property.property_id.",
-        model,
-    )
-    assert act is None
+    before = copy.deepcopy(model)
+    ok, ev = _selffix(model, vs.spec("VREQ-050", "add_column", ["ghost.missing"], columns=[{"name": "property_id", "type": "BIGINT"}],
+                                     fk_target="property.property.property_id"))
+    assert ok is None and ev == "add_fk_apply_failed", ev
+    assert model == before
 
 
 def test_v410_resolve_pk_prefers_declared_then_id_suffix():

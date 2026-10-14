@@ -25,13 +25,12 @@ on the live notebook (CLAUDE.md §8.10).
 """
 import json
 import os
-import re
-import textwrap
 import types
 
 import pytest
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -46,14 +45,6 @@ def _full_src(path):
     )
 
 
-def _extract_fn(src, name):
-    m = re.search(rf"\n    def {name}\(self.*?\n    def ", src, re.S)
-    assert m, f"{name} not found"
-    body = m.group(0)
-    body = body[: body.rfind("\n    def ")]
-    return textwrap.dedent(body)
-
-
 class _Logger:
     def info(self, *a, **k):
         pass
@@ -63,41 +54,6 @@ class _Logger:
 
     def error(self, *a, **k):
         pass
-
-
-class _Req:
-    def __init__(self, text, rid="VREQ-T"):
-        self.original_text = text
-        self.id = rid
-
-
-def _extract_modfn(src, name):
-    # module-level (column-0) def extractor: from '\ndef name(' to the next column-0 'def ' / EOF
-    m = re.search(rf"\ndef {name}\(.*?(?=\ndef |\Z)", src, re.S)
-    assert m, f"module-level {name} not found"
-    return m.group(0)
-
-
-def _bind_classify_op(path):
-    # exec _v337_classify_op + its module-level deps from `path` into one namespace (re available)
-    src = _full_src(path)
-    ns = {"re": re}
-    for fn in ("_v301_extract_rename_target", "_v337_extract_col_rename",
-               "_v337_extract_move_target", "_v337_classify_op"):
-        exec(_extract_modfn(src, fn), ns)
-    return ns["_v337_classify_op"]
-
-
-def _bind(path, name):
-    src = _full_src(path)
-    ns = {"re": re}
-    exec(_extract_fn(src, name), ns)
-
-    class Dummy:
-        logger = _Logger()
-
-    setattr(Dummy, name, ns[name])
-    return Dummy()
 
 
 def _prods(pairs):
@@ -117,68 +73,65 @@ def test_version_bumped_to_415():
     assert ver >= (4, 1, 5), ah.__AGENT_VERSION__
 
 
-# ===================== RC#1 _v415_verify_add_attr (POST) ====================
+# ===================== RC#1 add-column / add-FK spec verdicts (POST) ====================
 PRODS = _prods([("field_services", "mobile_service_order"), ("customer", "party")])
-TXT_FK = ("On field_services.mobile_service_order add column party_id BIGINT "
-          "FK->customer.party.party_id")
+SPEC_FK = vs.spec("VREQ-T", "add_column", ["field_services.mobile_service_order"], columns=[{"name": "party_id", "type": "BIGINT"}],
+                  fk_target="customer.party.party_id", column_type="BIGINT")
+SPEC_NO_FK = vs.spec("VREQ-T", "add_column", ["field_services.mobile_service_order"], columns=[{"name": "dispatch_notes", "type": ""}])
+
+
+def _verdict(spec, products, attrs):
+    vs.register(ah, ah.widgets_flat_to_model([], [dict(p, primary_key=p["product"] + "_id") for p in PRODS], []), spec)
+    return ah._verify_from_spec(ah.vreq_spec(spec["id"]), [], products, attrs, _Logger(), spec["id"])
 
 
 def test_add_fk_present_correct_fulfilled():
-    obj = _bind(NB, "_v415_verify_add_attr")
     attrs = [_attr("field_services", "mobile_service_order", "party_id", "customer.party.party_id")]
-    v = obj._v415_verify_add_attr(_Req(TXT_FK), PRODS, attrs)
+    v = _verdict(SPEC_FK, PRODS, attrs)
     assert v is not None and v["status"] == "fulfilled", v
-    assert "v415-verify-add-attr" in v["evidence"]
+    assert "[verifier-spec FIRED v5.3.3]" in v["evidence"]
+    elsewhere = _verdict(SPEC_FK, PRODS, [_attr("field_services", "work_order", "party_id", "customer.party.party_id")])
+    assert elsewhere["status"] == "failed", elsewhere
 
 
-def test_add_fk_present_wrong_target_partial():
-    # column present but FK points at the WRONG target -> partial (honest, not fulfilled)
-    obj = _bind(NB, "_v415_verify_add_attr")
+def test_add_fk_present_wrong_target_failed():
     attrs = [_attr("field_services", "mobile_service_order", "party_id", "vehicle.unit.unit_id")]
-    v = obj._v415_verify_add_attr(_Req(TXT_FK), PRODS, attrs)
-    assert v is not None and v["status"] == "partial", v
+    v = _verdict(SPEC_FK, PRODS, attrs)
+    assert v is not None and v["status"] == "failed", v
 
 
 def test_add_column_no_fk_present_fulfilled():
-    obj = _bind(NB, "_v415_verify_add_attr")
-    txt = "On field_services.mobile_service_order add column dispatch_notes"
     attrs = [_attr("field_services", "mobile_service_order", "dispatch_notes")]
-    v = obj._v415_verify_add_attr(_Req(txt), PRODS, attrs)
+    v = _verdict(SPEC_NO_FK, PRODS, attrs)
     assert v is not None and v["status"] == "fulfilled", v
+    elsewhere = _verdict(SPEC_NO_FK, PRODS, [_attr("field_services", "work_order", "dispatch_notes")])
+    assert elsewhere["status"] == "failed", elsewhere
 
 
-def test_add_column_absent_returns_none_defer():
-    # MUST-defer (non-tautology): column NOT in model -> None so it never false-fulfills a gap
-    obj = _bind(NB, "_v415_verify_add_attr")
+def test_add_column_absent_is_failed_never_fulfilled():
     attrs = [_attr("field_services", "mobile_service_order", "some_other_col")]
-    v = obj._v415_verify_add_attr(_Req(TXT_FK), PRODS, attrs)
-    assert v is None, v
+    v = _verdict(SPEC_FK, PRODS, attrs)
+    assert v is not None and v["status"] == "failed", v
 
 
-def test_add_column_product_absent_returns_none_defer():
-    # product not in model (genuine RC#3 gap) -> None, never false-fail here
-    obj = _bind(NB, "_v415_verify_add_attr")
+def test_add_column_product_absent_is_failed_never_fulfilled():
     prods = _prods([("customer", "party")])  # mobile_service_order absent
-    attrs = []
-    v = obj._v415_verify_add_attr(_Req(TXT_FK), prods, attrs)
-    assert v is None, v
-
-
-def test_non_add_column_text_returns_none():
-    obj = _bind(NB, "_v415_verify_add_attr")
-    v = obj._v415_verify_add_attr(_Req("Rename product sales.order to sales.sales_order"),
-                                  PRODS, [])
-    assert v is None, v
+    v = _verdict(SPEC_FK, prods, [])
+    assert v is not None and v["status"] == "failed", v
 
 
 def test_add_column_domain_prefix_tolerant():
     # SSOT rename: product physically named field_services_mobile_service_order;
     # the verifier must still resolve the unprefixed VReq target.
-    obj = _bind(NB, "_v415_verify_add_attr")
     prods = _prods([("field_services", "field_services_mobile_service_order"), ("customer", "party")])
     attrs = [_attr("field_services", "field_services_mobile_service_order", "party_id",
                    "customer.party.party_id")]
-    v = obj._v415_verify_add_attr(_Req(TXT_FK), prods, attrs)
+    assert _verdict(SPEC_FK, prods, attrs)["status"] == "failed", "no rename was recorded, so the old name is not credited"
+    ah._vov_note_product_rename("field_services", "mobile_service_order", "field_services", "field_services_mobile_service_order",
+                                "pass:p074_product_name_collision")
+    wrong = [_attr("field_services", "field_services_mobile_service_order", "party_id", "vehicle.unit.unit_id")]
+    assert _verdict(SPEC_FK, prods, wrong)["status"] != "fulfilled"
+    v = _verdict(SPEC_FK, prods, attrs)
     assert v is not None and v["status"] == "fulfilled", v
 
 
@@ -213,63 +166,55 @@ def test_export_sweep_wired_after_phantom_exclusion_POST(agent_source_text):
     assert pf_at != -1 and sweep_at != -1 and pf_at < sweep_at
 
 
-def test_add_attr_verifier_wired_before_coarse_fallback_POST(agent_source_text):
+def test_spec_verifier_wired_after_the_open_field_verdict_POST(agent_source_text):
     src = agent_source_text
-    assert "v415-verify-add-attr" in src
-    assert "self._v415_verify_add_attr(req, products_data, attributes_data)" in src
-    # the dict verifier must run inside _verify_deterministic, BEFORE that function's
-    # scope_targets dispatch loop (anchor on the loop that FOLLOWS the call, since the
-    # 'for target in req.scope_targets:' string also appears in other functions).
-    call_at = src.find("self._v415_verify_add_attr(req, products_data, attributes_data)")
-    assert call_at != -1
-    loop_after = src.find("        for target in req.scope_targets:", call_at)
-    assert loop_after != -1 and loop_after > call_at
+    assert "alias=verifier-spec" in src
+    assert "self._v415_verify_add_attr(" not in src
+    for method in ("    def _verify_requirement(self", "    def _verify_deterministic(self"):
+        start = src.find(method)
+        assert start != -1, method
+        body = src[start:src.find("\n    def ", start + len(method))]
+        open_at = body.find("_vibe_scope_open_field_verdict(req, domains_data, products_data, attributes_data, self.logger)")
+        spec_at = body.find("_verify_from_spec(vreq_spec(req), domains_data, products_data, attributes_data, self.logger")
+        assert -1 < open_at < spec_at, method
 
 
-# ===================== RC#3 B7 bare-action column rename ====================
-# ngo VREQ-034 (supply_category_code -> commodity_category_code): a column rename
-# arriving WITHOUT an explicit action label (action='') fell through _v337_classify_op
-# to None (the empty-action branch only handled product/table rename). v415 adds the
-# empty-action column-rename branch. SAFE: requires explicit column/attribute/field
-# rename phrasing; _v337_apply_rename_attribute validates the source col so a mis-parse
-# defers (returns None) and never mutates.
+# ===================== RC#3 B7 column rename ====================
+# ngo VREQ-034 (supply_category_code -> commodity_category_code): a column rename the
+# fast path never applied. The classifier's rename_column spec now builds the op; a spec
+# whose new name is not one identifier, that names no column, or whose source column is
+# absent never mutates.
 RA_FQN = "procurement.purchase_order"
-RA_TXT = "rename column supply_category_code to commodity_category_code"
 
 
-def test_bare_action_column_rename_classified_POST():
-    op = ah._v337_classify_op("", RA_FQN, RA_TXT, RA_TXT)
-    assert op == ("rename_attribute", "procurement", "purchase_order",
-                  "supply_category_code", "commodity_category_code"), op
+def _ra_model():
+    return ah.widgets_flat_to_model([], [{"domain": "procurement", "product": "purchase_order", "primary_key": "purchase_order_id"}],
+                                    [{"domain": "procurement", "product": "purchase_order", "attribute": a}
+                                     for a in ("purchase_order_id", "supply_category_code")])
 
 
-def test_explicit_action_column_rename_still_classified_POST():
-    op = ah._v337_classify_op("rename_attribute", RA_FQN, RA_TXT, RA_TXT)
-    assert op == ("rename_attribute", "procurement", "purchase_order",
-                  "supply_category_code", "commodity_category_code"), op
+def _ra_columns(model):
+    return [a["name"] for a in model["model"]["domains"][0]["products"][0]["attributes"]]
 
 
-def test_bare_action_product_rename_unaffected_POST():
-    # the product-rename empty-action branch must still win for product/table phrasing
-    op = ah._v337_classify_op("", "sales.order", "rename product order to sales_order",
-                              "rename product order to sales_order")
-    assert op is not None and op[0] == "rename_product", op
-
-
-def test_bare_action_non_rename_returns_none_POST():
-    # non-rename free text must NOT be misclassified as a column rename (no false op)
-    op = ah._v337_classify_op("", "sales.order", "add column total_amount DECIMAL",
-                              "add column total_amount DECIMAL")
-    assert op is None, op
-
-
-@pytest.mark.skipif(not os.path.exists(NB_PRE), reason="pre-v415 backup absent")
-def test_bare_action_column_rename_None_pre_patch_FAILPRE():
-    # behavioral fail-pre: v4.1.4 _v337_classify_op returns None for the bare-action rename
-    classify_pre = _bind_classify_op(NB_PRE)
-    assert classify_pre("", RA_FQN, RA_TXT, RA_TXT) is None
-    # and post must return the op (proves the patch changed observable behavior)
-    assert ah._v337_classify_op("", RA_FQN, RA_TXT, RA_TXT) is not None
+def test_column_rename_spec_renames_the_column_and_misreadings_never_mutate_POST():
+    model = _ra_model()
+    vs.register(ah, model, vs.spec("VREQ-034", "rename_column", [RA_FQN + ".supply_category_code"], new_name="commodity_category_code"))
+    assert ah._vreq_spec_det_ops(ah.vreq_spec("VREQ-034"), model) == [
+        ("rename_attribute", "procurement", "purchase_order", "supply_category_code", "commodity_category_code")]
+    ok, evidence = ah._v410_deterministic_selffix(model, {"id": "VREQ-034"}, _Logger())
+    assert ok is True, evidence
+    assert _ra_columns(model) == ["purchase_order_id", "commodity_category_code"]
+    for spec, reason in (
+            (vs.spec("VREQ-035", "rename_column", [RA_FQN + ".supply_category_code"], new_name="commodity category code"),
+             "no_deterministic_action"),
+            (vs.spec("VREQ-035", "rename_column", [RA_FQN], new_name="commodity_category_code"), "no_deterministic_action"),
+            (vs.spec("VREQ-035", "rename_column", [RA_FQN + ".no_such_column"], new_name="commodity_category_code"),
+             "rename_attribute_apply_failed")):
+        model = _ra_model()
+        vs.register(ah, model, spec)
+        assert ah._v410_deterministic_selffix(model, {"id": "VREQ-035"}, _Logger()) == (None, reason), spec
+        assert model == _ra_model(), spec
 
 
 # ============================== FAILPRE =====================================

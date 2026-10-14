@@ -27,7 +27,13 @@ v2.7.4 fixes (LLM-sourced, NO regex):
 """
 import json
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 NB_PATH = Path(__file__).parent.parent.parent / "agent" / "dbx_vibe_modelling_agent.ipynb"
 
@@ -56,11 +62,7 @@ def _extract_func(src, name):
 
 
 def _load_directive_fn():
-    src = _nb_src()
-    func_src = _extract_func(src, "_vibe_exact_metric_view_directive")
-    ns = {}
-    exec(compile(func_src, "<directive>", "exec"), ns)
-    return ns["_vibe_exact_metric_view_directive"]
+    return ah._vibe_exact_metric_view_directive
 
 
 def _vc(**sd):
@@ -137,6 +139,17 @@ def test_directive_no_classification_returns_none():
     fn = _load_directive_fn()
     n, names = fn({})
     assert n is None and names == []
+
+
+def test_directive_without_sizing_fields_reads_only_an_exact_metric_view_count_spec():
+    fn = _load_directive_fn()
+    vs.register(ah, {"model": {"domains": []}}, vs.spec("V1", "other", [], kind="count_target",
+                                                        count={"entity": "metric_views", "op": "at_least", "value": 3}))
+    assert fn({}) == (None, [])
+    vs.register(ah, {"model": {"domains": []}}, vs.spec("V2", "other", [], kind="count_target", metric_views=["Vacancy Rate"],
+                                                        count={"entity": "metric_views", "op": "exactly", "value": 3}))
+    assert fn({}) == (3, ["Vacancy Rate"])
+    assert fn(_vc(max_metric_views=2, explicit_metric_views=["A", "B"])) == (2, ["A", "B"])
 
 
 # ---------- wiring: override + suppress + trim are present at the right sites ----------

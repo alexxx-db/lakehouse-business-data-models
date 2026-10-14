@@ -38,7 +38,7 @@ _DELETED_FUNCS = [
 ]
 
 _KEPT_FUNCS = [
-    "_compute_vov_user_closure",
+    "_vov_refresh_user_closure",
     "apply_mutation_command",
     "run_vibe_verification_sweep",
 ]
@@ -98,7 +98,7 @@ def test_version_bumped_to_270():
 def test_sentinels_present():
     src = _nb_src()
     assert "[v270-sandbox-is-authoritative FIRED]" in src
-    assert "[v270-sweep-skip-on-vov FIRED]" in src
+    assert "[v501-one-mutation-engine FIRED]" in src
 
 
 # ---------- behavioral: sweep-gate truth table from REAL source ----------
@@ -111,10 +111,10 @@ def _extract_sweep_gate():
     assert assign_m, "v270 sweep-gate assignment not found"
     assign = assign_m.group(0).strip()
     cond_m = re.search(
-        r"if _vs_ai_agent and _vs_vibe_text and not config\.get\('_verification_sweep_ran'\) and not _v270_is_vov:",
+        r"if _vs_ai_agent and _vs_vibe_text and not config\.get\('_verification_sweep_ran'\):",
         src,
     )
-    assert cond_m, "v270-gated sweep condition not found"
+    assert cond_m, "verification sweep condition not found"
     cond = cond_m.group(0).strip()[len("if "):-1]  # strip 'if ' and trailing ':'
     return assign, cond
 
@@ -131,10 +131,13 @@ def _sweep_would_run(operation, ai_agent, vibe_text, sweep_ran):
     return bool(eval(cond, ns))
 
 
-def test_sweep_skipped_for_vov_even_with_vibe_and_agent():
-    # VOV path: sandbox is authoritative -> legacy sweep must NOT run.
+def test_sweep_runs_for_vov_through_the_one_mutation_engine():
     assert _sweep_would_run("vibe modeling of version", ai_agent=object(),
+                            vibe_text="rename X; add FK Y", sweep_ran=False) is True
+    assert _sweep_would_run("vibe modeling of version", ai_agent=None,
                             vibe_text="rename X; add FK Y", sweep_ran=False) is False
+    assert _sweep_would_run("vibe modeling of version", ai_agent=object(),
+                            vibe_text="", sweep_ran=False) is False
 
 
 def test_sweep_still_runs_for_non_vov_ops():

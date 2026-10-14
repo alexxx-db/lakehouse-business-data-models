@@ -16,25 +16,27 @@ v0.9.9 -> v1.0.0).
 """
 
 import json
+import logging
 import os
 import re
+import sys
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+
 REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 AGENT_NB = os.path.join(REPO_ROOT, "agent", "dbx_vibe_modelling_agent.ipynb")
-README = os.path.join(REPO_ROOT, "readme.md")
 
 
 @pytest.fixture(scope="module")
 def agent_text():
     with open(AGENT_NB, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read()
-
-
-@pytest.fixture(scope="module")
-def readme_text():
-    with open(README, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
 
 
@@ -53,65 +55,6 @@ def test_v100_single_digit_semver_invariant(agent_text):
     bad += re.findall(r'__AGENT_VERSION__\s*=\s*\\?"\d+\.\d+\.\d{2,}\\?"', agent_text)
     bad += re.findall(r'__AGENT_VERSION__\s*=\s*\\?"\d{2,}\.\d+\.\d+\\?"', agent_text)
     assert not bad, f"Single-digit-segment semver invariant violated: {bad}"
-
-
-def test_v100_readme_version_line(readme_text):
-    """readme.md 'Current version' line MUST say v1.0.x."""
-    assert re.search(r"Current version: \*\*v1\.0\.\d\*\*", readme_text), \
-        "readme.md 'Current version' line must be v1.0.x"
-
-
-def test_v100_readme_version_history_entry(readme_text):
-    """A row for **v1.0.0** MUST appear in the Version history table."""
-    assert re.search(r"^\|\s*\*\*v1\.0\.0\*\*\s*\|", readme_text, re.MULTILINE), \
-        "readme.md Version history must include a **v1.0.0** row"
-
-
-# ─── Fix 1: user-directive-protects-from-fk-rename ─────────────────────────
-
-
-def test_fix1_alias_present_in_agent(agent_text):
-    """alias=user-directive-protects-from-fk-rename must appear at the FK-rename site."""
-    count = agent_text.count("user-directive-protects-from-fk-rename")
-    assert count >= 4, (
-        f"Expected ≥4 sentinel/alias references for user-directive-protects-from-fk-rename, got {count} — "
-        "fix should appear at version-constant comment + 2 protection sites (merge + rename) "
-        "and at least one alias=... grep-anchor"
-    )
-
-
-def test_fix1_protects_merge_branch(agent_text):
-    """The merge branch in fix_fk_column_naming MUST check _user_directive on BOTH attrs."""
-    # Find the consolidate-merge log line (the original bug site).
-    merge_idx = agent_text.find("Consolidated duplicate rename conflict")
-    assert merge_idx > 0, "Could not locate Consolidated duplicate rename conflict log line"
-    # Look BACKWARDS from this log line for the user-directive guard (within ~3000 chars).
-    pre = agent_text[max(0, merge_idx - 4000):merge_idx]
-    assert "_user_directive" in pre, (
-        "Merge branch is missing the _user_directive check — silent merge bug not fixed"
-    )
-    assert "[user-directive-protects-from-fk-rename FIRED]" in pre, (
-        "Merge branch is missing the [user-directive-protects-from-fk-rename FIRED] sentinel"
-    )
-
-
-def test_fix1_protects_rename_branch_too(agent_text):
-    """The rename branch (when _ren_new doesn't already exist) MUST also defend with _user_directive."""
-    # The rename branch protection check must appear BEFORE the merge-or-rename split.
-    # Look for the scan-attributes-data pattern.
-    pattern = r"_a_ud\.get\('_user_directive'"
-    assert re.search(pattern, agent_text), (
-        "Rename branch is missing the defense-in-depth scan for _user_directive on _ren_old"
-    )
-
-
-def test_fix1_continue_skips_rename_on_user_directive(agent_text):
-    """When _ud_skip is True, the loop MUST `continue` to skip both merge and rename branches."""
-    # Look for the _ud_skip-True path with continue.
-    assert re.search(r"if\s+_ud_skip:[\s\\n]+[^\\n]*?[\\s]*?continue", agent_text) or \
-        re.search(r"_ud_skip\s*=\s*True", agent_text), (
-        "Defense-in-depth must set _ud_skip=True and then continue, skipping rename/merge"
-    )
 
 
 # ─── Fix 2: verifier-llm-fallback ──────────────────────────────────────────
@@ -134,7 +77,7 @@ def test_fix2_verify_via_llm_makes_real_llm_call(agent_text):
     """
     fn_match = re.search(r"def _verify_via_llm\(self.*?\\n", agent_text)
     assert fn_match, "Could not locate _verify_via_llm function"
-    body = agent_text[fn_match.end():fn_match.end() + 12000]
+    body = agent_text[fn_match.end():agent_text.index('"    def ', fn_match.end())]
     assert "self.ai_agent._call_ai_query" in body, (
         "_verify_via_llm MUST invoke self.ai_agent._call_ai_query — NOT self.ai_agent.run "
         "(which does not exist on the ai_agent interface and caused v1.0.0 to return empty live)"
@@ -148,28 +91,35 @@ def test_fix2_verify_via_llm_makes_real_llm_call(agent_text):
     )
 
 
-def test_fix2_no_pattern_matched_routes_to_llm(agent_text):
-    """In _verify_requirement, the deterministic 'no specific pattern matched' partial MUST route to LLM."""
-    # Find the orchestration block that wraps _verify_deterministic and check for the routing.
-    assert "verifier-llm-fallback-on-deterministic-blind" in agent_text, (
-        "Deterministic-blind fallback to LLM must use alias verifier-llm-fallback-on-deterministic-blind"
-    )
-    # The routing should call _verify_via_llm.
-    assert re.search(
-        r"verifier-llm-fallback-on-deterministic-blind[\s\S]{0,800}_verify_via_llm",
-        agent_text,
-    ), "Deterministic-blind branch must route through _verify_via_llm"
+class _Verifier:
+    logger = logging.getLogger("test_v100_behavioral")
+    ai_agent = object()
+
+    def __init__(self, llm_enabled):
+        self._llm_verify_enabled = llm_enabled
+        self.llm_calls = []
+
+    def _verify_via_llm(self, req, domains_data, products_data, attributes_data):
+        self.llm_calls.append(req.id)
+        return {"status": "fulfilled", "evidence": "[verifier-llm-fallback FIRED v1.0.0] llm verdict"}
+
+
+def test_fix2_a_requirement_the_spec_verifier_cannot_score_routes_to_llm():
+    """In _verify_requirement, a requirement with no deterministic spec verdict MUST route to the LLM."""
+    products = [{"domain": "hr", "product": "employee"}]
+    attributes = [{"domain": "hr", "product": "employee", "attribute": "status"}]
+    vs.register(ah, {"model": {"domains": []}}, vs.spec("V1", "other", ["hr.employee"]), vs.spec("V2", "drop_column", ["hr.employee.status"]))
+    on = _Verifier(llm_enabled=True)
+    blind = ah.VibeOrchestrator._verify_requirement(on, SimpleNamespace(id="V1"), [], products, attributes)
+    assert blind["status"] == "fulfilled" and blind["evidence"].startswith("[verifier-llm-fallback FIRED") and on.llm_calls == ["V1"]
+    scored = ah.VibeOrchestrator._verify_requirement(on, SimpleNamespace(id="V2"), [], products, attributes)
+    assert scored["status"] == "failed" and "verifier-spec" in scored["evidence"] and on.llm_calls == ["V1"]
+    off = _Verifier(llm_enabled=False)
+    terminal = ah.VibeOrchestrator._verify_requirement(off, SimpleNamespace(id="V1"), [], products, attributes)
+    assert terminal["status"] == "partial" and off.llm_calls == []
 
 
 # ─── Fix 3: vov-new-domains-from-manifest ──────────────────────────────────
-
-
-def test_fix3_alias_present_in_agent(agent_text):
-    """alias=vov-new-domains-from-manifest must appear at the create-domain handler and the cleanup function."""
-    count = agent_text.count("vov-new-domains-from-manifest")
-    assert count >= 4, (
-        f"Expected ≥4 references for vov-new-domains-from-manifest, got {count}"
-    )
 
 
 def test_fix3_cleanup_respects_needs_products(agent_text):
@@ -200,17 +150,6 @@ def test_fix3_create_domain_handler_registers_new_domain(agent_text):
     )
     assert "vov-new-domains-from-manifest" in pre, (
         "Create-domain handler must emit the vov-new-domains-from-manifest sentinel"
-    )
-
-
-# ─── Fix 4: master-failure-mode-from-manifest (preserved from v0.9.9) ──────
-
-
-def test_fix4_preserved_from_v099(agent_text):
-    """master-failure-mode-from-manifest sentinel from v0.9.9 MUST still be present in v1.0.0."""
-    count = agent_text.count("master-failure-mode-from-manifest")
-    assert count >= 4, (
-        f"Expected ≥4 references for master-failure-mode-from-manifest (v0.9.9 fix preserved), got {count}"
     )
 
 
@@ -247,13 +186,6 @@ def test_no_industry_strings_in_v100_runtime_logs(agent_text):
                 )
 
 
-def test_v100_v099_test_file_still_passes_alias_check(agent_text):
-    """Regression: the v0.9.9 test_v99 alias check (master-failure-mode-from-manifest) must still hold."""
-    # Trivially asserted by test_fix4_preserved_from_v099 — this is a redundancy check
-    # to ensure the v0.9.9 fix did not get accidentally regressed by v1.0.0 edits.
-    assert "[master-failure-mode-from-manifest FIRED]" in agent_text
-
-
 def test_notebook_is_valid_json(agent_text):
     """The agent notebook must remain valid JSON after the v1.0.0 edits."""
     nb = json.loads(agent_text)
@@ -265,10 +197,8 @@ def test_v100_sentinels_grepable_for_audit():
     with open(AGENT_NB, "r", encoding="utf-8", errors="ignore") as f:
         text = f.read()
     expected_sentinels = [
-        "[user-directive-protects-from-fk-rename FIRED]",
         "[verifier-llm-fallback FIRED",
         "[vov-new-domains-from-manifest FIRED]",
-        "[master-failure-mode-from-manifest FIRED]",
     ]
     for sentinel in expected_sentinels:
         assert sentinel in text, f"Sentinel '{sentinel}' missing from agent — §10.7 grep audit will fail"

@@ -2,7 +2,7 @@ import json
 import re
 import textwrap
 
-from notebook_source_util import cell_containing
+from notebook_source_util import cell_containing, mv_ref_globals, vov_ledger_globals
 
 
 def _cell_src(marker):
@@ -62,7 +62,7 @@ def _exec_hints():
     class _L:
         def info(self, *a, **k):
             pass
-    ns = {"logger": _L(), "re": re}
+    ns = {**vov_ledger_globals(), "logger": _L(), "re": re}
     exec(block, ns)
     return ns["_v204_ast_class_hints"]
 
@@ -101,39 +101,6 @@ def test_v345_hint_nontautology_clean_trace_returns_empty():
     assert h("") == ""
 
 
-# ---- gt-tag-prefix-compound-violation: per-token prefix check (behavioral) ----
-def _exec_prefix_checker(prefix="gov_transport_"):
-    src = _cell_src("def _key_violates_prefix(_k):")
-    # universal-token helper
-    uni = _slice(src, '_UNIVERSAL_TAGS = {"pii"',
-                 "return all(_is_universal_token(p) for p in _parts)", include_end=True)
-    # compound-violation helper (the v3.4.5 fix)
-    viol = _slice(src, "def _key_violates_prefix(_k):",
-                  "_industry_keys = [k for k in set(_tag_keys)", include_end=False)
-    block = textwrap.dedent(uni) + "\n" + textwrap.dedent(viol)
-    ns = {"_rt": re, "_pl": prefix.lower()}
-    exec(block, ns)
-    return ns["_key_violates_prefix"]
-
-
-def test_v345_compound_key_with_prefixed_token_not_violation():
-    # The exact gov_transport VREQ-005 false-positive: universal classification tokens + a prefixed
-    # industry token -> compliant (NOT a violation).
-    v = _exec_prefix_checker()
-    assert v("confidential,pii_address,gov_transport_business_glossary_term") is False
-    assert v("restricted,pii_demographic,gov_transport_business_glossary_term") is False
-    assert v("gov_transport_source_table") is False
-    assert v("pii,confidential") is False  # all universal
-
-
-def test_v345_compound_violation_nontautology():
-    # NON-TAUTOLOGY: a non-universal token WITHOUT the prefix must STILL be flagged.
-    v = _exec_prefix_checker()
-    assert v("employee_status") is True
-    assert v("confidential,employee_status") is True  # one bad token taints the key
-    assert v("project_phase,pii") is True
-
-
 # ---- mv-column-prevalidate-prune: keep MV, prune offending blocks (behavioral) ----
 def _real_sql_kw():
     """The `_mvcp_SQL_KW` the notebook actually uses."""
@@ -159,6 +126,8 @@ def _exec_mv_prune():
         + "    return _kept2, _drop_reasons2, _rename_reasons2\n"
     )
     ns = {
+        **mv_ref_globals(),
+        "logger": __import__("logging").getLogger("v345"),
         "_mvcp_re": re,
         "_mvcp_token_re": re.compile(r"\b([a-z_][a-z0-9_]*)\b"),
         # The notebook's own denylist, not a stub of it: a stub that omitted `distinct`

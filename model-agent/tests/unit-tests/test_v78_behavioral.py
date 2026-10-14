@@ -21,10 +21,10 @@ Patches under test:
                                     expected_outcome and verifies the FK on the
                                     row; case-insensitive lookup; implements
                                     'comparison' check_type.
-  P35 vov-closure-parser-stricter -- _compute_vov_user_closure rejects 1-2 char
-                                    tokens, expanded stopwords, strips known
-                                    abbreviations like 'e.g.' and 'i.e.' before
-                                    scanning.
+  P35 vov-closure-extract        -- the user closure holds only the targets of
+                                    requirement specs an LLM interpreted as model
+                                    changes; prose such as 'e.g.' or 'above' never
+                                    becomes an entity.
   P36 vov-preserve-v1-domains    -- _strict_vov_diff_guard restores v1 input-
                                     model domains in preserve_v1_domains even
                                     when their name appears in user_closure.
@@ -36,11 +36,16 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
-from notebook_source_util import notebook_concat_source
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AGENT_NB = REPO_ROOT / "agent" / "dbx_vibe_modelling_agent.ipynb"
@@ -77,10 +82,16 @@ def _load_cell3_helpers():
         "_p091_is_valid_identifier": lambda s: (True, ""),
         "_p091_reject_name_mutation": lambda *a, **k: False,
         "_preseed_rename_maps": lambda mutations: ({}, {}, {}),
+        "_VIBE_SCOPE_RUNTIME": None,
+        "_disk_cached_call": lambda prefix, key_parts, compute_fn: compute_fn(),
     }
     ns = dict(stubs)
     ns["__name__"] = "_v78test"
     for fn in (
+        "get_vibe_scope_runtime",
+        "_build_fk_adjacency",
+        "_would_create_cycle",
+        "_sync_fk_type_with_pk",
         "_llm_fallback_apply_mutations",
         "_llm_fallback_validate",
         "_cleanup_empty_domains",
@@ -92,28 +103,9 @@ def _load_cell3_helpers():
     return ns
 
 
-def _load_cell9_helpers():
-    from notebook_source_util import slice_function_source
-
-    ns = {"__name__": "_v78test_c9", "logging": logging, "re": re}
-    # v2.7.0: _vov_diff_guard_products and _strict_vov_diff_guard were removed
-    # in the architectural collapse (sandbox is now authoritative). Only the
-    # still-live closure helper is loaded here.
-    for fn in (
-        "_compute_vov_user_closure",
-    ):
-        exec(compile(slice_function_source(fn), f"<v78_{fn}>", "exec"), ns)
-    return ns
-
-
 @pytest.fixture(scope="module")
 def c3():
     return _load_cell3_helpers()
-
-
-@pytest.fixture(scope="module")
-def c9():
-    return _load_cell9_helpers()
 
 
 def _logger():
@@ -373,60 +365,25 @@ def test_p34_validator_comparison_check(c3):
 
 
 # ============================================================================
-# P35 vov-closure-parser-stricter — no more 'e.g.' / 'above' / 'instruction'
+# P35 user closure — only entities an interpreted requirement spec names
 # ============================================================================
 
 
-def test_p35_no_eg_tuple_from_eg_prose(c9):
-    """The legal v0.7.7 run produced ('e','g') in _vov_user_new_entities because
-    the parser matched 'e.g.' as a 2-token entity. P35 strips abbreviations."""
-    fn = c9["_compute_vov_user_closure"]
-    vibe = "Please add a new domain, e.g. billing.invoice for the legal practice."
-    closure, new_entities = fn(vibe)
-    assert ("e", "g") not in closure
-    assert ("e", "g") not in new_entities
-    assert ("e",) not in new_entities
-    assert ("g",) not in new_entities
-
-
-def test_p35_no_ie_tuple_from_ie_prose(c9):
-    fn = c9["_compute_vov_user_closure"]
-    vibe = "We need a new domain (i.e. risk.exposure) to handle the new use case."
-    closure, new_entities = fn(vibe)
-    assert ("i", "e") not in closure
-    assert ("i",) not in new_entities
-
-
-def test_p35_no_short_tokens(c9):
-    """Identifier must be at least 3 chars long. 'above', 'below', 'see' etc.
-    are explicitly in the stopword set."""
-    fn = c9["_compute_vov_user_closure"]
-    vibe = "Please create see.above for the noted needs.list above"
-    _, new_entities = fn(vibe)
-    flat = {t for tup in new_entities for t in tup}
-    assert "see" not in flat
-    assert "above" not in flat
-    assert "needs" not in flat
-    assert "list" not in flat
-
-
-def test_p35_real_two_token_still_extracts(c9):
-    """Anti-regression: a legitimate two-token entity must still be captured."""
-    fn = c9["_compute_vov_user_closure"]
-    vibe = "Please CREATE billing.invoice as a new domain.product."
-    _, new_entities = fn(vibe)
-    flat_pairs = {tup for tup in new_entities if len(tup) == 2}
-    assert ("billing", "invoice") in flat_pairs
-
-
-def test_p35_above_instruction_needs_filtered(c9):
-    """Three of the exact garbage tokens from the v0.7.7 legal log."""
-    fn = c9["_compute_vov_user_closure"]
-    vibe = "CREATE the following per instruction above for the customer needs section."
-    _, new_entities = fn(vibe)
-    flat = {t for tup in new_entities for t in tup}
-    for bad in ("above", "instruction", "needs", "per", "section"):
-        assert bad not in flat, f"P35: stopword {bad!r} leaked into new_entities"
+def test_p35_only_entities_an_interpreted_spec_names_enter_the_user_closure():
+    """The legal v0.7.7 run put ('e','g'), 'above', 'instruction' and 'needs' into the user
+    closure because a regex read the prose. The closure now comes only from the targets of
+    requirement specs an LLM interpreted as model changes."""
+    vs.register(ah, {"model": {"domains": []}},
+                vs.spec("V1", "add_product", ["billing.invoice"]),
+                vs.spec("V2", "other", ["e.g"], interpretable=False, reason="an abbreviation in prose names no entity"),
+                vs.spec("V3", "other", ["above.instruction", "needs"], kind="documentation"))
+    widgets = {}
+    closure, new_entities = ah._vov_refresh_user_closure(widgets, logging.getLogger("v78test"))
+    assert ("billing", "invoice") in new_entities and ("billing", "invoice") in closure
+    flat = {t for tup in closure | new_entities for t in tup}
+    for bad in ("e", "g", "above", "instruction", "needs"):
+        assert bad not in flat, f"P35: {bad!r} leaked into the user closure"
+    assert widgets["_vov_user_closure"] == closure
 
 
 # ============================================================================
@@ -487,7 +444,7 @@ def test_v78_aliases_present():
         "n5-auto-parent-domain",
         "n4-link-applier-honesty",
         "n4-validator-fk-check",
-        "vov-closure-parser-stricter",
+        "vov-closure-extract",
         "vov-preserve-v1-domains",
         "n5-new-base-skip-context",
     ]:

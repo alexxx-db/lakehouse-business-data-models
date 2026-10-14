@@ -2,50 +2,63 @@
 
 Root cause: split_product and reverse_fk did not exist as deterministic VOV actions, so
 reviewer P6 (split the preference god-table) and P9 (reverse a wrong-direction FK) fell to the
-LLM sandbox and churned. FIX E adds explicit-spec parsers, classify branches, and nested-model
-appliers.
+LLM sandbox and churned. FIX E adds deterministic ops and nested-model appliers.
 
-Fail-pre / pass-post: pre-patch _v337_classify_op returns None for split/reverse (routed to
-LLM) and the appliers do not exist. Post-patch classify returns the deterministic tuple and the
-appliers mutate the model (child tables created + source columns moved; source FK dropped +
-counterpart FK added).
+Since v5.3.3 an LLM reads the requirement and returns a split_product or reverse_fk spec; the
+spec builds the deterministic op, the batch applies it without the LLM sandbox, and the appliers
+mutate the model (child tables created + source columns moved; source FK dropped + counterpart
+FK added).
 """
-import copy as _copy
-import re as _re
+import logging
 import sys
+import types
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from v435_helpers import concat_source, slice_functions
-
-_FNS = [
-    "_v337_iter_products", "_v337_find_product", "_v337_parse_fk_fqn", "_v327_infer_coltype",
-    "_v301_extract_rename_target", "_v337_extract_move_target", "_v337_extract_col_rename",
-    "_v337_extract_split", "_v337_extract_reverse_fk", "_v337_classify_op",
-    "_v337_apply_split_product", "_v337_apply_reverse_fk",
-]
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
 
 
-def _ns():
-    src = concat_source()
-    return slice_functions(_FNS, src, extra_globals={"re": _re, "copy": _copy})
-
-
-def test_fixE_classify_split_and_reverse_route_deterministically():
-    ns = _ns()
-    classify = ns["_v337_classify_op"]
-    sp = classify("split_product", "customer.preference",
-                  "split customer.preference into preference_core(preference_id, customer_id), "
-                  "preference_value(preference_id, attr_key, attr_value)", "")
-    assert sp is not None and sp[0] == "split_product", sp
-    rf = classify("reverse_fk", "sales.order_line",
-                  "reverse the fk on customer_id so the master is referenced by the line", "")
-    assert rf is not None and rf[0] == "reverse_fk", rf
+def test_fixE_split_and_reverse_specs_route_deterministically():
+    mdl = {"domains": [
+        {"name": "customer", "products": [
+            {"name": "preference", "primary_key": "preference_id", "attributes": [
+                {"name": "preference_id", "type": "BIGINT"},
+                {"name": "customer_id", "type": "BIGINT"},
+                {"name": "attr_key", "type": "STRING"},
+                {"name": "attr_value", "type": "STRING"},
+            ]},
+            {"name": "master", "primary_key": "customer_id", "attributes": [{"name": "customer_id", "type": "BIGINT"}]},
+        ]},
+        {"name": "sales", "products": [
+            {"name": "order_line", "primary_key": "order_line_id", "attributes": [
+                {"name": "order_line_id", "type": "BIGINT"},
+                {"name": "customer_id", "type": "BIGINT", "foreign_key_to": "customer.master.customer_id"},
+            ]},
+        ]},
+    ]}
+    vs.register(ah, mdl,
+                vs.spec("P6", "split_product", ["customer.preference"], split_into=[
+                    {"product": "preference_core", "columns": ["preference_id", "customer_id"]},
+                    {"product": "preference_value", "columns": ["preference_id", "attr_key", "attr_value"]}]),
+                vs.spec("P9", "reverse_fk", ["sales.order_line.customer_id"]),
+                vs.spec("P7", "split_product", ["customer.preference"]),
+                vs.spec("P8", "reverse_fk", ["sales.order_line"]))
+    split = ("split_product", "customer", "preference", [("preference_core", ["preference_id", "customer_id"]),
+                                                         ("preference_value", ["preference_id", "attr_key", "attr_value"])])
+    reverse = ("reverse_fk", "sales", "order_line", ("customer_id", None))
+    batch = types.SimpleNamespace(batch_id="B1", vreq_ids=("P6", "P9"))
+    assert ah._v337_build_ops(batch, mdl) == ([split, reverse], True)
+    new_model, summary = ah._v337_deterministic_mutate(batch, mdl, logging.getLogger("test_v435_fixE"))
+    assert new_model is not None and "split customer.preference -> preference_core+preference_value" in summary
+    assert "reverse_fk sales.order_line.customer_id" in summary
+    assert ah._v337_build_ops(types.SimpleNamespace(vreq_ids=("P6", "P7")), mdl) == ([], False)
+    assert ah._v337_build_ops(types.SimpleNamespace(vreq_ids=("P8",)), mdl) == ([], False)
 
 
 def test_fixE_apply_split_product_creates_children_and_moves_columns():
-    ns = _ns()
-    apply_split = ns["_v337_apply_split_product"]
+    apply_split = ah._v337_apply_split_product
     mdl = {"domains": [
         {"name": "customer", "products": [
             {"name": "preference", "primary_key": "preference_id", "attributes": [
@@ -71,8 +84,7 @@ def test_fixE_apply_split_product_creates_children_and_moves_columns():
 
 
 def test_fixE_apply_reverse_fk_flips_direction():
-    ns = _ns()
-    apply_rev = ns["_v337_apply_reverse_fk"]
+    apply_rev = ah._v337_apply_reverse_fk
     mdl = {"domains": [
         {"name": "sales", "products": [
             {"name": "order_line", "primary_key": "order_line_id", "attributes": [

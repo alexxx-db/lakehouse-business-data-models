@@ -86,7 +86,10 @@ def _bind_verify_deterministic():
     src = _full_src()
     method = _extract_method(src, "_verify_deterministic")
     import collections
-    ns = {"re": re, "json": json, "defaultdict": collections.defaultdict, "collections": collections}
+    ns = {"re": re, "json": json, "defaultdict": collections.defaultdict, "collections": collections,
+          "_vibe_scope_open_field_verdict": lambda *a, **k: None}
+    exec(re.search(r"^_V381_PLACEHOLDER_VALUES = .*$", src, re.M).group(0), ns)
+    exec(re.search(r"^def _v381_is_placeholder_tag_value\(.*?(?=^\S)", src, re.M | re.S).group(0), ns)
     exec(method, ns)
     # v3.6.8 g3: _verify_deterministic now calls self._verify_bulk_coverage(...) first, so the
     # isolation harness must bind that real method too or it AttributeErrors.
@@ -164,6 +167,7 @@ def _bind_run_selffixer():
     ns = {
         "SelfFixer": _FakeSelfFixer,
         "execute_in_sandbox": lambda *a, **k: None,
+        "_VIBE_SCOPE_RUNTIME": None,
     }
     exec(fn, ns)
     return ns["run_selffixer_or_skip"], captured

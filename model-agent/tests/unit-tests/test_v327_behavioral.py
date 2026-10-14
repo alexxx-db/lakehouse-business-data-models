@@ -11,14 +11,23 @@ physical ~20%).
 
 POST-PATCH: plain add-column applies deterministically (column required,
 fk_target optional) with generic name-suffix SQL-type inference. FK columns
-still apply as BIGINT + foreign_key_to.
+still apply as BIGINT + foreign_key_to. Since v5.3.3 the column, its type and
+its FK target come from the requirement's LLM spec, never from the priority text.
 """
+import logging
+import sys
+from pathlib import Path
 
-from notebook_source_util import notebook_concat_source
-from test_v251_vov_priority_landing import _exec_v251_namespace, _ListLogger
-from version_test_util import assert_version_at_least
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source  # noqa: E402
+from version_test_util import assert_version_at_least  # noqa: E402
 
 SRC = notebook_concat_source()
+LOG = logging.getLogger("test_v327_behavioral")
+TABLE = "inventory.location_assignment"
 
 
 def _model():
@@ -59,8 +68,18 @@ def _attrs(model, dom, prod):
     return {}
 
 
-def test_rcf_alias_and_version_present():
-    assert "vov-deterministic-plain-column" in SRC
+def _priority(model, spec, reason, target=TABLE):
+    vs.register(ah, model, spec)
+    vreq = ah.RawVREQ(vreq_id=spec["id"], intent=reason, target=target, source_quote=reason, source_chunk_id="C1")
+    [priority] = ah._vov_vreq_to_priorities(vreq)
+    return priority
+
+
+def _apply(model, priority):
+    return ah._v251_apply_priority_deterministic(priority, ah._v251_parse_priority_details(priority), model, LOG)
+
+
+def test_rcf_version_and_type_inferrer_present():
     assert_version_at_least("3.2.7", SRC)
     assert "_v327_infer_coltype" in SRC
 
@@ -68,17 +87,17 @@ def test_rcf_alias_and_version_present():
 def test_rcf_plain_no_fk_column_applies_deterministically():
     """The discriminating case: a no-FK add-column directive must now APPLY
     (pre-patch: parse-failed)."""
-    ns = _exec_v251_namespace()
-    parse = ns["_v251_parse_priority_details"]
-    apply_det = ns["_v251_apply_priority_deterministic"]
     model = _model()
-    pr = {
-        "action": "connect_table",
-        "target": "inventory.location_assignment",
-        "reason": "add column quantity_assigned (no FK; data attribute) — thin product needs WMS slot count",
-    }
-    details = parse(pr)
-    ok, status = apply_det(pr, details, model, _ListLogger())
+    reason = "add column quantity_assigned (no FK; data attribute) — thin product needs WMS slot count"
+    vreq = ah.RawVREQ(vreq_id="V1", intent=reason, target=TABLE, source_quote=reason, source_chunk_id="C1")
+    text_only = {"action": "add_attribute", "target": TABLE, "reason": reason, "vreq_id": "V1"}
+    assert _apply(model, text_only) == (False, "parse-failed")
+    vs.register(ah, model, vs.spec("V1", "add_column", [TABLE], interpretable=False, reason="names no column"))
+    assert ah._vov_vreq_to_priorities(vreq) == [] and _apply(model, text_only) == (False, "parse-failed")
+    assert "quantity_assigned" not in _attrs(model, "inventory", "location_assignment")
+    pr = _priority(model, vs.spec("V1", "add_column", [TABLE], columns=[{"name": "quantity_assigned", "type": ""}]), reason)
+    assert pr["action"] == "add_attribute"
+    ok, status = _apply(model, pr)
     assert ok is True, f"expected apply, got {status}"
     assert status == "applied"
     a = _attrs(model, "inventory", "location_assignment")
@@ -88,8 +107,7 @@ def test_rcf_plain_no_fk_column_applies_deterministically():
 
 
 def test_rcf_type_inference_by_suffix():
-    ns = _exec_v251_namespace()
-    infer = ns["_v327_infer_coltype"]
+    infer = ah._v327_infer_coltype
     assert infer("issuance_type_code") == "STRING"
     assert infer("relationship_type_code") == "STRING"
     assert infer("eligibility_priority") == "BIGINT"
@@ -105,17 +123,15 @@ def test_rcf_type_inference_by_suffix():
 
 def test_rcf_fk_column_still_applies_as_bigint_fk():
     """Negative/regression: an FK add-column must STILL apply with foreign_key_to."""
-    ns = _exec_v251_namespace()
-    parse = ns["_v251_parse_priority_details"]
-    apply_det = ns["_v251_apply_priority_deterministic"]
     model = _model()
-    pr = {
-        "action": "connect_table",
-        "target": "inventory.location_assignment",
-        "reason": "add column store_location_id (BIGINT) with FK to store.location.location_id",
-    }
-    details = parse(pr)
-    ok, status = apply_det(pr, details, model, _ListLogger())
+    reason = "add column store_location_id (BIGINT) with FK to store.location.location_id"
+    column = [{"name": "store_location_id", "type": "BIGINT"}]
+    missing = _priority(model, vs.spec("V2", "add_column", ["inventory.missing_table"], columns=column, fk_target="store.location.location_id"),
+                        reason, target="inventory.missing_table")
+    assert _apply(model, missing) == (False, "target-domain-product-missing")
+    pr = _priority(model, vs.spec("V1", "add_column", [TABLE], columns=column, fk_target="store.location.location_id"), reason)
+    assert pr["action"] == "connect_table"
+    ok, status = _apply(model, pr)
     assert ok is True and status == "applied"
     a = _attrs(model, "inventory", "location_assignment")
     assert a["store_location_id"]["type"] == "BIGINT"
@@ -123,17 +139,13 @@ def test_rcf_fk_column_still_applies_as_bigint_fk():
 
 
 def test_rcf_explicit_type_token_wins():
-    ns = _exec_v251_namespace()
-    parse = ns["_v251_parse_priority_details"]
-    apply_det = ns["_v251_apply_priority_deterministic"]
     model = _model()
-    pr = {
-        "action": "connect_table",
-        "target": "inventory.location_assignment",
-        "reason": "add column allocation_percentage (DECIMAL(9,4)) (no FK; data attribute)",
-    }
-    details = parse(pr)
-    ok, status = apply_det(pr, details, model, _ListLogger())
+    reason = "add column allocation_percentage (DECIMAL(9,4)) (no FK; data attribute)"
+    typed = vs.spec("V1", "add_column", [TABLE], columns=[{"name": "allocation_percentage", "type": "DECIMAL(9,4)"}])
+    ok, status = _apply(model, _priority(model, typed, reason))
     assert ok is True and status == "applied"
     a = _attrs(model, "inventory", "location_assignment")
     assert a["allocation_percentage"]["type"] == "DECIMAL(9,4)"
+    untyped = vs.spec("V2", "add_column", [TABLE], columns=[{"name": "allocation_share_percentage", "type": ""}])
+    assert _apply(model, _priority(model, untyped, reason)) == (True, "applied")
+    assert _attrs(model, "inventory", "location_assignment")["allocation_share_percentage"]["type"] == "DECIMAL(18,2)"

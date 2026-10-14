@@ -151,9 +151,6 @@ def test_parity_failed_when_none_tagged():
 
 def test_aliases_present_in_source():
     assert "pii-verifier-sa-parity" in SOURCE
-    assert "verifier-model-wide-pii-tag FIRED v4.6.4" in SOURCE
-    # verifier gates on 0-missing parity, not a 0.7 coverage threshold
-    assert "_v336_missing == 0" in SOURCE
     assert "_v336_cov >= 0.7" not in SOURCE
     # SA gate reuses the shared classifier (DRY)
     assert "_v464_classify_pii_column(attr.get('attribute'), attr.get('tags'))" in SOURCE

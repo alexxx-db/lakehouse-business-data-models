@@ -1,0 +1,97 @@
+{
+  "agent_version": "5.1.4",
+  "digests": {
+    "architect_review": "8cbb833e05567a4e9098e9e60eee392623f7cddac217689945710012c0ed2e65",
+    "autofix_monotonic": "c323b4a9179ab115c99407d771a30d822814c0166b7b87b3905f862f9390d910",
+    "cycles_bidirectional_detect": "960a3afb4ff328998da13108ec3f8494c90611f5be571dba59c744b9d5fed67b",
+    "cycles_break_internal": "5115c76642838ce78f897d30d1bc04850976ef67630a9386799039d143497d38",
+    "cycles_heuristic": "b9ba7a1e8537058f77cd8995cf07da88d2493c786ebc97bf5ceb051ee8ef76bd",
+    "cycles_post_vov": "17395ec76c26dc7bca6bb7acb18efa2935503b4f0b2703b0cfecd7e9c3fd1df6",
+    "cycles_serialized": "0e1a1b8f840a02be3c4d464ed3171ba669f86246ce42a10800268321c31533e4",
+    "empty_domain_cleanup": "1460611fd89f94d3e76a286331725bf99c13811d7a18820ef793fc6269c8369e",
+    "fk_align_to_parent_pk": "a41f368ac77a83ef8ad86ba02738293ab5c506e65195b2e68f5a162b3a5cebf7",
+    "fk_demote_unlinked": "2ea60e3183e7c25098fd59e71cc6f2cd0538afa2b7dc9e7bc3707b261e91a6b7",
+    "fk_deterministic_linker": "8584f28416c13c9fb73ff31a1bb1a31926479793cc5501fcb4391ee8436d784b",
+    "fk_missing_parents": "39513720f9784cd5c33c8da88f6ce7ac7cc947390cb6d4909e3d38ba8d73ac22",
+    "flat_projection": "7ab1482bad78c6f3f50668545b0007c8c07e417b05aadd44f3d9582b7461d277",
+    "junk_domain_serialized": "84ee0bd6f7f6c5b284d4df38d716a2b25e1563b2e77183d61f6e566565608edd",
+    "model_json_export": "a1b8945d65ccb64844dd55adb971d14db42fce600d67c48b82548ffe9ccf9d1c",
+    "mv_generation_fallback": "7d2477a6e676210cac615f28a6dec019301875a3490a43bef11ee20e22268099",
+    "mv_kpi_first": "92b42eee2860c74392997e284ece37806919f85e8e2df386a8871eb6f5bd5988",
+    "naming_apply_case": "36e2fbae6fec111b984b363d6315a33bf6dd96d7cbcf90c387f2bb98645d3ebf",
+    "naming_bare_attribute_fix": "6776637871f1127b6c4d2bd0774facb01ee7431304a6a6e72683ba8d34ff622e",
+    "naming_enforce": "6ccd7e505cadd18b01b44c7e1ea0d7e4031cbd3613eb8196dea1e6578d6bcfa4",
+    "naming_step_prefix_suffix": "8709ad025809705eb1e89bc20c9a50ed290a4a5a5668567bc30725e9bd1d0181",
+    "queued_vibe_operations": "63b982cac8da21fc8e1d76b33a2b4c8d2b7bc2135e7431b010419a0a74cea764",
+    "tags_vibe_custom": "521968e1126dd7fbcd1ee111f42f097b6c712bb5721f5e4d67535c7b1b388644",
+    "tags_write_time_enrichment": "422320d1fbf31801f596640e1d7dbdd3fadc237fd618b79f8d6b138e2c6d89c5"
+  },
+  "python_hash_seed": "0",
+  "recaptured_5_3_3": {
+    "previous": {
+      "fk_missing_parents": "0a8236c236c436be94f6f31a0c18a6dc88d6a09bcde18bf61f3f650b06f563c6",
+      "model_json_export": "950413b858c083e0a4dbca7f326f41f1b3b5834a81312b0ea05dc667a8ed17de"
+    },
+    "proof": "the outputs of c418df5, which matched the previous digests, and of this commit differ only in business_glossary_term (33) and its derived dbx_business_glossary_term tag_set entries (25)",
+    "reason": "the attribute factory and the model.json serializer no longer invent a business glossary term for an attribute that has none",
+    "runners": [
+      "fk_missing_parents",
+      "model_json_export"
+    ]
+  },
+  "recaptured_5_3_3_location": {
+    "previous": {
+      "model_json_export": "950413b858c083e0a4dbca7f326f41f1b3b5834a81312b0ea05dc667a8ed17de"
+    },
+    "proof": "setting model.location of the new output back to the business row value reproduces the previous digest exactly",
+    "reason": "model.json records the folder it is written to in model.location instead of copying the location of an older business row",
+    "runners": [
+      "model_json_export"
+    ]
+  },
+  "recaptured_5_3_3_steward": {
+    "previous": {
+      "architect_review": "c634b2616de303eabc553b3158e34fb9f2efd3d2ec754e523c70eee6558855de",
+      "autofix_monotonic": "f14cc58491456ffc2048426556798cf4bb62f8522cd0d2e588a7a5260c4c414b",
+      "cycles_bidirectional_detect": "aacd05d8e2df3a9126b433e5fe47b19b6435caa2f95f2d87e9e13118439d46ee",
+      "cycles_break_internal": "067acb06baa270e58a8c4ae3bdedb78add81ee6b4e6bfc8652151b862c860526",
+      "cycles_heuristic": "aa45065979fab959e8279543d673467c62ec90e3f90361ca0ee62c304cdade2e",
+      "cycles_post_vov": "36c1b9dbabee0762dfad138cde41a11ef87c04c829981ce2d84e9b860010d50f",
+      "empty_domain_cleanup": "1c9190bee768088977b7426d69f46e8cace21bbbe834907ec9aadb364d2400b6",
+      "fk_align_to_parent_pk": "211c38f2d4cabd071d8e29f2ed2346f843689b90e2a66016b3d7bd777cc522dc",
+      "fk_demote_unlinked": "6751680e5544a88f088116f24f28b2af03cd8c49cab2f86f58ed49132729e475",
+      "fk_deterministic_linker": "dad4b0c713e43b35556874accf7c466ec6702f39adf1d23f4361532169731d83",
+      "fk_missing_parents": "0a8236c236c436be94f6f31a0c18a6dc88d6a09bcde18bf61f3f650b06f563c6",
+      "flat_projection": "07aa6e3a5c03400d0963e312ace9ed40ace605a2380f1f812e9b3d2828b7aa48",
+      "naming_apply_case": "ee685150d776ac70daff549113a6e7db56fcc3360547167d3b8ea43f137efcb2",
+      "naming_bare_attribute_fix": "89b5552cf3dc46ea9996d3ef4a1a6c0d138cf63fca599ec8d5a82992b64bcc77",
+      "naming_enforce": "c702d25362ddcf33c35c0524278bfff25c21af0a6850504211ca69333893949d",
+      "naming_step_prefix_suffix": "810b4ef607ba933711f70ba2681c44001c998f8282bdf4bd3819f440ed3bfd1e",
+      "queued_vibe_operations": "ad09253a3b8673c4c8fe4801b4995bba6b18612e606330154a2ceb647929c2ca",
+      "tags_vibe_custom": "a6364ba1736ed819f7d77ef9b577e4ebdb8347241025a2b062a8627d5db25d01"
+    },
+    "proof": "the outputs of db355c6 and of this commit differ only in steward keys (133482 paths, 18 runners, no other field)",
+    "reason": "model_to_widgets_flat, widgets_flat_to_model and the model.json writer carry the product and attribute steward",
+    "runners": [
+      "architect_review",
+      "autofix_monotonic",
+      "cycles_bidirectional_detect",
+      "cycles_break_internal",
+      "cycles_heuristic",
+      "cycles_post_vov",
+      "empty_domain_cleanup",
+      "fk_align_to_parent_pk",
+      "fk_demote_unlinked",
+      "fk_deterministic_linker",
+      "fk_missing_parents",
+      "flat_projection",
+      "naming_apply_case",
+      "naming_bare_attribute_fix",
+      "naming_enforce",
+      "naming_step_prefix_suffix",
+      "queued_vibe_operations",
+      "tags_vibe_custom"
+    ]
+  },
+  "source_commit": "5d386ed"
+}

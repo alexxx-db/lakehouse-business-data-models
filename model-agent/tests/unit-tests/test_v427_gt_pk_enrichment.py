@@ -11,9 +11,13 @@ it failed 13/13 -> gt-headline-reground made 'failed' authoritative -> 88.9% ins
 Fix alias=gt-pk-from-model-declared: enrich the physical snapshot with the MODEL's declared PK when
 every declared PK column PHYSICALLY EXISTS. These tests exec the REAL patched enrichment block from
 the notebook (not a reimplementation) and feed its products_data into the REAL
-_verify_structural_invariant so the whole seam is exercised end-to-end.
+VibeOrchestrator._verify_deterministic call the ground-truth audit makes, with the primary-key policy
+spec the LLM reads from the requirement, so the whole seam is exercised end-to-end.
 """
 import json, re, os, textwrap, pytest
+
+import agent_helpers as ah
+import vreq_spec_util as vs
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -42,7 +46,7 @@ def _extract_enrich_block(src):
     at module scope in the test namespace with products / phys_attrs / phys_pp / logger seeded."""
     # back up to the START of the line so the baked-in 8-space indent is included and dedent works
     start = src.rindex("\n", 0, src.index("_phys_cols_by_pp = {}")) + 1
-    end_marker = "products_data = [{\"domain\": d, \"product\": p, \"primary_key\": _pk_by_pp.get((d, p))} for d, p in phys_pp]"
+    end_marker = "products_data = _gt_physical_table_rows(spark, cat_schema, table_map, products, _pk_by_pp, phys_pp, logger)"
     end = src.index(end_marker) + len(end_marker)
     block = src[start:end]
     return textwrap.dedent(block)
@@ -75,6 +79,14 @@ def _bind_struct(path):
 
 
 PK_TXT = "Keep the model clean and production-grade: every table must have a primary key."
+PK_SPEC = dict(vs.spec("VREQ-005", "other", [], breadth="model"), policy="primary_key_suffix", policy_value="_id")
+
+
+def _verify_physical(products_data, phys_attrs):
+    vs.register(ah, ah.widgets_flat_to_model([], _model_products(), []), PK_SPEC)
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch.logger = _Logger()
+    return orch._verify_deterministic(_Req(PK_TXT), [], products_data, phys_attrs)
 
 
 # The faithful reproduction of the live coffee_roastery model shape: products carry a PRODUCT-LEVEL
@@ -104,7 +116,8 @@ def _run_enrich(path, products, phys_attrs):
     src = _full_src(path)
     block = _extract_enrich_block(src)
     phys_pp = sorted({(a["domain"], a["product"]) for a in phys_attrs})
-    ns = {"products": products, "phys_attrs": phys_attrs, "phys_pp": phys_pp, "logger": _Logger()}
+    ns = {"products": products, "phys_attrs": phys_attrs, "phys_pp": phys_pp, "logger": _Logger(),
+          "_gt_physical_table_rows": ah._gt_physical_table_rows, "spark": None, "cat_schema": [], "table_map": {}}
     exec(block, ns)
     return ns["products_data"], phys_attrs
 
@@ -117,10 +130,9 @@ def test_post_patch_enriches_pk_and_scores_fulfilled():
     products_data, phys_attrs = _run_enrich(NB, _model_products(), _phys_attrs_all_present())
     # every physically-present table with a model-declared PK column now carries primary_key
     assert all(pd.get("primary_key") for pd in products_data), products_data
-    obj = _bind_struct(NB)
-    v = obj._verify_structural_invariant(_Req(PK_TXT), [], products_data, phys_attrs)
+    v = _verify_physical(products_data, phys_attrs)
     assert v is not None and v["status"] == "fulfilled", v
-    assert "gt" not in v["evidence"].lower() or "primary" in v["evidence"].lower()
+    assert "3/3 primary key(s) end with _id" in v["evidence"], v
 
 
 def test_post_patch_sets_is_primary_key_on_phys_attr():
@@ -142,8 +154,7 @@ def test_post_patch_declared_pk_absent_physically_still_failed():
     products_data, phys_attrs = _run_enrich(NB, products, phys)
     store_pd = [pd for pd in products_data if pd["product"] == "store"][0]
     assert not store_pd.get("primary_key"), store_pd
-    obj = _bind_struct(NB)
-    v = obj._verify_structural_invariant(_Req(PK_TXT), [], products_data, phys_attrs)
+    v = _verify_physical(products_data, phys_attrs)
     assert v is not None and v["status"] == "failed", v
     assert "caferetailsales.store" in v["evidence"], v
 
@@ -174,9 +185,12 @@ def test_alias_and_callsite_present():
     src = _full_src(NB)
     assert "gt-pk-from-model-declared" in src
     # the enriched products_data assignment must be the live line in _run_ground_truth_audit
-    assert '"primary_key": _pk_by_pp.get((d, p))' in src
+    assert "products_data = _gt_physical_table_rows(spark, cat_schema, table_map, products, _pk_by_pp, phys_pp, logger)" in src
+    assert '"primary_key": pk_by_pp.get((d, p))' in src
 
 
 def test_version_bumped_to_427():
     src = _full_src(NB)
-    assert re.search(r'__AGENT_VERSION__ = "4\.2\.7"', src), "version not bumped to 4.2.7"
+    m = re.search(r'__AGENT_VERSION__ = "(\d)\.(\d)\.(\d)"', src)
+    assert m, "canonical single-digit-semver __AGENT_VERSION__ line missing (CLAUDE.md 3a)"
+    assert tuple(int(g) for g in m.groups()) >= (4, 2, 7), f"version {m.group(0)} regressed below 4.2.7"

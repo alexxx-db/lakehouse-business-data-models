@@ -1,5 +1,8 @@
-import json, re, os, copy
+import json, os
 import pytest
+
+import agent_helpers as ah
+import vreq_spec_util as vs
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(REPO, "agent", "dbx_vibe_modelling_agent.ipynb")
@@ -12,44 +15,6 @@ def _full_src(path):
         "".join(c.get("source", [])) if isinstance(c.get("source"), list) else c.get("source", "")
         for c in nb["cells"]
     )
-
-
-def _extract_top_fn(src, name):
-    m = re.search(rf"^def {re.escape(name)}\(", src, re.M)
-    assert m, f"{name} not found"
-    start = m.start()
-    nxt = re.search(r"^(def |class |@)", src[start + 1:], re.M)
-    end = (start + 1 + nxt.start()) if nxt else len(src)
-    return src[start:end]
-
-
-def _bind():
-    src = _full_src(NB)
-    ns = {"re": re, "copy": copy}
-    try:
-        ns2 = {"re": re}
-        exec(_extract_top_fn(src, "sanitize_name"), ns2)
-        ns["sanitize_name"] = ns2["sanitize_name"]
-    except Exception:
-        ns["sanitize_name"] = lambda s: re.sub(r"[^a-z0-9_]", "_", str(s).lower())
-    for fn in (
-        "_v301_extract_rename_target",
-        "_v337_parse_fk_fqn",
-        "_v337_iter_products",
-        "_v337_parse_priority_quote",
-        "_v337_extract_col_rename",
-        "_v337_extract_move_target",
-        "_v337_rewire_fks",
-        "_v337_find_product",
-        "_v337_classify_op",
-        "_v337_build_ops",
-        "_v337_apply_rename_product",
-        "_v337_apply_move_product",
-        "_v337_apply_rename_attribute",
-        "_v337_deterministic_mutate",
-    ):
-        exec(_extract_top_fn(src, fn), ns)
-    return ns
 
 
 class _Batch:
@@ -130,15 +95,16 @@ def _fk_of(mdl, dom, prod, col):
 # ---------- batched rename_product (the RC8 core that v336 failed) ----------
 
 def test_batched_rename_products_all_in_place_and_fk_rewired():
-    ns = _bind()
     m = _model()
+    vs.register(ah, m, vs.spec("P008", "rename_product", ["project.dsctr_category"], new_name="pse_category"),
+                vs.spec("P013", "rename_product", ["project.dsctr_group_control"], new_name="pse_group_control"))
     batch = _Batch(rows=[
         _row(8, "rename_product", "project.dsctr_category",
              "rename to pse_category because all PSE tables use the pse_ prefix"),
         _row(13, "rename_product", "project.dsctr_group_control",
              "rename to pse_group_control because all PSE tables use the pse_ prefix"),
     ], vreq_ids=("P008", "P013"))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is not None, "pure-rename batch must fire deterministically"
     assert sorted(_names(new_model, "project")) == ["pse_category", "pse_group_control"]
     # PK renamed on the first
@@ -154,24 +120,30 @@ def test_batched_rename_products_all_in_place_and_fk_rewired():
 
 def test_mixed_batch_defers_to_llm():
     # rename + connect_table in one batch -> all-or-nothing -> defer (no false-applied)
-    ns = _bind()
     m = _model()
+    vs.register(ah, m, vs.spec("P008", "rename_product", ["project.dsctr_category"], new_name="pse_category"),
+                vs.spec("P002", "add_column", ["hr.position"], columns=[{"name": "cost_center_id", "type": "BIGINT"}], fk_target="hr.org.org_id"),
+                vs.spec("P003", "set_fields", ["hr.position"], fields=[vs.field("products", "description")]))
+    assert ah._v337_deterministic_mutate(_Batch(vreq_ids=("P008",)), m, _Log())[0] is not None
     batch = _Batch(rows=[
         _row(8, "rename_product", "project.dsctr_category", "rename to pse_category because prefix"),
         _row(2, "connect_table", "hr.position", "add column cost_center_id (BIGINT) with FK to hr.org.org_id"),
     ], vreq_ids=("P008", "P002"))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is None, "mixed batch with a connect_table must defer the whole batch"
+    assert ah._v337_deterministic_mutate(_Batch(vreq_ids=("P008", "P003")), m, _Log()) == (None, "")
+    assert "dsctr_category" in _names(m, "project") and "pse_category" not in _names(m, "project")
 
 
 def test_rename_attribute_renames_column():
-    ns = _bind()
     m = _model()
+    vs.register(ah, m, vs.spec("P017", "rename_column", ["project.dsctr_group_control.dsctr_dropdown_lookup_id"],
+                               new_name="pse_dropdown_lookup_id"))
     batch = _Batch(rows=[
         _row(17, "rename_attribute", "project.dsctr_group_control",
              "rename column dsctr_dropdown_lookup_id to pse_dropdown_lookup_id because of prefix"),
     ], vreq_ids=("P017",))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is not None
     gc = [p for p in new_model["model"]["domains"][0]["products"] if p["name"] == "dsctr_group_control"][0]
     assert any(a["name"] == "pse_dropdown_lookup_id" for a in gc["attributes"])
@@ -179,13 +151,13 @@ def test_rename_attribute_renames_column():
 
 
 def test_rename_attribute_pk_rewires_fks():
-    ns = _bind()
     m = _model()
+    vs.register(ah, m, vs.spec("P025", "rename_column", ["project.dsctr_category.dsctr_category_id"], new_name="category_id"))
     batch = _Batch(rows=[
         _row(25, "rename_attribute", "project.dsctr_category",
              "rename column dsctr_category_id to category_id because shorter"),
     ], vreq_ids=("P025",))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is not None
     cat = [p for p in new_model["model"]["domains"][0]["products"] if p["name"] == "dsctr_category"][0]
     assert cat["primary_key"] == "category_id"
@@ -194,12 +166,12 @@ def test_rename_attribute_pk_rewires_fks():
 
 
 def test_move_product_rewires_domain_prefix():
-    ns = _bind()
     m = _model()
+    vs.register(ah, m, vs.spec("P030", "move_product", ["project.dsctr_category"], destination_domain="hr"))
     batch = _Batch(rows=[
         _row(30, "move_product", "project.dsctr_category", "move to the hr domain because ownership"),
     ], vreq_ids=("P030",))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is not None
     assert "dsctr_category" not in _names(new_model, "project")
     assert "dsctr_category" in _names(new_model, "hr")
@@ -207,22 +179,24 @@ def test_move_product_rewires_domain_prefix():
 
 
 def test_rename_collision_defers():
-    ns = _bind()
     m = _model()
     # rename dsctr_group_control -> dsctr_category (already exists) => merge => defer
+    vs.register(ah, m, vs.spec("P008", "rename_product", ["project.dsctr_group_control"], new_name="dsctr_category"))
     batch = _Batch(rows=[
         _row(8, "rename_product", "project.dsctr_group_control", "rename to dsctr_category because merge"),
     ], vreq_ids=("P008",))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    assert ah._v337_build_ops(batch, m) == ([("rename_product", "project", "dsctr_group_control", "dsctr_category")], True)
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is None
 
 
-def test_fallback_target_entities_when_no_payload():
-    ns = _bind()
+def test_a_batch_without_payload_is_driven_by_its_spec_not_its_intent():
     m = _model()
     batch = _Batch(rows=(), intent="Rename product project.dsctr_category to pse_category",
                    targets=(("project", "dsctr_category"),))
-    new_model, summary = ns["_v337_deterministic_mutate"](batch, m, _Log())
+    assert ah._v337_deterministic_mutate(batch, m, _Log()) == (None, "")
+    vs.register(ah, m, vs.spec("V1", "rename_product", ["project.dsctr_category"], new_name="pse_category"))
+    new_model, summary = ah._v337_deterministic_mutate(batch, m, _Log())
     assert new_model is not None
     assert "pse_category" in _names(new_model, "project")
 

@@ -36,7 +36,7 @@ PRE = Path("/tmp/agent_v407_backup.ipynb")  # committed v4.0.7 — no v4.0.8 fix
 MARATHON = Path(__file__).resolve().parents[2] / "runner" / "vov_v2_marathon.py"
 
 GOVERNED_9 = [
-    "VERIFIER_LLM_FALLBACK", "VERIFIER_LLM_FALLBACK_RESCUE", "selffixer_repair",
+    "VERIFIER_LLM_FALLBACK", "selffixer_repair",
     "SUBDOMAIN_NAME_ENFORCE", "SUBDOMAIN_STEWARD_ENFORCE", "RE_PROVENANCE_ADD_MISSING",
     "SOURCE_TRACE_RESIDUAL_MAP", "SOURCE_TRACE_RESIDUAL_MAP_TBL", "self_ref_naming",
 ]

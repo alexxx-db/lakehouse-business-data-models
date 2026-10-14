@@ -18,10 +18,15 @@ outcome status='requeued_residual' and a [vov-mislabeled-action-residual
 FIRED v3.2.6] log line. Generic / industry-agnostic; DRY (reuses _residual).
 """
 
-import re
+import sys
+from pathlib import Path
 
-from notebook_source_util import notebook_concat_source
-from test_v251_vov_priority_landing import _exec_v251_namespace, _ListLogger
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source  # noqa: E402
+from test_v251_vov_priority_landing import _ListLogger  # noqa: E402
 
 
 SRC = notebook_concat_source()
@@ -62,10 +67,9 @@ def test_rc_a_mislabeled_rename_attribute_routes_to_residual():
     """action=rename_attribute but body has NO 'rename column X to Y' clause
     (it is actually an 'ensure/add' directive). Must route to LLM residual,
     not terminal skipped_unsafe."""
-    ns = _exec_v251_namespace()
-    apply_pass1 = ns["_v251_apply_pass1_priorities"]
-
     model = _model_with_product()
+    vs.register(ah, model, vs.spec("P019", "add_column", ["hr.eligibility_rule"], columns=[{"name": "pension_plan_id", "type": "BIGINT"}],
+                                   fk_target="hr.eligibility_rule.eligibility_rule_id"))
     priorities = [
         {
             "priority_id": 19,
@@ -83,7 +87,7 @@ def test_rc_a_mislabeled_rename_attribute_routes_to_residual():
     ]
 
     logger = _ListLogger()
-    _updated, outcomes, residual = apply_pass1(priorities, model, logger)
+    _updated, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logger)
 
     # POST-PATCH contract (would FAIL pre-patch: status was skipped_unsafe, residual empty):
     assert len(residual) == 1, "mislabeled directive must be routed into _residual for LLM synthesis"
@@ -91,14 +95,13 @@ def test_rc_a_mislabeled_rename_attribute_routes_to_residual():
     statuses = {o.batch_id: o.status for o in outcomes}
     assert statuses.get("P019") == "requeued_residual", f"expected requeued_residual, got {statuses}"
     assert any("vov-mislabeled-action-residual FIRED" in m for m in logger.warn_msgs)
+    assert [a["name"] for a in model["model"]["domains"][0]["products"][0]["attributes"]] == ["eligibility_rule_id"]
 
 
 def test_rc_a_mislabeled_rename_attribute_confirm_tag_routes_to_residual():
     """action=rename_attribute but body is a confirm+tag directive."""
-    ns = _exec_v251_namespace()
-    apply_pass1 = ns["_v251_apply_pass1_priorities"]
-
     model = _model_with_product()
+    vs.register(ah, model, vs.spec("P022", "check_only", ["hr.employee.employee_id"]))
     priorities = [
         {
             "priority_id": 22,
@@ -114,7 +117,7 @@ def test_rc_a_mislabeled_rename_attribute_confirm_tag_routes_to_residual():
     ]
 
     logger = _ListLogger()
-    _updated, outcomes, residual = apply_pass1(priorities, model, logger)
+    _updated, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logger)
     assert len(residual) == 1
     assert {o.status for o in outcomes} == {"requeued_residual"}
 
@@ -122,9 +125,6 @@ def test_rc_a_mislabeled_rename_attribute_confirm_tag_routes_to_residual():
 def test_rc_a_real_rename_still_applies_deterministically():
     """A genuine 'rename column X to Y' must STILL land in pass1 (not regress
     to residual). This is the discriminating negative case."""
-    ns = _exec_v251_namespace()
-    apply_pass1 = ns["_v251_apply_pass1_priorities"]
-
     model = {
         "model": {
             "domains": [
@@ -151,8 +151,10 @@ def test_rc_a_real_rename_still_applies_deterministically():
             "reason": "rename column related_asset_impact_id to related_to_asset_impact_id — resolve duplicate FK",
         }
     ]
+    vs.register(ah, model, vs.spec("P019", "rename_column", ["project.asset_impact.related_asset_impact_id"],
+                                   new_name="related_to_asset_impact_id"))
     logger = _ListLogger()
-    _updated, outcomes, residual = apply_pass1(priorities, model, logger)
+    _updated, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logger)
     assert residual == [], "a genuine rename must apply deterministically, not route to residual"
     assert {o.status for o in outcomes} == {"applied"}
     attrs = model["model"]["domains"][0]["products"][0]["attributes"]

@@ -23,58 +23,16 @@ _heuristic_batch delegation is absent), so the suite proves the routing change,
 not just that the grouper exists.
 """
 import re
-import textwrap
 
+import conftest  # noqa: F401
+import agent_helpers as ah
 from notebook_source_util import notebook_concat_source
 
 SRC = notebook_concat_source()
 
 
-def _load_batcher_ns():
-    """Slice the real dataclasses + batch grouper family from the notebook."""
-    dc = re.search(
-        r"@dataclass\(frozen=True\)\nclass RawVREQ:.*?(?=@dataclass\(frozen=True\)\nclass Handler:)",
-        SRC,
-        re.DOTALL,
-    )
-    assert dc, "RawVREQ/Batch dataclasses not found"
-    # v4.6.4: slice the batcher family by AST rather than a trailing comment marker. The legacy
-    # end-anchor "# ----- inlined from agent/vov_2_0/synthesizer" was removed in a prior notebook
-    # refactor, so the old regex lookahead no longer matched (pre-existing collection break, fails
-    # identically on HEAD). The family is the contiguous module-level span from
-    # deterministic_pre_group through _heuristic_batch (inclusive) — the same span the marker bounded.
-    import ast as _ast
-    _tree = _ast.parse(SRC)
-    _lines = SRC.splitlines(keepends=True)
-    _fam_start = _fam_end = None
-    for _node in _tree.body:
-        if isinstance(_node, _ast.FunctionDef):
-            if _node.name == "deterministic_pre_group":
-                _fam_start = _node.lineno - 1
-            if _node.name == "_heuristic_batch":
-                _fam_end = _node.end_lineno
-    assert _fam_start is not None and _fam_end is not None and _fam_end > _fam_start, (
-        "batch grouper family not found"
-    )
-    fam_src = "".join(_lines[_fam_start:_fam_end])
-    ns = {}
-    exec(
-        "from dataclasses import dataclass, field\n"
-        "from collections import defaultdict\n"
-        "from typing import Optional, List, Dict, Tuple\n"
-        "import re, hashlib\n",
-        ns,
-    )
-    exec(compile(textwrap.dedent(dc.group(0)), "agent_dataclasses", "exec"), ns)
-    exec(compile(fam_src, "agent_batcher", "exec"), ns)
-    return ns
-
-
-NS = _load_batcher_ns()
-
-
 def _orphans(n):
-    R = NS["RawVREQ"]
+    R = ah.RawVREQ
     # "other"-bucket, no concrete target -> the worst case that previously
     # produced 1-per-VREQ orphan batches.
     return [
@@ -92,7 +50,7 @@ def _orphans(n):
 def test_grouper_collapses_orphans_into_windows():
     """The delegation target (_heuristic_batch) batches N orphans into few
     multi-VREQ windows, not N 1-VREQ batches. 60 orphans -> <=5 batches."""
-    hb = NS["_heuristic_batch"]
+    hb = ah._heuristic_batch
     model = {"model": {"domains": [{"name": "ops", "products": [{"name": "shipment"}, {"name": "order"}]}]}}
     batches = hb(_orphans(60), model_snapshot=model)
     assert 0 < len(batches) <= 5, f"expected grouped (<=5) batches, got {len(batches)}"
@@ -103,7 +61,7 @@ def test_grouper_collapses_orphans_into_windows():
 
 def test_grouper_window_cap_is_25():
     """Each grouped batch holds at most 25 VREQs (the existing window cap)."""
-    hb = NS["_heuristic_batch"]
+    hb = ah._heuristic_batch
     batches = hb(_orphans(40), model_snapshot=None)
     assert batches, "expected at least one batch"
     assert all(len(b.vreq_ids) <= 25 for b in batches), "window cap of 25 violated"

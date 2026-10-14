@@ -14,20 +14,19 @@ adherence past the 0.85 fidelity gate (v270 ceiling was 0.804):
   "partial: inconclusive" even though the sandbox renamed the column in place.
   The fix verifies the post-rename state: the renamed-TO name must be present.
 
-Both tests exercise the REAL notebook source (sliced/execed), assert OBSERVABLE
-state changes, and would fail on the v2.7.0 pre-patch source (no fixpoint, no
-rename branch).
+Both tests exercise the REAL notebook code through agent_helpers with the requirement
+spec an LLM would return registered, and assert OBSERVABLE state changes.
 """
-import ast
-import copy
 import re
-import textwrap
-from collections import defaultdict
-from dataclasses import dataclass
+import sys
+from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Optional
 
-from notebook_source_util import notebook_concat_source, slice_function_source
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import conftest  # noqa: F401,E402
+import agent_helpers as ah  # noqa: E402
+import vreq_spec_util as vs  # noqa: E402
+from notebook_source_util import notebook_concat_source  # noqa: E402
 
 SRC = notebook_concat_source()
 
@@ -48,27 +47,6 @@ class _ListLogger:
         self.error_msgs.append(str(msg))
 
 
-@dataclass
-class RawVREQ:
-    vreq_id: str
-    intent: str
-    target: str
-    source_quote: str
-    source_chunk_id: str
-    severity: str = "medium"  # v2.9.6 alias=vov-severity-first
-    is_user_directive: bool = False  # v2.9.6 alias=vov-merge-user-first
-    priority_id: int = 9999  # v2.9.6 alias=vov-severity-first
-
-
-@dataclass
-class VReqOutcome:
-    batch_id: str
-    vreq_ids: tuple
-    status: str
-    diagnostic: str
-    attempts: int
-
-
 # ---------- version + sentinel contract ----------
 
 def test_version_271_and_aliases_present():
@@ -78,37 +56,11 @@ def test_version_271_and_aliases_present():
     assert m, "version missing"
     assert tuple(int(x) for x in m.group(1).split(".")) >= (2, 7, 1), f"expected >= 2.7.1, got {m.group(1)}"
     assert "v271-vov-pass1-fixpoint FIRED" in SRC
-    assert "verifier-rename-state FIRED" in SRC
+    assert "[verifier-spec FIRED v5.3.3]" in SRC
+    assert "verifier-rename-state FIRED" not in SRC
 
 
 # ---------- FIX 1: fixpoint ordering recovery ----------
-
-def _exec_v251_ns():
-    ns = {
-        "__name__": "_v271_ns",
-        "copy": copy,
-        "re": re,
-        "Optional": Optional,
-        "RawVREQ": RawVREQ,
-        "VReqOutcome": VReqOutcome,
-        "logger": _ListLogger(),
-    }
-    for name in [
-        "_v251_model_root",
-        "_v251_product_list",
-        "_v251_find_domain",
-        "_v251_find_product",
-        "_v251_find_attribute_row",
-        "_v251_iter_attribute_rows",
-        "_v251_parse_priority_details",
-        "_v251_prevalidate_priority",
-        "_v251_apply_priority_deterministic",
-        "_v310_apply_rename_ledger",
-        "_v251_apply_pass1_priorities",
-    ]:
-        exec(compile(slice_function_source(name, source=SRC), f"<{name}>", "exec"), ns)
-    return ns
-
 
 def _sales_model():
     return {
@@ -126,6 +78,10 @@ def _sales_model():
     }
 
 
+def _connect(vid, table, column, fk_target):
+    return vs.spec(vid, "add_column", [table], columns=[{"name": column, "type": "BIGINT"}], fk_target=fk_target)
+
+
 def test_fixpoint_recovers_ordering_dependent_priority():
     """P_A connects to an FK target that P_B creates. P_A is ordered FIRST.
 
@@ -133,9 +89,9 @@ def test_fixpoint_recovers_ordering_dependent_priority():
     Post-patch fixpoint: round1 applies P_B (creates the target), round2 applies P_A.
     Both end APPLIED.
     """
-    ns = _exec_v251_ns()
-    apply_pass1 = ns["_v251_apply_pass1_priorities"]
     model = _sales_model()
+    vs.register(ah, model, _connect("P001", "sales.order", "audit_ref_id", "sales.invoice.audit_id"),
+                _connect("P002", "sales.invoice", "audit_id", "sales.order.order_id"))
     priorities = [
         {
             "priority_id": 1,
@@ -154,12 +110,13 @@ def test_fixpoint_recovers_ordering_dependent_priority():
         },
     ]
     logger = _ListLogger()
-    updated, outcomes, residual = apply_pass1(priorities, model, logger)
+    updated, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logger)
     by_id = {o.batch_id: o for o in outcomes}
     assert by_id["P002"].status == "applied"
     assert by_id["P001"].status == "applied", (
         f"fixpoint should recover ordering-dependent P001, got {by_id['P001'].status}"
     )
+    assert residual == []
     # observable model state: P001's column landed on sales.order with the FK resolved
     order_attrs = updated["model"]["domains"][0]["products"][0]["attributes"]
     audit_ref = [a for a in order_attrs if a["name"] == "audit_ref_id"]
@@ -167,12 +124,12 @@ def test_fixpoint_recovers_ordering_dependent_priority():
     assert any("v271-vov-pass1-fixpoint FIRED" in m for m in logger.info_msgs)
 
 
-def test_fixpoint_still_drops_genuinely_unresolvable():
-    """A connect_table to a product that NO priority ever creates must still be
-    declared structural_unresolvable after a zero-progress round (no false apply)."""
-    ns = _exec_v251_ns()
-    apply_pass1 = ns["_v251_apply_pass1_priorities"]
+def test_fixpoint_requeues_a_genuinely_unresolvable_priority_to_the_llm_residual():
+    """A connect_table to a product that NO priority ever creates is never applied: after a
+    zero-progress round it goes to the LLM residual (v3.2.2 vov-prevalidate-requeue), not into the model."""
     model = _sales_model()
+    vs.register(ah, model, _connect("P001", "sales.invoice", "order_id", "sales.order.order_id"),
+                _connect("P002", "sales.nonexistent_product", "x_id", "sales.invoice.invoice_id"))
     priorities = [
         {
             "priority_id": 1,
@@ -190,54 +147,40 @@ def test_fixpoint_still_drops_genuinely_unresolvable():
         },
     ]
     logger = _ListLogger()
-    _, outcomes, _ = apply_pass1(priorities, model, logger)
-    by_id = {o.batch_id: o for o in outcomes}
-    assert by_id["P001"].status == "applied"
-    assert by_id["P002"].status == "structural_unresolvable"
-    assert "[unresolvable] needs-sourcing-decision" in by_id["P002"].diagnostic
+    updated, outcomes, residual = ah._v251_apply_pass1_priorities(priorities, model, logger)
+    assert [(o.batch_id, o.status) for o in outcomes] == [("P001", "applied")]
+    assert [p["vreq_id"] for p in residual] == ["P002"]
+    assert [d["name"] for d in updated["model"]["domains"][0]["products"]] == ["order", "invoice"]
+    assert any("requeued=1 reason=target-domain-product-missing priority=P2" in m for m in logger.warn_msgs)
 
 
 # ---------- FIX 2: verifier rename-state ----------
 
-def _slice_method_source(name: str) -> str:
-    tree = ast.parse(SRC)
-    target = None
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == name:
-            target = node
-    assert target is not None, f"method {name} not found"
-    lines = SRC.splitlines(keepends=True)
-    return textwrap.dedent("".join(lines[target.lineno - 1:target.end_lineno]))
+def _verifier():
+    orch = object.__new__(ah.VibeOrchestrator)
+    orch.logger = _ListLogger()
+    orch._step_snapshots = {}
+    orch.config = {}
+    return orch
 
 
-def _exec_verifier():
-    fn_src = _slice_method_source("_verify_deterministic")
-    ns = {
-        "re": re,
-        "defaultdict": defaultdict,
-        "apply_convention": lambda name, conv: name,
-        "config": {},
-    }
-    exec(compile(fn_src, "<_verify_deterministic>", "exec"), ns)
-    return ns["_verify_deterministic"]
+def _employee_rows(column):
+    domains_data = [{"domain": "hr"}]
+    products_data = [{"domain": "hr", "product": "employee", "primary_key": "employee_id"}]
+    attributes_data = [
+        {"domain": "hr", "product": "employee", "attribute": "employee_id", "type": "BIGINT"},
+        {"domain": "hr", "product": "employee", "attribute": column, "type": "STRING"},
+    ]
+    return domains_data, products_data, attributes_data
 
 
-def _make_verifier_self():
-    """fake self with the REAL _verify_bulk_coverage bound. v3.6.8 g3 made
-    _verify_deterministic call self._verify_bulk_coverage(...) first, so any isolation
-    harness for _verify_deterministic must provide that method or it AttributeErrors."""
-    import json as _json
-    fn_src = _slice_method_source("_verify_bulk_coverage")
-    ns = {"re": re, "defaultdict": defaultdict, "json": _json}
-    exec(compile(fn_src, "<_verify_bulk_coverage>", "exec"), ns)
-    fs = SimpleNamespace(config={}, logger=_ListLogger())
-    fs._verify_bulk_coverage = ns["_verify_bulk_coverage"].__get__(fs)
-    return fs
+def _register_rename(new_name):
+    vs.register(ah, ah.widgets_flat_to_model(*_employee_rows("ethnicity")),
+                vs.spec("VREQ-024", "rename_column", ["hr.employee.ethnicity"], new_name=new_name))
 
 
 def test_verifier_rename_attribute_reports_fulfilled_when_new_name_present():
-    verify = _exec_verifier()
-    fake_self = _make_verifier_self()
+    _register_rename("ethnic_origin")
     req = SimpleNamespace(
         id="VREQ-024",
         scope="attribute",
@@ -245,37 +188,26 @@ def test_verifier_rename_attribute_reports_fulfilled_when_new_name_present():
         # carries a "tag/glossary" word that used to route it to the tag/pii branch
         original_text="rename column `ethnicity` to `ethnic_origin` and update the glossary tag",
     )
-    domains_data = [{"domain": "hr"}]
-    products_data = [{"domain": "hr", "product": "employee", "primary_key": "employee_id"}]
     # post-rename state: the renamed-TO attribute is present (sandbox applied it)
-    attributes_data = [
-        {"domain": "hr", "product": "employee", "attribute": "employee_id", "type": "BIGINT"},
-        {"domain": "hr", "product": "employee", "attribute": "ethnic_origin", "type": "STRING"},
-    ]
-    res = verify(fake_self, req, domains_data, products_data, attributes_data)
+    res = _verifier()._verify_deterministic(req, *_employee_rows("ethnic_origin"))
     assert res["status"] == "fulfilled", f"expected fulfilled, got {res}"
-    assert "verifier-rename-state FIRED" in res["evidence"]
+    assert "verifier-spec FIRED" in res["evidence"] and "ethnicity -> ethnic_origin" in res["evidence"]
 
 
 def test_verifier_rename_does_not_false_fulfill_when_new_name_absent():
-    """Conservative: if the renamed-TO name is NOT present, the rename branch must
-    NOT emit a fulfilled — it falls through to the existing (partial/failed) logic."""
-    verify = _exec_verifier()
-    fake_self = _make_verifier_self()
+    """Conservative: if the renamed-TO name is NOT present, or the LLM read no usable new
+    name, the rename must NOT verify as fulfilled."""
+    _register_rename("ethnic_origin")
     req = SimpleNamespace(
         id="VREQ-024",
         scope="attribute",
         scope_targets=["hr.employee.ethnicity"],
         original_text="rename column `ethnicity` to `ethnic_origin`",
     )
-    domains_data = [{"domain": "hr"}]
-    products_data = [{"domain": "hr", "product": "employee", "primary_key": "employee_id"}]
     # rename NOT applied: old name still present, new name absent
-    attributes_data = [
-        {"domain": "hr", "product": "employee", "attribute": "employee_id", "type": "BIGINT"},
-        {"domain": "hr", "product": "employee", "attribute": "ethnicity", "type": "STRING"},
-    ]
-    res = verify(fake_self, req, domains_data, products_data, attributes_data)
-    assert res["status"] != "fulfilled" or "verifier-rename-state FIRED" not in res.get("evidence", ""), (
-        f"must not false-fulfill when new name absent, got {res}"
-    )
+    res = _verifier()._verify_deterministic(req, *_employee_rows("ethnicity"))
+    assert res["status"] == "failed", f"must not false-fulfill when new name absent, got {res}"
+    ah.vov_ledger_reset()
+    _register_rename("ethnic origin and update the glossary tag")
+    res = _verifier()._verify_deterministic(req, *_employee_rows("ethnic_origin"))
+    assert res["status"] == "failed" and "rename_column names no new name" in res["evidence"], res

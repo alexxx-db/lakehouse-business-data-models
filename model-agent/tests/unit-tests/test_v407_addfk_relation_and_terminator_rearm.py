@@ -26,6 +26,7 @@ import re
 from pathlib import Path
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 # DRY: reuse the tolerant backup loader + tiny fixtures from the v4.0.6 test module
 # (same tests/unit-tests dir is on sys.path under pytest's prepend import mode).
@@ -67,6 +68,19 @@ def _relation_req():
     return r
 
 
+PLANT_FK_SPEC = vs.spec("VREQ-046", "add_column", ["production.plant"], columns=[{"name": "finance_company_code_id", "type": "BIGINT"}],
+                        fk_target="finance.company_code.company_code_id")
+
+
+def _register(spec, tables):
+    products = [{"domain": d, "product": p, "primary_key": f"{p}_id"} for d, p in tables]
+    vs.register(ah, ah.widgets_flat_to_model([{"domain": d} for d in dict.fromkeys(d for d, _p in tables)], products, []), spec)
+
+
+def _ssot_renamed_plant():
+    ah._vov_note_product_rename("production", "plant", "production", "production_plant", "pass:p074_product_name_collision")
+
+
 def _orch(klass):
     o = _bare_orch(klass)
     o.config = {}
@@ -82,6 +96,10 @@ def test_version_bumped_to_407():
 def test_addfk_relation_resolves_ssot_rename_POST():
     o = _orch(ah.VibeOrchestrator)
     dd, pd, ad = _relation_after()
+    _register(PLANT_FK_SPEC, [("production", "plant"), ("finance", "company_code")])
+    res = o._verify_deterministic(_relation_req(), dd, pd, ad)
+    assert res["status"] == "failed", res
+    _ssot_renamed_plant()
     res = o._verify_deterministic(_relation_req(), dd, pd, ad)
     assert res and res["status"] == "fulfilled", res
 
@@ -97,16 +115,23 @@ def test_addfk_relation_honest_when_fk_absent_POST():
         {"domain": "finance", "product": "company_code", "attribute": "company_code_id",
          "foreign_key_to": "", "tags": "primary_key"},
     ]
+    _register(PLANT_FK_SPEC, [("production", "plant"), ("finance", "company_code")])
+    _ssot_renamed_plant()
     res = o._verify_deterministic(_relation_req(), [], pd, ad)
     assert res and res["status"] == "failed", res
+    assert "0/1 column(s) reference finance.company_code.company_code_id" in res["evidence"], res
 
 
 def test_addfk_table_branch_resolves_ssot_rename_POST():
-    # scope=="table" create check must also see the renamed table.
+    # a table-create check must also see the renamed table.
     o = _orch(ah.VibeOrchestrator)
     _, pd, ad = _relation_after()
     r = _Req("Create table production.plant", "VREQ-T", ["production.plant"])
     r.scope = "table"
+    _register(vs.spec("VREQ-T", "add_product", ["production.plant"]), [("finance", "company_code")])
+    res = o._verify_deterministic(r, [], pd, ad)
+    assert res["status"] == "failed", res
+    _ssot_renamed_plant()
     res = o._verify_deterministic(r, [], pd, ad)
     assert res and res["status"] == "fulfilled", res
 
@@ -145,8 +170,14 @@ def _prods(rows):
     return [{"domain": d, "product": p} for d, p in rows]
 
 
+MOVE_DONE_SPEC = vs.spec("VREQ-037", "move_product", ["bid.contract_agreement"], destination_domain="contract")
+MOVE_NOTDONE_SPEC = vs.spec("VREQ-038", "move_product", ["bid.payment_application"], destination_domain="finance")
+MOVE_CATALOG = [("bid", "contract_agreement"), ("bid", "payment_application"), ("contract", "contract_term"), ("finance", "invoice")]
+
+
 def test_move_product_fulfilled_when_moved_POST():
     o = _orch(ah.VibeOrchestrator)
+    _register(MOVE_DONE_SPEC, MOVE_CATALOG)
     pd = _prods([("contract", "contract_agreement"), ("subcontractor", "subcontract_agreement")])
     res = o._verify_deterministic(_mv_req(MOVE_DONE, "VREQ-037", ["bid.contract_agreement"]), [], pd, [])
     assert res and res["status"] == "fulfilled", res
@@ -155,16 +186,20 @@ def test_move_product_fulfilled_when_moved_POST():
 def test_move_product_failed_when_not_moved_POST():
     # honest: genuine miss must NOT get false partial-credit -> failed
     o = _orch(ah.VibeOrchestrator)
+    _register(MOVE_NOTDONE_SPEC, MOVE_CATALOG)
     pd = _prods([("bid", "bid_payment_application")])
     res = o._verify_deterministic(_mv_req(MOVE_NOTDONE, "VREQ-038", ["bid.payment_application"]), [], pd, [])
     assert res and res["status"] == "failed", res
+    assert "the new name is not in the model" in res["evidence"], res
 
 
 def test_move_product_partial_when_source_copy_remains_POST():
     o = _orch(ah.VibeOrchestrator)
-    pd = _prods([("contract", "contract_agreement"), ("bid", "bid_contract_agreement")])
+    _register(MOVE_DONE_SPEC, MOVE_CATALOG)
+    pd = _prods([("contract", "contract_agreement"), ("bid", "contract_agreement")])
     res = o._verify_deterministic(_mv_req(MOVE_DONE, "VREQ-037", ["bid.contract_agreement"]), [], pd, [])
     assert res and res["status"] == "partial", res
+    assert "the old one is still there" in res["evidence"], res
 
 
 def test_move_product_FAILPRE_v406_not_fulfilled():

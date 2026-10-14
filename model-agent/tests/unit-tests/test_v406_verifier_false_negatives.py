@@ -29,6 +29,7 @@ import types
 from pathlib import Path
 
 import agent_helpers as ah
+import vreq_spec_util as vs
 
 PRE = Path("/tmp/agent_v405_backup.ipynb")  # committed v4.0.5, no v4.0.6 fixes
 
@@ -145,6 +146,12 @@ def _after_preserve(n_attrs):
 
 PRESERVE_TEXT = ("Preserve the existing model structure of 20 domains and 413 products "
                  "exactly as listed; do not remove, rename, or merge any listed domain or product.")
+PRESERVE_SPEC = vs.spec("VREQ-001", "preserve", [f"d{i}" for i in range(20)] + [f"d0.p{i}" for i in range(413)])
+
+
+def _register_preserve(spec=PRESERVE_SPEC):
+    domains_data, products_data, _attrs = _after_preserve(0)
+    vs.register(ah, ah.widgets_flat_to_model(domains_data, products_data, []), spec)
 
 
 # ============================== version =====================================
@@ -157,18 +164,23 @@ def test_version_bumped_to_406():
 def test_preserve_structure_fulfilled_despite_attr_drift_POST():
     o = _bare_orch(ah.VibeOrchestrator)
     o._step_snapshots["step_interpret_model_instructions_before"] = _preserve_snapshot()
+    _register_preserve()
     dd, pd, ad = _after_preserve(15418)  # fewer attrs than before (dedup) but 20D/413P preserved
-    res = o._verify_state_diff(_Req(PRESERVE_TEXT, "VREQ-001"), dd, pd, ad)
+    res = o._verify_deterministic(_Req(PRESERVE_TEXT, "VREQ-001"), dd, pd, ad)
     assert res and res["status"] == "fulfilled", res
+    _register_preserve(dict(PRESERVE_SPEC, interpretable=False, reason="cannot tell what to preserve"))
+    res = o._verify_deterministic(_Req(PRESERVE_TEXT, "VREQ-001"), dd, pd, ad)
+    assert res["status"] == "failed" and "cannot tell what to preserve" in res["evidence"], res
 
 
 def test_preserve_structure_partial_on_real_removal_POST():
     # If a product is genuinely removed (413 -> 400), it must NOT be fulfilled.
     o = _bare_orch(ah.VibeOrchestrator)
     o._step_snapshots["step_interpret_model_instructions_before"] = _preserve_snapshot()
+    _register_preserve()
     dd, _pd, ad = _after_preserve(15418)
     pd = [{"domain": "d0", "product": f"p{i}"} for i in range(400)]  # 13 removed
-    res = o._verify_state_diff(_Req(PRESERVE_TEXT, "VREQ-001"), dd, pd, ad)
+    res = o._verify_deterministic(_Req(PRESERVE_TEXT, "VREQ-001"), dd, pd, ad)
     assert res and res["status"] != "fulfilled", res
 
 
@@ -205,16 +217,33 @@ def _plant_after():
     return products_data, attributes_data
 
 
+def _register_plant(table):
+    products = [{"domain": "production", "product": table, "primary_key": f"{table}_id"},
+                {"domain": "finance", "product": "company_code", "primary_key": "company_code_id"}]
+    vs.register(ah, ah.widgets_flat_to_model([], products, []), vs.spec(
+        "VREQ-044", "add_column", [f"production.{table}"], columns=[{"name": "finance_company_code_id", "type": "BIGINT"}],
+        fk_target="finance.company_code.company_code_id"))
+
+
 def test_domain_prefix_resolve_fulfilled_POST():
     o = _bare_orch(ah.VibeOrchestrator)
     pd, ad = _plant_after()
-    res = o._verify_structural_target(_Req(PLANT_TEXT, "VREQ-044", ["production.plant"]), pd, ad)
+    _register_plant("production_plant")
+    res = o._verify_deterministic(_Req(PLANT_TEXT, "VREQ-044"), [], pd, ad)
+    assert res and res["status"] == "fulfilled", res
+    _register_plant("plant")
+    res = o._verify_deterministic(_Req(PLANT_TEXT, "VREQ-044"), [], pd, ad)
+    assert res["status"] != "fulfilled", res
+    ah._vov_note_product_rename("production", "plant", "production", "production_plant", "pass:p074_product_name_collision")
+    wrong_fk = [dict(a, foreign_key_to="finance.ledger.ledger_id") if a["attribute"] == "finance_company_code_id" else a for a in ad]
+    res = o._verify_deterministic(_Req(PLANT_TEXT, "VREQ-044"), [], pd, wrong_fk)
+    assert res["status"] != "fulfilled", res
+    res = o._verify_deterministic(_Req(PLANT_TEXT, "VREQ-044"), [], pd, ad)
     assert res and res["status"] == "fulfilled", res
 
 
 def test_domain_prefix_resolve_ambiguous_stays_honest_POST():
-    # Two candidates ending in _plant in the same domain -> ambiguous -> NOT resolved (honest None/partial,
-    # never a false fulfilled).
+    # Two candidates ending in _plant in the same domain -> ambiguous -> never a false fulfilled.
     o = _bare_orch(ah.VibeOrchestrator)
     ad = [
         {"domain": "production", "product": "production_plant", "attribute": "x_id",
@@ -224,10 +253,9 @@ def test_domain_prefix_resolve_ambiguous_stays_honest_POST():
     ]
     pd = [{"domain": "production", "product": "production_plant"},
           {"domain": "production", "product": "power_plant"}]
-    res = o._verify_structural_target(_Req(PLANT_TEXT, "VREQ-044", ["production.plant"]), pd, ad)
-    # ambiguous: 'production_plant' (pref) is unique among <domain>_<name> form, so it resolves to it;
-    # but the FK column is absent there -> failed, NOT fulfilled. Either way: never fulfilled here.
-    assert (res is None) or (res.get("status") != "fulfilled"), res
+    _register_plant("plant")
+    res = o._verify_deterministic(_Req(PLANT_TEXT, "VREQ-044"), [], pd, ad)
+    assert res["status"] != "fulfilled", res
 
 
 def test_domain_prefix_resolve_FAILPRE_v405_returns_none():

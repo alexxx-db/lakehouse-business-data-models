@@ -12,8 +12,9 @@ FIX (pass-post): re-run the SAME deterministic guard at the TRUE-last mutator bo
 (after finalize + structural hardening, immediately before serialization). DRY reuse of
 _v403; no second breaker; idempotent no-op on a clean model.
 
-- test_v452_guard_alias_ordered_after_finalizer  -> static fail-pre/pass-post anchor
-  (alias absent on pre-patch HEAD; present AND after the finalizer call post-patch).
+- test_v452_guard_alias_ordered_after_the_last_mutators -> static fail-pre/pass-post anchor
+  (alias absent on pre-patch HEAD; present AND after every pass that still mutates data_model at the
+  serialization boundary; the v4.4.1 regex reviewer finalizer was deleted in v5.3.3).
 - test_v452_guard_clears_mutual_fk_2cycles        -> behavioral: the guard, run on the exact
   shipped-shape nested model, mutates 3 mutual-FK 2-cycles down to 0 residual cycles.
 """
@@ -27,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from v435_helpers import concat_source, slice_functions, NOTEBOOK_PATH
+from notebook_source_util import pk_predicate_globals
 
 _SRC = concat_source()
 
@@ -59,25 +61,27 @@ def _cell188_source():
     raise AssertionError("step_generate_data_model_json cell not found")
 
 
-def test_v452_guard_alias_ordered_after_finalizer():
-    """FAIL-PRE on HEAD (alias absent); PASS-POST (guard call ordered after the finalizer)."""
+def test_v452_guard_alias_ordered_after_the_last_mutators():
+    """FAIL-PRE on HEAD (alias absent); PASS-POST (guard call ordered after the last mutators)."""
     src = _cell188_source()
     assert "v452-post-finalize-cycle-guard FIRED" in src, (
         "v4.5.2 post-finalize guard alias missing from the model-json serialization cell (pre-patch state)"
     )
     lines = src.split("\n")
-    fin_idx = next(i for i, l in enumerate(lines) if "_v441_reviewer_finalization(data_model" in l)
     grd_idx = next(i for i, l in enumerate(lines) if "v452-post-finalize-cycle-guard FIRED" in l)
-    assert grd_idx > fin_idx, (
-        "the post-finalize cycle guard must be invoked AFTER _v441_reviewer_finalization "
-        f"(finalizer@{fin_idx}, guard@{grd_idx})"
-    )
-    # the guard call itself (not just the log line) must be present after the finalizer
+    mutators = {call: next(i for i, l in enumerate(lines) if call in l) for call in (
+        "_v443_structural_hardening(data_model, logger)",
+        "_v454_merge_duplicate_named_domains(data_model, logger)",
+        "_v453_collapse_identical_cross_domain_refs(data_model, logger)")}
+    for call, idx in mutators.items():
+        assert grd_idx > idx, f"the post-finalize cycle guard must be invoked AFTER {call} (pass@{idx}, guard@{grd_idx})"
+    # the guard call itself (not just the log line) must be present after the last mutator
+    last = max(mutators.values())
     call_idx = next(
         i for i, l in enumerate(lines)
-        if "_v403_break_cycles_in_serialized_model(data_model, logger)" in l and i > fin_idx
+        if "_v403_break_cycles_in_serialized_model(data_model, logger)" in l and i > last
     )
-    assert call_idx > fin_idx
+    assert last < call_idx < grd_idx
 
 
 def _shipped_shape_model():
@@ -120,12 +124,14 @@ class _Log:
 def test_v452_guard_clears_mutual_fk_2cycles():
     """Behavioral: the production guard mutates the shipped 3 mutual-FK 2-cycles down to 0."""
     ns = slice_functions(
-        ["_is_convenience_fk", "_heuristic_edge_break_score", "_compute_edge_betweenness_for_cycles",
+        ["_vibe_scope_product_test", "_vibe_scope_frozen_edges",
+         "_is_convenience_fk", "_heuristic_edge_break_score", "_compute_edge_betweenness_for_cycles",
          "_detect_direct_bidirectional_links", "_detect_cycles_dfs", "_break_cycles_heuristic_internal",
          "_v403_break_cycles_in_serialized_model"],
         _SRC,
         extra_globals={"defaultdict": defaultdict, "Counter": Counter, "OrderedDict": OrderedDict,
-                       "re": re, "json": json, "itertools": itertools,
+                       "re": re, "json": json, "itertools": itertools, "_VIBE_SCOPE_RUNTIME": None,
+                       **pk_predicate_globals(),
                        **_module_consts(["_CONVENIENCE_FK_PREFIXES"])},
     )
     detect = ns["_detect_cycles_dfs"]

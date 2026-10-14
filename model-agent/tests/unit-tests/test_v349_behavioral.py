@@ -47,7 +47,7 @@ def test_v349_steward_enforce_present():
     assert "SUBDOMAIN_STEWARD_ENFORCE" in src
     assert "_SUBDOMAIN_STEWARD_SCHEMA" in src
     # only fires when the vibe declares stewards (no over-tagging on vibes that don't mention them)
-    assert 'if ai and vibe_text and ("steward" in vibe_text.lower())' in src
+    assert 'if ai and vibe_text and _vreq_spec_any_field("steward"):' in src and '"steward" in vibe_text.lower()' not in src
 
 
 # --------------------------------------------------------------------------- #
