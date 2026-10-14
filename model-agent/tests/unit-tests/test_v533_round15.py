@@ -264,8 +264,8 @@ def test_kpi_first_mandates_the_view_details_the_specs_fix(monkeypatch, caplog):
     lines = ah._vreq_spec_metric_view_detail_lines()
     assert lines == [f"the view '{YEARLY}' declares the query parameter p_fiscal_year of type INT with the default YEAR(CURRENT_DATE) in its "
                      "parameters array and uses it by name in a measure expression",
-                     f"the view '{SIGNUPS}' carries a measure whose expr is the expression the user wrote in the vibe, copied from the vibe "
-                     f"text exactly with its quotes (the requirement reads it as {SIGNUP_EXPR})"]
+                     f"the view '{SIGNUPS}' carries a measure that computes {SIGNUP_EXPR}, written as valid Databricks SQL with every string "
+                     "literal quoted (for example a date unit: date_trunc('month', column))"]
 
     seen = {}
 
