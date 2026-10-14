@@ -400,3 +400,33 @@ def test_an_exact_view_list_keeps_the_views_the_requirement_specs_name(monkeypat
                                      "daily sales by shop and product", "pre-order volumes by pickup day"]
     assert wv["_exact_mv_count"] == 4
     assert any("[mv-exact-spec-union FIRED v5.3.3] the exact view list missed 2 view(s)" in r.getMessage() for r in caplog.records)
+
+
+def test_the_physical_audit_reads_a_table_comment_as_its_description(caplog):
+    """Live r19a 876211621099441 (and r17a, r18a, r18g): both described tables carried the asked text in model.json and as their
+    COMMENT, yet the physical ground-truth audit scored each 0/1, because its table rows carried only the key."""
+    class _Rows:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def collect(self):
+            return self._rows
+
+    class _Spark:
+        def sql(self, stmt):
+            assert "information_schema.tables" in stmt
+            return _Rows([{"t": "shipment", "cm": "A parcel the carrier picks up from a store and delivers to a customer address."},
+                          {"t": "other_table", "cm": "ignored"}])
+    table_map = {("cat", "order", "shipment"): ("order", "shipment")}
+    products = [{"domain": "order", "product": "shipment", "description": "stale", "steward": "Order Desk"}]
+    with caplog.at_level(logging.INFO):
+        rows = ah._gt_physical_table_rows(_Spark(), [("cat", "order")], table_map, products, {("order", "shipment"): "shipment_id"},
+                                          [("order", "shipment")], LOG)
+    assert rows == [{"domain": "order", "product": "shipment", "primary_key": "shipment_id",
+                     "description": "A parcel the carrier picks up from a store and delivers to a customer address.", "steward": "Order Desk"}]
+    assert any("[gt-table-comment FIRED v5.3.3] 1/1 physical table(s)" in r.getMessage() for r in caplog.records)
+    spec = {"action": "set_fields", "tags": [], "field_values": {("products", "description"): "a parcel the carrier picks up from a store and delivers to a customer address"}}
+    assert ah._verify_spec_value_ok(spec, "products", "description", rows[0]) is True
+    audit = SRC[SRC.index("def _run_ground_truth_audit(widgets_values):"):]
+    audit = audit[:audit.index("\ndef ", 10)]
+    assert "products_data = _gt_physical_table_rows(spark, cat_schema, table_map, products, _pk_by_pp, phys_pp, logger)" in audit
