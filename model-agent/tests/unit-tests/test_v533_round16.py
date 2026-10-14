@@ -428,3 +428,38 @@ def test_a_view_requirement_needs_no_table_target():
         assert ah._normalize_vreq_spec(vs.spec("VREQ-009", action, metric_views=names), idx)["interpretable"] is True, action
     assert ah._normalize_vreq_spec(vs.spec("VREQ-009", "drop_metric_view"), idx)["interpretable"] is False
     assert ah._normalize_vreq_spec(vs.spec("VREQ-009", "drop_product"), idx)["interpretable"] is False
+
+
+def test_the_final_outcomes_score_a_view_requirement_on_the_final_views():
+    """Live r26a 525405185877634: the drop, the change and the add all landed and the physical audit scored 3 of 3, but the
+    scope outcomes said 0 percent in-scope adherence, because the engine applies no view action and the reconcile checked
+    landing on a model rebuilt without metric views."""
+    drop_v, _change_v, other = _views()
+    fence = _fence()
+    _register(vs.spec("VREQ-001", "drop_metric_view", metric_views=[drop_v["view_name"]]),
+              vs.spec("VREQ-003", "add_metric_view", metric_views=["weekly fuel burn by aircraft"]))
+    model = copy.deepcopy(RAW)
+    model["model"]["metric_views"] = [m for m in model["model"]["metric_views"] if m["view_name"] != drop_v["view_name"]]
+    d, p, a, mv = ah.model_to_widgets_flat(model)
+    wv = {"operation": VOV, "domains": d, "products": p, "attributes": a, "metric_views": mv,
+          "_vov_2_raw_vreqs": [{"vreq_id": "VREQ-001", "intent": "Drop the view", "target": "", "source_quote": ""},
+                               {"vreq_id": "VREQ-003", "intent": "Add the view", "target": "", "source_quote": ""}],
+          "_vov_vreq_status": {"VREQ-001": {"status": "not_addressed", "reason": ""}, "VREQ-003": {"status": "not_addressed", "reason": ""}},
+          "_vibe_scope_outcomes": {"in_scope_vreq_count": 2, "adherence_in_scope_pct": 0.0, "scope_rejected": []}}
+    ah._vov_reconcile_final_outcomes(wv, LOG)
+    assert wv["_vov_vreq_status"]["VREQ-001"]["status"] == "applied"
+    assert wv["_vov_vreq_status"]["VREQ-003"]["status"] == "not_addressed"
+    assert fence is ah.get_vibe_scope_runtime()
+
+
+def test_the_change_mandate_keeps_the_base_parameters():
+    _drop_v, change_v, other = _views()
+    base = copy.deepcopy(RAW)
+    for m in base["model"]["metric_views"]:
+        if m["view_name"] == change_v["view_name"]:
+            m["sql"] = m["sql"].replace("  dimensions:", "  parameters:\n    - name: p_min_weight_kg\n      data_type: DOUBLE\n      default: 0\n  dimensions:", 1)
+    fence = ah.build_vibe_scope_fence(ah.parse_vibe_scope("Some Domains", "crew"), base, VOV, LOG)
+    ah.set_vibe_scope_runtime(fence)
+    vs.register(ah, base, vs.spec("VREQ-002", "change_metric_view", metric_views=[change_v["view_name"]], reason="add p_min_packages"))
+    line = ah._vreq_spec_change_lines()[0]
+    assert "keep its parameters ['p_min_weight_kg DOUBLE default 0'], dimensions" in line
