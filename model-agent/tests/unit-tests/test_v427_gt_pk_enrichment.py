@@ -46,7 +46,7 @@ def _extract_enrich_block(src):
     at module scope in the test namespace with products / phys_attrs / phys_pp / logger seeded."""
     # back up to the START of the line so the baked-in 8-space indent is included and dedent works
     start = src.rindex("\n", 0, src.index("_phys_cols_by_pp = {}")) + 1
-    end_marker = "products_data = [{\"domain\": d, \"product\": p, \"primary_key\": _pk_by_pp.get((d, p))} for d, p in phys_pp]"
+    end_marker = "products_data = _gt_physical_table_rows(spark, cat_schema, table_map, products, _pk_by_pp, phys_pp, logger)"
     end = src.index(end_marker) + len(end_marker)
     block = src[start:end]
     return textwrap.dedent(block)
@@ -116,7 +116,8 @@ def _run_enrich(path, products, phys_attrs):
     src = _full_src(path)
     block = _extract_enrich_block(src)
     phys_pp = sorted({(a["domain"], a["product"]) for a in phys_attrs})
-    ns = {"products": products, "phys_attrs": phys_attrs, "phys_pp": phys_pp, "logger": _Logger()}
+    ns = {"products": products, "phys_attrs": phys_attrs, "phys_pp": phys_pp, "logger": _Logger(),
+          "_gt_physical_table_rows": ah._gt_physical_table_rows, "spark": None, "cat_schema": [], "table_map": {}}
     exec(block, ns)
     return ns["products_data"], phys_attrs
 
@@ -184,7 +185,8 @@ def test_alias_and_callsite_present():
     src = _full_src(NB)
     assert "gt-pk-from-model-declared" in src
     # the enriched products_data assignment must be the live line in _run_ground_truth_audit
-    assert '"primary_key": _pk_by_pp.get((d, p))' in src
+    assert "products_data = _gt_physical_table_rows(spark, cat_schema, table_map, products, _pk_by_pp, phys_pp, logger)" in src
+    assert '"primary_key": pk_by_pp.get((d, p))' in src
 
 
 def test_version_bumped_to_427():
