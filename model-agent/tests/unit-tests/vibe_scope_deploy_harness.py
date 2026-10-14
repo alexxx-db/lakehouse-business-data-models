@@ -708,7 +708,8 @@ class InstallRecorder:
             spark.sql(stmt)
         return len(stmts)
 
-    def execute_metric_views(self, spark, statements, logger, max_workers=20, concurrency_manager=None, progress_callback=None, timeout_per_stmt=None):
+    def execute_metric_views(self, spark, statements, logger, max_workers=20, concurrency_manager=None, progress_callback=None, timeout_per_stmt=None,
+                             known_fallbacks=None):
         stmts = list(statements)
         self.phases.append(("metric_views", stmts))
         failed = [(name, "UNRESOLVED_COLUMN") for name in self.failed_views]
