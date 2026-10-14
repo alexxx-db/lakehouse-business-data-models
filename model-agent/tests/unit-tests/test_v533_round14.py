@@ -359,3 +359,13 @@ def test_a_count_measure_never_gets_a_date_format():
     first_block = text.split('name: "First Registration"', 1)[1]
     assert "type: date" not in count_block
     assert "type: date" in first_block and "date_format: year_month_day" in first_block
+
+
+def test_a_requested_value_matches_whatever_the_trailing_period_and_spacing():
+    """Live r18a 286160361756502 and r17a 161181967549574: the asked description landed as written plus a closing period, and the
+    spec verifier scored it 0/1 because it compared the strings exactly."""
+    spec = {"action": "set_fields", "tags": [], "field_values": {("products", "description"): "one physical parcel sent to a customer address,  with its carrier and tracking"}}
+    landed = {"description": "One physical parcel sent to a customer address, with its carrier and tracking."}
+    other = {"description": "A parcel."}
+    assert ah._verify_spec_value_ok(spec, "products", "description", landed) is True
+    assert ah._verify_spec_value_ok(spec, "products", "description", other) is False
