@@ -397,3 +397,34 @@ def test_the_exact_view_list_loses_a_view_a_requirement_drops(monkeypatch, caplo
         ah.step_generate_kpi_first_metric_views(wv)
     assert wv["_exact_mv_names"] == ["weekly fuel burn by aircraft"] and wv["_exact_mv_count"] == 1
     assert any("[mv-exact-spec-drop FIRED v5.3.3]" in r.getMessage() for r in caplog.records)
+
+
+def test_a_bare_date_unit_is_quoted_unless_a_column_has_that_name(caplog):
+    """Live r24a 305574473456938: the changed order_return_case and the new order_refunds_by_channel both failed with
+    UNRESOLVED_COLUMN month at the first argument of DATE_TRUNC; Databricks reads a bare unit there as a column."""
+    with caplog.at_level(logging.INFO):
+        assert ah._mv_quote_date_units("DATE_TRUNC(month, requested_timestamp)", {"requested_timestamp"}, LOG, "order/v") == "DATE_TRUNC('month', requested_timestamp)"
+    assert any("[mv-date-unit-quote FIRED v5.3.3] order/v: quoted the date unit(s) ['month']" in r.getMessage() for r in caplog.records)
+    assert ah._mv_quote_date_units("COUNT(CASE WHEN date_trunc(month, a) = date_trunc(month, current_date()) THEN 1 END)") == SIGNUP_QUOTED.replace("signed_up_at", "a")
+    assert ah._mv_quote_date_units("date_part(year, created_at)") == "date_part('year', created_at)"
+    assert ah._mv_quote_date_units("DATE_TRUNC('month', ts)") == "DATE_TRUNC('month', ts)"
+    assert ah._mv_quote_date_units("DATE_TRUNC(month, ts)", {"month", "ts"}) == "DATE_TRUNC(month, ts)"
+    assert ah._mv_quote_date_units("EXTRACT(MONTH FROM ts)") == "EXTRACT(MONTH FROM ts)"
+    products = {"return_case": {"table_name": "return_case", "domain": "order", "product": "return_case"}}
+    columns = {"return_case": {"columns": {"return_case_id", "requested_timestamp"}, "string_columns": set(), "boolean_columns": set(), "col_rewrite_map": {}}}
+    spec = {"metric_views": [{"view_name": "order_return_case", "source_product": "return_case", "comment": "c", "filter": "", "joins": [],
+                              "dimensions": [{"name": "Month", "expr": "DATE_TRUNC(month, requested_timestamp)", "comment": "c"}],
+                              "measures": [{"name": "Cases", "expr": "COUNT(DISTINCT return_case_id)", "comment": "c"}]}]}
+    out = ah._render_metric_sql_for_domain_from_llm_spec("cat", "order", "order", spec, products, LOG, product_columns=columns, config={})
+    assert "expr: DATE_TRUNC('month', requested_timestamp)" in "\n".join(out[0] if isinstance(out, tuple) else out)
+
+
+def test_a_view_requirement_needs_no_table_target():
+    """Live r24a: the orchestrator read the drop and the change as not interpreted ('names no target'), because they name only
+    the view; the verifier then scored both failed although the drop landed."""
+    idx = ah._vreq_spec_index(RAW)
+    drop_v, change_v, _other = _views()
+    for action, names in (("drop_metric_view", [drop_v["view_name"]]), ("change_metric_view", [change_v["view_name"]]), ("add_metric_view", ["weekly fuel burn"])):
+        assert ah._normalize_vreq_spec(vs.spec("VREQ-009", action, metric_views=names), idx)["interpretable"] is True, action
+    assert ah._normalize_vreq_spec(vs.spec("VREQ-009", "drop_metric_view"), idx)["interpretable"] is False
+    assert ah._normalize_vreq_spec(vs.spec("VREQ-009", "drop_product"), idx)["interpretable"] is False
