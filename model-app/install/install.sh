@@ -324,9 +324,11 @@ APP_URL=$(databricks apps get "$APP_NAME" ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@
 # is best-effort), so surface gaps without failing a deploy that did its job.
 echo
 echo "==> [verify] post-install checks (warn-only)"
-VTOKEN=$(databricks auth token ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} 2>/dev/null | jq -r .access_token)
-if [[ -n "$VTOKEN" && "$VTOKEN" != "null" ]]; then
-  CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $VTOKEN" "$APP_URL/" || echo 000)
+# `auth token` fails for some auth types (e.g. service-principal OAuth); under
+# set -e -o pipefail that would end a successful install, so fall through to the warning.
+VTOKEN="$(databricks auth token ${PROFILE_FLAGS[@]:+"${PROFILE_FLAGS[@]}"} --output json 2>/dev/null | jq -r '.access_token // empty' 2>/dev/null || true)"
+if [[ -n "$VTOKEN" ]]; then
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $VTOKEN" "$APP_URL/") || CODE=000
   [[ "$CODE" == "200" ]] && echo "    [ok]   homepage 200" \
     || echo "    [warn] homepage returned $CODE (expected 200)"
   INDC=$(curl -s -H "Authorization: Bearer $VTOKEN" "$APP_URL/api/industries" | jq 'length' 2>/dev/null || echo "?")
