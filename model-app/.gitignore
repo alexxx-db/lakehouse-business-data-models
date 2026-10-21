@@ -25,6 +25,8 @@ node_modules/
 
 # Minted SP secret for local UI smoke (holds a live OAuth secret)
 scripts/smoke/.sp_smoke_env
+# Public-install smoke receipts + install logs (per run, local only)
+scripts/smoke/.receipts/
 
 # Editor / IDE (local only)
 .vscode/

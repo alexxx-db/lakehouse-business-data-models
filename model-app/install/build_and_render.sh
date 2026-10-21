@@ -43,7 +43,9 @@ ASSESSMENT="$(printf '%s' "${VIBE_MODELING_ASSESSMENT_ENABLED:-false}" | tr '[:u
 echo "taxonomy_builder=${TAXONOMY_BUILDER} taxonomy_model_service=${VIBE_MODELING_TAXONOMY_MODEL_SERVICE:-unset}"
 echo "assessment=${ASSESSMENT} assess_reader_sp=${VIBE_MODELING_ASSESS_READER_SP:-unset}"
 
-( cd src/app && apx build )
+# apx build re-runs `bun add --dev` for its own entrypoint packages; the guard
+# fails the build when that moved package.json / bun.lock off the committed pins.
+python install/frontend_lock_guard.py src/app -- apx build
 
 python install/render_app_yaml.py \
   --in  src/app/app.yml \

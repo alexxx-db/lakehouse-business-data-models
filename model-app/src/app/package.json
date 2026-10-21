@@ -57,7 +57,15 @@
         "vitest": "^4.1.0"
     },
     "overrides": {
-        "vite": "8.0.3",
-        "@vitejs/plugin-react": "6.0.1"
+        "@opentelemetry/api": "1.9.0",
+        "@opentelemetry/api-logs": "0.222.0",
+        "@opentelemetry/exporter-logs-otlp-http": "0.222.0",
+        "@opentelemetry/resources": "2.11.0",
+        "@opentelemetry/sdk-logs": "0.222.0",
+        "@tailwindcss/vite": "4.3.3",
+        "@tanstack/router-generator": "1.167.35",
+        "@tanstack/router-plugin": "1.168.37",
+        "@vitejs/plugin-react": "6.0.1",
+        "vite": "8.0.3"
     }
 }
