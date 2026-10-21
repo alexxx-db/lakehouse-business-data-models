@@ -134,6 +134,10 @@ This skill has **two modes**. Before Phase 1, resolve which one applies from `co
   directly from bronze in one pass. There is no separate gold star to derive; its gold layer is
   marts + metric views built over the silver star (see `etl-development-framework/gold-and-metrics.md`),
   not a re-derived dimensional model. Do NOT route `dimensional` to Mode B.
+- **Silver not populated → Mode B is DEFERRED.** This holds for unattended/headless runs whose
+  caller asks for `hybrid` too. Do not produce a gold design (provisional or otherwise), and do not
+  file a pending decision or blocker for it. Write one line in the Domain Readiness Summary:
+  `Gold (Mode B): deferred — runs after the silver build is populated.`
 - **`normalized`** is always Mode A, single tier — Mode B never applies.
 
 **Gold is handled in FOUR roles now — keep them distinct:**
@@ -254,6 +258,18 @@ attribute name against the actual `information_schema` bronze column, emit `sour
 and flag no-match as Derived/GAP. The metamodel attribute is the target name, NOT the bronze column
 name — skipping this is what caused 76% of files to be rewritten downstream. Collect date formats
 per source system (Step 2.4c) and run the **All-STRING fast path** where every column is STRING.
+When two or more systems can populate one entity, run **Step 2.3b Source Ownership** first: profile
+each system's event-date range and owner overlap, classify the pattern (split by time, split by
+population, duplicate, complementary), and give every configured `bronze_sources` system a role.
+The population is the union of the owning systems. Leaving a configured system unused needs a
+recorded reason, never a silent choice.
+Run **Step 2.4d Value Semantics Probes** for every measure, timestamp, row status and join key that
+an entity draws from more than one source or joins across systems: units, time zones / DST
+fall-back duplicates, soft-delete and cancellation columns, cross-system key formats and crosswalk
+coverage (classify unmapped objects as moved or new), sign encoding, and code vocabularies. A
+type-correct cast doesn't catch any of these. Each target column gets **one** unit and **one**
+vocabulary; recording what each system uses is not a rule. Run the Step 2.7 FK probes **per
+Populating system** against the parent key as built.
 Run **Step 2.8 Cross-Domain FK Availability** to grade each cross-domain parent Resolvable /
 Deferred / Blocked. Inventory any existing V1/MVP model in the workspace for proven-mapping evidence.
 Run the **Step 2.6 Mutability Probe for every fact** (entity semantics + creation-vs-update
@@ -266,6 +282,7 @@ Run **Step 2.7 Model Assertion Validation** — the **surgical lens** — for ev
 profile bronze to test the model's *declared* grain / type / PK-uniqueness / FK-cardinality and
 surface contradictions. This complements the Step 2.6 mutability pointer and feeds the **same
 human gate as Phase 2C** (never auto-correct).
+Headless caller: Step 2.7 findings follow the Unattended (headless) branch of Step 2C.4 (defaults recorded in `pending_decisions.md`, not confirmation).
 Read `discovery-protocol.md` for search patterns and both probes; `model-completeness-protocol.md` for the V1 inventory protocol.
 **Outputs:** Confirmed source table list per entity; row counts; V1 proven-mapping table;
 per-fact mutability result (pct_mutated + watermark column) feeding S2T Load strategy + spec
@@ -290,6 +307,7 @@ After profiling all bronze sources, run the reverse check from `model-completene
    **NET-NEW proposal** (for bronze-revealed additions, propose→build) — both human-confirmed
    and logged.
 **Gate:** Human must confirm disposition of each candidate before model is considered final.
+*Unattended (headless) run?* Don't wait: take the conservative default and record it in `docs/design/pending_decisions.md` (each block's Gate line carries `Kind: structure|source|scope`) and a `Resolve via` line: structure → the matching next vibe, source → the build gate, scope → the domain owner per `model-completeness-protocol.md` "Unattended (headless) runs" (Step 2C.4) — a recorded default is never user confirmation.
 **Outputs:** Model Gap Candidates table (with Suggested next_vibes.md action column); Business
 Process Coverage Check; `next_vibes.md` PRIORITY lines for structural misses; user decisions recorded.
 
@@ -323,6 +341,7 @@ After delivery, user returns with: new ingestion landed, existing model found, a
 Run the iteration protocol from `iteration-loop.md` to re-grade affected tables and update.
 **Gate:** Iteration ends when no Blocked tables remain, or remaining Blocked are accepted as out-of-scope.
 **Human-in-the-loop gate:** User must explicitly confirm exit criteria before proceeding to Phase 6.
+Unattended runs cannot satisfy this gate — recorded defaults (`pending_decisions.md`) stay open; do not proceed to Phase 6 or claim build-ready.
 
 #### Phase 5 → 6 Completion Self-Audit (MANDATORY — render unprompted before any "start the build")
 
@@ -343,6 +362,14 @@ present the list and stop — do NOT generate the handoff docs (this leans on `a
 | 6 | **Metamodel comment content carried** | Every in-scope column row has a `Metamodel description` + `Glossary term` (or an explicit `—` with reason), and each entity carries its table-level `Metamodel description` | ☐ |
 | 7 | **Every NULL_SOURCE column has a keep/drop disposition** | The interactive keep/drop gate ran; each always-null column is marked keep or drop (domain default set + per-column recorded in `etl_detailed_spec.md`) | ☐ |
 | 8 | **`next_vibes.md` written** | Emitted this run in model-agent format (high-score + "no refinements" line if the model is clean) | ☐ |
+| 9 | **Value Semantics probed** | The S2T Value Semantics section has a row (finding or "none found") for each of the six Step 2.4d checks per multi-source entity, every affected column's `Transformation` applies the rule, and units and codes are conformed to one per target column | ☐ |
+| 10 | **Grades carry their coverage, and no entity is graded on an empty parent** | Every grade line shows `{Letter} ({Gate}) · Structure: {Sound|Review|Rework} ({D#/Vibe n}) — Core n/n · Enrichment n/n (pct%) · n Deferred FK`; no Partial gate or D/F letter cites only empty cross-domain parents, Blocked siblings, conditional FKs, or relationships Step 2.7 found wrong (those columns are `Deferred FK`, even when Core); every proxy-only entity is Blocked (Step 2.7 (g)) | ☐ |
+| 11 | **Every configured source has a role** | Each `bronze_sources` schema with candidate tables appears in the Source Ownership section or a Candidate sources table as Populates / Enriches / Cross-check / Excluded (reason); every Excluded system that owns part of a population is a recorded decision | ☐ |
+| 12 | **FKs tested per Populating system** | The S2T "Intra-Domain FK Orphan Measurements" table has a row per intra-domain FK × Populating system, against the parent key as built; no FK with a populated parent is written off as "no conforming source" without the two-hop paths tried; every single-valued FK on a Transactional entity has its fan-in count (assertion (h)); every non-zero count is an `FK_ORPHAN` gap; no "0 orphans" claim rests on one system's rows | ☐ |
+| 13 | **Multi-source columns profiled per system** | Every column requiring it has one Source profiles row per contributing system: one system per row, that system's own table.column (no two rows of a column share the same `Source table.column`), measured rows/null/distinct, row 12's orphan rate on every FK column, and a `Note` only when something needs explaining | ☐ |
+| 14 | **Decisions and vibes point at each other** | Every `pending_decisions.md` block has a `Resolve via` line; every structure decision that changes the model is named on a `next_vibes.md` priority's `Decision:` line; the executive summary's verdict and next step follow the `iteration-loop.md` branch (structure open → `iterate_first`, naming the vibes) | ☐ |
+| 15 | **Crosswalks classified and gaps kept per column** | Every crosswalk has a Crosswalk Coverage row with moved-vs-new decided by the D.3 tests, and non-zero unmapped is a `CROSSWALK` gap; the Gap Registry has one row per unsourced column, not bucket rows | ☐ |
+| 16 | **Prior tiers reused** | When `docs/inputs/prior_tiers.json` exists, every listed column keeps its tier unless the Tier Changes table records the change with evidence | ☐ |
 
 **Deviation escape-hatch surfacing (unprompted).** If Partial/Blocked entities remain AND
 `model_deviation` is effectively off, state — before the "Remaining before handoff" line —
@@ -369,6 +396,9 @@ exactly where `etl-development-framework` looks for them (`iteration-loop.md` "H
 Generation"); a file dropped one level up in `docs/` will not be found by the build.
 Plus **`docs/commentary/assessment-improvement-recommendations.md`** (see Closeout step below).
 **Gate:** All buildable entities have confirmed sources, natural keys, and SHA2 formulas.
+
+**Hybrid hand-off note.** When `output_model` is `hybrid`, state in the hand-off that Mode B (gold
+derivation) is the next assessment pass, run after the silver build lands and is populated.
 
 **Decisions recorded in handoff docs (inherited by the ETL skill — do not re-decide in the build):**
 - **`etl_language`** (from `conventions.yml`, default `sql`) — records whether the build should
@@ -408,8 +438,15 @@ Plus **`docs/commentary/assessment-improvement-recommendations.md`** (see Closeo
 3. **Base every "intent" on `vibe_metamodel_product.description`** — never guess at table purpose.
 4. **Use V1/MVP row counts as ground truth** — if V1 loaded N rows from a source, that source
    is confirmed for the same entity in V2.
-5. **Grade conservatively** — Partial = at least one significant column group ungappable.
-   Full = <10% of business columns are gaps. Blocked = primary natural key has no source.
+5. **Grade the process, not the column count** — classify each column Core / Enrichment /
+   Deferred FK / Technical (`source-to-target-mapping.md` Grading Rubric). Full = every Core column
+   sourced across the full population and no named column group wholly missing. Partial = a Core
+   column, a named group, or part of the population is missing. Blocked = the natural key has no
+   source, OR the only source is a proxy for a different process (Step 2.7 (g)). An empty
+   cross-domain parent, a Blocked sibling, or a relationship Step 2.7 found wrong is never a
+   downgrade (Deferred FK); a conditional FK is Enrichment. The population is the union of every
+   system that owns part of the process (Step 2.3b). Report `{Letter} ({Gate}) · Structure: {Sound|Review|Rework} ({D#/Vibe n}) — Core n/n · Enrichment n/n (pct%) · n Deferred FK` with every grade. Structure is mechanical, derived from `pending_decisions.md` and `next_vibes.md` (see `source-to-target-mapping.md` "Structure").
+   Stay conservative about Core: if unsure, call a column Enrichment and say so.
 6. **Produce the Gap Registry in every report** — every pass must list P0–P3 ingestion asks.
 7. **Treat existing gold in both roles — as a source AND as a coverage oracle.**
    - **As a source (Step 2.5):** check production gold schemas before declaring an ingestion

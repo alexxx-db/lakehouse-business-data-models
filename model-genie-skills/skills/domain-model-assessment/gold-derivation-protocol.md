@@ -12,6 +12,12 @@ dim, which becomes a fact, what grain, which dims conform.
 > silver target (built in one Mode A pass from bronze); its gold layer is marts + metric views over
 > that star (see `etl-development-framework/gold-and-metrics.md`), not a re-derived star. See
 > `source-to-target-mapping.md` "Mode-Specific Report Scope".
+>
+> **If silver is not yet populated, Mode B is DEFERRED** — including an unattended/headless run whose
+> caller asks for `hybrid`. Do not produce a gold design (provisional or otherwise), and do not file
+> a pending decision or a blocker for it. Write one line in the Domain Readiness Summary:
+> `Gold (Mode B): deferred — runs after the silver build is populated.` Mode B is the next
+> assessment pass once the silver build lands.
 
 ---
 
