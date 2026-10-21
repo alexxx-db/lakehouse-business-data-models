@@ -193,3 +193,51 @@ picks a disposition:
 
 **Do NOT auto-add or auto-correct entities.** The model is the user's decision surface. Present
 evidence and the suggested vibe-model prompt; let them choose the path.
+
+#### Unattended (headless) runs
+
+When the run is **unattended** — no human is available to answer (e.g. the caller says so) — do
+not wait at this gate or at any other human gate (Step 2.7, degenerate-placeholder, NULL_SOURCE
+keep/drop, Phase 5 exit). Instead, at every gate:
+
+1. **Take the most conservative default:** keep, defer, never drop, never add net-new. Do not
+   select DROPPED (deviation) or NET-NEW, and do not apply the edit-in-place write (write the
+   proposed SQL to `docs/design/proposed_metamodel_edits.sql` instead).
+2. **Record the decision you would have asked for** in `docs/design/pending_decisions.md`, one
+   block per decision, in exactly this format:
+   ```
+   ### D{n}: {question}
+   - Gate: {gate} · Kind: {structure|source|scope} · Entity: {entity} · Blocks build: {yes|no}
+   - Context: {2-3 sentences: what the data shows and what the model assumes}
+   - Why it matters: {consequence for build / downstream consumers}
+   - Options:
+     - **{label}** — Pros: {...}; Cons: {...}; Impact: {...}
+   - Recommended: {label} — {rationale}
+   - Default taken: {label} — {evidence}
+   - Resolve via: {Next vibe (Vibe {n}) | Build gate | Domain owner}
+   - Affected: {entity.column, entity}
+   ```
+   `Kind` follows `source-to-target-mapping.md` "Structure" (it feeds the Structure grade). Set `Blocks build: yes` whenever the default leaves a grain, cardinality, or source-process
+   question unresolved.
+   `Resolve via` follows `Kind` and tells the reader **when** to answer the decision:
+   - `structure` → **Next vibe (Vibe {n})**. The model changes, so the answer is the vibe. Every
+     structure decision whose recommended option changes the model has a matching `next_vibes.md`
+     priority whose `Decision:` line names it. Accepting, editing or dropping that vibe answers the
+     decision. Don't answer it separately.
+   - `source` → **Build gate**. Ingestion, proxy-source and build-time rules. Iterating the model
+     doesn't change the data, so the re-assessment raises these again. Answer them once Structure is
+     Sound on every entity, right before the build.
+   - `scope` → **Domain owner**. Cross-domain ownership, answered by whoever owns the other domain.
+     It doesn't hold up iterating the model.
+
+   Open the file with this two-line guide, before `D1`:
+   ```
+   > **Structure** decisions are answered by running the matching next vibe (see `next_vibes.md`); answer them there, not here.
+   > **Source** decisions wait for the build gate: answer them after the re-assessment shows every entity Structure: Sound. **Scope** decisions go to the owning domain.
+   ```
+3. **Continue through Phase 4** (S2T mapping, grading, specs) using the default.
+
+> **A recorded default is NOT user confirmation.** It never satisfies a human gate: it does not
+> unlock Phase 5 exit or the Phase 6 hand-off, and it never supports a build-ready claim. Every
+> decision in `pending_decisions.md` stays open until a human answers it; the Completion
+> Self-Audit must report them as open, not as dispositions.

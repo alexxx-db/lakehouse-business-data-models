@@ -98,6 +98,13 @@ ORDER BY p.product;
 - `subdomain`: groups tables into FK tiers
 - `description`: authoritative intent — quote this verbatim in S2T report
 
+> **Deduplicate qualified/unqualified rows (deterministic).** A correctly scoped inventory can still
+> hold two rows for one product that differ only by `table_name` — qualified
+> (`mvm_ecm_metertocash.bill`) vs unqualified (`bill`). Key on domain / version / product: when
+> `description`, `type` and `primary_key` match, keep ONE row (prefer the unqualified `table_name`)
+> and record the duplicate's metadata as a **static-analysis finding** (not a gap). Count products
+> after dedup, so 12 products never read as 24.
+
 > **Adapt the scope columns to the actual schema.** The exact column names for domain and version
 > vary by metamodel build (`domain_id` vs `domain` vs `model_scope`; `version` vs `model_version`).
 > Inspect the `product`/`domain` columns via `information_schema.columns` first, then bind the
@@ -279,6 +286,53 @@ UNION ALL SELECT 'table_b', COUNT(*) FROM {catalog}.{schema}.table_b
 > The plain `COUNT(*)` batch above needs no subquery (no `LIMIT`); this pattern is specifically for
 > sampled batches.
 
+**The date range is not optional.** A counts-only batch is fine for the first inventory pass, but
+every candidate table for a transactional entity also needs `MIN`/`MAX` of its business event date.
+Step 2.3b depends on it.
+
+### Step 2.3b — Source Ownership (run when 2+ systems are candidates for one entity)
+
+When more than one source system can populate an entity, decide what each system contributes
+**before** mapping columns. Two systems with the same kind of table are not necessarily copies of
+each other. Common real-world shapes:
+
+| Ownership pattern | What the data shows | Population | Role of each system |
+| --- | --- | --- | --- |
+| **Split by time** | One system's event dates stop where the other's start (a migration cutover). The old system often keeps the moved records as inactive or closed | Union of both | Both **Populate**, each for its own period |
+| **Split by population** | Same period, disjoint keys (a region, business unit, product line or acquired company per system) | Union of both | Both **Populate**, each for its own slice |
+| **Duplicate** | Same period, same keys, same events (an integration copy or downstream feed) | One system | One **Populates**; the other is a **Cross-check** (dedupe against it) |
+| **Complementary** | Same events, different columns (a carrier's tracking feed carries delivery scans the ERP lacks) | One system | One **Populates**; the other **Enriches** via a join key |
+
+Probe each candidate pair. Per system, at the entity's grain:
+```sql
+SELECT '{system}' AS system,
+       COUNT(*)                          AS event_rows,
+       COUNT(DISTINCT {owner_key})       AS distinct_owners,   -- the account/customer/site the events belong to
+       MIN({event_date})                 AS first_event,
+       MAX({event_date})                 AS last_event
+FROM {catalog}.{schema}.{event_table}
+-- UNION ALL the same for each candidate system (dates parsed with the Step 2.4c mask)
+```
+Then measure the overlap. Map the owner key across systems with the crosswalk or bridge column
+(Step 2.4d D), and count events per owner per month in each system:
+- **No month where both systems have events for the same owner** → split (by time or population).
+- **Both systems have the same owner's events in the same months** → duplicate or complementary.
+  Compare a few events side by side (amount and date) to tell which.
+
+**Rules:**
+- **The expected population is the union of every system that owns part of the process.** Never
+  define it as "whatever the system I picked contains". A system with a larger master table (it
+  kept every record, including ones moved elsewhere) is not, by that fact, the owner of all the
+  activity. Check the event dates.
+- **Every schema in `conventions.yml` `bronze_sources` gets a role** for each entity it has
+  candidate tables for: Populates, Enriches, Cross-check, or **Excluded (reason)**. Never leave a
+  configured system unused without a reason. Excluding a system that owns part of a population is a
+  **decision** (Step 2C.4 gate), and the entity is graded Partial until the decision is made.
+- Record the ownership pattern, both date ranges and the overlap result in the S2T **Candidate
+  sources** table (`Role` column) and in the report's **Source Ownership** section. Downstream steps
+  (units, time zones, key formats, sign encoding in Step 2.4d) must run on **every Populating
+  system**, not only the first one.
+
 ### Step 2.4 — Column Structure for Top Candidates
 For tables with confirmed row counts that match domain entities, run DESCRIBE:
 ```sql
@@ -403,6 +457,157 @@ Profile in `source-to-target-mapping.md`).
 >    **boolean encoding** for flag columns (`'TRUE'/'FALSE'` vs `'X'/' '` vs `'1'/'0'`) so the spec's
 >    casts are correct, not assumed.
 
+### Step 2.4d — Value Semantics Probes (units, time, exclusions, keys, signs, codes)
+
+Steps 2.4–2.4c establish what each column *is* (name, type, date mask). This step establishes what
+its values *mean* — the things that make a type-correct mapping produce wrong numbers. They matter
+most when an entity merges **two or more source systems**: each system encodes the same fact its own
+way, and a cast alone won't reconcile them. Run all six probes for every measure, timestamp, row
+status, coded column and join key that an entity draws from more than one source, or that is
+joined across systems. Results go into the S2T **Value Semantics** section (`source-to-target-mapping.md`) and into
+each affected column's `Transformation`.
+
+**A. Units of measure.**
+1. Find unit columns (`uom`, `unit`, `*_unit`, `meins`, `massbill`-style names) for every measure and
+   profile them per source: `SELECT {uom_col}, COUNT(*) FROM {t} GROUP BY 1 ORDER BY 2 DESC`.
+2. When two systems measure the same thing for the same object and period, compare magnitudes even
+   if neither has a unit column. Ratios near 1000, 100, 60, 3.6, 2.2 or 0.45 between medians of the
+   same object mean different units, not different facts:
+   ```sql
+   SELECT a.median_val / NULLIF(b.median_val, 0) AS ratio
+   FROM (SELECT percentile_approx(CAST({measure_a} AS DOUBLE), 0.5) median_val FROM {source_a}) a,
+        (SELECT percentile_approx(CAST({measure_b} AS DOUBLE), 0.5) median_val FROM {source_b}) b;
+   ```
+   Compare like with like: the same objects and the same period, joined if a key allows it.
+3. Look for published conversion factors in reference, rate, price or config tables before
+   assuming a textbook factor, and cite where the factor came from.
+4. **Any filter or CASE on a unit literal uses the values the probe observed**, never the unit
+   names in the model or the metamodel description. Filtering on a unit spelling no source uses
+   silently returns zero rows.
+5. **Conform to one unit per target column.** When Populating systems record the same measure in
+   different units, pick the target unit and convert every other system's rows into it, citing the
+   factor's source. Recording the observed units is not a rule. Carrying each system's own unit
+   through, or splitting one measure into per-unit columns that each fill from only one system,
+   leaves a column that can't be summed across the population. If no factor can be found in bronze,
+   record the open risk and raise a P-item for the factor; don't pass the values through unconverted.
+
+**B. Time zones and DST.**
+1. Classify every timestamp column: **offset-aware** (ends in `Z` or `±hh:mm`), or **naive** (no
+   offset). For naive columns, establish the zone they are written in: system docs, a config
+   column, or comparing the same event against an offset-aware source.
+2. If an entity merges naive-local and UTC timestamps, the transform converts explicitly (e.g.
+   `to_utc_timestamp(ts, '{zone}')`). Record the zone per source.
+3. **Fall-back duplicates.** A naive local clock repeats one hour each autumn, so two distinct events
+   can share one local timestamp. Probe every naive timestamp the mapping uses in any of these ways:
+   part of a key or a dedupe rule; matched against another system's events; the `ORDER BY` of a
+   window function (`LAG`, `LEAD`, `ROW_NUMBER`, running totals); or one end of a duration. A
+   surrogate key built from the source's own row ID does **not** exempt the column: a tie in a
+   window's `ORDER BY` still makes "previous value" and "first/last" derivations nondeterministic.
+   Group by the **object the events belong to** (the device, account or asset), not by the row's
+   own ID, which is unique by construction:
+   ```sql
+   SELECT {owning_object_key}, {ts_col}, COUNT(*) AS n
+   FROM {t}
+   GROUP BY 1, 2
+   HAVING COUNT(*) > 1
+   ORDER BY n DESC
+   LIMIT 50;
+   ```
+   Then check whether the duplicates fall in a local fall-back hour:
+   `SELECT date_format({ts}, 'yyyy-MM-dd HH') AS local_hour, COUNT(*) FROM (<above>) GROUP BY 1 ORDER BY 2 DESC`.
+   If they cluster there, they are two real events. The key, dedupe rule and window ordering must
+   keep both apart (add the source's own sequence/ID as a tie-breaker, or take the instant from an
+   offset-aware source). Never collapse them as duplicates. Record the duplicate count in the Value
+   Semantics row even when it is 0. The spring-forward gap is the mirror case: local times in the
+   skipped hour shouldn't exist, so their presence is a data-quality flag.
+
+**C. Row-exclusion columns (soft deletes, cancellations, reversals).**
+1. Find candidate columns by name across every source table the entity uses:
+   ```sql
+   SELECT table_name, column_name
+   FROM {catalog}.information_schema.columns
+   WHERE table_schema = '{schema}'
+     AND column_name RLIKE '(?i)(is_?del|deleted|del_?fl|loevm|void|cancel|canc_|storno|revers|inactive|active_?fl|stat(us)?_?(fl|cd))';
+   ```
+2. Profile each one's distinct values with counts.
+3. Decide per entity and record it as the entity's **Row filter**:
+   - **Soft-deleted / voided rows** are excluded. A filter rule, not a raw load.
+   - **Cancelled or reversed documents** are often real events. Carry them with their status, but
+     every downstream measure must exclude them. If a corrected document replaces a cancelled one,
+     record the link column so totals don't count both.
+
+**D. Keys joined across systems.**
+For every key used to join records from different systems — IDs typed into a downstream system by a
+person or an export, external references, IDs mapped through a crosswalk:
+1. Profile the format mix:
+   ```sql
+   SELECT length({key_col})                        AS len,
+          regexp_extract({key_col}, '^([^0-9]*)', 1) AS prefix,
+          {key_col} RLIKE '^0'                      AS leading_zero,
+          COUNT(*)                                  AS n
+   FROM {t}
+   GROUP BY 1, 2, 3
+   ORDER BY n DESC;
+   ```
+2. For each format, measure the match rate against every candidate parent key set. Use the same
+   fan-out-safe membership test as Step 2.7 (e).
+3. **Crosswalk coverage.** When a key-map / crosswalk table bridges two systems, measure the share
+   of the objects that need it which actually appear in it. An unmapped share is a duplicate/orphan
+   risk, even when every mapped row is correct.
+   **Classify the unmapped objects before naming them.** An object in the new system with no
+   crosswalk row is either *moved but unmapped* or *genuinely new*, and the two need opposite
+   handling. Test both before writing either label:
+   - **Count the old system's retired records.** Count the old-system records whose status, end
+     date or flag marks them as moved, closed or retired at the cutover. If that count equals mapped
+     + unmapped, the unmapped objects were moved, not created.
+   - **Check creation dates.** A genuinely new object was created on or after the cutover. One
+     created earlier, or whose first activity is the cutover date, was moved.
+   - **Try a secondary match.** Match unmapped objects to old-system records on a stable attribute
+     the two systems share (serial number, tax ID, name + address, email).
+   *Moved but unmapped* objects split one real-world object into two silver rows, and their old
+   history won't link to their new activity. Record the count, propose the secondary-match rule as a
+   fallback, and raise a P-item to complete the crosswalk. Only objects that pass the creation-date
+   test with no old-system counterpart are *new*, and a source-scoped key is correct for those.
+4. Record a normalization rule per format (strip prefix, left-pad, trim) and size the **unmatched
+   bucket**. A non-zero unmatched bucket becomes a P-item; never an inner join that drops the rows
+   silently.
+
+**E. Sign and number encoding.**
+Amounts stored as text may carry the sign in a trailing minus (`125.00-`), parentheses (`(125.00)`),
+or a separate debit/credit indicator column. Some systems store money as integer cents or as
+binary-float strings. Probe before casting:
+`SELECT COUNT_IF({amt} RLIKE '-$'), COUNT_IF({amt} RLIKE '^\\('), COUNT_IF({amt} RLIKE '\\.\\d{3,}$') FROM {t}`.
+A plain `CAST` turns a trailing-minus credit into NULL and a parenthesized one into an error.
+
+**F. Code vocabularies across systems.**
+Run for every coded column (status, type, reason, class, and product / price / tariff / plan codes)
+that two or more Populating systems fill, and for every code used as a lookup key into a parent
+built from one system's codes.
+1. Profile the distinct values per system and measure the overlap:
+   ```sql
+   SELECT '{system_a}' AS system, TRIM({code_a}) AS code, COUNT(*) AS n FROM {t_a} GROUP BY 1, 2
+   UNION ALL
+   SELECT '{system_b}', TRIM({code_b}), COUNT(*) FROM {t_b} GROUP BY 1, 2
+   ORDER BY code, system;
+   ```
+   A code that appears in only one system, while both systems carry the same business concept,
+   means the two systems use different vocabularies.
+2. **Look for a crosswalk in bronze first:** a reference, price, rate, product or config table that
+   carries both systems' codes on one row. Cite it, and measure how many of its rows carry each
+   system's code. For rows missing one system's code, find a fill rule from another shared column
+   (a description, a published sheet or document number) or raise a P-item.
+3. The target column holds **one vocabulary**. The transform maps every system's codes into it,
+   through the crosswalk or a CASE whose meanings were confirmed from sample rows. Passing raw codes
+   through (`TRIM(code_a / code_b)`) leaves one target column with two meanings for one concept.
+4. **Lookup keys:** build the parent's natural key from a vocabulary every child system can produce,
+   or route each child system's lookup through the crosswalk. A parent keyed on one system's codes
+   and looked up with another system's codes resolves 0% for that system. Step 2.7 (d)/(e) run per
+   system to catch it.
+
+**Don't stop at the first finding per check.** A domain with two systems for one process usually has
+several of these at once. Run each probe for each merged column, even after an earlier probe has
+already turned up a problem.
+
 ### Step 2.5 — Gold Schema Check (Do This Before Any Ingestion Ask)
 Before writing a gap/blocked entry, check the production gold catalog (`catalogs.gold`
 from `conventions.yml` — `manufacturing_gold_vibe` in the Meridian profile):
@@ -517,7 +722,8 @@ grain or a key — Step 2C won't catch that; this step does.
 Run these assertion probes per entity, in the same style as the Phase 2 queries (unqualified
 names resolved via the `conventions.yml` `bronze_sources` map, batchable across entities).
 Assertions (a)–(d) are intra-source; **(e) covers cross-source FKs** — run it whenever an FK's
-declared parent lives in a different source system than the child.
+declared parent lives in a different source system than the child. **(f)** checks filter columns,
+and **(g)** checks that the chosen source records the entity's own process, not a neighbouring one.
 **Never auto-correct** — every contradiction becomes a **decision** routed to the Step 2C.4 human
 gate, each carrying either a **Suggested next_vibes.md action** (iterate upstream) or an in-place
 Genie-Code `vibe_metamodel_*` edit (small correction).
@@ -591,6 +797,27 @@ High `pct_unresolved` ⇒ the declared FK does not resolve (wrong join key or wr
 `parent_key_not_unique = true` ⇒ the relationship is **many:many** and needs a bridge entity —
 the declared 1:many FK is wrong. Surface either as a decision.
 
+**Test per Populating system, against the key the build will compute.** When Step 2.3b gives the
+child two or more Populating systems, run (d), and (e) where it applies, **once per system**. Use
+each system's own lookup column and transform, and test against the parent key **as the parent's
+S2T key derivation builds it**, not against a raw parent column:
+```sql
+SELECT '{system_a}' AS system, COUNT(*) AS child_rows,
+       COUNT_IF({lookup_expr_a} NOT IN (SELECT {parent_key_expr} FROM {parent_source}
+                                        WHERE {parent_key_expr} IS NOT NULL)) AS unresolved
+FROM {child_source_a}
+UNION ALL
+SELECT '{system_b}', COUNT(*),
+       COUNT_IF({lookup_expr_b} NOT IN (SELECT {parent_key_expr} FROM {parent_source}
+                                        WHERE {parent_key_expr} IS NOT NULL))
+FROM {child_source_b};
+```
+A pooled rate hides a system whose rows all fail. If the larger system resolves 100% and the
+smaller one 0%, the pooled rate still looks healthy. Report the rate per system. The usual cause
+of a 0% system is a code-vocabulary mismatch (Step 2.4d F): the parent key is built from one
+system's codes. Fix the key or the lookup through a crosswalk, then re-test. **Never write "0
+orphans" for an FK unless every Populating system was tested.**
+
 **Assertion (e) — Cross-source FK resolution (run when parent and child come from DIFFERENT source
 systems).** Assertion (d) assumes parent and child sit in the same bronze schema. The FKs that
 actually fail in production are **cross-source** — the child and parent are mastered in different
@@ -631,8 +858,17 @@ Interpret cross-source resolution rates by *design intent*, not against a 100% b
   vocabulary gap (portal reason codes `DMG/WRONG/WARR` never map to SAP `augru`) or a wrong bridge
   column. That becomes a decision (accept NULL FK, or build a mapping table) at the Step 2C.4 gate.
 
-Record each cross-source FK with its bridge column, the two systems, the observed `pct_resolved`,
-and the expected rate — this feeds the S2T report's "Cross-Source FK Resolution Summary".
+Record each cross-source FK with its bridge column, the two systems, the observed `pct_resolved`
+(per Populating child system, as in (d)), and the expected rate — this feeds the S2T report's
+"Cross-Source FK Resolution Summary".
+
+**Indirect (multi-hop) FK resolution.** When the child source carries no column for the parent key,
+don't defer the FK yet. Try lookup paths of up to **two hops** through entities this run has already
+mapped, e.g. `interval_usage → meter → meter_installation (effective-dated) → rate_schedule`. Pick the
+path whose every hop is a declared FK or a verified bridge, and match effective-dated hops on the
+child's event date. Then run the per-system orphan test (d) on the path's result. Record the path in
+the `FK Lookup` cell (`via meter → meter_installation`). The FK is "no conforming source" only when no
+path of two hops or fewer exists. Name the paths you tried in the evidence.
 
 **Assertion (f) — Filter-column existence (run for any entity whose mapping carries a WHERE clause).**
 When an entity is populated by *filtering* a shared source (e.g. `delivery_schedule` = `vbep` rows
@@ -654,6 +890,51 @@ If `filter_col_present = 0`: grade the entity **Blocked (filter column absent)**
 or the filter column added to the bronze extract." The build then emits a `WHERE FALSE` stub (with
 that reason as a comment) rather than a WHERE clause on a column that does not exist.
 
+**Assertion (g) — Source-process fit (run for EVERY entity before grading it).** A source can have
+the right *shape* (a key, a date, a status, an account FK) and still record a **different business
+process** than the entity describes. Mapping it anyway yields a full-looking table of the wrong
+facts, and the grade comes out Partial when the honest answer is Blocked. Typical proxies are
+upstream or downstream steps of the real process, or one of its outcomes:
+
+| Entity intent (from the product description) | Tempting proxy | Why it isn't the entity |
+| --- | --- | --- |
+| Warranty claim (customer files a claim; adjudicated, paid or denied) | Service visits flagged "under warranty" | Visits are a field outcome. Most claims have no visit, and the adjudication fields have no home |
+| Return / RMA (customer requests a return; authorized, received, credited) | Credit memos | A credit is one possible ending of a return, and credits also exist with no return behind them |
+| Sales quotation | Draft orders with a "quote" type | Captures only the quotes that converted; lost quotes, the win-rate denominator, are missing |
+
+Run two checks:
+
+1. **Intent match.** Put the entity's product description next to the candidate source: its table
+   name, its grain, and the event its dates mark. Ask: *"Does one row of this source mean one
+   instance of what the description says the entity records?"* If the source's own event belongs to
+   a different step of the process, it is a proxy.
+2. **Shared grain source.** Go through your draft mapping (not bronze) and list each source table
+   that is the **grain source** (the table whose key becomes the entity's key) for two or more
+   entities in the domain. Two entities with different intents cannot both take their grain from the same rows. Either one
+   is a proxy, or the model splits one process into two entities that should be one. Unless the
+   model explicitly declares a 1:1 split, surface it.
+
+**Disposition.** A proxy-only entity is graded **Blocked (proxy source only)** in the S2T report.
+Record the proxy as an enrichment or cross-check source for the entity (it often supplies a few
+real columns once the true source lands). The ingestion ask names the real system of record for the
+process. Never fill the entity from the proxy to avoid a Blocked grade: Blocked plus an ingestion
+ask is the correct, honest answer.
+
+**Assertion (h) — Single-valued FK fan-in (run for every single-valued FK on a Transactional
+entity).** Each row of the entity is meant to have exactly one parent. Measure it on the source, at
+the entity's grain, per Populating system:
+```sql
+SELECT '{system}' AS system, COUNT(*) AS entity_keys,
+       COUNT_IF(n_parents > 1) AS keys_with_many_parents
+FROM (SELECT {entity_natural_key}, COUNT(DISTINCT {parent_key_expr}) AS n_parents
+      FROM {source joined to its line/segment/allocation table} GROUP BY {entity_natural_key});
+```
+`keys_with_many_parents > 0` is a **cardinality contradiction** (a header spanning several service
+agreements, a payment allocated across bills). Record it as a `Kind: structure` decision, even when
+the count is small, and quote the count. Don't skip it because the relationship looks obviously
+single-valued: this check is what keeps the finding from depending on which tables a run happens to
+open.
+
 ### Step 2.7 output — Model Assertion Findings
 
 Output a findings table; contradictions flow to the **same** human gate as Phase 2C (Step 2C.4 in
@@ -666,6 +947,7 @@ Output a findings table; contradictions flow to the **same** human gate as Phase
 | 3 | (example) `routing_operation` | FK (d) | FK to `routing` resolves 1:many | 12% unresolved children | Yes | in-place Genie-Code edit: fix `foreign_key_to` join column, OR prompt if a bridge entity is needed |
 | 4 | (example) `return_order` | Cross-source FK (e) | `order_reason_id` resolves to SAP `augru` | 0% — portal codes `DMG/WRONG/WARR` unmapped to SAP vocab | Yes (unexpected 0%) | decision: accept NULL FK (P1), or build a portal→SAP reason mapping table |
 | 5 | (example) `order` | Cross-source FK (e) | `quotation_id` resolves CRM→SAP | ~20% resolved (only converted quotes) | No — expected | none; ~20% is the business conversion rate, record as expected |
+| 6 | (example) `warranty_claim` | Source-process fit (g) | claims filed, adjudicated, paid | only source is service visits flagged warranty; same table is also the grain source for `service_visit` | Yes (proxy) | grade Blocked (proxy source only); keep visits as a cross-check source; ingestion ask = the warranty/claims system |
 
 **Do NOT auto-correct.** Present the evidence (counts, pct) and the suggested disposition; the
 user decides at the Step 2C.4 gate whether to iterate upstream or edit in place via Genie Code.

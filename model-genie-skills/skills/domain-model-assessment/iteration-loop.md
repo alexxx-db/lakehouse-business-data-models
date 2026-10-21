@@ -246,6 +246,21 @@ The discovery phase is complete when one of these is true:
 3. **User explicitly says "start the build"** — hand off to `etl-development-framework` skill
 
 At exit, produce a final **Domain Readiness Summary** with:
+- `## Executive Summary` — headline (one sentence), verdict (ready_to_build | iterate_first | blocked) with reason, 3–5 key findings, up to 5 top risks, recommended next step.
+  **The verdict names the next action**, first match wins:
+  1. `iterate_first`: any entity is Structure: Rework or Review. The next step is to run the next
+     vibes, even if entities are also Blocked. Ingestion can run in parallel, but the model changes
+     first.
+  2. `blocked`: Structure is Sound everywhere, and an open `source` decision has `Blocks build: yes`.
+  3. `ready_to_build`: otherwise.
+
+  The **recommended next step** follows the same branch and says it in plain words:
+  - `iterate_first`: "Review and run next vibes {Vibe n, …} (they answer {D#, …}), then re-assess.
+    Source decisions {D#, …} wait for the build gate."
+  - `blocked`: "Answer source decisions {D#, …} / land ingestion asks {P#, …}, then build."
+  - `ready_to_build`: "Answer the remaining source decisions, then start the build."
+
+  Never write "resolve D1–D3" for structure decisions. Name the vibes that resolve them.
 - Final scorecard: X Full · Y Partial · Z Blocked / Deferred
 - Load order for the build phase
 - Sources confirmed per entity
@@ -305,7 +320,7 @@ using S2T mapping report outputs:
 | Section 1 — Target Model: Entities | Scorecard table: entity, type, layer, source table(s), load order tier. **Apply naming per `output_model`:** `dimensional` → prefix by Type (`dim_prefix` DIM, `fact_prefix` FACT, `bridge_prefix` bridges; gold uses `gold_prefix`) + `table_case` + `entity_form` (e.g. `sales_area`→`dim_sales_area`, `order`→`fact_order`). `normalized` (+ hybrid-silver) → **keep the metamodel product name verbatim** (`sales_area`, `order`), no prefix. `hybrid` → product names for silver rows, `dim_/fact_` for gold-tier rows. Never emit a bare name in `dimensional` mode; never add a prefix in `normalized` mode. |
 | Section 1 — Grain | From metamodel `vibe_metamodel_product.description` — extract "one row per..." |
 | Section 1 — Conformed Dimensions | From FK graph: dimensions referenced by 2+ fact entities |
-| Section 2 — Column Mappings | From S2T column mapping tables — one subsection per entity, **complete for every buildable (Full/Partial) entity**: every target column with its **`Type`** (from S2T `Target Type`), verified `Source column`, `Transform / cast`, and **`FK Lookup`**. Keys-only fill is NOT acceptable in a handoff — a complete typed map is what makes the build's reconciliation confirmation-only. Carry each `NULL_SOURCE` column with its **`Null Disposition`** (keep/drop, blank = global default) — mark each in the §2 `Notes` cell as `NULL_SOURCE`. Target column names use `naming.business_column_case` (e.g. `Pascal_Snake` → `Net_Amt`); metadata/audit columns use `naming.metadata_column_case` (e.g. `_source_system`). |
+| Section 2 — Column Mappings | From S2T column mapping tables — one subsection per entity, **complete for every buildable (Full/Partial) entity**: every target column with its **`Type`** (from S2T `Target Type`), verified `Source column`, `Transform / cast`, and **`FK Lookup`**. Keys-only fill is NOT acceptable in a handoff — a complete typed map is what makes the build's reconciliation confirmation-only. Carry each `NULL_SOURCE` column with its **`Null Disposition`** (keep/drop, blank = global default) — mark each in the §2 `Notes` cell as `NULL_SOURCE`. Every `Transform / cast` must already apply the S2T **Value Semantics** rules (unit conversion, timezone conversion, key normalization, sign parsing), and each entity's **Row filter** goes into its §2 subsection so the build applies the exclusion instead of a raw load. Target column names use `naming.business_column_case` (e.g. `Pascal_Snake` → `Net_Amt`); metadata/audit columns use `naming.metadata_column_case` (e.g. `_source_system`). |
 | Section 3 — Keys & Constraints | From S2T key derivation: natural key, PK, FK references, value_regex → CHECK, **plus the complete per-FK resolution table for EVERY FK** (`FK Column \| Parent Entity \| Domain (intra/cross) \| Resolution (LEFT JOIN / NULL) \| Join Condition`) — normalized product FKs and fact FKs alike; the `Join Condition` MUST spell out composite joins in full. **PK generation AND FK resolution both reference `conventions.yml surrogate_key_formula`** — do not restate a hash in the spec. **Keys per `output_model`:** `dimensional` (+ hybrid-gold) → surrogate `{Entity}_Key` (`naming.surrogate_key_suffix`), the `surrogate_key_formula`, FK per `naming.fk_naming`. `normalized` (+ hybrid-silver) → **follow the model's PK** (`{product}_id`), no `{Entity}_Key` surrogate; add one only where the model PK is composite/mutable or cross-source integration needs it. Set per-entity `SCD` (type_2 dims — dimensional/hybrid-gold only) in §5. |
 | Section 4 — Load Order | From tier sequence (already calculated) |
 | Section 5 — Strategy Overrides | Default: MERGE for silver, INSERT_OVERWRITE for gold. Keys/SCD per `output_model` + `scd_strategy` (SHA2 surrogates in dimensional/hybrid-gold; follow-model keys in normalized). Set per-entity `type_2` here for dims that need history. |

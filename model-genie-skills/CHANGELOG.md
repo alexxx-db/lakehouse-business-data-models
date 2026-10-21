@@ -4,7 +4,27 @@ All notable changes to the vibe-model-skills suite are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the suite
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-09-04
+## [0.5.0] - 2026-10-21
+### Added
+- multi-hop FK resolution, single-valued FK fan-in check, prior-tier reuse
+- link decisions to next vibes; verdict names the next action
+- per-source profiles for multi-system and different-grain columns
+- per-system FK probes, unit/code conformance, crosswalk-gap classification
+- Structure axis (Sound / Review / Rework) next to the letter; decision Kind
+- unattended branch for human gates — record conservative defaults in pending_decisions, never as confirmation
+- defer Mode B until silver is populated; dedup qualified product rows; S2T profile columns + derived-expression profiling
+- source ownership step (2.3b), FK deferral rules, source roles in S2T
+- letter grade, S2T Class column, next-vibe urgency, executive summary
+
+### Fixed
+- per-source profile row rules, Deferred FK for wrong Core FKs, orphan/crosswalk/gap sections kept
+- hybrid first pass writes only the gold deferral line
+- scorecard Grade cells carry the letter; partial population counts as a Core gap (D)
+- grade by Core/Enrichment tiers, value-semantics probes, source-process fit
+
+### Documentation
+- polish README to the industry-solutions house style
+- clean README to match industry-solutions house style## [0.4.0] - 2026-09-04
 ### Added
 - emit improvement-recommendations file at closeout
 - add shared commentary-emission protocol + persist/verify principles
