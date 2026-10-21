@@ -337,6 +337,28 @@ def build_job_tags_from_session(
     )
 
 
+def reset_or_create_job(ws: WorkspaceClient, *, job_id: Optional[int], settings: dict[str, Any],
+                        raise_on_reset_error: bool = False) -> int:
+    """Reset the stored job to ``settings``, or create it; returns the job id.
+
+    ``settings`` holds ``JobSettings`` fields (also the ``jobs.create`` kwargs).
+    A stored job that no longer exists (``NotFound``) is recreated. Any other
+    reset failure is recreated too by default (the agent job: a Settings save
+    must not fail on it), or re-raised with ``raise_on_reset_error=True`` (the
+    assessment job: a failed sync is recorded rather than replaced).
+    """
+    if job_id:
+        try:
+            ws.jobs.reset(job_id=job_id, new_settings=JobSettings(**settings))
+            return job_id
+        except NotFound:
+            pass
+        except Exception:
+            if raise_on_reset_error:
+                raise
+    return ws.jobs.create(**settings).job_id
+
+
 def setup_agent_job(ws: WorkspaceClient, agent_config: AgentConfig) -> int:
     """Create or update the persistent Databricks job for the agent notebook.
 
@@ -366,33 +388,18 @@ def setup_agent_job(ws: WorkspaceClient, agent_config: AgentConfig) -> int:
     # same PUT /api/config/agent request.
     max_concurrent_runs = agent_config.max_concurrent_runs
 
-    if agent_config.job_id:
-        try:
-            ws.jobs.reset(
-                job_id=agent_config.job_id,
-                new_settings=JobSettings(
-                    name=agent_config.job_name,
-                    tasks=tasks,
-                    tags=tags,
-                    max_concurrent_runs=max_concurrent_runs,
-                ),
-            )
-            return agent_config.job_id
-        except NotFound:
-            # Stored job was deleted out from under us — fall through to create.
-            pass
-        except Exception:
-            # Don't crash the save because of an update failure; prefer to
-            # re-create rather than leave the stored job_id dangling.
-            pass
-
-    job = ws.jobs.create(
-        name=agent_config.job_name,
-        tasks=tasks,
-        tags=tags,
-        max_concurrent_runs=max_concurrent_runs,
+    # A reset failure re-creates the job rather than leave the stored job_id
+    # dangling or crash the Settings save.
+    return reset_or_create_job(
+        ws,
+        job_id=agent_config.job_id,
+        settings=dict(
+            name=agent_config.job_name,
+            tasks=tasks,
+            tags=tags,
+            max_concurrent_runs=max_concurrent_runs,
+        ),
     )
-    return job.job_id
 
 
 def _business_folder(name: str) -> str:

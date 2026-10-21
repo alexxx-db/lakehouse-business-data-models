@@ -52,7 +52,7 @@ vi.mock("@/lib/api", async () => {
     // active-area assertions here, so stub it (same pattern as
     // sidebar-user-footer.test.tsx).
     useCurrentUserSuspense: () => ({
-      data: { user_name: "test-user", display_name: "Test User" },
+      data: { user_name: "test-user", display_name: "Test User", emails: [] },
     }),
   };
 });

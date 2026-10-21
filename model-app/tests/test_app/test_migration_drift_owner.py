@@ -12,13 +12,13 @@ The migration architecture changed in PR #176 (Phase 4 close-out):
   sorts strictly higher than the recorded ``LakebaseSchemaVersion``.
 - Owner-script path: ``scripts/db/migrate.py`` runs out-of-band as the
   Lakebase project owner (when the app's runtime auto-migration can't
-  ALTER tables it doesn't own — observed 2026-04-21 on the test workspace). It uses a
+  ALTER tables it doesn't own — observed 2026-04-21 on a test workspace). It uses a
   hard-coded list of ``ADD COLUMN`` / ``ALTER COLUMN ... TYPE BIGINT`` /
   ``DROP NOT NULL`` triples.
 
 Because the owner script copies the DDL by hand instead of importing
 the registry, silent drift is possible: a new ``Migration`` lands in the
-registry, ships through CI, gets deployed, and the next the test workspaces
+registry, ships through CI, gets deployed, and the next
 owner-impersonation run silently misses the column. The previous app
 process sees ``information_schema`` columns it expects, but a freshly
 restarted process on a Lakebase project that pre-dates the new
@@ -531,7 +531,7 @@ def test_owner_script_covers_every_runtime_alter_drop_column():
 
     Same coupling shape as the ADD COLUMN gate, just running in the
     other direction. If a future registry migration drops a column and
-    the owner script doesn't, an the test workspaces owner-impersonation run
+    the owner script doesn't, a test-workspace owner-impersonation run
     against a Lakebase project that pre-dates the drop migration would
     silently leave the column behind. Eventually a fresh app process
     on that DB hits ORM-vs-schema drift on a SELECT or INSERT that

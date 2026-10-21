@@ -1,0 +1,9 @@
+{"domain": "sales_order", "rc": 0, "results_valid": true, "thread_id": "t1", "schema_version": 1,
+ "preflight": {"ok": true, "version_check": "ok"},
+ "skills": {"source": "bundle", "path": "/Workspace/Users/app-sp/vibe-assess/0.8.0/skills",
+            "markers": {"domain-model-assessment": "0.4.0 4c709f704d4e4bc977aeb4379409fb709f2ab7e4",
+                        "autonomous-validation": "0.4.0 4c709f704d4e4bc977aeb4379409fb709f2ab7e4"},
+            "version": "0.4.0", "ref": "4c709f704d4e4bc977aeb4379409fb709f2ab7e4",
+            "commit": "4c709f704d4e4bc977aeb4379409fb709f2ab7e4"},
+ "genie_version": "v0.1.0-beta.2",
+ "result": {"status": "completed_phase_4", "entity_grades": {"full": 0, "partial": 1, "blocked": 1}}}

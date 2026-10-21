@@ -4,7 +4,7 @@
  * stages, and the index topic list against drift, and fails on any DOM-nesting
  * warning (the kbd/badge caps sit inside text runs).
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import {
@@ -16,12 +16,19 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  useGetAssessConfig: () => ({ data: { data: { installed: true, ready: true } } }),
+}));
+
 import { HelpIndexPage } from "@/routes/_sidebar/help.index";
 import {
   FlowContent,
   ShortcutsContent,
   ComingSoonContent,
+  AssessmentContent,
 } from "@/components/help/help-content";
+import { ASSESS_MODEL } from "@/lib/assessment";
 import { HELP_TOPICS } from "@/components/help/help-topics";
 import { useStrictConsole } from "./helpers/strict-console";
 
@@ -95,6 +102,41 @@ describe("Flow page", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Review and give feedback/i)).toBeInTheDocument();
     expect(screen.getByText(/mark domains as reviewed/i)).toBeInTheDocument();
+    expect(dom.messages).toEqual([]);
+  });
+});
+
+describe("Assessment page", () => {
+  const dom = useStrictConsole();
+
+  it("is listed in the help catalogue right after the flow topic", () => {
+    const slugs = HELP_TOPICS.map((t) => t.slug);
+    expect(slugs.indexOf("assessment")).toBe(slugs.indexOf("flow") + 1);
+    const topic = HELP_TOPICS.find((t) => t.slug === "assessment")!;
+    expect(topic.title).toBe("Assessing a model against your data");
+    expect(topic.status).toBe("ready");
+    expect(topic.group).toBe("Getting started");
+  });
+
+  it("renders its six sections and the settings link", async () => {
+    render(withRouter(<AssessmentContent />));
+    for (const h of [
+      "What an assessment does",
+      "Before you start",
+      "Running one",
+      "What you get",
+      "After the assessment",
+      "Time and cost",
+    ]) {
+      expect(await screen.findByRole("heading", { name: h })).toBeInTheDocument();
+    }
+    expect(screen.getAllByText(/read-only/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/etl-development-framework/)).toBeInTheDocument();
+    expect(screen.getByText(/30.60 minutes per domain/i)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(ASSESS_MODEL))).toBeInTheDocument();
+    expect(screen.getByText(/Databricks account team/)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /Settings → Assessment/ });
+    expect(link).toHaveAttribute("href", expect.stringContaining("/settings"));
     expect(dom.messages).toEqual([]);
   });
 });

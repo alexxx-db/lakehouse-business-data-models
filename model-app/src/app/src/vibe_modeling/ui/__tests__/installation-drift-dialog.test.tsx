@@ -221,6 +221,26 @@ describe("InstallationDriftDialog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not render the inverse-drift dialog for a partial match", async () => {
+    // Reconcile only promotes to "deployed" when every expected schema is
+    // present; a partial match (e.g. another business's bare-name schemas
+    // in a shared catalog) would re-open this dialog on every visit.
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () =>
+        makeInverseStatus({
+          found_schemas: ["customer"],
+          missing_schemas: ["ecm_geology", "ecm_tailings"],
+        }),
+    });
+
+    render(<InstallationDriftDialog versionId="mv-1" enabled={true} />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(
+      screen.queryByTestId("installation-drift-dialog"),
+    ).not.toBeInTheDocument();
+  });
+
   it("pops the inverse-drift dialog and reconciles on user click", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

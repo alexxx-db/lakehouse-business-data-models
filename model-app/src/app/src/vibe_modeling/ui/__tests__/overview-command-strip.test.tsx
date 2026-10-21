@@ -158,17 +158,23 @@ describe("CommandStrip — lifecycle actions", () => {
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it("shows the ECM-only 'Prepare new Vibe' entry on ECM, hides it on MVM", async () => {
+  it("shows 'Prepare new Vibe' on both ECM and MVM scopes", async () => {
     const { unmount } = renderStrip("draft", "ecm");
-    expect(
-      await screen.findByTestId("prepare-new-vibe"),
-    ).toBeInTheDocument();
+    const ecmButton = await screen.findByTestId("prepare-new-vibe");
+    expect(ecmButton).toBeInTheDocument();
+    expect(ecmButton.closest("a")).toHaveAttribute(
+      "href",
+      expect.stringContaining("/ecm/inputs"),
+    );
     unmount();
 
     renderStrip("draft", "mvm");
-    expect(
-      screen.queryByTestId("prepare-new-vibe"),
-    ).not.toBeInTheDocument();
+    const mvmButton = await screen.findByTestId("prepare-new-vibe");
+    expect(mvmButton).toBeInTheDocument();
+    expect(mvmButton.closest("a")).toHaveAttribute(
+      "href",
+      expect.stringContaining("/mvm/inputs"),
+    );
   });
 });
 

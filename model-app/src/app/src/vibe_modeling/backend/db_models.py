@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import BigInteger, Boolean, Column, Integer, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel, Relationship
 
 def _uuid() -> str:
@@ -19,6 +19,16 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 class Business(SQLModel, table=True):
+    """A business (or, with ``kind='industry'``, an industry meta-business).
+
+    ``business_domains`` is deliberately denormalized: a comma+space separated
+    list of domain schema names (``"a, b, c"``) holding the agent's
+    ``business_domains`` widget value verbatim. The app never queries it per
+    element (the same reason ``next_vibes_json`` stays opaque); it only
+    pre-fills the first New Base Model run. ``org_divisions`` is the proposed
+    coverage preset (one of ``models.ORG_DIVISIONS_PRESETS``) or ''.
+    """
+
     __tablename__ = "businesses"
 
     id: str = Field(default_factory=_uuid, primary_key=True)
@@ -48,6 +58,9 @@ class Business(SQLModel, table=True):
     # pre-fills the publish dialog's editable bundle-root. NULL when the business
     # was never downloaded from a source (created/kickstarted in-app).
     source_repo_path: Optional[str] = Field(default=None)
+    # Domain Taxonomy Builder proposal (v_0_8_0); '' = no proposal.
+    business_domains: str = Field(default="")
+    org_divisions: str = Field(default="")
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -176,6 +189,16 @@ class AgentConfig(SQLModel, table=True):
     upstream_agent_version: Optional[str] = Field(default=None)
     upstream_checked_at: Optional[datetime] = Field(default=None)
     upstream_check_error: Optional[str] = Field(default=None)
+    # Domain Taxonomy Builder (v_0_8_0). ``taxonomy_model_service`` is the UC
+    # model service full name (``catalog.schema.service``) the wizard drafts
+    # with; '' = not configured. Seeded once from the install-time
+    # AppConfig.taxonomy_model_service; thereafter Settings owns it.
+    # ``taxonomy_llm_max_concurrency`` caps live LLM calls app-wide (1-16).
+    taxonomy_model_service: str = Field(default="")
+    taxonomy_llm_max_concurrency: int = Field(
+        default=6,
+        sa_column=Column(Integer, nullable=False, server_default="6"),
+    )
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
@@ -738,6 +761,329 @@ class DiagramLayout(SQLModel, table=True):
     layout_json: str = Field(default="{}", sa_column=Column(Text, default="{}"))
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
+
+
+# --- Headless assessment (optional, enabled at install time with --enable-assessment) ---
+
+class AssessConfig(SQLModel, table=True):
+    """Singleton row: reader SP + job wiring for headless assessments.
+
+    ``job_id`` is the assessment job; ``job_reader`` is the reader it actually runs as;
+    ``synced_version`` is the app version the last clean job sync ran for. ``reader_display_name``
+    is the reader's SCIM display name as the last clean sync resolved it, stored so Settings can
+    show it without a SCIM call per read. The Genie CLI and skills pins come from
+    ``VERSIONS.json``, not this row.
+    """
+    __tablename__ = "assess_config"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    reader_application_id: str = Field(default="")
+    reader_display_name: str = Field(default="")
+    job_id: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    synced_version: str = Field(default="")
+    job_reader: str = Field(default="")
+    job_setup_error: str = Field(default="", sa_column=Column(Text, default=""))
+    workspace_path: str = Field(default="")
+    max_concurrent_runs: int = Field(default=2)
+    default_reasoning_effort: str = Field(default="high")
+    warehouse_id: str = Field(default="")
+    updated_at: datetime = Field(default_factory=_now)
+    updated_by: str = Field(default="")
+
+
+class AssessSourceMap(SQLModel, table=True):
+    """Saved logical-source → bronze schema map per business (one row per source)."""
+    __tablename__ = "assess_source_map"
+    __table_args__ = (UniqueConstraint("business_id", "source_name", name="uq_assess_source_map_business_source"),)
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE", index=True)
+    source_name: str
+    catalog_name: str
+    schema_name: str
+    updated_at: datetime = Field(default_factory=_now)
+
+
+class AssessBatch(SQLModel, table=True):
+    """One user launch covering one or more domains of one model version."""
+    __tablename__ = "assess_batch"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    business_id: str = Field(foreign_key="businesses.id", ondelete="CASCADE", index=True)
+    version_id: str = Field(foreign_key="model_versions.id", ondelete="CASCADE", index=True)
+    output_model: str = Field(default="hybrid")
+    etl_type: str = Field(default="sdp_pipeline")
+    reasoning_effort: str = Field(default="high")
+    created_by: str = Field(default="")
+    created_at: datetime = Field(default_factory=_now)
+
+
+class AssessDomainRun(SQLModel, table=True):
+    """One domain inside a batch == one Databricks job run.
+
+    ``metamodel_location`` is the resolved ``catalog.schema`` + prefix string the agent
+    recorded; kept as text (not FK) because it names a UC object, not a Lakebase row.
+    ``notebook_folder``, ``job_reader`` and ``job_id`` pin the workspace folder, reader SP and job
+    the run was launched with (links are built from ``job_id``, so they survive a recreated job); ``ingest_attempts``/``ingest_next_at`` hold the ingest retry state;
+    ``schema_version`` is the assessment schema version the run's output declared.
+    """
+    __tablename__ = "assess_domain_run"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    batch_id: str = Field(foreign_key="assess_batch.id", ondelete="CASCADE", index=True)
+    domain_id: str = Field(foreign_key="domains.id", ondelete="CASCADE", index=True)
+    databricks_run_id: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    job_id: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    status: str = Field(default="queued", index=True)
+    stage: str = Field(default="")
+    attempt: int = Field(default=0)
+    resume_at: Optional[datetime] = Field(default=None)
+    last_message: str = Field(default="", sa_column=Column(Text, default=""))
+    error_message: str = Field(default="", sa_column=Column(Text, default=""))
+    started_at: Optional[datetime] = Field(default=None)
+    ended_at: Optional[datetime] = Field(default=None)
+    skills_commit: str = Field(default="")
+    skills_version: str = Field(default="")
+    genie_version: str = Field(default="")
+    out_dir: str = Field(default="")
+    config_path: str = Field(default="")
+    model_quality_score: Optional[float] = Field(default=None)
+    metamodel_location: str = Field(default="")
+    metamodel_version: str = Field(default="")
+    results_valid: Optional[bool] = Field(default=None)
+    notebook_folder: str = Field(default="")
+    job_reader: str = Field(default="")
+    ingest_attempts: int = Field(default=0)
+    ingest_next_at: Optional[datetime] = Field(default=None)
+    schema_version: Optional[int] = Field(default=None)
+    created_at: datetime = Field(default_factory=_now)
+
+
+class AssessDomainSource(SQLModel, table=True):
+    """Snapshot of the bronze map a domain run used (history-stable)."""
+    __tablename__ = "assess_domain_source"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    source_name: str
+    catalog_name: str
+    schema_name: str
+
+
+class AssessEntity(SQLModel, table=True):
+    __tablename__ = "assess_entity"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    product_id: Optional[str] = Field(default=None, foreign_key="products.id", ondelete="SET NULL", index=True)
+    name: str
+    grade: str  # full | partial | blocked
+    coverage_pct: Optional[float] = Field(default=None)
+    primary_source: str = Field(default="")
+    row_count: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    net_new_candidate: bool = Field(default=False)
+    # Tier counts behind the deterministic letter grade (core vs enrichment columns).
+    core_sourced: Optional[int] = Field(default=None)
+    core_total: Optional[int] = Field(default=None)
+    enrichment_sourced: Optional[int] = Field(default=None)
+    enrichment_total: Optional[int] = Field(default=None)
+    deferred_fk_count: Optional[int] = Field(default=None)
+    grade_reason: str = Field(default="", sa_column=Column(Text, default=""))
+    row_filter: str = Field(default="", sa_column=Column(Text, default=""))
+    reported_letter: str = Field(default="")  # letter the agent reported; app recomputes its own
+    reported_structure: str = Field(default="")  # skill's self-reported structure; app recomputes at read time
+
+
+class AssessColumnMapping(SQLModel, table=True):
+    __tablename__ = "assess_column_mapping"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    entity_id: str = Field(foreign_key="assess_entity.id", ondelete="CASCADE", index=True)
+    attribute_id: Optional[str] = Field(default=None, foreign_key="attributes.id", ondelete="SET NULL", index=True)
+    target: str
+    status: str  # mapped | derived | gap | null_source | deferred_fk
+    source_table: str = Field(default="")
+    source_column: str = Field(default="")
+    transform: str = Field(default="", sa_column=Column(Text, default=""))
+    row_count: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    null_pct: Optional[float] = Field(default=None)
+    distinct_count: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    date_format: str = Field(default="")
+    fk_orphans: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    evidence: str = Field(default="", sa_column=Column(Text, default=""))
+    dup_source: bool = Field(default=False)
+    tier: str = Field(default="")  # core | enrichment | ""
+
+
+class AssessColumnSourceProfile(SQLModel, table=True):
+    __tablename__ = "assess_column_source_profile"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    column_id: str = Field(foreign_key="assess_column_mapping.id", ondelete="CASCADE", index=True)
+    ordinal: int
+    system: str = Field(default="")
+    source_table: str = Field(default="")
+    source_column: str = Field(default="")
+    role: str = Field(default="")
+    row_count: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    null_pct: Optional[float] = Field(default=None)
+    distinct_count: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    fk_orphans: Optional[int] = Field(default=None, sa_column=Column(BigInteger, nullable=True))
+    note: str = Field(default="", sa_column=Column(Text, default=""))
+
+
+class AssessGap(SQLModel, table=True):
+    __tablename__ = "assess_gap"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    entity: str = Field(default="")
+    column: str = Field(default="")
+    gap_type: str = Field(default="")
+    description: str = Field(default="", sa_column=Column(Text, default=""))
+    status: str = Field(default="OPEN")
+    ask: str = Field(default="", sa_column=Column(Text, default=""))
+
+
+class AssessPendingDecision(SQLModel, table=True):
+    __tablename__ = "assess_pending_decision"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    gate: str = Field(default="")
+    kind: str = Field(default="")  # structure | source | scope as written by the skill; '' on old runs
+    question: str = Field(sa_column=Column(Text, nullable=False))
+    default_taken: str = Field(default="", sa_column=Column(Text, default=""))
+    evidence: str = Field(default="", sa_column=Column(Text, default=""))
+    entity: str = Field(default="")
+    answer_status: str = Field(default="open")  # open | answered
+    answer_option_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(
+            String,
+            ForeignKey("assess_decision_option.id", ondelete="SET NULL", use_alter=True,
+                       name="fk_assess_decision_answer_option"),
+            nullable=True,
+        ),
+    )
+    answer_text: str = Field(default="", sa_column=Column(Text, default=""))
+    answered_by: str = Field(default="")
+    answered_at: Optional[datetime] = Field(default=None)
+    context: str = Field(default="", sa_column=Column(Text, default=""))
+    why_it_matters: str = Field(default="", sa_column=Column(Text, default=""))
+    recommendation_rationale: str = Field(default="", sa_column=Column(Text, default=""))
+    blocks_build: bool = Field(default=False)
+    recommended_option_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(
+            String,
+            ForeignKey("assess_decision_option.id", ondelete="SET NULL", use_alter=True,
+                       name="fk_assess_decision_recommended_option"),
+            nullable=True,
+        ),
+    )
+    ordinal: int = Field(default=0)  # position in the document, so decisions keep their D1, D2... order
+
+
+class AssessDecisionOption(SQLModel, table=True):
+    __tablename__ = "assess_decision_option"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    decision_id: str = Field(foreign_key="assess_pending_decision.id", ondelete="CASCADE", index=True)
+    ordinal: int = Field(default=0)
+    label: str = Field(sa_column=Column(Text, nullable=False))
+    impact: str = Field(default="", sa_column=Column(Text, default=""))
+
+
+class AssessNextVibe(SQLModel, table=True):
+    """Assessment next-vibe recommendation; can be linked to a VibeInput (origin=user) created on user request."""
+    __tablename__ = "assess_next_vibe"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    vibe_input_id: Optional[str] = Field(default=None, foreign_key="vibe_inputs.id", ondelete="SET NULL", index=True)
+    priority: Optional[int] = Field(default=None)
+    category: str = Field(default="")
+    text: str = Field(sa_column=Column(Text, nullable=False))
+    confidence: Optional[float] = Field(default=None)
+    problem: str = Field(default="", sa_column=Column(Text, default=""))
+    proposed_change: str = Field(default="", sa_column=Column(Text, default=""))
+    impact_if_skipped: str = Field(default="", sa_column=Column(Text, default=""))
+    urgency: str = Field(default="")  # before_build | during_build | later | ""
+    ordinal: int = Field(default=0)  # document order; tie-break after priority
+
+
+class AssessSummary(SQLModel, table=True):
+    """Agent-written executive summary of one domain run (1:1 with the run)."""
+    __tablename__ = "assess_summary"
+
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", primary_key=True)
+    headline: str = Field(default="", sa_column=Column(Text, default=""))
+    verdict: str = Field(default="")
+    verdict_reason: str = Field(default="", sa_column=Column(Text, default=""))
+    recommended_next_step: str = Field(default="", sa_column=Column(Text, default=""))
+
+
+class AssessSummaryItem(SQLModel, table=True):
+    """One finding or risk bullet under an AssessSummary."""
+    __tablename__ = "assess_summary_item"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    summary_id: str = Field(foreign_key="assess_summary.domain_run_id", ondelete="CASCADE", index=True)
+    kind: str  # finding | risk
+    ordinal: int = Field(default=0)
+    text: str = Field(sa_column=Column(Text, nullable=False))
+
+
+class AssessDecisionOptionPoint(SQLModel, table=True):
+    """One pro or con bullet under a decision option."""
+    __tablename__ = "assess_decision_option_point"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    option_id: str = Field(foreign_key="assess_decision_option.id", ondelete="CASCADE", index=True)
+    kind: str  # pro | con
+    ordinal: int = Field(default=0)
+    text: str = Field(sa_column=Column(Text, nullable=False))
+
+
+class AssessDecisionAffected(SQLModel, table=True):
+    """An entity (and optionally column) a pending decision touches."""
+    __tablename__ = "assess_decision_affected"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    decision_id: str = Field(foreign_key="assess_pending_decision.id", ondelete="CASCADE", index=True)
+    ordinal: int = Field(default=0)
+    entity: str = Field(default="")
+    column: str = Field(default="")
+
+
+class AssessNextVibeEntity(SQLModel, table=True):
+    """An entity a next-vibe recommendation applies to."""
+    __tablename__ = "assess_next_vibe_entity"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    next_vibe_id: str = Field(foreign_key="assess_next_vibe.id", ondelete="CASCADE", index=True)
+    ordinal: int = Field(default=0)
+    entity: str = Field(default="")
+
+
+class AssessHandoff(SQLModel, table=True):
+    __tablename__ = "assess_handoff"
+
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    domain_run_id: str = Field(foreign_key="assess_domain_run.id", ondelete="CASCADE", index=True)
+    path: str
+    created_by: str = Field(default="")
+    created_at: datetime = Field(default_factory=_now)
+
+
+ASSESS_TABLES: tuple[type[SQLModel], ...] = (
+    AssessConfig, AssessSourceMap, AssessBatch, AssessDomainRun, AssessDomainSource,
+    AssessEntity, AssessColumnMapping, AssessColumnSourceProfile, AssessGap, AssessPendingDecision,
+    AssessDecisionOption, AssessNextVibe, AssessHandoff,
+    AssessSummary, AssessSummaryItem, AssessDecisionOptionPoint,
+    AssessDecisionAffected, AssessNextVibeEntity,
+)
 
 
 class LakebaseSchemaVersion(SQLModel, table=True):

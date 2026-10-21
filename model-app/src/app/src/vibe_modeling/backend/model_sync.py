@@ -17,6 +17,7 @@ from .core._names import (
     _AGENT_SEGMENT_NON_SAFE,
     agent_business_segment,
     escape_sql_literal as _esc,
+    normalize_scope as _normalize_scope,
 )
 from .core._paths import (
     metamodel_root_for_business,
@@ -561,27 +562,6 @@ def _count_source_elements(model_json: dict) -> dict[str, int]:
                 if fk_to and len(fk_to.split(".")) == 3:
                     counts["fk_links"] += 1
     return counts
-
-
-def _normalize_scope(scope: str) -> str:
-    """Collapse any form of `model_scope` to its abbreviated form (`mvm` or
-    `ecm`).
-
-    The widget contract accepts the long form (`"Minimum Viable Model - MVM"`
-    / `"Expanded Coverage Model - ECM"`) and the agent stores the abbreviated
-    form in the metamodel Delta tables. Callers passing the long form into
-    a WHERE clause match zero rows silently, which is how v3 auto-sync
-    bricked. Normalising here means the rest of the pipeline can pass
-    whatever `data_model_scopes` widget value it has without caring.
-    """
-    if not scope:
-        return ""
-    s = scope.strip().lower()
-    if "mvm" in s or "minimum viable" in s:
-        return "mvm"
-    if "ecm" in s or "expanded coverage" in s:
-        return "ecm"
-    return s  # unknown value — pass through and hope it matches
 
 
 def _version_root_candidates(

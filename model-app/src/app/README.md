@@ -57,11 +57,16 @@ apx build
 
 ## 🚢 Deployment
 
-Deploy to Databricks:
+To deploy, re-run `install/install.sh` from the repo root with the same flags you installed with. It sets the install-time values and deploys.
+
+To deploy by hand instead, export the same `VIBE_MODELING_*` values your install uses (Lakebase project, database, deployment catalog, warehouse, and the taxonomy and assessment settings; see [Deploying without `install.sh`](../../INSTALL.md#deploying-without-installsh)), then:
 
 ```bash
+bash install/build_and_render.sh   # from the repo root, before the deploy
 databricks bundle deploy -p <your-profile>
 ```
+
+The render writes the bundle's user-scopes include, which the deploy reads before its own build step. If you skip it, re-run the deploy when that step stops with "The app's user API scopes changed". Unset variables fall back to the defaults, and an optional feature whose flag is unset turns off.
 
 ---
 

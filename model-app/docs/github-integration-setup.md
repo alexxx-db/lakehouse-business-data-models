@@ -104,6 +104,7 @@ is **off by default** so fresh installs stay portable. It is applied only when y
 **`github-publish`** target (`databricks bundle deploy --target github-publish ...`), which adds
 the `USE_CONNECTION` grant to the app's `resources`; the default `dev` target declares no app
 resources. Once you deploy that target, the grant is re-applied on every deploy.
+Before a plain `databricks bundle deploy`, export the same `VIBE_MODELING_*` values your install uses (Lakebase project, database, deployment catalog, warehouse, and the taxonomy and assessment settings) and run `bash install/build_and_render.sh`. The variables and their meaning are listed in [Deploying without `install.sh`](../INSTALL.md#deploying-without-installsh). If the deploy's build step stops with "The app's user API scopes changed", re-run the deploy.
 You do **not** add it in the app UI; a resource added in the UI is wiped on the next deploy.
 The app resolves the connection by its **name** (`github_pr`); the bundle resource `name` is
 cosmetic. The `USE CONNECTION` grant (Step C) is what authorizes the OBO publish call.

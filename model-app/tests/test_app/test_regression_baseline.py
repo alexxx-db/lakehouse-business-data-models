@@ -13,6 +13,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "app", "src"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 import json
 
@@ -159,7 +160,7 @@ class TestBusinessResponseShape:
     EXPECTED_KEYS = {
         "id", "name", "description", "business_vibes", "industry_alignment",
         "kind", "sector_id", "source_industry_id", "source_version",
-        "source_repo_path",
+        "source_repo_path", "business_domains", "org_divisions",
         "created_at", "updated_at",
     }
     LIST_KEYS = {
@@ -870,3 +871,639 @@ class TestSourceAuthConfigShape:
         resp = client.get("/api/config/source-auth")
         assert resp.status_code == 200, resp.text
         _assert_keys(resp.json(), self.EXPECTED_KEYS, "SourceAuthConfigOut")
+
+
+class TestAssessConfigShape:
+    """Wire contract for getAssessConfig (headless assessment Settings)."""
+
+    EXPECTED_KEYS = {
+        "reader_application_id", "reader_display_name", "job_id",
+        "workspace_path", "max_concurrent_runs",
+        "default_reasoning_effort", "warehouse_id", "genie_version",
+        "skills_ref", "skills_version", "installed", "ready", "missing",
+        "job_url", "updated_at", "updated_by", "app_application_id",
+    }
+
+    def test_assess_config_shape(self, client):
+        resp = client.get("/api/assess/config")
+        assert resp.status_code == 200, resp.text
+        _assert_keys(resp.json(), self.EXPECTED_KEYS, "AssessConfigOut")
+
+
+class TestAssessReadinessShape:
+    """Wire contract for checkAssessReadiness."""
+
+    READINESS_KEYS = {"global_checks", "domains"}
+    CHECK_KEYS = {"key", "label", "state", "detail", "fix_sql", "fix_action"}
+    DOMAIN_KEYS = {"domain_id", "domain_name", "checks", "blocked"}
+
+    def _seed(self, engine, mock_ws):
+        from sqlmodel import Session
+
+        from _assess_helpers import ready_config, ws_ok
+        from vibe_modeling.backend.db_models import AssessConfig, Business, Domain, ModelVersion
+        ws_ok(mock_ws)
+        with Session(engine) as s:
+            b = Business(name="Shape", description="d")
+            s.add(b); s.commit(); s.refresh(b)
+            mv = ModelVersion(business_id=b.id, version=1, scope="mvm", status="completed",
+                              deployment_status="deployed", uc_catalog="cat")
+            s.add(mv); s.commit(); s.refresh(mv)
+            d = Domain(version_id=mv.id, name="d1", database_name="d1")
+            s.add(d)
+            s.add(ready_config(job_id=1))
+            s.commit(); s.refresh(d)
+            return mv.id, d.id
+
+    def test_readiness_shape(self, client, engine, mock_ws):
+        vid, did = self._seed(engine, mock_ws)
+        resp = client.post("/api/assess/readiness", json={"version_id": vid, "domains": [
+            {"domain_id": did, "sources": [{"source_name": "s", "catalog_name": "b", "schema_name": "x"}]}]})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        _assert_keys(body, self.READINESS_KEYS, "ReadinessOut")
+        _assert_keys(body["domains"][0], self.DOMAIN_KEYS, "DomainReadiness")
+        _assert_keys(body["global_checks"][0], self.CHECK_KEYS, "Check")
+
+
+class TestAssessLaunchShape:
+    """Wire contract for launchAssessment / getAssessSourceMap / putAssessSourceMap."""
+
+    BATCH_KEYS = {"id", "business_id", "version_id", "version", "scope", "output_model", "etl_type",
+                  "reasoning_effort", "status", "created_by", "created_at", "domain_runs"}
+    RUN_KEYS = {"id", "domain_id", "domain_name", "databricks_run_id", "run_url", "status", "stage", "attempt",
+                "resume_at", "last_message", "error_message", "started_at", "ended_at", "skills_commit",
+                "skills_version", "genie_version", "model_quality_score", "metamodel_location",
+                "metamodel_version", "results_valid", "sources", "job_url", "job_reader",
+                "schema_version", "runs_path", "ingest_attempts", "ingest_next_at", "ingest_max_attempts"}
+
+    def _seed(self, engine, mock_ws):
+        from sqlmodel import Session
+
+        from _assess_helpers import ready_config, ws_ok
+        from vibe_modeling.backend.db_models import AssessConfig, Business, Domain, ModelVersion
+        ws_ok(mock_ws)
+        mock_ws.jobs.run_now.return_value.run_id = 5
+        with Session(engine) as s:
+            b = Business(name="LaunchShape", description="d")
+            s.add(b); s.commit(); s.refresh(b)
+            mv = ModelVersion(business_id=b.id, version=1, scope="mvm", status="completed",
+                              deployment_status="deployed", uc_catalog="cat")
+            s.add(mv); s.commit(); s.refresh(mv)
+            d = Domain(version_id=mv.id, name="d1", database_name="d1")
+            s.add(d)
+            s.add(ready_config(job_id=1))
+            s.commit(); s.refresh(d)
+            return b.id, mv.id, d.id
+
+    def test_launch_shape(self, client, engine, mock_ws):
+        bid, vid, did = self._seed(engine, mock_ws)
+        resp = client.post(f"/api/businesses/{bid}/assessments", json={"version_id": vid, "domains": [
+            {"domain_id": did, "sources": [{"source_name": "s", "catalog_name": "b", "schema_name": "x"}]}]})
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        _assert_keys(body, self.BATCH_KEYS, "AssessBatchOut")
+        _assert_keys(body["domain_runs"][0], self.RUN_KEYS, "AssessDomainRunOut")
+        _assert_keys(body["domain_runs"][0]["sources"][0], {"source_name", "catalog_name", "schema_name"}, "SourceIn")
+
+    def test_relaunch_shape(self, client, engine, mock_ws):
+        bid, vid, did = self._seed(engine, mock_ws)
+        first = client.post(f"/api/businesses/{bid}/assessments", json={"version_id": vid, "domains": [
+            {"domain_id": did, "sources": [{"source_name": "s", "catalog_name": "b", "schema_name": "x"}]}]}).json()
+        client.post(f"/api/assessments/{first['id']}/cancel")
+        resp = client.post(f"/api/assessments/{first['id']}/relaunch")
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["id"] != first["id"]
+        _assert_keys(body, self.BATCH_KEYS, "AssessBatchOut")
+        _assert_keys(body["domain_runs"][0], self.RUN_KEYS, "AssessDomainRunOut")
+
+    def test_source_map_shape(self, client, engine, mock_ws):
+        bid, _, _ = self._seed(engine, mock_ws)
+        src = [{"source_name": "s", "catalog_name": "b", "schema_name": "x"}]
+        put = client.put(f"/api/businesses/{bid}/assess-source-map", json={"sources": src})
+        assert put.status_code == 200, put.text
+        _assert_keys(put.json(), {"sources"}, "SourceMapOut")
+        got = client.get(f"/api/businesses/{bid}/assess-source-map")
+        assert got.status_code == 200, got.text
+        _assert_keys(got.json(), {"sources"}, "SourceMapOut")
+        _assert_keys(got.json()["sources"][0], {"source_name", "catalog_name", "schema_name"}, "SourceIn")
+
+
+class TestAssessStatusShape:
+    """Wire contract for listAssessments / getAssessment / cancelAssessment / cancelAssessmentDomainRun."""
+
+    def _seed(self, engine):
+        from sqlmodel import Session
+
+        from _assess_helpers import seed_domain_run
+        from vibe_modeling.backend.db_models import AssessConfig, AssessDomainRun, Business
+        dr_id = seed_domain_run(engine, databricks_run_id=11, status="assessing")
+        with Session(engine) as s:
+            dr = s.get(AssessDomainRun, dr_id)
+            s.add(AssessConfig(job_id=1)); s.commit()
+            from vibe_modeling.backend.db_models import AssessBatch
+            batch = s.get(AssessBatch, dr.batch_id)
+            return batch.business_id, batch.id, dr_id
+
+    def test_list_get_shape(self, client, engine):
+        bid, batch_id, _ = self._seed(engine)
+        lst = client.get(f"/api/businesses/{bid}/assessments")
+        assert lst.status_code == 200, lst.text
+        _assert_keys(lst.json()[0], TestAssessLaunchShape.BATCH_KEYS, "AssessBatchOut")
+        one = client.get(f"/api/assessments/{batch_id}")
+        assert one.status_code == 200, one.text
+        _assert_keys(one.json(), TestAssessLaunchShape.BATCH_KEYS, "AssessBatchOut")
+        _assert_keys(one.json()["domain_runs"][0], TestAssessLaunchShape.RUN_KEYS, "AssessDomainRunOut")
+
+    def test_cancel_domain_run_shape(self, client, engine):
+        _, _, dr_id = self._seed(engine)
+        resp = client.post(f"/api/assessment-domain-runs/{dr_id}/cancel")
+        assert resp.status_code == 200, resp.text
+        _assert_keys(resp.json(), TestAssessLaunchShape.RUN_KEYS, "AssessDomainRunOut")
+
+    def test_cancel_batch_shape(self, client, engine):
+        _, batch_id, _ = self._seed(engine)
+        resp = client.post(f"/api/assessments/{batch_id}/cancel")
+        assert resp.status_code == 200, resp.text
+        _assert_keys(resp.json(), TestAssessLaunchShape.BATCH_KEYS, "AssessBatchOut")
+        _assert_keys(resp.json()["domain_runs"][0], TestAssessLaunchShape.RUN_KEYS, "AssessDomainRunOut")
+
+
+class TestAssessResultsShape:
+    """Wire contract for getAssessmentResults / listAssessmentDocs / answer + clear decision."""
+
+    def test_results_docs_and_answer_shapes(self, client, engine, mock_ws):
+        from types import SimpleNamespace as NS
+
+        from test_assess_ingest import OUT, _fixture_files, _seed_run, _ws_with
+        from vibe_modeling.backend.assessment.ingest import ingest_domain_run
+        from vibe_modeling.backend.db_models import AssessDomainRun
+        dr_id, _, _ = _seed_run(engine)
+        with Session(engine) as s:
+            ingest_domain_run(s, _ws_with(_fixture_files()), s.get(AssessDomainRun, dr_id))
+        r = client.get(f"/api/assessment-domain-runs/{dr_id}/results")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        _assert_keys(body, {"domain_run", "grades", "summary", "letter_counts", "structure_counts",
+                            "entities", "gaps", "pending_decisions", "next_vibes"}, "AssessResultsOut")
+        _assert_keys(body["structure_counts"], {"sound", "review", "rework"}, "structure_counts")
+        _assert_keys(body["letter_counts"], {"A", "B", "C", "D", "F"}, "letter_counts")
+        assert body["summary"] is None
+        _assert_keys(body["domain_run"], TestAssessLaunchShape.RUN_KEYS, "AssessDomainRunOut")
+        _assert_keys(body["grades"], {"full", "partial", "blocked"}, "grades")
+        ent = next(e for e in body["entities"] if e["columns"])
+        _assert_keys(ent, {"id", "domain_run_id", "product_id", "in_model", "name", "grade", "coverage_pct",
+                           "primary_source", "row_count", "net_new_candidate", "mapped", "gap", "deferred_fk",
+                           "dup_source", "columns", "core_sourced", "core_total", "enrichment_sourced",
+                           "enrichment_total", "deferred_fk_count", "enrichment_pct", "letter_grade",
+                           "grade_reason", "row_filter", "structure", "structure_refs"}, "AssessEntityOut")
+        _assert_keys(ent["columns"][0], {"id", "entity_id", "attribute_id", "in_model", "target", "status",
+                                         "source_table", "source_column", "transform", "row_count", "null_pct",
+                                         "distinct_count", "date_format", "fk_orphans", "evidence", "dup_source", "tier",
+                                         "profiles_by_source"},
+                     "ColumnMappingOut")
+        _assert_keys(body["gaps"][0], {"id", "domain_run_id", "entity", "column", "gap_type", "description",
+                                       "status", "ask"}, "GapOut")
+        dec = body["pending_decisions"][0]
+        dec_keys = {"id", "domain_run_id", "gate", "question", "default_taken", "evidence", "entity",
+                    "answer_status", "answer_option_id", "answer_text", "answered_by", "answered_at", "options",
+                    "context", "why_it_matters", "recommendation_rationale", "blocks_build", "affected", "kind", "ordinal"}
+        _assert_keys(dec, dec_keys, "PendingDecisionOut")
+        _assert_keys(dec["options"][0], {"id", "ordinal", "label", "pros", "cons", "impact", "recommended"},
+                     "DecisionOptionOut")
+        _assert_keys(body["next_vibes"][0], {"id", "domain_run_id", "priority", "category", "text", "confidence",
+                                             "problem", "proposed_change", "impact_if_skipped", "urgency",
+                                             "affected_entities", "feedback_input_id"}, "NextVibeOut")
+        put = client.put(f"/api/assessment-decisions/{dec['id']}/answer", json={"text": "ok"})
+        assert put.status_code == 200, put.text
+        _assert_keys(put.json(), dec_keys, "PendingDecisionOut")
+        dele = client.delete(f"/api/assessment-decisions/{dec['id']}/answer")
+        assert dele.status_code == 200, dele.text
+        _assert_keys(dele.json(), dec_keys, "PendingDecisionOut")
+        mock_ws.files.list_directory_contents.side_effect = lambda p: iter(
+            [NS(path=f"{OUT}/docs/a.md", name="a.md", is_directory=False)])
+        docs = client.get(f"/api/assessment-domain-runs/{dr_id}/docs")
+        assert docs.status_code == 200, docs.text
+        _assert_keys(docs.json(), {"folder_url", "docs"}, "DocsOut")
+        _assert_keys(docs.json()["docs"][0], {"path", "name", "category"}, "DocEntry")
+        mock_ws.files.download.side_effect = lambda p: NS(contents=__import__("io").BytesIO(b"# a"))
+        content = client.get(f"/api/assessment-domain-runs/{dr_id}/docs/content", params={"path": "docs/a.md"})
+        assert content.status_code == 200, content.text
+        _assert_keys(content.json(), {"path", "content", "truncated"}, "DocContentOut")
+
+
+class TestAssessHandoffShape:
+    """Wire contract for getAssessmentHandoff / createAssessmentHandoff."""
+
+    KEYS = {"domain_run_id", "path", "created_at", "created_by", "folder_url", "prompts", "skills",
+            "next_steps", "user_scope_note", "expected_handoffs", "skills_note"}
+
+    def test_get_and_post_shapes(self, client, engine, mock_ws):
+        import io
+        from types import SimpleNamespace as NS
+
+        from databricks.sdk.errors.platform import NotFound
+        from test_assess_ingest import OUT, _fixture_files, _seed_run, _ws_with
+        from vibe_modeling.backend.assessment.ingest import ingest_domain_run
+        from vibe_modeling.backend.db_models import AssessDomainRun
+        dr_id, _, _ = _seed_run(engine)
+        with Session(engine) as s:
+            ingest_domain_run(s, _ws_with(_fixture_files()), s.get(AssessDomainRun, dr_id))
+            dr = s.get(AssessDomainRun, dr_id)
+            dr.status = "completed"
+            s.add(dr); s.commit()
+        mock_ws.files.list_directory_contents.side_effect = lambda p: iter(
+            [NS(path=f"{OUT}/conventions.yml", is_directory=False)] if p == OUT else [])
+        mock_ws.files.download.side_effect = lambda p: NS(contents=io.BytesIO(b"x"))
+        mock_ws.workspace.get_status.return_value.object_id = 11
+        mock_ws.workspace.download.side_effect = NotFound("no marker")
+        got = client.get(f"/api/assessment-domain-runs/{dr_id}/handoff")
+        assert got.status_code == 200, got.text
+        _assert_keys(got.json(), self.KEYS, "HandoffOut")
+        assert got.json()["created_at"] is None
+        from unittest.mock import MagicMock
+
+        from vibe_modeling.backend.core._defaults import _get_user_ws_optional
+        uw = MagicMock()
+        uw.workspace.get_status.side_effect = NotFound("none")
+        uw.workspace.download.side_effect = NotFound("no marker")
+        client.app.dependency_overrides[_get_user_ws_optional] = lambda: uw
+        try:
+            posted = client.post(f"/api/assessment-domain-runs/{dr_id}/handoff", json={},
+                                 headers={"X-Forwarded-Email": "dana@example.com"})
+        finally:
+            client.app.dependency_overrides.pop(_get_user_ws_optional, None)
+        assert posted.status_code == 200, posted.text
+        body = posted.json()
+        _assert_keys(body, self.KEYS, "HandoffOut")
+        _assert_keys(body["prompts"][0], {"key", "title", "skill", "prompt"}, "HandoffPrompt")
+        _assert_keys(body["skills"][0], {"name", "state", "location", "bundled_version", "installed_version"},
+                     "SkillStatus")
+        _assert_keys(body["next_steps"][0], {"order", "title", "detail", "done"}, "NextStepOut")
+        assert body["created_at"] is not None
+
+
+class TestAssessInstallSkillsShape:
+    """Wire contract for installAssessmentSkills."""
+
+    def test_install_skills_response(self, client, mock_ws, engine):
+        from unittest.mock import MagicMock
+
+        from databricks.sdk.errors.platform import NotFound
+        from vibe_modeling.backend.core._defaults import _get_user_ws_optional
+        from _assess_helpers import seed_domain_run
+        dr_id = seed_domain_run(engine)
+        uw = MagicMock()
+        uw.workspace.get_status.side_effect = NotFound("none")
+        mock_ws.workspace.get_status.side_effect = NotFound("none")
+        client.app.dependency_overrides[_get_user_ws_optional] = lambda: uw
+        try:
+            r = client.post(f"/api/assessment-domain-runs/{dr_id}/handoff/install-skills",
+                            json={"names": ["domain-model-assessment"]},
+                            headers={"X-Forwarded-Email": "dana@example.com"})
+        finally:
+            client.app.dependency_overrides.pop(_get_user_ws_optional, None)
+        assert r.status_code == 200, r.text
+        _assert_keys(r.json(), {"installed", "updated", "skipped", "skills"}, "InstallSkillsOut")
+        _assert_keys(r.json()["skills"][0], {"name", "state", "location", "bundled_version", "installed_version"},
+                     "SkillStatus")
+
+
+class TestAddNextVibeToFeedbackShape:
+    """Wire contract for addNextVibeToFeedback (single vibe endpoint)."""
+
+    def test_single_vibe_response_shape(self, client, engine):
+        """Verify NextVibeToFeedbackOut response structure."""
+        from datetime import datetime, timezone
+        from vibe_modeling.backend.db_models import (
+            Business, ModelVersion, Domain, AssessBatch, AssessDomainRun, AssessNextVibe
+        )
+
+        with Session(engine) as session:
+            b = Business(name="TestCorpA", description="Test", industry_alignment="Retail")
+            session.add(b)
+            session.commit()
+
+            mv = ModelVersion(business_id=b.id, version=1, status="completed", scope="test",
+                            deployment_status="deployed", uc_catalog="cat")
+            session.add(mv)
+            session.commit()
+
+            d = Domain(version_id=mv.id, name="TestDomA", database_name="test_dom_a")
+            session.add(d)
+            session.commit()
+
+            batch = AssessBatch(business_id=b.id, version_id=mv.id, scope="test",
+                              created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
+            session.add(batch)
+            session.commit()
+
+            dr = AssessDomainRun(batch_id=batch.id, domain_id=d.id, out_dir="/test",
+                                status="completed", created_at=datetime.now(timezone.utc))
+            session.add(dr)
+            session.commit()
+
+            nv = AssessNextVibe(domain_run_id=dr.id, ordinal=0, priority=1, category="",
+                               text="Test vibe", confidence=0.8, problem="", proposed_change="",
+                               impact_if_skipped="", urgency="before_build")
+            session.add(nv)
+            session.commit()
+
+            dr_id, nv_id = dr.id, nv.id
+
+        response = client.post(
+            f"/api/assessment-domain-runs/{dr_id}/next-vibes/{nv_id}/feedback",
+            json={},
+            headers={"X-Forwarded-Email": "test@example.com"}
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        _assert_keys(body, {"next_vibe_id", "feedback_input_id", "created"}, "NextVibeToFeedbackOut")
+        assert isinstance(body["created"], bool)
+
+
+class TestAddNextVibesToFeedbackShape:
+    """Wire contract for addNextVibesToFeedback (bulk endpoint)."""
+
+    def test_bulk_vibes_response_shape(self, client, engine):
+        """Verify BulkNextVibeToFeedbackOut response structure."""
+        from datetime import datetime, timezone
+        from vibe_modeling.backend.db_models import (
+            Business, ModelVersion, Domain, AssessBatch, AssessDomainRun, AssessNextVibe
+        )
+
+        with Session(engine) as session:
+            b = Business(name="TestCorpB", description="Test", industry_alignment="Retail")
+            session.add(b)
+            session.commit()
+
+            mv = ModelVersion(business_id=b.id, version=1, status="completed", scope="test",
+                            deployment_status="deployed", uc_catalog="cat")
+            session.add(mv)
+            session.commit()
+
+            d = Domain(version_id=mv.id, name="TestDomB", database_name="test_dom_b")
+            session.add(d)
+            session.commit()
+
+            batch = AssessBatch(business_id=b.id, version_id=mv.id, scope="test",
+                              created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
+            session.add(batch)
+            session.commit()
+
+            dr = AssessDomainRun(batch_id=batch.id, domain_id=d.id, out_dir="/test",
+                                status="completed", created_at=datetime.now(timezone.utc))
+            session.add(dr)
+            session.commit()
+
+            nv = AssessNextVibe(domain_run_id=dr.id, ordinal=0, priority=1, category="",
+                               text="Test vibe", confidence=0.8, problem="", proposed_change="",
+                               impact_if_skipped="", urgency="before_build")
+            session.add(nv)
+            session.commit()
+
+            dr_id = dr.id
+
+        response = client.post(
+            f"/api/assessment-domain-runs/{dr_id}/next-vibes/feedback/bulk",
+            json={"urgency": "before_build"},
+            headers={"X-Forwarded-Email": "test@example.com"}
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        _assert_keys(body, {"count_created", "count_reused", "items", "failures"}, "BulkNextVibeToFeedbackOut")
+        assert isinstance(body["count_created"], int)
+        assert isinstance(body["count_reused"], int)
+        assert isinstance(body["items"], list)
+        if body["items"]:
+            _assert_keys(body["items"][0], {"next_vibe_id", "feedback_input_id", "created"}, "NextVibeToFeedbackOut")
+
+
+class TestTaxonomyResponseShapes:
+    """Wire contracts for the Domain Taxonomy Builder: the 7 ``/api/taxonomy/*``
+    routes and the 4 ``/config/taxonomy`` settings routes, with the feature
+    installed and a stored model service."""
+
+    SERVICE = "main.ai.drafter"
+    INTAKE = {"company_name": "Ridgeline Energy", "industry": "Utility"}
+    DRAFT_KEYS = {"draft_id", "status", "parts"}
+    PART_KEYS = {"status", "error", "tree", "section", "description"}
+    TREE_KEYS = {"domains", "shared_masters", "relationships", "division_names", "coverage"}
+    DOMAIN_KEYS = {"name", "schema_name", "subdomains"}
+    SUBDOMAIN_KEYS = {"name", "categories"}
+    CLAIM_KEYS = {"text", "provenance"}
+    ISSUE_KEYS = {"severity", "message", "rule_id", "domains"}
+    CONFIG_KEYS = {
+        "installed", "model_service", "install_default_model_service", "max_concurrency", "ready", "last_check",
+    }
+    CHECK_KEYS = {"status", "message", "checked_at"}
+
+    @pytest.fixture
+    def tax(self, engine, monkeypatch):
+        from unittest.mock import MagicMock
+
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from vibe_modeling.backend.core._config import AppConfig
+        from vibe_modeling.backend.core._defaults import _ConfigDependency, _WorkspaceClientDependency
+        from vibe_modeling.backend.core._roles import UserRole, resolve_user_role
+        from vibe_modeling.backend.core.lakebase import _LakebaseDependency
+        from vibe_modeling.backend.routes import config as config_routes
+        from vibe_modeling.backend.routes import taxonomy as taxonomy_routes
+        from vibe_modeling.backend.taxonomy import llm as llm_module
+        from vibe_modeling.backend.taxonomy.access import MODEL_SERVICE_ACCESS
+        from vibe_modeling.backend.taxonomy.drafts import DraftStore
+        from vibe_modeling.backend.taxonomy.example import load_ridgeline_example
+        from vibe_modeling.backend.taxonomy.models import SECTION_HEADINGS, SECTION_KEYS, TaxonomyTree
+        from vibe_modeling.backend.taxonomy.slots import LLMSlots
+
+        ex = load_ridgeline_example()
+        service = self.SERVICE
+
+        class FakeLLM:
+            model_service = service
+
+            def probe(self):
+                from vibe_modeling.backend.taxonomy.llm import ProbeResult
+
+                return ProbeResult("ok", "answered")
+
+            def complete_json(self, system, user, model):
+                if model is TaxonomyTree:
+                    return ex.tree
+                return ex.sections[next(k for k in SECTION_KEYS if f"'{SECTION_HEADINGS[k]}'" in system)]
+
+            def complete_text(self, system, user):
+                return "Ridgeline is a regional utility."
+
+        llm_ws = MagicMock()
+        llm_ws.config.client_id = "sp-id"
+        llm_ws.api_client.do.return_value = {"choices": [{"message": {"role": "assistant", "content": "OK"}}]}
+        monkeypatch.setattr(llm_module, "_LLM_WS", llm_ws)
+        self.llm_ws = llm_ws
+        app_ws = MagicMock()
+        app_ws.api_client.do.return_value = {"model_services": [{"name": f"model-services/{service}"}]}
+
+        with Session(engine) as session:
+            session.add(AgentConfig(taxonomy_model_service=service))
+            session.commit()
+
+        app = FastAPI()
+        app.include_router(config_routes.router)
+        app.include_router(taxonomy_routes.router)
+
+        def override_session():
+            with Session(engine) as session:
+                yield session
+
+        config = AppConfig(app_name="test", taxonomy_builder_enabled=True)
+        app.dependency_overrides[_LakebaseDependency.__call__] = override_session
+        app.dependency_overrides[_ConfigDependency.__call__] = lambda: config
+        app.dependency_overrides[_WorkspaceClientDependency.__call__] = lambda: app_ws
+        app.dependency_overrides[resolve_user_role] = lambda: UserRole.APP_ADMIN
+        app.dependency_overrides[taxonomy_routes.get_taxonomy_llm] = FakeLLM
+        self.store = DraftStore(slots=LLMSlots())
+        app.dependency_overrides[taxonomy_routes.get_draft_store] = lambda: self.store
+        MODEL_SERVICE_ACCESS.clear()
+        with TestClient(app) as c:
+            yield c
+        MODEL_SERVICE_ACCESS.clear()
+
+    @staticmethod
+    def _poll(c, draft_id):
+        import time
+
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            body = c.get(f"/api/taxonomy/drafts/{draft_id}").json()
+            if body["status"] != "running":
+                return body
+            time.sleep(0.02)
+        raise AssertionError("draft never finished")
+
+    def _assert_draft(self, body, parts):
+        _assert_keys(body, self.DRAFT_KEYS, "TaxonomyDraftOut")
+        assert set(body["parts"]) == parts
+        for key, part in body["parts"].items():
+            _assert_keys(part, self.PART_KEYS, f"TaxonomyDraftPartOut[{key}]")
+
+    def _assert_tree(self, tree):
+        _assert_keys(tree, self.TREE_KEYS, "TaxonomyTree")
+        _assert_keys(tree["domains"][0], self.DOMAIN_KEYS, "TaxonomyDomain")
+        _assert_keys(tree["domains"][0]["subdomains"][0], self.SUBDOMAIN_KEYS, "TaxonomySubdomain")
+
+    def test_draft_create_get_cancel_retry_shapes(self, tax):
+        from vibe_modeling.backend.taxonomy.models import SECTION_KEYS
+
+        created = tax.post("/api/taxonomy/drafts", json=self.INTAKE)
+        assert created.status_code == 200, created.text
+        _assert_keys(created.json(), {"draft_id"}, "TaxonomyDraftCreated")
+        draft_id = created.json()["draft_id"]
+
+        body = self._poll(tax, draft_id)
+        self._assert_draft(body, {"tree", *SECTION_KEYS})
+        self._assert_tree(body["parts"]["tree"]["tree"])
+        _assert_keys(body["parts"]["company"]["section"], {"claims"}, "TaxonomySection")
+        _assert_keys(body["parts"]["company"]["section"]["claims"][0], self.CLAIM_KEYS, "TaxonomyClaim")
+
+        cancelled = tax.post(f"/api/taxonomy/drafts/{draft_id}/cancel")
+        assert cancelled.status_code == 200
+        self._assert_draft(cancelled.json(), {"tree", *SECTION_KEYS})
+
+        # A done part answers 409 with a plain detail.
+        refused = tax.post(f"/api/taxonomy/drafts/{draft_id}/parts/company/retry")
+        assert refused.status_code == 409
+        _assert_keys(refused.json(), {"detail"}, "retry 409")
+
+    def test_retry_of_a_busy_part_shape(self, tax):
+        from vibe_modeling.backend.core._identity import LOCAL_DEV_IDENTITY
+        from vibe_modeling.backend.taxonomy.models import SECTION_KEYS, TaxonomyIntake
+
+        # A draft whose tree is busy (as after a busy pre-draft test call), owned by the header-less identity.
+        draft_id = self.store.create(LOCAL_DEV_IDENTITY, TaxonomyIntake(**self.INTAKE), None, busy=True)
+        busy = tax.get(f"/api/taxonomy/drafts/{draft_id}").json()
+        assert busy["status"] == "busy"
+        self._assert_draft(busy, {"tree", *SECTION_KEYS})
+        retried = tax.post(f"/api/taxonomy/drafts/{draft_id}/parts/tree/retry")
+        assert retried.status_code == 200, retried.text
+        self._assert_draft(retried.json(), {"tree", *SECTION_KEYS})
+
+    def test_condense_shape(self, tax):
+        from vibe_modeling.backend.taxonomy.example import load_ridgeline_example
+
+        ex = load_ridgeline_example()
+        body = {
+            "intake": self.INTAKE, "tree": ex.tree.model_dump(),
+            "sections": {k: v.model_dump() for k, v in ex.sections.items()},
+        }
+        created = tax.post("/api/taxonomy/condense", json=body)
+        assert created.status_code == 200, created.text
+        _assert_keys(created.json(), {"draft_id"}, "TaxonomyDraftCreated")
+        self._assert_draft(self._poll(tax, created.json()["draft_id"]), {"description"})
+
+    def test_compile_shape(self, tax):
+        from vibe_modeling.backend.taxonomy.example import load_ridgeline_example
+
+        tree = load_ridgeline_example().tree.model_dump()
+        tree["domains"] = tree["domains"][:2]  # fewer than 3 domains -> one model-level issue
+        resp = tax.post("/api/taxonomy/compile", json={"tree": tree, "strictness": "strict", "sections": {}})
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        _assert_keys(body, {"clamp", "business_vibes", "business_domains", "csv", "issues"}, "TaxonomyCompileOut")
+        assert body["issues"], "expected at least one issue"
+        for issue in body["issues"]:
+            _assert_keys(issue, self.ISSUE_KEYS, "TaxonomyIssue")
+
+    def test_example_shape(self, tax):
+        resp = tax.get("/api/taxonomy/example")
+        assert resp.status_code == 200
+        body = resp.json()
+        _assert_keys(body, {"company_name", "industry", "tree", "sections", "description"}, "TaxonomyExampleOut")
+        self._assert_tree(body["tree"])
+
+    def test_config_get_put_test_shapes(self, tax):
+        got = tax.get("/api/config/taxonomy")
+        assert got.status_code == 200
+        _assert_keys(got.json(), self.CONFIG_KEYS, "TaxonomyConfigOut")
+        assert got.json()["last_check"] is None
+
+        put = tax.put("/api/config/taxonomy", json={"model_service": self.SERVICE, "max_concurrency": 4})
+        assert put.status_code == 200, put.text
+        _assert_keys(put.json(), self.CONFIG_KEYS, "TaxonomyConfigOut (PUT)")
+        _assert_keys(put.json()["last_check"], self.CHECK_KEYS, "TaxonomyCheckOut (last_check)")
+
+        tested = tax.post("/api/config/taxonomy/test")
+        assert tested.status_code == 200, tested.text
+        _assert_keys(tested.json(), self.CHECK_KEYS, "TaxonomyCheckOut")
+
+    def test_config_refused_put_detail_shape(self, tax):
+        from databricks.sdk.errors import PermissionDenied
+
+        self.llm_ws.api_client.do.side_effect = PermissionDenied("no")
+        resp = tax.put("/api/config/taxonomy", json={"model_service": self.SERVICE, "max_concurrency": 4})
+        assert resp.status_code == 400
+        _assert_keys(resp.json()["detail"], {"error", "status", "message"}, "model_service_refused")
+
+    def test_model_services_shape(self, tax):
+        resp = tax.get("/api/config/taxonomy/model-services")
+        assert resp.status_code == 200, resp.text
+        _assert_keys(resp.json(), {"services", "message"}, "TaxonomyModelServicesOut")
+        assert resp.json()["services"] == [self.SERVICE]
+
+
+class TestUserPreferenceDeleteShape:
+    """Wire contract for deleteUserPreference: a single ``deleted`` bool,
+    200 whether or not the caller had a row."""
+
+    def test_delete_response_shape(self, client):
+        client.put("/api/user/preferences/k", json={"value": "v"})
+        hit = client.delete("/api/user/preferences/k")
+        assert hit.status_code == 200, hit.text
+        _assert_keys(hit.json(), {"deleted"}, "UserPreferenceDeleteOut")
+        assert hit.json()["deleted"] is True
+        miss = client.delete("/api/user/preferences/k")
+        assert miss.status_code == 200, miss.text
+        _assert_keys(miss.json(), {"deleted"}, "UserPreferenceDeleteOut")
+        assert miss.json()["deleted"] is False

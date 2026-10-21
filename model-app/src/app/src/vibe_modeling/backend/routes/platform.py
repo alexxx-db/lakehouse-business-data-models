@@ -13,14 +13,22 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from sqlmodel import select
+from sqlalchemy import delete, update
+from sqlmodel import Session, select
 
 from ..._metadata import api_prefix
 from ..core import Dependencies
+from ..core._identity import (
+    actor_label,
+    current_user_profile,
+    legacy_username_alias,
+)
 from ..db_models import UserPreference
 from ..models import (
     BundledAgentInfoOut,
+    CurrentUserOut,
     InstallBundledAgentOut,
+    UserPreferenceDeleteOut,
     UserPreferenceIn,
     UserPreferenceOut,
     VersionOut,
@@ -90,22 +98,21 @@ def report_client_gateway_error(
         data.path,
         data.attempt,
         data.will_retry,
-        headers.user_name or "anonymous",
+        actor_label(headers),
         data.context,
     )
     return ClientTelemetryAck(logged=True)
 
 
-@router.get("/current-user", operation_id="currentUser")
-def me(headers: Dependencies.Headers):
-    """Get current user info from Databricks Apps headers, or return anonymous."""
-    if headers.user_name:
-        return {
-            "userName": headers.user_name,
-            "displayName": headers.user_name,
-            "emails": [{"value": headers.user_email}] if headers.user_email else [],
-        }
-    return {"userName": "anonymous", "displayName": "Anonymous User", "emails": []}
+@router.get("/current-user", response_model=CurrentUserOut, operation_id="currentUser")
+def me(headers: Dependencies.Headers) -> CurrentUserOut:
+    """Get current user info from Databricks Apps headers, or return anonymous.
+
+    Public by design (no `Dependencies.UserIdentity`): the UI calls it before
+    role data is available, and an identity-less caller gets the anonymous
+    profile instead of a 401.
+    """
+    return current_user_profile(headers)
 
 
 @router.get("/user/role", response_model=dict, operation_id="getUserRole")
@@ -117,14 +124,75 @@ def get_user_role(role: Dependencies.Role):
 # --- User Preferences ---
 
 
+def _has_rows_for(session: Session, user_id: str) -> bool:
+    """Cheap existence probe so steady-state GETs stay read-only."""
+    return (
+        session.exec(
+            select(UserPreference.user_id)
+            .where(UserPreference.user_id == user_id)
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
+def _rekey_legacy_preferences(session: Session, alias: str, identity: str) -> None:
+    """Move preference rows keyed on the legacy username onto the identity.
+
+    Two set-based Core statements (portable to SQLite and Postgres): drop the
+    alias rows whose key already exists under the identity (the identity row
+    wins), then move the remaining alias rows. No ORM primary-key mutation, so
+    a parallel request that already moved a row cannot raise StaleDataError.
+
+    Best effort: any failure (e.g. an IntegrityError from a concurrent PUT on
+    the same `(identity, key)`) rolls back and logs, and the caller's GET still
+    returns the identity's rows. Remove after one release.
+    """
+    try:
+        session.execute(
+            delete(UserPreference).where(
+                UserPreference.user_id == alias,
+                UserPreference.key.in_(
+                    select(UserPreference.key).where(UserPreference.user_id == identity)
+                ),
+            )
+        )
+        session.execute(
+            update(UserPreference)
+            .where(UserPreference.user_id == alias)
+            .values(user_id=identity)
+        )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.warning(
+            "user-preference re-key from legacy username to identity failed; "
+            "continuing with identity rows only",
+            exc_info=True,
+        )
+
+
 @router.get(
     "/user/preferences",
     response_model=list[UserPreferenceOut],
     operation_id="getUserPreferences",
 )
-def get_user_preferences(session: Dependencies.Session, headers: Dependencies.Headers):
-    """Get all preferences for the current user."""
-    user_id = headers.user_name or "anonymous"
+def get_user_preferences(
+    session: Dependencies.Session,
+    headers: Dependencies.Headers,
+    user_id: Dependencies.UserIdentity,
+):
+    """Get all preferences for the current user.
+
+    Transitional: preferences used to key on the preferred username. When the
+    caller's username differs from their email identity, rows still stored
+    under the username are moved onto the email first (see
+    `_rekey_legacy_preferences`). This is the only write a GET performs, and
+    it touches only the caller's own rows.
+    """
+    alias = legacy_username_alias(headers)
+    if alias is not None and _has_rows_for(session, alias):
+        _rekey_legacy_preferences(session, alias, user_id)
     prefs = session.exec(
         select(UserPreference).where(UserPreference.user_id == user_id)
     ).all()
@@ -140,10 +208,9 @@ def set_user_preference(
     key: str,
     body: UserPreferenceIn,
     session: Dependencies.Session,
-    headers: Dependencies.Headers,
+    user_id: Dependencies.UserIdentity,
 ):
     """Upsert a user preference."""
-    user_id = headers.user_name or "anonymous"
     pref = session.get(UserPreference, (user_id, key))
     if pref:
         pref.value = body.value
@@ -154,6 +221,31 @@ def set_user_preference(
     session.commit()
     session.refresh(pref)
     return pref
+
+
+@router.delete(
+    "/user/preferences/{key}",
+    response_model=UserPreferenceDeleteOut,
+    operation_id="deleteUserPreference",
+)
+def delete_user_preference(
+    key: str,
+    session: Dependencies.Session,
+    user_id: Dependencies.UserIdentity,
+):
+    """Delete the caller's preference row for ``key``.
+
+    Idempotent: a missing row returns ``{"deleted": false}``, never 404.
+    Touches only the caller's own row and never runs the legacy-username
+    re-key (that stays on GET).
+    """
+    result = session.execute(
+        delete(UserPreference).where(
+            UserPreference.user_id == user_id, UserPreference.key == key
+        )
+    )
+    session.commit()
+    return UserPreferenceDeleteOut(deleted=result.rowcount > 0)
 
 
 # --- Workspace catalogs (used by run-form pickers) ---

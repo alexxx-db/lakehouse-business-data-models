@@ -105,7 +105,7 @@ describe("v0.4.0 #6 — Edit Business: description required", () => {
   it("submit disabled when description is cleared; helper text visible", async () => {
     await renderEditBusiness("An acme business.");
     await waitFor(() => {
-      expect(screen.queryByRole("combobox")).not.toBeNull();
+      expect(screen.queryAllByRole("combobox").length).toBeGreaterThan(0);
     });
 
     // Initial state — submit enabled.
@@ -121,7 +121,7 @@ describe("v0.4.0 #6 — Edit Business: description required", () => {
   it("submit disabled when description is whitespace-only", async () => {
     await renderEditBusiness("An acme business.");
     await waitFor(() => {
-      expect(screen.queryByRole("combobox")).not.toBeNull();
+      expect(screen.queryAllByRole("combobox").length).toBeGreaterThan(0);
     });
 
     fireEvent.change(getDescriptionTextarea(), { target: { value: "   \n  " } });
@@ -131,7 +131,7 @@ describe("v0.4.0 #6 — Edit Business: description required", () => {
   it("submit re-enabled after typing non-empty description", async () => {
     await renderEditBusiness("An acme business.");
     await waitFor(() => {
-      expect(screen.queryByRole("combobox")).not.toBeNull();
+      expect(screen.queryAllByRole("combobox").length).toBeGreaterThan(0);
     });
 
     fireEvent.change(getDescriptionTextarea(), { target: { value: "" } });

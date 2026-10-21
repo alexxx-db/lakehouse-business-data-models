@@ -20,6 +20,7 @@ import {
   type PublishPreviewOut,
 } from "@/lib/api";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -277,9 +278,7 @@ export function PublishVersionDialog({
     [preview, businessId, versionId],
   );
 
-  const versionLabel = scope
-    ? `v${versionNum} ${scope.toUpperCase()}`
-    : `v${versionNum}`;
+  const versionLabel = versionScopeLabel(versionNum, scope);
 
   const reset = () => {
     setResult(null);

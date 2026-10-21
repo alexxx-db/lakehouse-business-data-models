@@ -2,10 +2,14 @@ bundle:
   name: vibe-modeling
 
 # Install-time choices (Lakebase project id, UC catalog name, SQL warehouse
-# id) flow into the App via env vars set on the deployer's shell:
-# install/install.sh exports VIBE_MODELING_LAKEBASE_PROJECT / _DATABASE_NAME /
-# _WAREHOUSE_ID before `databricks bundle deploy`, and the artifacts hook
-# below rewrites those values into src/app/.build/app.yml. The Databricks
+# id, the optional Domain Taxonomy Builder flag and model service, the optional
+# assessment flag and reader SP) flow into the App via env vars set on the
+# deployer's shell: install/install.sh exports
+# VIBE_MODELING_LAKEBASE_PROJECT / _DATABASE_NAME / _DEPLOYMENT_CATALOG /
+# _WAREHOUSE_ID / _TAXONOMY_BUILDER_ENABLED / _TAXONOMY_MODEL_SERVICE /
+# _ASSESSMENT_ENABLED / _ASSESS_READER_SP before
+# `databricks bundle deploy`, and the artifacts hook below rewrites those
+# values into src/app/.build/app.yml. The Databricks
 # Apps `App` resource has no env field at the bundle level, so substitution
 # happens at build time, not deploy time. Source src/app/app.yml is never
 # modified — only the build output is rewritten.
@@ -19,9 +23,19 @@ sync:
   include:
     - src/app/.build
 
+# The install-time App overrides rendered by install/build_and_render.sh
+# (today: the assessment's user_api_scopes). The CLI reads includes when it
+# loads the bundle, before the artifacts build hook below runs, so every deploy
+# path renders first (install/install.sh and the other deploy scripts do); for a plain
+# `databricks bundle deploy`, run `bash install/build_and_render.sh` first, or
+# re-run the deploy when the hook says the scopes changed. A glob, so a fresh
+# clone (nothing rendered, or the assessment off) still loads, with no user scopes.
+include:
+  - install/.generated/*.yml
+
 artifacts:
   default:
-    build: install/build_and_render.sh
+    build: install/build_and_render.sh --bundle-hook
 
 resources:
   apps:
@@ -38,11 +52,21 @@ resources:
       # connection for the OPTIONAL publish-to-GitHub feature; it is injected by
       # the `github-publish` target below and re-applied on every deploy of that
       # target (the connection must pre-exist — see docs/github-integration-setup.md).
-      # NOTE on user_api_scopes: NOT declared here. The iam.* defaults are
-      # auto-granted and are NOT valid to declare (a deploy rejects them), and
-      # there is no documented user_api_scope for Serving Endpoints. Whether the
-      # OBO publish needs an additional scope (and its exact string) is an open
-      # question to resolve empirically at the first publish E2E.
+      # user_api_scopes: not declared here. With --enable-assessment the App
+      # requests `workspace.workspace`, which lets the on-behalf-of user token
+      # write into the signed-in user's own /Workspace/Users/<email>/ (the
+      # assessment hand-off and its "Install skills" button); users consent
+      # once. Without the flag the App declares no user_api_scopes. The scope
+      # comes from install/.generated/app_scopes.yml (see `include` above),
+      # which install/build_and_render.sh renders from the same
+      # VIBE_MODELING_ASSESSMENT_ENABLED value it writes into app.yml: a
+      # per-target override when the assessment is on, no file when it is off,
+      # so an empty list is never sent. The iam.* defaults are
+      # auto-granted and are NOT valid to declare (a deploy rejects them). A
+      # workspace admin can restrict allowed app scopes (Settings > Development >
+      # Apps); the install route reports that case. There is no documented
+      # user_api_scope for Serving Endpoints. If the OBO publish turns out to
+      # need an additional scope, it will be added here.
 
 # No workspace.host hardcoded — the target workspace is driven by the CLI
 # profile passed on the command line. This is what makes the bundle work

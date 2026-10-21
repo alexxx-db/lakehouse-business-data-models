@@ -255,7 +255,7 @@ def delete_version(
 
     deleted_version_number = version.version
 
-    # Wrap the Lakebase cascade + its commit: the test workspace FKs lack ON DELETE
+    # Wrap the Lakebase cascade + its commit: some live FKs lack ON DELETE
     # CASCADE, so a missed child (or a surviving inbound pointer) surfaces
     # as an IntegrityError on commit. Convert it to a clean 409 instead of
     # letting the bare DB error become a sanitized 500. Single transaction —
@@ -1381,13 +1381,17 @@ def reconcile_installation(
     """Make Lakebase agree with the catalog for one model version.
 
     The user lands on this endpoint when the drift dialog detects
-    Lakebase ↔ catalog disagreement. We re-probe the catalog and:
+    Lakebase ↔ catalog disagreement. We re-probe the catalog and apply
+    the same rule ``get_installation_status`` uses for ``in_sync``, so a
+    reconciled version never re-triggers the dialog:
 
-    - If at least one expected schema is present, leave
-      ``deployment_status='deployed'`` (catalog reality matches the
-      "installed" claim, even if some schemas were dropped externally).
-    - Otherwise, flip to ``deployment_status='uninstalled'``: the
-      catalog is empty, so the version is no longer installed.
+    - Every expected schema present → ``deployment_status='deployed'``.
+    - Any expected schema missing on a ``deployed`` row →
+      ``'uninstalled'``. A partial install is not an install; keeping
+      ``deployed`` here left the probe reporting drift on every visit.
+      Bare-name candidates can also match another business's schemas in a
+      shared catalog, so "some found" is not evidence of this install.
+    - Any expected schema missing on a non-deployed row → unchanged.
 
     We do NOT touch the agent's ``_metamodel`` rows here — that's an
     upstream cleanup the user can drive via a fresh ``uninstall`` run
@@ -1430,23 +1434,17 @@ def reconcile_installation(
     missing = sorted(s for s in expected if s not in set(found))
     previous = mv.deployment_status
 
-    if found:
-        # At least one expected schema exists — keep the "deployed"
-        # marker. (Partial drift is still drift, but the user can clean
-        # that up via a fresh uninstall + re-install.)
+    notes.append(
+        f"{len(found)}/{len(expected)} expected schemas present in catalog"
+    )
+    if not missing:
         if mv.deployment_status != "deployed":
             mv.deployment_status = "deployed"
             session.add(mv)
-        notes.append(
-            f"{len(found)}/{len(expected)} expected schemas present in catalog"
-        )
-    else:
-        if mv.deployment_status != "uninstalled":
-            mv.deployment_status = "uninstalled"
-            session.add(mv)
-        notes.append(
-            "no expected schemas found; marked uninstalled"
-        )
+    elif mv.deployment_status == "deployed":
+        mv.deployment_status = "uninstalled"
+        session.add(mv)
+        notes.append("not all expected schemas found; marked uninstalled")
 
     session.commit()
     session.refresh(mv)

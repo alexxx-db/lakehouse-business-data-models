@@ -16,8 +16,19 @@ import { selector } from "@/lib/selector";
 import { useBreadcrumbs } from "@/components/explorer/breadcrumb-context";
 import { SectorSelect } from "@/components/business/sector-select";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { TagInput } from "@/components/ui/tag-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ORG_DIVISIONS_PRESETS, isOrgDivisionsPreset } from "@/lib/org-divisions";
+import { joinCommaList, splitCommaList } from "@/lib/comma-list";
 
 const DESCRIPTION_MAX_LENGTH = 2000;
+const ORG_DIVISIONS_NONE = "__none__";
 
 export const Route = createFileRoute(
   "/_sidebar/businesses/$businessId/edit"
@@ -53,6 +64,14 @@ function EditBusinessForm({ businessId }: { businessId: string }) {
   const [description, setDescription] = useState(business.description || "");
   const [businessVibes, setBusinessVibes] = useState(business.business_vibes || "");
   const [sectorId, setSectorId] = useState<string | null>(business.sector_id ?? null);
+  const storedDomains = business.business_domains ?? "";
+  const storedOrgDivisions = business.org_divisions ?? "";
+  const [domainTags, setDomainTags] = useState<string[]>(() => splitCommaList(storedDomains));
+  const [orgDivisions, setOrgDivisions] = useState(storedOrgDivisions);
+  // A stored value that is not (or no longer) a preset stays selectable, so
+  // the trigger is never blank and saving without touching it keeps it.
+  const legacyOrgDivisions =
+    storedOrgDivisions && !isOrgDivisionsPreset(storedOrgDivisions) ? storedOrgDivisions : null;
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -60,7 +79,18 @@ function EditBusinessForm({ businessId }: { businessId: string }) {
     mutationFn: () =>
       updateBusiness(
         { business_id: businessId },
-        { name, description, business_vibes: businessVibes, sector_id: sectorId },
+        {
+          name,
+          description,
+          business_vibes: businessVibes,
+          sector_id: sectorId,
+          // Patch-style: send the proposal fields only when edited, so a
+          // stored value that is no longer a preset survives an unrelated edit.
+          ...(joinCommaList(domainTags) !== joinCommaList(splitCommaList(storedDomains))
+            ? { business_domains: joinCommaList(domainTags) }
+            : {}),
+          ...(orgDivisions !== storedOrgDivisions ? { org_divisions: orgDivisions } : {}),
+        },
       ),
     onSuccess: async () => {
       await Promise.all([
@@ -158,6 +188,39 @@ function EditBusinessForm({ businessId }: { businessId: string }) {
             Markdown, any length — the primary instructions for the initial model.
             Cover processes, key entities, differentiators, and critical components.
           </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Business domains</label>
+            <TagInput
+              value={domainTags}
+              onChange={setDomainTags}
+              placeholder="Type a domain, press Enter"
+            />
+            <p className="text-xs text-muted-foreground">Pre-fills the first New Base Model run.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" id="org-divisions-label">Organization divisions</label>
+            <Select
+              value={orgDivisions || ORG_DIVISIONS_NONE}
+              onValueChange={(v) => setOrgDivisions(v === ORG_DIVISIONS_NONE ? "" : v)}
+            >
+              <SelectTrigger aria-labelledby="org-divisions-label" data-testid="business-org-divisions">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ORG_DIVISIONS_NONE}>Not set</SelectItem>
+                {legacyOrgDivisions && (
+                  <SelectItem value={legacyOrgDivisions}>Current: {legacyOrgDivisions}</SelectItem>
+                )}
+                {ORG_DIVISIONS_PRESETS.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Pre-fills the first New Base Model run.</p>
+          </div>
         </div>
 
         {mutation.isError && (

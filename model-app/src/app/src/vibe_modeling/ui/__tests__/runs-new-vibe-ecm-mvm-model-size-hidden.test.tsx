@@ -226,6 +226,7 @@ describe("runs.new — Model Size combobox is hidden for vibe-new-ecm-mvm", () =
   });
 
   it("hides the Model Size widget for new-base-model (existing contract)", async () => {
+    versionsHook = () => ({ data: [] });
     // Belt-and-braces — the same logic ("user has no choice") covers
     // new-base-model. The shipping form already gates the widget on
     // `{isVibe && ...}` so this is a regression guard, not a new lock.

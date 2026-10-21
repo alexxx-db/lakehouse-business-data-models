@@ -41,19 +41,14 @@ import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { LaunchRunDialog } from "@/components/runs/launch-run-dialog";
 import { DeploymentCatalogPicker } from "@/components/runs/deployment-catalog-picker";
 import { VolumePicker } from "@/components/import/volume-picker";
+import { ORG_DIVISIONS_ALL, ORG_DIVISIONS_PRESETS, isOrgDivisionsPreset } from "@/lib/org-divisions";
+import { joinCommaList, splitCommaList } from "@/lib/comma-list";
 
 const NAMING_CONVENTIONS = ["snake_case", "camelCase", "PascalCase"] as const;
 const TABLE_ID_TYPES = ["BIGINT", "STRING", "INT"] as const;
 const BOOLEAN_FORMATS = ["Boolean (True/False)", "Integer (1/0)", "String (Yes/No)"] as const;
 const CATALOGING_STYLES = ["One Catalog", "Catalog per Division", "Catalog per Domain"] as const;
 const YES_NO = ["Yes", "No"] as const;
-
-/** Monolith dropdown values for org_divisions widget */
-const ORG_DIVISIONS_PRESETS = [
-  "Operations",
-  "Operations and Business",
-  "Operations, Business and Corporate",
-] as const;
 
 const CONVENTION_DEFAULTS = {
   naming_convention: "snake_case",
@@ -117,7 +112,7 @@ export const Route = createFileRoute("/_sidebar/businesses/$businessId/runs/new"
           <h1 className="text-2xl font-semibold tracking-tight">New Run</h1>
         </div>
         <Suspense fallback={<Skeleton className="h-96" />}>
-          <NewRunForm />
+          <NewRunForm key={businessId} />
         </Suspense>
       </div>
     );
@@ -126,7 +121,7 @@ export const Route = createFileRoute("/_sidebar/businesses/$businessId/runs/new"
 
 /** Default org_divisions per model scope */
 function scopeDefaultDivisions(size: string): string {
-  return size === "large model" ? "Operations, Business and Corporate" : "Operations";
+  return size === "large model" ? ORG_DIVISIONS_ALL : "Operations";
 }
 
 function NewRunForm() {
@@ -159,11 +154,13 @@ function NewRunForm() {
   // value (``"vibe modeling of version"``) or its Intent alias
   // (``"vibe-iterate"``). Normalise to OperationType so the Select
   // pre-populates correctly.
-  const defaultRunType = operationType
-    ? intentToRunType(operationType)
-    : hasVersions
-      ? "vibe modeling of version"
-      : "new base model";
+  const requestedRunType = operationType ? intentToRunType(operationType) : "";
+  const defaultRunType =
+    requestedRunType && !(hasVersions && requestedRunType === "new base model")
+      ? requestedRunType
+      : hasVersions
+        ? "vibe modeling of version"
+        : "new base model";
 
   const [runType, setRunType] = useState(defaultRunType);
   const [catalog, setCatalog] = useState(latestVersion?.uc_catalog || "");
@@ -251,19 +248,32 @@ function NewRunForm() {
   const [generateSamples, setGenerateSamples] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // The business's proposed domains + coverage (saved by the Domain Taxonomy
+  // Builder, or on the edit page) pre-fill the FIRST New Base Model run only:
+  // with versions, New Base Model is disabled, so nothing is seeded. They live
+  // inside the Advanced Options disclosure; open it when either is seeded, so
+  // the user sees what they're about to launch with.
+  const seedFromBusiness = !hasVersions && defaultRunType === "new base model";
+  const domains = seedFromBusiness ? (business?.business_domains ?? "") : "";
+  const orgDivisions =
+    seedFromBusiness && isOrgDivisionsPreset(business?.org_divisions ?? "") ? business!.org_divisions : "";
+  const [advancedOpen, setAdvancedOpen] = useState(() => Boolean(domains.trim() || orgDivisions));
   // Dialog gate. Submit only actually fires createRun once the user confirms
   // via the LaunchRunDialog — preventing accidental submissions from stray
   // Enter presses (e.g. in the TagInput, see PR #115).
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Convention overrides — initialized to defaults
-  const [conventions, setConventions] = useState({ ...CONVENTION_DEFAULTS });
+  const [conventions, setConventions] = useState(() => ({
+    ...CONVENTION_DEFAULTS,
+    ...(orgDivisions ? { org_divisions: orgDivisions } : {}),
+  }));
   // Multi-value fields stored as arrays, serialized to comma-separated on submit
-  const [domainTags, setDomainTags] = useState<string[]>([]);
+  const [domainTags, setDomainTags] = useState<string[]>(() => splitCommaList(domains));
   const [classificationTags, setClassificationTags] = useState<string[]>([]);
   // Track whether user manually changed org_divisions
-  const [orgDivisionsManual, setOrgDivisionsManual] = useState(false);
+  // Pre-filled org_divisions counts as a manual choice so model-size changes don't overwrite it.
+  const [orgDivisionsManual, setOrgDivisionsManual] = useState(Boolean(orgDivisions));
 
   const updateConvention = useCallback((key: keyof typeof CONVENTION_DEFAULTS, value: string) => {
     setConventions((prev) => ({ ...prev, [key]: value }));
@@ -524,10 +534,10 @@ function NewRunForm() {
           ),
         ),
         ...(domainTags.length > 0
-          ? { business_domains: domainTags.join(", ") }
+          ? { business_domains: joinCommaList(domainTags) }
           : {}),
         ...(classificationTags.length > 0
-          ? { classification_levels: classificationTags.join(", ") }
+          ? { classification_levels: joinCommaList(classificationTags) }
           : {}),
         },
       );
@@ -565,11 +575,14 @@ function NewRunForm() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Operation Type</label>
               <Select value={runType} onValueChange={handleRunTypeChange}>
-                <SelectTrigger aria-label="Operation Type">
+                <SelectTrigger
+                  aria-label="Operation Type"
+                  aria-describedby={hasVersions ? "new-base-model-disabled-hint" : undefined}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="new base model">New Base Model</SelectItem>
+                  <SelectItem value="new base model" disabled={hasVersions}>New Base Model</SelectItem>
                   {/* The remaining operations all require an existing model
                       version. Hide them entirely when the business has none
                       instead of letting the user pick a dead-end option. */}
@@ -584,6 +597,11 @@ function NewRunForm() {
                   )}
                 </SelectContent>
               </Select>
+              {hasVersions && (
+                <p id="new-base-model-disabled-hint" className="text-[10px] text-muted-foreground">
+                  New Base Model needs a business with no model versions. Create a new business to start a fresh base model.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

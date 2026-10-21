@@ -5,9 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Degradation flags derived from the evolution-metrics endpoint, per the
- * design-of-record (docs/design/statistics-tab/README.md → "Graceful
- * degradation"). These drive the data-driven layout: when a value can't be
+ * Degradation flags derived from the evolution-metrics endpoint. These drive the data-driven layout: when a value can't be
  * computed we render a quiet `NoData` token and hide the dependent graphic.
  *
  *   hasConfidence  — false for ECM (no confidence score).

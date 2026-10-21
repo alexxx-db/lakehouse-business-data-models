@@ -23,12 +23,16 @@ from uuid import uuid4
 import pytest
 from sqlmodel import Session
 
+import vibe_modeling.backend.router
 from vibe_modeling.backend.db_models import (
     AgentConfig,
     Business,
     Industry,
+    ModelVersion,
     Run,
 )
+
+from .conftest import stub_no_metamodel
 
 
 def _seed_business(engine, *, name="symmetry-biz") -> str:
@@ -184,23 +188,17 @@ def test_create_run_warehouse_missing_returns_structured_422(client, engine, biz
     assert "warehouse" in {m["key"] for m in resp.json()["detail"]["missing"]}
 
 
-def test_missing_metamodel_schema_rejects_on_both_endpoints(
+def test_missing_metamodel_schema_new_base_model_warns_then_autocreates(
     client, engine, biz_id, mock_ws
 ):
-    """Specific case: when the target catalog has no ``_metamodel`` schema,
-    POST /runs must 400 with a catalog-scoped error AND POST /runs/validate
-    must surface the same blocker (field_path='catalog'). Without this, the
-    user would clear validate, hit Submit, and the agent's dispatch would
-    crash with a less-helpful message."""
-    from types import SimpleNamespace
+    """new-base-model with no ``_metamodel`` in the target catalog is NOT a
+    blocker: validate warns (creating nothing); create sets it up itself and,
+    when the app SP lacks CREATE_SCHEMA, rejects with a catalog-scoped 400.
+    Other intents keep the symmetric blocker (see test_metamodel_autosetup)."""
+    from databricks.sdk.errors import PermissionDenied
 
     _seed_agent_config(engine)
-    # Stub the schemas list to a non-empty result that omits `_metamodel`.
-    # An empty result is treated as "can't verify" and the gate skips.
-    mock_ws.schemas.list.side_effect = lambda *a, **kw: iter(
-        [SimpleNamespace(name=n) for n in ("default", "other_schema")]
-    )
-
+    stub_no_metamodel(mock_ws)
     body = {
         "intent": "new-base-model",
         "catalog": "tgt_no_metamodel",
@@ -208,25 +206,62 @@ def test_missing_metamodel_schema_rejects_on_both_endpoints(
     }
 
     v_resp = client.post(f"/api/businesses/{biz_id}/runs/validate", json=body)
-    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=body)
-
-    assert c_resp.status_code == 400, (
-        f"create should reject with 400 due to missing _metamodel schema; "
-        f"got {c_resp.status_code}: {c_resp.text}"
-    )
-    assert "_metamodel" in c_resp.text, (
-        f"create error message should mention _metamodel: {c_resp.text}"
-    )
-
     assert v_resp.status_code == 200, v_resp.text
-    blockers = v_resp.json().get("blockers", [])
+    assert not any(
+        "_metamodel" in (b.get("message") or "") for b in v_resp.json()["blockers"]
+    ), json.dumps(v_resp.json(), indent=2)
+    assert any(
+        w.get("field_path") == "catalog" and "_metamodel" in (w.get("message") or "")
+        for w in v_resp.json()["warnings"]
+    )
+    mock_ws.schemas.create.assert_not_called()
+
+    mock_ws.schemas.create.side_effect = PermissionDenied("denied")
+    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=body)
+    assert c_resp.status_code == 400, c_resp.text
+    assert "_metamodel" in c_resp.text
+
+
+def test_missing_metamodel_schema_install_rejects_on_both_endpoints(
+    client, engine, biz_id, mock_ws
+):
+    """A gated intent (install) with no ``_metamodel`` in the target catalog
+    is refused on BOTH endpoints: validate surfaces a catalog blocker, create
+    400s mentioning ``_metamodel``, and nothing is created."""
+    _seed_agent_config(engine)
+    with Session(engine) as s:
+        mv = ModelVersion(
+            business_id=biz_id, version=1, status="completed",
+            deployment_status="draft", scope="ecm", uc_catalog="tgt_no_metamodel",
+        )
+        s.add(mv)
+        s.commit()
+        s.refresh(mv)
+        vid = mv.id
+    stub_no_metamodel(mock_ws)
+    body = {
+        "intent": "install",
+        "version_id": vid,
+        "scope": "ecm",
+        "version_int": 1,
+        "catalog": "tgt_no_metamodel",
+        "deployment_catalog": "tgt_no_metamodel",
+        "schema_prefix": "ecm_",
+        "cataloging_style": "One Catalog",
+    }
+
+    v_resp = client.post(f"/api/businesses/{biz_id}/runs/validate", json=body)
+    assert v_resp.status_code == 200, v_resp.text
     assert any(
         b.get("field_path") == "catalog" and "_metamodel" in (b.get("message") or "")
-        for b in blockers
-    ), (
-        f"validate did not surface the missing-_metamodel blocker: "
-        f"{json.dumps(blockers, indent=2)}"
-    )
+        for b in v_resp.json()["blockers"]
+    ), json.dumps(v_resp.json(), indent=2)
+
+    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=body)
+    assert c_resp.status_code == 400, c_resp.text
+    assert "_metamodel" in c_resp.text
+    mock_ws.schemas.create.assert_not_called()
+    mock_ws.volumes.create.assert_not_called()
 
 
 def test_active_run_lock_is_a_validate_blocker(client, engine, biz_id):
@@ -265,3 +300,99 @@ def test_active_run_lock_is_a_validate_blocker(client, engine, biz_id):
         f"validate did not surface the active-run lock as a blocker: "
         f"{json.dumps(blockers, indent=2)}"
     )
+
+
+_NEW_BASE_MODEL_NEEDS_EMPTY_BUSINESS = (
+    "New Base Model needs a business with no model versions. "
+    "Create a new business to start a fresh base model."
+)
+_NEW_BASE_MODEL_BODY = {
+    "intent": "new-base-model",
+    "catalog": "tgt_no_metamodel",
+    "cataloging_style": "One Catalog",
+}
+
+
+@pytest.mark.parametrize("status", ["completed", "superseded"])
+def test_new_base_model_rejected_when_business_has_versions(
+    client, engine, biz_id, mock_ws, monkeypatch, status
+):
+    """A business with any ModelVersion row (any scope, any status including
+    superseded) cannot start a new base model: validate surfaces a blocker on
+    ``intent``, create 400s with the same message, and no ``_metamodel`` setup
+    runs."""
+    from unittest.mock import MagicMock
+
+    _seed_agent_config(engine)
+    with Session(engine) as s:
+        s.add(ModelVersion(
+            business_id=biz_id, version=1, status=status,
+            deployment_status="draft", scope="ecm", uc_catalog="tgt_no_metamodel",
+        ))
+        s.commit()
+    stub_no_metamodel(mock_ws)
+    spy = MagicMock()
+    monkeypatch.setattr(vibe_modeling.backend.router, "ensure_metamodel_schema_and_volume", spy)
+
+    v_resp = client.post(f"/api/businesses/{biz_id}/runs/validate", json=_NEW_BASE_MODEL_BODY)
+    assert v_resp.status_code == 200, v_resp.text
+    assert any(
+        b.get("field_path") == "intent" and b.get("message") == _NEW_BASE_MODEL_NEEDS_EMPTY_BUSINESS
+        for b in v_resp.json()["blockers"]
+    ), json.dumps(v_resp.json(), indent=2)
+
+    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=_NEW_BASE_MODEL_BODY)
+    assert c_resp.status_code == 400, c_resp.text
+    assert c_resp.json()["detail"] == _NEW_BASE_MODEL_NEEDS_EMPTY_BUSINESS
+    assert spy.call_count == 0
+
+
+def test_new_base_model_versions_gate_precedes_description_gate(
+    client, engine, biz_id, mock_ws
+):
+    """A business with versions AND an empty description reports the versions
+    problem first: create's 400 detail is the first blocker, and the
+    description gate must not mask it (an empty description is moot when the
+    business cannot start a new base model at all)."""
+    _seed_agent_config(engine)
+    with Session(engine) as s:
+        s.add(ModelVersion(
+            business_id=biz_id, version=1, status="completed",
+            deployment_status="draft", scope="ecm", uc_catalog="tgt_no_metamodel",
+        ))
+        business = s.get(Business, biz_id)
+        business.description = ""
+        s.add(business)
+        s.commit()
+    stub_no_metamodel(mock_ws)
+
+    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=_NEW_BASE_MODEL_BODY)
+    assert c_resp.status_code == 400, c_resp.text
+    assert c_resp.json()["detail"] == _NEW_BASE_MODEL_NEEDS_EMPTY_BUSINESS
+
+
+def test_new_base_model_allowed_after_failed_run_without_versions(
+    client, engine, biz_id, mock_ws
+):
+    """Only ModelVersion rows trigger the gate. An earlier failed
+    new-base-model Run that produced no version leaves the business empty, so
+    a new base model is still accepted."""
+    _seed_agent_config(engine)
+    with Session(engine) as s:
+        s.add(Run(
+            id=str(uuid4()),
+            business_id=biz_id,
+            intent="new-base-model",
+            status="failed",
+        ))
+        s.commit()
+    stub_no_metamodel(mock_ws)
+
+    v_resp = client.post(f"/api/businesses/{biz_id}/runs/validate", json=_NEW_BASE_MODEL_BODY)
+    assert v_resp.status_code == 200, v_resp.text
+    assert not any(b.get("field_path") == "intent" for b in v_resp.json()["blockers"]), (
+        json.dumps(v_resp.json(), indent=2)
+    )
+
+    c_resp = client.post(f"/api/businesses/{biz_id}/runs", json=_NEW_BASE_MODEL_BODY)
+    assert c_resp.status_code == 200, c_resp.text

@@ -24,9 +24,14 @@ import { Route as SidebarHelpTopicRouteImport } from './../routes/_sidebar/help.
 import { Route as SidebarIndustriesIndexRouteImport } from './../routes/_sidebar/industries.index'
 import { Route as SidebarIndustriesNewRouteImport } from './../routes/_sidebar/industries.new'
 import { Route as SidebarBusinessesBusinessIdIndexRouteImport } from './../routes/_sidebar/businesses.$businessId.index'
+import { Route as SidebarBusinessesBusinessIdAssessmentsRouteImport } from './../routes/_sidebar/businesses.$businessId.assessments'
 import { Route as SidebarBusinessesBusinessIdEditRouteImport } from './../routes/_sidebar/businesses.$businessId.edit'
 import { Route as SidebarBusinessesBusinessIdExplorerRouteImport } from './../routes/_sidebar/businesses.$businessId.explorer'
 import { Route as SidebarBusinessesBusinessIdRunsRouteImport } from './../routes/_sidebar/businesses.$businessId.runs'
+import { Route as SidebarBusinessesNewFromDomainsRouteImport } from './../routes/_sidebar/businesses.new_.from-domains'
+import { Route as SidebarBusinessesBusinessIdAssessmentsIndexRouteImport } from './../routes/_sidebar/businesses.$businessId.assessments.index'
+import { Route as SidebarBusinessesBusinessIdAssessmentsBatchIdRouteImport } from './../routes/_sidebar/businesses.$businessId.assessments.$batchId'
+import { Route as SidebarBusinessesBusinessIdAssessmentsNewRouteImport } from './../routes/_sidebar/businesses.$businessId.assessments.new'
 import { Route as SidebarBusinessesBusinessIdModelVersionRouteImport } from './../routes/_sidebar/businesses.$businessId.model.$version'
 import { Route as SidebarBusinessesBusinessIdRunsIndexRouteImport } from './../routes/_sidebar/businesses.$businessId.runs.index'
 import { Route as SidebarBusinessesBusinessIdRunsRunIdRouteImport } from './../routes/_sidebar/businesses.$businessId.runs.$runId'
@@ -116,6 +121,12 @@ const SidebarBusinessesBusinessIdIndexRoute =
     path: '/',
     getParentRoute: () => SidebarBusinessesBusinessIdRoute,
   } as any)
+const SidebarBusinessesBusinessIdAssessmentsRoute =
+  SidebarBusinessesBusinessIdAssessmentsRouteImport.update({
+    id: '/assessments',
+    path: '/assessments',
+    getParentRoute: () => SidebarBusinessesBusinessIdRoute,
+  } as any)
 const SidebarBusinessesBusinessIdEditRoute =
   SidebarBusinessesBusinessIdEditRouteImport.update({
     id: '/edit',
@@ -133,6 +144,30 @@ const SidebarBusinessesBusinessIdRunsRoute =
     id: '/runs',
     path: '/runs',
     getParentRoute: () => SidebarBusinessesBusinessIdRoute,
+  } as any)
+const SidebarBusinessesNewFromDomainsRoute =
+  SidebarBusinessesNewFromDomainsRouteImport.update({
+    id: '/new_/from-domains',
+    path: '/new/from-domains',
+    getParentRoute: () => SidebarBusinessesRoute,
+  } as any)
+const SidebarBusinessesBusinessIdAssessmentsIndexRoute =
+  SidebarBusinessesBusinessIdAssessmentsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => SidebarBusinessesBusinessIdAssessmentsRoute,
+  } as any)
+const SidebarBusinessesBusinessIdAssessmentsBatchIdRoute =
+  SidebarBusinessesBusinessIdAssessmentsBatchIdRouteImport.update({
+    id: '/$batchId',
+    path: '/$batchId',
+    getParentRoute: () => SidebarBusinessesBusinessIdAssessmentsRoute,
+  } as any)
+const SidebarBusinessesBusinessIdAssessmentsNewRoute =
+  SidebarBusinessesBusinessIdAssessmentsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => SidebarBusinessesBusinessIdAssessmentsRoute,
   } as any)
 const SidebarBusinessesBusinessIdModelVersionRoute =
   SidebarBusinessesBusinessIdModelVersionRouteImport.update({
@@ -229,13 +264,18 @@ export interface FileRoutesByFullPath {
   '/businesses/': typeof SidebarBusinessesIndexRoute
   '/help/': typeof SidebarHelpIndexRoute
   '/industries/': typeof SidebarIndustriesIndexRoute
+  '/businesses/$businessId/assessments': typeof SidebarBusinessesBusinessIdAssessmentsRouteWithChildren
   '/businesses/$businessId/edit': typeof SidebarBusinessesBusinessIdEditRoute
   '/businesses/$businessId/explorer': typeof SidebarBusinessesBusinessIdExplorerRoute
   '/businesses/$businessId/runs': typeof SidebarBusinessesBusinessIdRunsRouteWithChildren
+  '/businesses/new/from-domains': typeof SidebarBusinessesNewFromDomainsRoute
   '/businesses/$businessId/': typeof SidebarBusinessesBusinessIdIndexRoute
+  '/businesses/$businessId/assessments/$batchId': typeof SidebarBusinessesBusinessIdAssessmentsBatchIdRoute
+  '/businesses/$businessId/assessments/new': typeof SidebarBusinessesBusinessIdAssessmentsNewRoute
   '/businesses/$businessId/model/$version': typeof SidebarBusinessesBusinessIdModelVersionRouteWithChildren
   '/businesses/$businessId/runs/$runId': typeof SidebarBusinessesBusinessIdRunsRunIdRoute
   '/businesses/$businessId/runs/new': typeof SidebarBusinessesBusinessIdRunsNewRoute
+  '/businesses/$businessId/assessments/': typeof SidebarBusinessesBusinessIdAssessmentsIndexRoute
   '/businesses/$businessId/runs/': typeof SidebarBusinessesBusinessIdRunsIndexRoute
   '/businesses/$businessId/model/$version/$scope': typeof SidebarBusinessesBusinessIdModelVersionScopeRouteWithChildren
   '/businesses/$businessId/model/$version/$scope/$domainName': typeof SidebarBusinessesBusinessIdModelVersionScopeDomainNameRouteWithChildren
@@ -258,10 +298,14 @@ export interface FileRoutesByTo {
   '/industries': typeof SidebarIndustriesIndexRoute
   '/businesses/$businessId/edit': typeof SidebarBusinessesBusinessIdEditRoute
   '/businesses/$businessId/explorer': typeof SidebarBusinessesBusinessIdExplorerRoute
+  '/businesses/new/from-domains': typeof SidebarBusinessesNewFromDomainsRoute
   '/businesses/$businessId': typeof SidebarBusinessesBusinessIdIndexRoute
+  '/businesses/$businessId/assessments/$batchId': typeof SidebarBusinessesBusinessIdAssessmentsBatchIdRoute
+  '/businesses/$businessId/assessments/new': typeof SidebarBusinessesBusinessIdAssessmentsNewRoute
   '/businesses/$businessId/model/$version': typeof SidebarBusinessesBusinessIdModelVersionRouteWithChildren
   '/businesses/$businessId/runs/$runId': typeof SidebarBusinessesBusinessIdRunsRunIdRoute
   '/businesses/$businessId/runs/new': typeof SidebarBusinessesBusinessIdRunsNewRoute
+  '/businesses/$businessId/assessments': typeof SidebarBusinessesBusinessIdAssessmentsIndexRoute
   '/businesses/$businessId/runs': typeof SidebarBusinessesBusinessIdRunsIndexRoute
   '/businesses/$businessId/model/$version/$scope': typeof SidebarBusinessesBusinessIdModelVersionScopeIndexRoute
   '/businesses/$businessId/model/$version/$scope/$domainName/$productName': typeof SidebarBusinessesBusinessIdModelVersionScopeDomainNameProductNameRoute
@@ -285,13 +329,18 @@ export interface FileRoutesById {
   '/_sidebar/businesses/': typeof SidebarBusinessesIndexRoute
   '/_sidebar/help/': typeof SidebarHelpIndexRoute
   '/_sidebar/industries/': typeof SidebarIndustriesIndexRoute
+  '/_sidebar/businesses/$businessId/assessments': typeof SidebarBusinessesBusinessIdAssessmentsRouteWithChildren
   '/_sidebar/businesses/$businessId/edit': typeof SidebarBusinessesBusinessIdEditRoute
   '/_sidebar/businesses/$businessId/explorer': typeof SidebarBusinessesBusinessIdExplorerRoute
   '/_sidebar/businesses/$businessId/runs': typeof SidebarBusinessesBusinessIdRunsRouteWithChildren
+  '/_sidebar/businesses/new_/from-domains': typeof SidebarBusinessesNewFromDomainsRoute
   '/_sidebar/businesses/$businessId/': typeof SidebarBusinessesBusinessIdIndexRoute
+  '/_sidebar/businesses/$businessId/assessments/$batchId': typeof SidebarBusinessesBusinessIdAssessmentsBatchIdRoute
+  '/_sidebar/businesses/$businessId/assessments/new': typeof SidebarBusinessesBusinessIdAssessmentsNewRoute
   '/_sidebar/businesses/$businessId/model/$version': typeof SidebarBusinessesBusinessIdModelVersionRouteWithChildren
   '/_sidebar/businesses/$businessId/runs/$runId': typeof SidebarBusinessesBusinessIdRunsRunIdRoute
   '/_sidebar/businesses/$businessId/runs/new': typeof SidebarBusinessesBusinessIdRunsNewRoute
+  '/_sidebar/businesses/$businessId/assessments/': typeof SidebarBusinessesBusinessIdAssessmentsIndexRoute
   '/_sidebar/businesses/$businessId/runs/': typeof SidebarBusinessesBusinessIdRunsIndexRoute
   '/_sidebar/businesses/$businessId/model/$version/$scope': typeof SidebarBusinessesBusinessIdModelVersionScopeRouteWithChildren
   '/_sidebar/businesses/$businessId/model/$version/$scope/$domainName': typeof SidebarBusinessesBusinessIdModelVersionScopeDomainNameRouteWithChildren
@@ -318,13 +367,18 @@ export interface FileRouteTypes {
     | '/businesses/'
     | '/help/'
     | '/industries/'
+    | '/businesses/$businessId/assessments'
     | '/businesses/$businessId/edit'
     | '/businesses/$businessId/explorer'
     | '/businesses/$businessId/runs'
+    | '/businesses/new/from-domains'
     | '/businesses/$businessId/'
+    | '/businesses/$businessId/assessments/$batchId'
+    | '/businesses/$businessId/assessments/new'
     | '/businesses/$businessId/model/$version'
     | '/businesses/$businessId/runs/$runId'
     | '/businesses/$businessId/runs/new'
+    | '/businesses/$businessId/assessments/'
     | '/businesses/$businessId/runs/'
     | '/businesses/$businessId/model/$version/$scope'
     | '/businesses/$businessId/model/$version/$scope/$domainName'
@@ -347,10 +401,14 @@ export interface FileRouteTypes {
     | '/industries'
     | '/businesses/$businessId/edit'
     | '/businesses/$businessId/explorer'
+    | '/businesses/new/from-domains'
     | '/businesses/$businessId'
+    | '/businesses/$businessId/assessments/$batchId'
+    | '/businesses/$businessId/assessments/new'
     | '/businesses/$businessId/model/$version'
     | '/businesses/$businessId/runs/$runId'
     | '/businesses/$businessId/runs/new'
+    | '/businesses/$businessId/assessments'
     | '/businesses/$businessId/runs'
     | '/businesses/$businessId/model/$version/$scope'
     | '/businesses/$businessId/model/$version/$scope/$domainName/$productName'
@@ -373,13 +431,18 @@ export interface FileRouteTypes {
     | '/_sidebar/businesses/'
     | '/_sidebar/help/'
     | '/_sidebar/industries/'
+    | '/_sidebar/businesses/$businessId/assessments'
     | '/_sidebar/businesses/$businessId/edit'
     | '/_sidebar/businesses/$businessId/explorer'
     | '/_sidebar/businesses/$businessId/runs'
+    | '/_sidebar/businesses/new_/from-domains'
     | '/_sidebar/businesses/$businessId/'
+    | '/_sidebar/businesses/$businessId/assessments/$batchId'
+    | '/_sidebar/businesses/$businessId/assessments/new'
     | '/_sidebar/businesses/$businessId/model/$version'
     | '/_sidebar/businesses/$businessId/runs/$runId'
     | '/_sidebar/businesses/$businessId/runs/new'
+    | '/_sidebar/businesses/$businessId/assessments/'
     | '/_sidebar/businesses/$businessId/runs/'
     | '/_sidebar/businesses/$businessId/model/$version/$scope'
     | '/_sidebar/businesses/$businessId/model/$version/$scope/$domainName'
@@ -502,6 +565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SidebarBusinessesBusinessIdIndexRouteImport
       parentRoute: typeof SidebarBusinessesBusinessIdRoute
     }
+    '/_sidebar/businesses/$businessId/assessments': {
+      id: '/_sidebar/businesses/$businessId/assessments'
+      path: '/assessments'
+      fullPath: '/businesses/$businessId/assessments'
+      preLoaderRoute: typeof SidebarBusinessesBusinessIdAssessmentsRouteImport
+      parentRoute: typeof SidebarBusinessesBusinessIdRoute
+    }
     '/_sidebar/businesses/$businessId/edit': {
       id: '/_sidebar/businesses/$businessId/edit'
       path: '/edit'
@@ -522,6 +592,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/businesses/$businessId/runs'
       preLoaderRoute: typeof SidebarBusinessesBusinessIdRunsRouteImport
       parentRoute: typeof SidebarBusinessesBusinessIdRoute
+    }
+    '/_sidebar/businesses/new_/from-domains': {
+      id: '/_sidebar/businesses/new_/from-domains'
+      path: '/new/from-domains'
+      fullPath: '/businesses/new/from-domains'
+      preLoaderRoute: typeof SidebarBusinessesNewFromDomainsRouteImport
+      parentRoute: typeof SidebarBusinessesRoute
+    }
+    '/_sidebar/businesses/$businessId/assessments/': {
+      id: '/_sidebar/businesses/$businessId/assessments/'
+      path: '/'
+      fullPath: '/businesses/$businessId/assessments/'
+      preLoaderRoute: typeof SidebarBusinessesBusinessIdAssessmentsIndexRouteImport
+      parentRoute: typeof SidebarBusinessesBusinessIdAssessmentsRoute
+    }
+    '/_sidebar/businesses/$businessId/assessments/$batchId': {
+      id: '/_sidebar/businesses/$businessId/assessments/$batchId'
+      path: '/$batchId'
+      fullPath: '/businesses/$businessId/assessments/$batchId'
+      preLoaderRoute: typeof SidebarBusinessesBusinessIdAssessmentsBatchIdRouteImport
+      parentRoute: typeof SidebarBusinessesBusinessIdAssessmentsRoute
+    }
+    '/_sidebar/businesses/$businessId/assessments/new': {
+      id: '/_sidebar/businesses/$businessId/assessments/new'
+      path: '/new'
+      fullPath: '/businesses/$businessId/assessments/new'
+      preLoaderRoute: typeof SidebarBusinessesBusinessIdAssessmentsNewRouteImport
+      parentRoute: typeof SidebarBusinessesBusinessIdAssessmentsRoute
     }
     '/_sidebar/businesses/$businessId/model/$version': {
       id: '/_sidebar/businesses/$businessId/model/$version'
@@ -609,6 +707,27 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface SidebarBusinessesBusinessIdAssessmentsRouteChildren {
+  SidebarBusinessesBusinessIdAssessmentsBatchIdRoute: typeof SidebarBusinessesBusinessIdAssessmentsBatchIdRoute
+  SidebarBusinessesBusinessIdAssessmentsNewRoute: typeof SidebarBusinessesBusinessIdAssessmentsNewRoute
+  SidebarBusinessesBusinessIdAssessmentsIndexRoute: typeof SidebarBusinessesBusinessIdAssessmentsIndexRoute
+}
+
+const SidebarBusinessesBusinessIdAssessmentsRouteChildren: SidebarBusinessesBusinessIdAssessmentsRouteChildren =
+  {
+    SidebarBusinessesBusinessIdAssessmentsBatchIdRoute:
+      SidebarBusinessesBusinessIdAssessmentsBatchIdRoute,
+    SidebarBusinessesBusinessIdAssessmentsNewRoute:
+      SidebarBusinessesBusinessIdAssessmentsNewRoute,
+    SidebarBusinessesBusinessIdAssessmentsIndexRoute:
+      SidebarBusinessesBusinessIdAssessmentsIndexRoute,
+  }
+
+const SidebarBusinessesBusinessIdAssessmentsRouteWithChildren =
+  SidebarBusinessesBusinessIdAssessmentsRoute._addFileChildren(
+    SidebarBusinessesBusinessIdAssessmentsRouteChildren,
+  )
 
 interface SidebarBusinessesBusinessIdRunsRouteChildren {
   SidebarBusinessesBusinessIdRunsRunIdRoute: typeof SidebarBusinessesBusinessIdRunsRunIdRoute
@@ -704,6 +823,7 @@ const SidebarBusinessesBusinessIdModelVersionRouteWithChildren =
   )
 
 interface SidebarBusinessesBusinessIdRouteChildren {
+  SidebarBusinessesBusinessIdAssessmentsRoute: typeof SidebarBusinessesBusinessIdAssessmentsRouteWithChildren
   SidebarBusinessesBusinessIdEditRoute: typeof SidebarBusinessesBusinessIdEditRoute
   SidebarBusinessesBusinessIdExplorerRoute: typeof SidebarBusinessesBusinessIdExplorerRoute
   SidebarBusinessesBusinessIdRunsRoute: typeof SidebarBusinessesBusinessIdRunsRouteWithChildren
@@ -713,6 +833,8 @@ interface SidebarBusinessesBusinessIdRouteChildren {
 
 const SidebarBusinessesBusinessIdRouteChildren: SidebarBusinessesBusinessIdRouteChildren =
   {
+    SidebarBusinessesBusinessIdAssessmentsRoute:
+      SidebarBusinessesBusinessIdAssessmentsRouteWithChildren,
     SidebarBusinessesBusinessIdEditRoute: SidebarBusinessesBusinessIdEditRoute,
     SidebarBusinessesBusinessIdExplorerRoute:
       SidebarBusinessesBusinessIdExplorerRoute,
@@ -733,6 +855,7 @@ interface SidebarBusinessesRouteChildren {
   SidebarBusinessesBusinessIdRoute: typeof SidebarBusinessesBusinessIdRouteWithChildren
   SidebarBusinessesNewRoute: typeof SidebarBusinessesNewRoute
   SidebarBusinessesIndexRoute: typeof SidebarBusinessesIndexRoute
+  SidebarBusinessesNewFromDomainsRoute: typeof SidebarBusinessesNewFromDomainsRoute
 }
 
 const SidebarBusinessesRouteChildren: SidebarBusinessesRouteChildren = {
@@ -740,6 +863,7 @@ const SidebarBusinessesRouteChildren: SidebarBusinessesRouteChildren = {
     SidebarBusinessesBusinessIdRouteWithChildren,
   SidebarBusinessesNewRoute: SidebarBusinessesNewRoute,
   SidebarBusinessesIndexRoute: SidebarBusinessesIndexRoute,
+  SidebarBusinessesNewFromDomainsRoute: SidebarBusinessesNewFromDomainsRoute,
 }
 
 const SidebarBusinessesRouteWithChildren =

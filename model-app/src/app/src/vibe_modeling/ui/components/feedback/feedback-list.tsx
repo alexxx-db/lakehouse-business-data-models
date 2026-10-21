@@ -18,6 +18,7 @@ import {
   FiltersBar,
   DEFAULT_FILTERS,
   applyFilters,
+  collectDomainOptions,
   type InputFilters,
 } from "@/components/vibe-inputs/filters-bar";
 import { invalidateVibeInputQueries } from "@/components/vibe-inputs/query-keys";
@@ -74,11 +75,13 @@ export function FeedbackList({ businessId, version, scope, versionId }: Feedback
     () => applyFilters(feedback, { ...filters, q: debouncedQ }, EMPTY_SELECTION),
     [feedback, filters, debouncedQ],
   );
+  const domainOptions = useMemo(() => collectDomainOptions(feedback), [feedback]);
   const filterActive =
     debouncedQ.trim() !== "" ||
     filters.origin !== "all" ||
     filters.state !== "all" ||
-    filters.priority !== "all";
+    filters.priority !== "all" ||
+    filters.domain !== "all";
 
   const invalidate = () => invalidateVibeInputQueries(queryClient, businessId);
   const fail = (e: unknown, what: string) =>
@@ -136,6 +139,7 @@ export function FeedbackList({ businessId, version, scope, versionId }: Feedback
         shown={filtered.length}
         total={feedback.length}
         showSelected={false}
+        domains={domainOptions}
         noun="inputs"
       />
       {filtered.length === 0 ? (

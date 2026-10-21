@@ -12,8 +12,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+const DEFAULT_USER = {
+  user_name: "ada@example.com",
+  display_name: "Ada Lovelace",
+  emails: [{ value: "ada@example.com" }],
+};
+
 let userHook: () => unknown = () => ({
-  data: { user_name: "Ada Lovelace", display_name: "Ada L." },
+  data: DEFAULT_USER,
 });
 
 vi.mock("@/lib/api", async () => {
@@ -48,7 +54,7 @@ beforeEach(() => {
 
 afterEach(() => {
   userHook = () => ({
-    data: { user_name: "Ada Lovelace", display_name: "Ada L." },
+    data: DEFAULT_USER,
   });
   vi.restoreAllMocks();
 });
@@ -63,12 +69,33 @@ function renderFooter() {
 
 describe("SidebarUserFooter", () => {
   it("renders the user's display name and user_name", () => {
-    userHook = () => ({
-      data: { user_name: "Ada Lovelace", display_name: "Ada L." },
-    });
     renderFooter();
-    expect(screen.getByText("Ada L.")).toBeInTheDocument();
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
   });
 
+  it("builds avatar initials from display_name", () => {
+    renderFooter();
+    expect(screen.getByText("AL")).toBeInTheDocument();
+  });
+
+  it("hides the second line when user_name equals display_name", () => {
+    userHook = () => ({
+      data: {
+        user_name: "alice@example.com",
+        display_name: "alice@example.com",
+        emails: [{ value: "alice@example.com" }],
+      },
+    });
+    renderFooter();
+    expect(screen.getAllByText("alice@example.com")).toHaveLength(1);
+  });
+
+  it("uses the first two letters of a single-word display_name", () => {
+    userHook = () => ({
+      data: { user_name: "alice", display_name: "alice", emails: [] },
+    });
+    renderFooter();
+    expect(screen.getByText("AL")).toBeInTheDocument();
+  });
 });

@@ -1,3 +1,4 @@
+import { ASSESS_MODEL, useAssessReady } from "@/lib/assessment";
 import { Link } from "@tanstack/react-router";
 import { Construction } from "lucide-react";
 import { HelpPage } from "@/components/help/help-page";
@@ -93,13 +94,165 @@ export function ShortcutsContent() {
 }
 
 export function FlowContent() {
+  const { ready: assessReady } = useAssessReady();
   return (
     <HelpPage
       title="How the modeling flow works"
       intro="You shape a data model by giving an AI agent feedback and re-running. Here's the loop, end to end."
       related={["shortcuts", "vibes"]}
     >
-      <WorkflowDiagram variant="expanded" className="mt-2" />
+      <WorkflowDiagram variant="expanded" className="mt-2" assessment={assessReady} />
+    </HelpPage>
+  );
+}
+
+function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-base font-semibold">{heading}</h2>
+      {children}
+    </section>
+  );
+}
+
+const P = "text-sm leading-relaxed text-muted-foreground";
+const UL = "list-disc space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground";
+const OL = "list-decimal space-y-1 pl-5 text-sm leading-relaxed text-muted-foreground";
+
+export function AssessmentContent() {
+  return (
+    <HelpPage
+      title="Assessing a model against your data"
+      intro="An assessment checks an installed model version against your bronze sources, so you can see what you can build now, what is missing, and what to ask your ingestion team for."
+      related={["flow", "shortcuts"]}
+    >
+      <div className="space-y-8">
+        <Section heading="What an assessment does">
+          <p className={P}>
+            It runs the <code>domain-model-assessment</code> skill headless with the Genie Code
+            CLI inside a Databricks job - one job run per domain you select - as a dedicated
+            read-only reader service principal. It only reads (SELECT and DESCRIBE); it never
+            creates or writes tables. Any model edits it proposes are written as SQL into a
+            document, not applied. For each domain it:
+          </p>
+          <ul className={UL}>
+            <li>reads the installed model version's metamodel;</li>
+            <li>
+              profiles the bronze sources you mapped (row counts, null percentages, distinct
+              counts, date formats, foreign-key orphans);
+            </li>
+            <li>maps every target column to a bronze source column by meaning, not by name;</li>
+            <li>grades each entity Full, Partial or Blocked;</li>
+            <li>writes a gap registry - the ingestion asks;</li>
+            <li>
+              records pending decisions: questions it would normally ask a person, where it takes
+              the most conservative default and logs the question;
+            </li>
+            <li>suggests next vibes - model changes for your next modeling iteration.</li>
+          </ul>
+          <p className={P}>For hybrid output it also derives a gold layer.</p>
+        </Section>
+
+        <Section heading="Before you start">
+          <ul className={UL}>
+            <li>The model version is installed into a catalog.</li>
+            <li>
+              A workspace admin has set up the reader service principal in{" "}
+              <Link to="/settings" search={{ tab: "assessment" }} className="text-primary hover:underline">
+                Settings → Assessment
+              </Link>
+              , which has copy-paste steps.
+            </li>
+            <li>
+              The reader has SELECT on the model catalog and SELECT on every bronze schema you
+              map.
+            </li>
+            <li>The reader can use the SQL warehouse.</li>
+            <li>
+              The app's service principal has CREATE VOLUME on the deployment catalog's{" "}
+              <code>_metamodel</code> schema, so Save can create the runs volume. The installer
+              grants this.
+            </li>
+          </ul>
+          <p className={P}>
+            Launch is blocked if the reader cannot read the model catalog, any mapped bronze
+            schema, or the SQL warehouse.
+          </p>
+        </Section>
+
+        <Section heading="Running one">
+          <ol className={OL}>
+            <li>
+              Click Assess on an installed model version or on a domain page.
+            </li>
+            <li>Pick the domains to assess.</li>
+            <li>
+              Map each bronze source to its <code>catalog.schema</code>. The mapping is saved for
+              the business, so later assessments start pre-filled.
+            </li>
+            <li>Choose the output model, ETL type and reasoning effort.</li>
+            <li>The readiness check must pass - it shows the exact GRANT for anything missing.</li>
+            <li>Launch.</li>
+          </ol>
+        </Section>
+
+        <Section heading="What you get">
+          <ul className={UL}>
+            <li>
+              A grade per entity: Full (everything it needs is available in your sources),
+              Partial (some columns have no usable source), Blocked (it cannot be built from
+              what you have).
+            </li>
+            <li>Column mappings with the profile statistics behind them.</li>
+            <li>A gap registry listing what is missing and what to ask for.</li>
+            <li>Pending decisions you can answer in the app.</li>
+            <li>
+              Next vibes. These are shown read-only; you can add them as vibe inputs for your
+              next modeling iteration yourself.
+            </li>
+            <li>The assessment's markdown documents.</li>
+          </ul>
+        </Section>
+
+        <Section heading="After the assessment">
+          <p className={P}>
+            The assessment stops before the iteration loop and before it generates build hand-off
+            documents, and it is read-only, so building happens in Genie Code. After you have
+            answered the pending decisions, Hand off to Genie Code copies the project
+            (conventions.yml, the docs and your decisions) to a workspace folder with copy-paste
+            prompts, to run in order:
+          </p>
+          <ol className={OL}>
+            <li>Continue the assessment (Phase 5 and Phase 6, using your decisions).</li>
+            <li>
+              Build, with <code>etl-development-framework</code>.
+            </li>
+            <li>
+              Validate, with <code>domain-model-validation</code>.
+            </li>
+            <li>
+              Document, with <code>domain-documentation</code>.
+            </li>
+          </ol>
+        </Section>
+
+        <Section heading="Time and cost">
+          <p className={P}>
+            Expect 30-60 minutes per domain. If the model hits rate limits it can take longer -
+            the job waits and resumes automatically. Assessments use workspace foundation-model
+            tokens. By default two domain runs go at once; an admin can change this in Settings →
+            Assessment.
+          </p>
+          <p className={P}>
+            Calls to {ASSESS_MODEL} count against your workspace's pay-per-token rate limit for that
+            model - by default about 200K input and 20K output tokens per minute. All domain runs
+            share that one limit, so raising the number of concurrent runs mostly makes them take
+            turns rather than finish sooner. This is optional: assessments work on the default
+            limit, but if you want them to run faster, ask your Databricks account team to request
+            a higher rate limit for {ASSESS_MODEL} on this workspace.
+          </p>
+        </Section>
+      </div>
     </HelpPage>
   );
 }

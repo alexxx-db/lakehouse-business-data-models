@@ -7,7 +7,10 @@ Creates the install catalog, the ``_metamodel`` schema, and its ``vol_root``
 MANAGED volume if absent (the app's industry-download writes model artifacts
 to ``/Volumes/{catalog}/_metamodel/vol_root/...`` before any vibe run, so they
 must exist at install time; the agent also creates all three idempotently on
-first run). Then grants the SP at two best-effort levels, each tried
+first run). The schema + volume step runs the app's canonical
+``src/app/src/vibe_modeling/backend/services/metamodel_setup.py``, loaded by
+file path, so the script must run from a repo checkout. Then grants the SP at
+two best-effort levels, each tried
 independently — a failure on one does not block the next:
 
   1. ``CATALOG``: USE_CATALOG, CREATE_SCHEMA, BROWSE on the install catalog.
@@ -20,8 +23,8 @@ independently — a failure on one does not block the next:
                   on 2026-05-08 when a fresh SP without BROWSE failed at
                   agent's ``_create_metrics_database_if_needed`` step.
   2. ``SCHEMA``:  USE_SCHEMA, CREATE_TABLE, MODIFY, SELECT, READ_VOLUME,
-                  WRITE_VOLUME on ``<catalog>._metamodel`` *if* the
-                  schema already exists. SELECT and the *_VOLUME
+                  WRITE_VOLUME, CREATE_VOLUME, MANAGE on
+                  ``<catalog>._metamodel`` *if* the schema already exists. SELECT and the *_VOLUME
                   privileges cover the cross-install case: the schema /
                   tables / ``vol_root`` volume were created by a previous
                   install's SP (or another principal), so the new SP
@@ -31,7 +34,12 @@ independently — a failure on one does not block the next:
                   the schema, so no separate volume-level grant is
                   needed. Newly-created schemas are owned by the SP that
                   creates them, so the SP-as-creator path still needs no
-                  grant.
+                  grant. CREATE_VOLUME and MANAGE are granted on EVERY
+                  install, whether or not the bronze assessment skill is
+                  enabled: the app creates and owns its ``assess_runs``
+                  volume and grants the assessment reader access to it and
+                  USE SCHEMA on ``_metamodel``, so enabling the skill later
+                  (reader set in Settings) needs no admin step.
 
 Permission requirement: the caller must own the catalog OR have MANAGE
 privilege on it OR be a metastore admin. If the call lacks permission,
@@ -44,12 +52,15 @@ Idempotent. Safe to re-run.
 from __future__ import annotations
 
 import argparse
+import functools
+import importlib.util
 import logging
 import sys
+from pathlib import Path
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound, PermissionDenied
-from databricks.sdk.service.catalog import PermissionsChange, Privilege, VolumeType
+from databricks.sdk.service.catalog import PermissionsChange, Privilege
 
 logger = logging.getLogger("install.grant_catalog")
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -62,10 +73,34 @@ SCHEMA_PRIVS = [
     Privilege.SELECT,
     Privilege.READ_VOLUME,
     Privilege.WRITE_VOLUME,
+    Privilege.CREATE_VOLUME,
+    Privilege.MANAGE,
 ]
 
-METAMODEL_SCHEMA = "_metamodel"
-VOL_ROOT = "vol_root"
+METAMODEL_SETUP_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "src/app/src/vibe_modeling/backend/services/metamodel_setup.py"
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _load_metamodel_setup():
+    """Load the app's canonical ``_metamodel`` setup module by file path
+    (``vibe_modeling`` is not installed in the operator env). Loaded lazily so
+    the script imports, and ``--help`` works, without the app source."""
+    if not METAMODEL_SETUP_PATH.is_file():
+        raise RuntimeError(
+            f"{METAMODEL_SETUP_PATH} not found; run install/grant_catalog.py from "
+            f"a repo checkout."
+        )
+    spec = importlib.util.spec_from_file_location(
+        "_vibe_install_metamodel_setup", METAMODEL_SETUP_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {METAMODEL_SETUP_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _grant(
@@ -124,49 +159,43 @@ def _exists(getter, full_name: str, *, label: str) -> bool:
 def _ensure_schema_and_volume(w: WorkspaceClient, *, catalog: str) -> bool:
     """Create ``<catalog>._metamodel`` and its ``vol_root`` MANAGED volume if
     absent. Returns True if the schema is present afterwards (pre-existing or
-    just created), False if it could not be created.
+    just created), False if it could not be verified or created.
 
     The app's industry-download writes model artifacts to
     ``/Volumes/{catalog}/_metamodel/vol_root/...`` *before* any vibe run, so
     the schema + volume must exist at install time. The agent also creates both
     on its first run with ``CREATE ... IF NOT EXISTS``, so pre-creating here is
-    idempotent. Best-effort: a permission failure logs the equivalent SQL and
-    does not abort the install.
+    idempotent. Best-effort: a failure logs the equivalent SQL and does not
+    abort the install. The work is done by the app's canonical
+    ``ensure_metamodel_schema_and_volume``; its error text is written for app
+    users, so it is not logged here (the helper logs the raw error itself).
     """
-    schema_full = f"{catalog}.{METAMODEL_SCHEMA}"
-    if not _exists(w.schemas.get, schema_full, label="schema"):
-        try:
-            w.schemas.create(name=METAMODEL_SCHEMA, catalog_name=catalog)
-            logger.info(f"[ok]   created schema {schema_full}")
-        except PermissionDenied as exc:
-            logger.warning(f"[warn] no permission to create schema {schema_full}: {exc}")
+    setup = _load_metamodel_setup()
+    schema_full = f"{catalog}.{setup.METAMODEL_SCHEMA}"
+    vol_full = f"{schema_full}.{setup.VOL_ROOT}"
+    try:
+        created = setup.ensure_metamodel_schema_and_volume(w, catalog)
+    except setup.MetamodelSetupError as exc:
+        if exc.step == "schema":
+            logger.warning(f"[warn] could not verify or create schema {schema_full}")
             logger.warning(
                 f"[warn] manually run: CREATE SCHEMA IF NOT EXISTS {schema_full};"
             )
             return False
-        except Exception as exc:  # noqa: BLE001 — best-effort: surface and continue
-            logger.warning(f"[warn] create schema {schema_full} failed: {exc}")
-            return False
-
-    vol_full = f"{schema_full}.{VOL_ROOT}"
-    if not _exists(w.volumes.read, vol_full, label="volume"):
-        try:
-            w.volumes.create(
-                catalog_name=catalog,
-                schema_name=METAMODEL_SCHEMA,
-                name=VOL_ROOT,
-                volume_type=VolumeType.MANAGED,
-            )
-            logger.info(f"[ok]   created managed volume {vol_full}")
-        except PermissionDenied as exc:
-            logger.warning(f"[warn] no permission to create volume {vol_full}: {exc}")
-            logger.warning(
-                f"[warn] manually run: CREATE VOLUME IF NOT EXISTS {vol_full};"
-            )
-        except Exception as exc:  # noqa: BLE001 — best-effort: surface and continue
-            logger.warning(f"[warn] create volume {vol_full} failed: {exc}")
-
+        logger.warning(f"[warn] could not verify or create volume {vol_full}")
+        logger.warning(f"[warn] manually run: CREATE VOLUME IF NOT EXISTS {vol_full};")
+        return True
+    for item in created:
+        logger.info(f"[ok]   created {item}")
     return True
+
+
+def _schema_grant_sql(schema_full: str, app_sp: str) -> str:
+    return (
+        f"GRANT USE SCHEMA, CREATE TABLE, MODIFY, SELECT, "
+        f"READ VOLUME, WRITE VOLUME, CREATE VOLUME, MANAGE ON SCHEMA {schema_full} "
+        f"TO `{app_sp}`;"
+    )
 
 
 def grant_all(*, profile: str | None, catalog: str, app_sp: str) -> int:
@@ -223,7 +252,23 @@ def grant_all(*, profile: str | None, catalog: str, app_sp: str) -> int:
         ),
     )
 
-    schema_full = f"{catalog}.{METAMODEL_SCHEMA}"
+    try:
+        setup = _load_metamodel_setup()
+    except (RuntimeError, ImportError):
+        # The canonical constants live in the unloadable file, so the fallback
+        # SQL spells the names out.
+        schema_full = f"{catalog}._metamodel"
+        logger.warning(
+            f"[warn] app source {METAMODEL_SETUP_PATH} missing or not loadable; "
+            f"skipping the _metamodel schema, vol_root volume and schema grant. Re-run "
+            f"install/grant_catalog.py from a repo checkout, or manually run:"
+        )
+        logger.warning(f"[warn]   CREATE SCHEMA IF NOT EXISTS {schema_full};")
+        logger.warning(f"[warn]   CREATE VOLUME IF NOT EXISTS {schema_full}.vol_root;")
+        logger.warning(f"[warn]   {_schema_grant_sql(schema_full, app_sp)}")
+        return 0
+
+    schema_full = f"{catalog}.{setup.METAMODEL_SCHEMA}"
     if _ensure_schema_and_volume(w, catalog=catalog):
         _grant(
             w,
@@ -231,16 +276,13 @@ def grant_all(*, profile: str | None, catalog: str, app_sp: str) -> int:
             full_name=schema_full,
             principal=app_sp,
             privileges=SCHEMA_PRIVS,
-            sql_fallback=(
-                f"GRANT USE SCHEMA, CREATE TABLE, MODIFY, SELECT, "
-                f"READ VOLUME, WRITE VOLUME ON SCHEMA {schema_full} "
-                f"TO `{app_sp}`;"
-            ),
+            sql_fallback=_schema_grant_sql(schema_full, app_sp),
         )
     else:
         logger.info(
-            f"[skip] schema {schema_full} not present and could not be created; the "
-            f"agent creates it (and vol_root) on first vibe run, owned by the app SP."
+            f"[skip] schema {schema_full} not present and could not be verified or "
+            f"created; the agent creates it (and vol_root) on first vibe run, owned "
+            f"by the app SP."
         )
 
     return 0

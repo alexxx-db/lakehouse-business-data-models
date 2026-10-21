@@ -22,7 +22,7 @@ bash install/install.sh \
 
 Substitute your CLI profile name and SQL warehouse ID. Total wall-clock: ~10 minutes on a fresh workspace. Skip `--warehouse-id` to configure it later via the first-run UI.
 
-The five parameters above are the complete CLI surface of `install/install.sh`. Detailed semantics are in [Parameter reference](#parameter-reference) below.
+`install/install.sh` also takes flags for the two optional features (`--enable-taxonomy-builder`, `--taxonomy-model-service`, `--enable-assessment`, `--assess-reader-sp`). Every flag is listed in [Parameter reference](#parameter-reference) below.
 
 ## Privileges required
 
@@ -44,7 +44,7 @@ If you install as a non-admin identity, you need **all** of the following on the
     (`BROWSE` is required by the agent's `_create_metrics_database_if_needed` step,
     which probes whether the `_metrics` schema already exists by reading catalog
     metadata)
-  - If `_metamodel` already exists in that catalog (re-install case): `USE SCHEMA`, `CREATE TABLE`, `MODIFY`, `SELECT`, `READ VOLUME`, `WRITE VOLUME` at the schema level (the `*_VOLUME` privileges cascade to current and future volumes)
+  - On the `_metamodel` schema in that catalog, on every install: the installer creates the schema and its `vol_root` volume if absent, then grants `USE SCHEMA`, `CREATE TABLE`, `MODIFY`, `SELECT`, `READ VOLUME`, `WRITE VOLUME`, `CREATE VOLUME` and `MANAGE`. The `*_VOLUME` privileges cascade to current and future volumes. `CREATE VOLUME` and `MANAGE` are granted whether or not you enable the bronze assessment; they let the app create its assessment runs volume and grant the assessment reader access to it.
 
   To issue those, the installer's identity needs one of: **catalog ownership**, **`MANAGE` on the catalog**, or **metastore-admin**.
 - **Permission to create UC catalogs** if `--catalog` points at one that doesn't exist yet — [AWS](https://docs.databricks.com/aws/en/catalogs/create-catalog) · [Azure](https://learn.microsoft.com/en-us/azure/databricks/catalogs/create-catalog).
@@ -63,9 +63,10 @@ If your identity lacks grant authority on the catalog, `install/install.sh` **lo
 | **Bun** | 1.2+ | Frontend build (via `apx build`) — [bun.sh](https://bun.sh) |
 | **uv** | latest | Python build for the wheel artifact (via `apx build`) — [uv](https://github.com/astral-sh/uv) |
 | **jq** | 1.6+ | `install.sh` parses CLI JSON output (SP UUID, current user, app status) |
+| **curl** | any | In-flight runs guard, stale bundle-state check and post-install verification |
 | **git** | latest | Clone the repo |
 
-`install.sh` verifies these at step `[0/5]`: it aborts if any of `databricks`, `python`, `jq`, `apx`, `uv`, or `bun` is missing from PATH, and warns (does not block) if the Databricks CLI or Python is below its minimum.
+`install.sh` verifies these at step `[0/5]`: it aborts if any of `databricks`, `python`, `jq`, `curl`, `apx`, `uv`, or `bun` is missing from PATH, and warns (does not block) if the Databricks CLI or Python is below its minimum.
 
 > **Node.js is not required to install.** The frontend is built with Bun (via `apx build`), so a fresh install needs only the tools above. Node.js and npm are needed only to *develop* the frontend — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -99,14 +100,48 @@ All flags below are accepted by [`install/install.sh`](install/install.sh). The 
 
 | Flag | Required | Default | What it controls | When to override |
 |------|----------|---------|------------------|------------------|
-| `--profile <name>` | **yes** | — | Databricks CLI profile name (must be pre-authenticated with `databricks auth login --profile <name>`). Drives every `databricks` CLI call inside `install.sh`. | Always — pick the profile pointing at your target workspace. |
+| `--profile <name>` | no | _(CLI default auth)_ | Databricks CLI profile name (must be pre-authenticated with `databricks auth login --profile <name>`). Drives every `databricks` CLI call and Python install step inside `install.sh`. Without it, the CLI and SDK use their default authentication (the `DEFAULT` profile or `DATABRICKS_*` environment variables). | Pass it whenever your default authentication does not point at the target workspace. |
 | `--app-name <name>` | no | `vibe-modeling` | Databricks App resource name shown in the workspace **Apps** UI. The bundle deploys the App under this name; the App's service principal is bound to this name's lifecycle. | Use a suffix (e.g. `vibe-modeling-staging`) to run multiple installs on the same workspace. Note: the bundle storage path under `/Workspace/Users/<you>/.bundle/vibe-modeling/...` is always `vibe-modeling` (bundle name is fixed), so two co-existing installs share the same source path — fine for renames, not for true parallel installs. |
 | `--project <id>` | no | `vibe-modeling` | Lakebase project ID. Must be unique in the workspace. The installer creates the project, its compute endpoint, and a database whose name matches `--catalog`. | If the default name is taken (or recently deleted — the name is locked for ~2 hours after delete), pick another. By convention, match `--app-name` for easier ops debugging. |
-| `--catalog <name>` | no | `vibe_modeling` | Unity Catalog name AND Postgres database name. Underscores, not hyphens. The app uses this catalog for the agent's `_metamodel.*` artifacts (Delta tables, the `vol_root` volume) and the same name for its Lakebase Postgres state DB. The installer creates the catalog if absent (**not possible on a metastore that uses Default Storage** — create the catalog via the workspace UI first, see the note under [Cloud and workspace](#cloud-and-workspace)), grants the App SP `USE CATALOG` + `CREATE SCHEMA`, and (on re-install over an existing `_metamodel` schema) issues the schema-level grants listed in [App SP catalog privileges](#app-sp-catalog-privileges). | Override if your workspace governance reserves catalog naming, or if you want a non-default isolation domain for the agent's artifacts. |
+| `--catalog <name>` | no | `vibe_modeling` | Unity Catalog name AND Postgres database name. Underscores, not hyphens. The app uses this catalog for the agent's `_metamodel.*` artifacts (Delta tables, the `vol_root` volume) and the same name for its Lakebase Postgres state DB. The installer creates the catalog if absent (**not possible on a metastore that uses Default Storage** — create the catalog via the workspace UI first, see the note under [Cloud and workspace](#cloud-and-workspace)), grants the App SP `USE CATALOG`, `CREATE SCHEMA` and `BROWSE`, creates the `_metamodel` schema and its `vol_root` volume if absent, and issues the schema-level grants listed in [App SP catalog privileges](#app-sp-catalog-privileges). | Override if your workspace governance reserves catalog naming, or if you want a non-default isolation domain for the agent's artifacts. |
 | `--warehouse-id <id>` | no | _(unset)_ | SQL warehouse ID the app uses for Delta polling during vibe runs. Pre-populates `VIBE_MODELING_WAREHOUSE_ID`; the artifacts hook bakes it into `src/app/.build/app.yml`. | Pass at install time to skip the first-run UI configuration. Omit to choose interactively from the Settings page after the app boots. |
+| `--enable-taxonomy-builder` | no | _(off)_ | Installs the optional Domain Taxonomy Builder (an LLM-assisted wizard that drafts a business's domains and description). Exports `VIBE_MODELING_TAXONOMY_BUILDER_ENABLED=true`, and runs a read-only check that the App SP can use the model service. See [Enabling the Domain Taxonomy Builder](#enabling-the-domain-taxonomy-builder-optional). | Pass to turn the feature on. Omit and the feature stays off; the rest of the app does not depend on it. |
+| `--taxonomy-model-service <catalog.schema.service>` | no | `system.ai.claude-sonnet-5-5` | The Unity Catalog model service the builder drafts with, as a three-part name. Seeds the app's setting on first boot; after that, Settings → Platform owns it. | Pass a custom model service (recommended). Requires `--enable-taxonomy-builder`, otherwise the installer exits with a usage error (exit 2), as it does for a name that isn't three-part. |
+| `--enable-assessment` | no | _(off)_ | Installs the optional in-app bronze assessment skill. Exports `VIBE_MODELING_ASSESSMENT_ENABLED=true`. See [Enabling the in-app bronze assessment skill](#enabling-the-in-app-bronze-assessment-skill-optional). | Pass to turn the feature on. Omit and the feature stays off: its pages are hidden and its API answers 404. |
+| `--assess-reader-sp <application_id>` | no | _(unset)_ | The reader service principal the assessment job runs as (its application id, a UUID). Seeds the app's setting on first boot; after that, Settings → Assessment owns it. With it, the installer runs a warn-only check of the reader. | Pass when the reader already exists. Without it the feature stays disabled until an admin sets the reader in Settings. Requires `--enable-assessment`; a value that isn't a UUID is a usage error (exit 2). |
 | `-h`, `--help` | no | — | Print the usage block and exit. | — |
 
-`install/install.sh` propagates the install-time values via `VIBE_MODELING_LAKEBASE_PROJECT`, `VIBE_MODELING_DATABASE_NAME`, `VIBE_MODELING_DEPLOYMENT_CATALOG`, and `VIBE_MODELING_WAREHOUSE_ID` before running `databricks bundle deploy`. The bundle's `artifacts.default.build` hook (`install/build_and_render.sh`) renders those values into `src/app/.build/app.yml` during the build. The checked-in source `src/app/app.yml` is **never modified**. No manual file edits.
+`install/install.sh` passes the install-time values to the build as `VIBE_MODELING_*` environment variables before it runs `databricks bundle deploy`. The bundle's `artifacts.default.build` hook (`install/build_and_render.sh`) renders them into `src/app/.build/app.yml` during the build. The checked-in source `src/app/app.yml` is **never modified**. No manual file edits.
+
+### Deploying without `install.sh`
+
+To change or redeploy an install, re-run `install/install.sh` with the same flags you installed with. It is idempotent and sets everything below for you.
+
+If you run `install/build_and_render.sh` or `databricks bundle deploy` yourself (for example for the `github-publish` target), export the same values first. A variable you leave unset falls back to the default in the table, and an optional feature whose flag is unset turns off.
+
+| Variable | Install flag | Meaning | Default when unset |
+|----------|--------------|---------|--------------------|
+| `VIBE_MODELING_LAKEBASE_PROJECT` | `--project` | Lakebase project ID the app connects to | `vibe-modeling` |
+| `VIBE_MODELING_DATABASE_NAME` | `--catalog` | Postgres database name in that project | `vibe_modeling` |
+| `VIBE_MODELING_DEPLOYMENT_CATALOG` | `--catalog` | Deployment catalog, which holds `_metamodel`; seeds the app's setting on first boot | `vibe_modeling` |
+| `VIBE_MODELING_WAREHOUSE_ID` | `--warehouse-id` | SQL warehouse ID for run polling | empty (pick it in Settings) |
+| `VIBE_MODELING_TAXONOMY_BUILDER_ENABLED` | `--enable-taxonomy-builder` | `true` turns the Domain Taxonomy Builder on | `false` |
+| `VIBE_MODELING_TAXONOMY_MODEL_SERVICE` | `--taxonomy-model-service` | Model service the builder drafts with (`catalog.schema.service`); fills an empty setting only | empty (`install.sh` uses `system.ai.claude-sonnet-5-5`) |
+| `VIBE_MODELING_ASSESSMENT_ENABLED` | `--enable-assessment` | `true` turns the in-app bronze assessment on | `false` |
+| `VIBE_MODELING_ASSESS_READER_SP` | `--assess-reader-sp` | Application ID of the assessment reader service principal; fills an empty setting only | empty (set it in Settings) |
+
+For example, for an install made with `--project my-proj --catalog my_catalog --warehouse-id abc123 --enable-assessment`:
+
+```bash
+export VIBE_MODELING_LAKEBASE_PROJECT=my-proj
+export VIBE_MODELING_DATABASE_NAME=my_catalog
+export VIBE_MODELING_DEPLOYMENT_CATALOG=my_catalog
+export VIBE_MODELING_WAREHOUSE_ID=abc123
+export VIBE_MODELING_ASSESSMENT_ENABLED=true
+bash install/build_and_render.sh
+```
+
+Run `install/build_and_render.sh` before `databricks bundle deploy`. The deploy reads the rendered user-scopes file before its own build step runs. If you skip it, the deploy's build step may stop with "The app's user API scopes changed"; re-run the deploy.
 
 ## Pre-install: authenticate the CLI
 
@@ -127,10 +162,10 @@ bash install/install.sh --profile my-workspace
 
 The five-phase script prints `[N/5]` markers and stops on the first failure:
 
-1. `[0/5]` Verify the CLI profile and prerequisites: critical tools (`databricks`, `python`, `jq`, `apx`, `uv`, `bun`) and Python packages (`databricks-sdk`, `psycopg`) must be present or the script aborts; `databricks` CLI and `python` below their minimum versions warn but do not block.
+1. `[0/5]` Verify the CLI profile and prerequisites: critical tools (`databricks`, `python`, `jq`, `curl`, `apx`, `uv`, `bun`) and Python packages (`databricks-sdk`, `psycopg`) must be present or the script aborts; `databricks` CLI and `python` below their minimum versions warn but do not block.
 2. `[1/5]` `databricks bundle deploy` — creates the App resource and its service principal.
 3. `[2/5]` `python install/provision_lakebase.py` — Lakebase project, endpoint, database, role grants.
-4. `[3/5]` `python install/grant_catalog.py` — UC privileges for the App SP (best-effort, logs SQL on permission failure).
+4. `[3/5]` `python install/grant_catalog.py` — UC privileges for the App SP (best-effort, logs SQL on permission failure). With `--enable-taxonomy-builder`, `python install/check_model_service.py` then checks the model service (read-only; see [Enabling the Domain Taxonomy Builder](#enabling-the-domain-taxonomy-builder-optional)). With `--enable-assessment --assess-reader-sp`, the same script checks the reader, warn-only (see [Enabling the in-app bronze assessment skill](#enabling-the-in-app-bronze-assessment-skill-optional)).
 5. `[4/5]` Start app compute, wait for `ACTIVE`.
 6. `[5/5]` `databricks apps deploy` from `src/app/.build`, wait for `RUNNING`.
 
@@ -157,20 +192,13 @@ The installer also creates `_metamodel` + `vol_root` and grants the SP at the sc
 ```sql
 CREATE SCHEMA IF NOT EXISTS <catalog>._metamodel;
 CREATE VOLUME IF NOT EXISTS <catalog>._metamodel.vol_root;
-GRANT USE SCHEMA, CREATE TABLE, MODIFY, SELECT, READ VOLUME, WRITE VOLUME
+GRANT USE SCHEMA, CREATE TABLE, MODIFY, SELECT, READ VOLUME, WRITE VOLUME, CREATE VOLUME, MANAGE
   ON SCHEMA <catalog>._metamodel TO `<sp-client-id>`;
 ```
 
 `READ VOLUME` and `WRITE VOLUME` cascade to current and future volumes in the schema (including `_metamodel.vol_root`), so no separate per-volume grant is required.
 
-The agent also creates `_metamodel` + `vol_root` idempotently (`CREATE ... IF NOT EXISTS`) on its first vibe run, so pre-creating them at install time is safe.
-
-The app enforces this at dispatch time: `_check_metamodel_schema_present` (router.py)
-checks whether `<catalog>._metamodel` and its `vol_root` MANAGED volume exist before
-accepting a run submission. If either is absent, the app returns HTTP 400:
-`"Catalog '<catalog>' has no _metamodel schema. Run the installer's catalog setup
-(install/grant_catalog.py)"`. Running `grant_catalog.py` creates both and is the
-canonical fix.
+`CREATE VOLUME` and `MANAGE` on `_metamodel` are granted on every install, whether or not the bronze assessment skill is enabled. The app creates its own runs volume (`_metamodel.assess_runs`) and gives the assessment reader access to it and to `_metamodel`, so enabling the skill later needs no admin step.
 
 Re-running the grants is idempotent:
 
@@ -239,20 +267,15 @@ Because the default grants every app user admin rights, either scope Databricks 
 
 ## Upgrading an existing deployment
 
-A fresh install needs nothing beyond the steps above: the schema migrations run on first boot and there is no legacy data to migrate.
+A fresh install needs nothing beyond the steps above: the schema migrations run on first boot.
 
-When upgrading a deployment that already holds data:
+To upgrade a deployment that already holds data:
 
-1. **Migration-bearing deploys go to a fresh Lakebase branch, not `production`** — deploy and verify there, then promote (see the Deployment Guide). The schema reconciles on boot.
-2. **Run the one-time guidance backfill** once, after the app has booted (schema reconciled), to fold legacy feedback / next-vibe rows into Vibe Inputs. It is idempotent and exits non-zero unless `backfill_status` reaches `ok`:
+1. **Make sure you can restore the database.** Take a snapshot of the Lakebase project's production branch, or note the current time so you can use point-in-time restore within the project's restore window. The app never downgrades its schema, so going back to an older app version after an upgrade means restoring the database.
+2. **Wait for in-flight runs to finish**, or cancel them. The installer refuses to deploy while runs are active (see [Troubleshooting](#troubleshooting)).
+3. **Re-run `install/install.sh` from the new release with the same flags** you installed with, including every optional feature flag you use. A feature whose flag is left out turns off.
 
-   ```bash
-   DATABRICKS_CONFIG_PROFILE=<profile> \
-     VIBE_MODELING_LAKEBASE_PROJECT=<project> \
-     VIBE_MODELING_DATABASE_NAME=<db> \
-     VIBE_MODELING_LAKEBASE_BRANCH=<branch> \
-     python -m vibe_modeling.backend.migrations.backfill_vibe_inputs
-   ```
+On boot, the app applies the schema migrations the new release adds, in place. Your businesses, model versions and runs are kept.
 
 ## Authenticating source reads (recommended)
 
@@ -276,10 +299,88 @@ To enable publish on a workspace:
      --profile <your-profile>
    ```
 
+   Before the first command, export the same `VIBE_MODELING_*` values your install uses and run `bash install/build_and_render.sh`. The variables are listed in [Deploying without `install.sh`](#deploying-without-installsh). If the deploy's build step stops with "The app's user API scopes changed", re-run the deploy.
+
    The grant is the only difference from the default target. The connection name is referenced by name (`github_pr`); the bundle resource key (`github_conn`) is cosmetic.
 3. Configure the GitHub tab in the app's Settings (connection name, repo owner/name) per Step E of the integration guide.
 
 If you skip this, the Publish action stays disabled and returns `422 github_connection_missing` until configured - everything else works.
+
+## Enabling the Domain Taxonomy Builder (optional)
+
+The Domain Taxonomy Builder is a wizard that uses an LLM to draft a business's domains and description. It is **optional and off by default**. Turn it on at install time:
+
+```bash
+bash install/install.sh --profile my-workspace \
+  --enable-taxonomy-builder \
+  --taxonomy-model-service <catalog.schema.service>
+```
+
+Without `--taxonomy-model-service`, the builder uses `system.ai.claude-sonnet-5-5`. We recommend a custom model service per workload. A workspace admin can deny the shared `system.ai` services, so a custom service is the safer choice.
+
+The app calls the model service through the Unity AI Gateway as its service principal. The App SP needs three privileges. Grant them with the Databricks CLI, which handles Unity Gateway model services:
+
+```bash
+databricks grants update catalog <catalog> \
+  --json '{"changes":[{"principal":"<app-sp-application-id>","add":["USE_CATALOG"]}]}'
+databricks grants update schema <catalog>.<schema> \
+  --json '{"changes":[{"principal":"<app-sp-application-id>","add":["USE_SCHEMA"]}]}'
+databricks grants update model_service <catalog>.<schema>.<service> \
+  --json '{"changes":[{"principal":"<app-sp-application-id>","add":["EXECUTE"]}]}'
+```
+
+Or grant the same privileges in Catalog Explorer → the catalog, schema and model service → **Permissions**.
+
+Grants on `system.ai` need a metastore admin or the `MANAGE` privilege. The installer never grants these. It checks them, read-only, after the App SP exists:
+
+- If the model service does not exist, the install stops with "Model service '<name>' not found."
+- If a privilege is missing, the install stops and prints the exact `databricks grants update` commands. An admin runs them, then you re-run `install.sh` (every step is idempotent).
+- If the installer cannot read the SP's privileges, it warns and continues. The app's own test call then decides.
+
+After install, an admin can change the model service and the concurrency limit in **Settings → Platform**, which runs a test call as the App SP on every change.
+
+To turn the builder on for an existing install, re-run `install.sh` with `--enable-taxonomy-builder`. A re-run must pass every optional feature flag the install uses (`--enable-taxonomy-builder`, `--enable-assessment`); a feature whose flag is left out turns off. Pass `--taxonomy-model-service` and `--assess-reader-sp` again as well while Settings has no value for them: they only fill an empty setting. To turn it off, redeploy without the flag. Business data the wizard wrote stays in place.
+
+## Enabling the in-app [bronze assessment skill](https://github.com/databricks-industry-solutions/lakehouse-industry-data-models/tree/main/model-genie-skills) (optional)
+
+For a model version and the source (bronze) schemas you pick, the assessment profiles the sources and maps them to the model. It grades how well the sources cover the model and lists the decisions and model changes ("next vibes") it suggests. Each domain runs as a Databricks job that runs as a reader service principal you create. It is **optional and off by default**.
+
+This release bundles a development-branch calibration of those skills that is newer than the published 0.4.0 release. Later releases will bundle the official published version.
+
+When a user launches from the assessment wizard, the app checks the reader's access first (`/assess/readiness`): the reader and its job, the runs volume, the `_metamodel` schema, the SQL warehouse, and per domain the model catalog and each source (bronze) schema. A confirmed missing grant blocks the launch and shows the SQL to fix it. Any error during an assessment (the launch, the job run, saving results, the hand-off) is shown to the user with the error text and links to the job and the job run, and the user is told to contact the administrator, who diagnoses it from the job run.
+
+The feature stays disabled until a reader service principal is set. An admin sets it at install time (`--assess-reader-sp`) or later in **Settings → Assessment**.
+
+The reader needs no write privilege on model, source or `_metamodel` tables; the app grants it READ/WRITE VOLUME on the runs volume itself.
+
+Steps:
+
+1. Create the reader service principal, and give the App SP the **Service Principal User** role on it (Service principals → the reader → Permissions).
+2. Grant the reader `USE CATALOG`, `USE SCHEMA` and `SELECT` at catalog level on the catalogs the app deploys models into and on the approved source catalogs. Catalog-level grants cover schemas created later. If you grant per schema instead, users see the missing SQL when they launch an assessment.
+3. Grant the reader `USE CATALOG` on the deployment catalog (`--catalog`).
+4. Grant the reader `CAN USE` on the SQL warehouse, and `EXECUTE` on the Genie Code model service (`system.ai.gpt-5-6-sol`).
+5. Allow `github.com` egress from serverless jobs (the job downloads the pinned Genie Code and Databricks CLIs).
+6. Install with the flags:
+
+```bash
+bash install/install.sh --profile my-workspace \
+  --enable-assessment \
+  --assess-reader-sp <reader-application-id>
+```
+
+With a reader, step `[3/5]` runs `install/check_model_service.py --principal <reader>`. It is warn-only and never stops the install. It warns when the reader does not exist and when the reader lacks `EXECUTE` on the model service, and it reminds you to give the App SP the Service Principal User role on the reader (step 1), which it does not check.
+
+The app creates the runs volume `<catalog>._metamodel.assess_runs` and gives the reader these grants:
+
+- `CAN READ` on the job's notebook folder in the App SP's workspace home;
+- `READ VOLUME` and `WRITE VOLUME` on the runs volume;
+- `USE SCHEMA` on `<catalog>._metamodel`.
+
+The App SP's `CREATE VOLUME` and `MANAGE` on `_metamodel` (see [App SP catalog privileges](#app-sp-catalog-privileges)) are what let it do this. The app grants nothing on the deployment catalog itself or on any model or source catalog; steps 2 and 3 are yours.
+
+With `--enable-assessment`, the app also requests the `workspace.workspace` user scope, because the hand-off writes into the user's own workspace home with the user's own token. Without the flag the app requests no user scopes. Each user consents once. If you enable the assessment later, that redeploy adds the scope and each user consents once more on their next visit. If your workspace restricts the scopes apps may request, allow `workspace.workspace` for this app.
+
+To turn the skill on for an existing install, re-run `install.sh` with `--enable-assessment`. A re-run must pass every optional feature flag the install uses (`--enable-taxonomy-builder`, `--enable-assessment`); a feature whose flag is left out turns off. Pass `--taxonomy-model-service` and `--assess-reader-sp` again as well while Settings has no value for them: they only fill an empty setting. To turn it off, redeploy without the flag. Existing assessment results stay in place.
 
 ## Troubleshooting
 

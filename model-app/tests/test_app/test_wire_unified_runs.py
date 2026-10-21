@@ -555,7 +555,7 @@ class TestHealthEndpoint:
     """GET /health exposes ``in_flight_runs`` so the deploy script can
     refuse to push a new wheel while runs are active. Atomic-replace
     App containers can't hand off in-flight pollers cleanly, so the
-    runtime drain gate is gone (see scripts/dev/redeploy.sh)."""
+    runtime drain gate is gone (see install/in_flight_guard.sh)."""
 
     def test_health_returns_in_flight_runs(self, client):
         resp = client.get("/api/health")

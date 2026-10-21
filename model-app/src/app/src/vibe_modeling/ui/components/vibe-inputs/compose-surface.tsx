@@ -20,7 +20,13 @@ import {
 } from "@/lib/api";
 import { selector } from "@/lib/selector";
 import { useDebouncedValue } from "@/lib/hooks";
-import { FiltersBar, DEFAULT_FILTERS, applyFilters, type InputFilters } from "./filters-bar";
+import {
+  FiltersBar,
+  DEFAULT_FILTERS,
+  applyFilters,
+  collectDomainOptions,
+  type InputFilters,
+} from "./filters-bar";
 import { SectionTree } from "./section-tree";
 import { CompiledPreview } from "./compiled-preview";
 import { FollowingPane } from "./following-pane";
@@ -146,12 +152,17 @@ function ComposeSurfaceContent({ businessId, version, scope, versionId }: Compos
     () => applyFilters(allInputs, { ...filters, q: debouncedQ }, selectedIds),
     [allInputs, filters, debouncedQ, selectedIds],
   );
+  const domainOptions = useMemo(
+    () => collectDomainOptions(allInputs.filter((i) => i.status !== "deprecated")),
+    [allInputs],
+  );
   const filterActive =
     debouncedQ.trim() !== "" ||
     filters.origin !== "all" ||
     filters.state !== "all" ||
     filters.priority !== "all" ||
-    filters.selected !== "all";
+    filters.selected !== "all" ||
+    filters.domain !== "all";
 
   const focusedInput = focusedId ? allInputs.find((i) => i.id === focusedId) ?? null : null;
 
@@ -237,6 +248,7 @@ function ComposeSurfaceContent({ businessId, version, scope, versionId }: Compos
           <FiltersBar
             filters={filters}
             onChange={setFilters}
+            domains={domainOptions}
             shown={filtered.length}
             total={
               filters.state === "deprecated"

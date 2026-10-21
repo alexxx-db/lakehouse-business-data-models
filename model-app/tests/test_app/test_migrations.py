@@ -134,8 +134,8 @@ def test_pre_prod_destructive_reset_wipes_and_recreates(empty_engine, monkeypatc
     SQLite has no concept of a "public schema", so the wipe path goes
     through ``SQLModel.metadata.drop_all``. Testing the Postgres
     ``DROP TABLE ... CASCADE`` branch needs a real Postgres engine and
-    is out of scope for this in-process unit test — covered by the
-    the test workspace smoke gate.
+    is out of scope for this in-process unit test — covered by a
+    live smoke test.
     """
     monkeypatch.setattr(reg, "PRE_PROD_DESTRUCTIVE_RESET", True)
 

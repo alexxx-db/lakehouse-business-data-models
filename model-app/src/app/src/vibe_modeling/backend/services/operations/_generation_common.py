@@ -804,7 +804,7 @@ def _terminal_success(
     # this run. Prefer the agent's chosen ordinal so the MV row's
     # ``.version`` matches the Volume folder the agent actually wrote.
     # See ``backend.version_resolution_parser`` for the full rationale
-    # (incident: 2026-05-04 the test workspace, ECM/MVM v1 collision auto-bumped to v3).
+    # (incident: 2026-05-04 test workspace, ECM/MVM v1 collision auto-bumped to v3).
     agent_resolved = lookup_resolved_version(
         session, ctx.run_id, scope_short,
     )

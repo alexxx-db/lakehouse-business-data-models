@@ -11,8 +11,9 @@ build/
 .claude/skills/*
 !.claude/skills/**
 .databricks/
-# Personal dev-loop scripts — diagnostic toolkit, git workflow,
-# recovery scripts. See docs/scripts.md for the layout.
+# Install-time bundle fragment rendered by install/build_and_render.sh (per deploy, never committed)
+install/.generated/
+# Personal local scripts, never committed.
 localscripts/
 
 # Node/vitest caches if tests are accidentally run from repo root
@@ -24,6 +25,8 @@ node_modules/
 
 # Minted SP secret for local UI smoke (holds a live OAuth secret)
 scripts/smoke/.sp_smoke_env
+# Public-install smoke receipts + install logs (per run, local only)
+scripts/smoke/.receipts/
 
 # Editor / IDE (local only)
 .vscode/

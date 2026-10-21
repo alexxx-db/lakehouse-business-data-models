@@ -717,7 +717,7 @@ def test_terminal_success_uses_agent_resolved_version_when_collision_event_prese
     vibe_iterate's observe path must consult `lookup_resolved_version` AFTER
     `next_version_for_scope` and apply the agent's chosen ordinal — otherwise
     the persisted ModelVersion.version drifts from the Volume folder the
-    agent actually wrote (2026-05-04 the test workspace incident).
+    agent actually wrote (2026-05-04 test workspace incident).
     """
     with Session(engine) as s:
         s.add(RunProgressEvent(

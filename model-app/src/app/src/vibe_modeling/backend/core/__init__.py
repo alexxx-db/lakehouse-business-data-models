@@ -9,3 +9,7 @@ from ._config import logger as logger
 from .lakebase import LakebaseDependency
 from ._tracker import TrackerDependency  # noqa: F401 — registers the lifespan dependency
 from ._bundled_agent_init import _BundledAgentInitDependency  # noqa: F401 — registers the lifespan dependency
+from ._taxonomy_seed import _TaxonomySeedDependency  # noqa: F401 — registers the lifespan dependency
+from ._taxonomy_executor import _TaxonomyExecutorDependency  # noqa: F401 — registers the lifespan dependency
+from ._assess_init import _AssessInitDependency  # noqa: F401 — registers the lifespan dependency
+from ._assess_poller import _AssessPollerDependency  # noqa: F401 — registers the lifespan dependency

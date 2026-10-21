@@ -7,8 +7,7 @@
  * "uncomputable → —" degradation rules live in one place rather than
  * scattered across JSX.
  *
- * Design-of-record: docs/design/model-overview/README.md (four areas: Change,
- * Quality, Review progress, Size + effort).
+ * The band has four areas: Change, Quality, Review progress, Size + effort.
  *
  * What is and isn't derivable from the current backend surface:
  *  - Change: per-domain `change_status` gives added/changed/removed DOMAIN

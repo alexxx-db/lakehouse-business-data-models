@@ -9,6 +9,7 @@ from . import explorer  # noqa: F401 — registers explorer routes on the shared
 from . import diagram  # noqa: F401 — registers diagram routes on the shared router
 from .routes import (
     _dev_fixtures,
+    assessments,
     businesses,
     config,
     deployment,
@@ -18,6 +19,7 @@ from .routes import (
     platform,
     sectors,
     sources,
+    taxonomy,
     uc_browse,
     versions,
     vibe_inputs,
@@ -34,10 +36,13 @@ app = create_app(
         versions.router,
         deployment.router,
         sources.router,
+        taxonomy.router,
         industry_models.router,
         uc_browse.router,
         import_root.router,
         vibe_inputs.router,
         _dev_fixtures.router,
+        assessments.config_router,
+        assessments.router,
     ]
 )

@@ -120,7 +120,7 @@ def _runs_columns(engine) -> set[str]:
     """Return the column names present on the ``runs`` table.
 
     SQLAlchemy's ``inspect`` is dialect-agnostic — works for the SQLite
-    fixture we use here and for a real Postgres engine on the test workspace.
+    fixture we use here and for a real Postgres engine on a test workspace.
     """
     return {col["name"] for col in inspect(engine).get_columns("runs")}
 
@@ -191,7 +191,7 @@ def _load_owner_script_module() -> Any:
 def test_v_0_3_0_is_registered_in_migrations_list():
     """``v_0_3_0`` must appear in ``MIGRATIONS`` so ``reconcile_schema``
     picks it up at boot. Without this registration the migration is
-    dead code — the column drops never run on the test workspace.
+    dead code — the column drops never run on a live workspace.
     """
     versions = [m.version for m in migrations.MIGRATIONS]
     assert _V030_VERSION in versions, (
@@ -240,7 +240,7 @@ def test_apply_on_fresh_db_drops_both_columns(empty_engine):
     """End-to-end: empty engine in, full reconcile out, neither doomed
     column survives on the ``runs`` table.
 
-    This is the load-bearing scenario — a fresh the test workspace project where the
+    This is the load-bearing scenario — a fresh Lakebase project where the
     runtime registry walks every migration in order. After
     ``reconcile_schema`` completes, the ``runs`` table reflects the
     *current* model definition (no ``run_type``, no ``rollback_plan``).
@@ -261,7 +261,7 @@ def test_idempotent_reapply_against_already_clean_db(empty_engine):
     """Re-applying ``v_0_3_0`` against a database where the doomed
     columns are already gone must succeed silently.
 
-    Simulates the "the test workspace where the owner already ran ``scripts/db/migrate.py``"
+    Simulates the "workspace where the owner already ran ``scripts/db/migrate.py``"
     flow: the columns are gone, then the app boots and reconcile runs
     the registered migration. The drop is a no-op but must not raise.
     """
@@ -417,7 +417,7 @@ def test_owner_script_drop_columns_covers_phase_5_columns():
             "scripts/db/migrate.py does not expose any of "
             f"{candidates!r} — STUB-FOR-INTEGRATION. The owner script "
             "must declare a list of (table, column) drops mirroring the "
-            "v_0_3_0 registry migration so the the test workspaces owner-impersonation "
+            "v_0_3_0 registry migration so the test workspaces' owner-impersonation "
             "flow drops the same columns the runtime registry would."
         )
 

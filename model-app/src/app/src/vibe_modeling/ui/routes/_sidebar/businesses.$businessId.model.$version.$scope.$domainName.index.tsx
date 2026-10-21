@@ -1,15 +1,21 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Suspense, useCallback, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import {
   useGetBusinessSuspense,
   useGetDomainDetailSuspense,
   useGetExplorerVersionsSuspense,
   useGetModelSummarySuspense,
+  useListVersionsSuspense,
   useGetUserPreferences,
 } from "@/lib/api";
 import type { ColumnDisplayMode } from "@/components/diagram/types";
+import { isNotFoundError } from "@/lib/api-error";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -33,6 +39,7 @@ import { DiagramViewer } from "@/components/diagram/diagram-viewer";
 import { DomainSelect } from "@/components/diagram/domain-select";
 import { RelationshipAnalysis } from "@/components/explorer/relationship-analysis";
 import { OntologyGraph } from "@/components/explorer/ontology-graph";
+import { AssessButton } from "@/components/assessment/assess-button";
 import { AddFeedbackButton } from "@/components/feedback/add-feedback-button";
 
 // Focal (single-domain) default column-display mode preference key (item 4,
@@ -68,18 +75,74 @@ export const Route = createFileRoute(
     const { businessId, version, scope, domainName } = Route.useParams();
     return (
       <div className="p-4 space-y-3">
-        <Suspense fallback={<PageSkeleton />}>
-          <DomainDetail
-            businessId={businessId}
-            version={version}
-            scope={scope}
-            domainName={domainName}
-          />
-        </Suspense>
+        <ErrorBoundary
+          // A remembered domain can vanish (force re-sync) and a stale link
+          // can point at a deleted version. Re-throw non-404s so the parent
+          // generic boundary still surfaces them; reset when the route params
+          // change so navigating to another domain recovers.
+          resetKeys={[businessId, version, scope, domainName]}
+          fallbackRender={({ error }) => {
+            if (isNotFoundError(error)) {
+              return (
+                <DomainMissing
+                  businessId={businessId}
+                  version={version}
+                  scope={scope}
+                />
+              );
+            }
+            throw error;
+          }}
+        >
+          <Suspense fallback={<PageSkeleton />}>
+            <DomainDetail
+              businessId={businessId}
+              version={version}
+              scope={scope}
+              domainName={domainName}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     );
   },
 });
+
+/** The domain request 404s when the domain or the whole model version is gone;
+ *  the status cannot tell which. The version overview handles the second case
+ *  with its own not-found card. */
+function DomainMissing({
+  businessId,
+  version,
+  scope,
+}: {
+  businessId: string;
+  version: string;
+  scope: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Domain not found</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          This domain or model version is no longer available in{" "}
+          {versionScopeLabel(version, scope)}.
+        </p>
+        <Button asChild variant="outline" size="sm">
+          <Link
+            to="/businesses/$businessId/model/$version/$scope"
+            params={{ businessId, version, scope }}
+            search={{ tab: "overview" }}
+          >
+            Back to {versionScopeLabel(version, scope)} overview
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function DomainDetail({
   businessId,
@@ -129,6 +192,15 @@ export function DomainDetail({
     params: { business_id: businessId },
     ...selector(),
   });
+  const { data: installVersions } = useListVersionsSuspense({
+    params: { business_id: businessId },
+    ...selector(),
+  });
+  const installVersion =
+    installVersions.find(
+      (v) => v.version === Number(version) && (v.scope || "") === scope,
+    ) ?? installVersions.find((v) => v.version === Number(version));
+  const domainId = model.domains?.find((d) => d.name === domainName)?.id;
   const currentVersionId =
     _allVersions.find(
       (v) => v.version === Number(version) && ((v as any).scope || "") === scope,
@@ -149,8 +221,6 @@ export function DomainDetail({
     .filter((d) => d.change_status !== "deleted")
     .map((d) => ({ name: d.name, division: d.division ?? "" }));
 
-  const scopeLabel = scope ? scope.toUpperCase() : "";
-
   useBreadcrumbs([
     {
       label: business.name,
@@ -163,7 +233,7 @@ export function DomainDetail({
       params: { businessId },
     },
     {
-      label: scopeLabel ? `v${version} ${scopeLabel}` : `v${version}`,
+      label: versionScopeLabel(version, scope),
       to: "/businesses/$businessId/model/$version/$scope",
       params: { businessId, version, scope },
     },
@@ -253,14 +323,23 @@ export function DomainDetail({
             Ontology
           </TabsTrigger>
         </TabsList>
-        {tab !== "diagram" && (
-          <AddFeedbackButton
-            businessId={businessId}
-            versionId={currentVersionId}
-            getContext={getFeedbackContext}
-            className="ml-auto"
-          />
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {installVersion && (
+            <AssessButton
+              businessId={businessId}
+              versionId={installVersion.id}
+              domainId={domainId}
+              installed={installVersion.deployment_status === "deployed" && !!installVersion.uc_catalog}
+            />
+          )}
+          {tab !== "diagram" && (
+            <AddFeedbackButton
+              businessId={businessId}
+              versionId={currentVersionId}
+              getContext={getFeedbackContext}
+            />
+          )}
+        </div>
       </div>
       {domain.description && (
         <p className="text-muted-foreground mt-1 text-sm leading-relaxed">

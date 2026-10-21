@@ -1073,7 +1073,8 @@ class TestUserPreferences:
         assert prefs[0]["value"] == "light"
 
     def test_preferences_scoped_to_user(self, client):
-        """Without user headers, preferences are stored under 'anonymous'."""
+        """Without user headers (outside the Apps runtime), preferences are
+        stored under the fixed 'local-dev' identity."""
         client.put("/api/user/preferences/key1", json={"value": "val1"})
         # With a user header, should get empty preferences (different user)
         response = client.get(
@@ -1082,6 +1083,17 @@ class TestUserPreferences:
         )
         assert response.status_code == 200
         assert response.json() == []
+
+    def test_preferences_scoped_to_user_by_email(self, client):
+        """The email header is the identity: a different email is a different
+        bucket, and the same email sees its own rows."""
+        alice = {"X-Forwarded-Email": "alice@example.com"}
+        bob = {"X-Forwarded-Email": "bob@example.com"}
+        client.put("/api/user/preferences/key1", json={"value": "val1"}, headers=alice)
+        assert client.get("/api/user/preferences", headers=bob).json() == []
+        assert client.get("/api/user/preferences").json() == []
+        prefs = client.get("/api/user/preferences", headers=alice).json()
+        assert [(p["key"], p["value"]) for p in prefs] == [("key1", "val1")]
 
 
 # --- Artifacts ---

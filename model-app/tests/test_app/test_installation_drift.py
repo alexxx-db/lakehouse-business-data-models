@@ -426,7 +426,7 @@ def test_reconcile_marks_uninstalled_when_catalog_empty(
         assert mv.deployment_status == "uninstalled"
 
 
-def test_reconcile_keeps_deployed_when_some_schemas_present(
+def test_reconcile_marks_uninstalled_when_some_schemas_missing(
     client_with_agent, engine, mock_ws
 ):
     biz_id = _seed_business(engine)
@@ -438,9 +438,59 @@ def test_reconcile_keeps_deployed_when_some_schemas_present(
         f"/api/model-versions/{mv_id}/reconcile-installation"
     )
     body = resp.json()
-    assert body["new_deployment_status"] == "deployed"
+    assert body["new_deployment_status"] == "uninstalled"
     assert body["schemas_present"] == ["ecm_customer"]
     assert body["schemas_missing"] == ["ecm_inventory"]  # neither form present -> prefixed fallback
+
+
+def test_reconcile_leaves_draft_unchanged_when_some_schemas_missing(
+    client_with_agent, engine, mock_ws
+):
+    """A partial match must not promote a draft to "deployed" — that row
+    would immediately read as drifted on the next status probe."""
+    biz_id = _seed_business(engine)
+    mv_id = _seed_version(engine, biz_id, deployment_status="draft")
+    _stub_schemas(mock_ws, ["ecm_customer", "_metamodel"])
+
+    resp = client_with_agent.post(
+        f"/api/model-versions/{mv_id}/reconcile-installation"
+    )
+    body = resp.json()
+    assert body["previous_deployment_status"] == "draft"
+    assert body["new_deployment_status"] == "draft"
+
+
+def test_reconcile_converges_when_bare_names_match_another_business(
+    client_with_agent, engine, mock_ws
+):
+    """Live regression: a never-installed version stamped "deployed" in a
+    catalog shared with another business whose schemas use bare names.
+    The bare-name fallback matches a few of them ("customer"), so the old
+    reconcile kept "deployed" and the drift dialog re-opened on every
+    visit. Reconcile must leave a state the status probe accepts."""
+    biz_id = _seed_business(engine)
+    mv_id = _seed_version(
+        engine, biz_id, domains=("customer", "geology", "tailings"),
+    )
+    other_business = ["_metamodel", "customer", "product", "store"]
+
+    _stub_schemas(mock_ws, other_business)
+    resp = client_with_agent.post(
+        f"/api/model-versions/{mv_id}/reconcile-installation"
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["new_deployment_status"] == "uninstalled"
+
+    _stub_schemas(mock_ws, other_business)
+    status = client_with_agent.get(
+        f"/api/model-versions/{mv_id}/installation-status"
+    ).json()
+    assert status["in_sync"] is True
+    # The FE inverse-drift dialog fires only on a complete match
+    # (installation-drift-dialog.tsx), so the leftover bare-name match
+    # must still report schemas missing.
+    assert status["lakebase_says_installed"] is False
+    assert status["missing_schemas"] != []
 
 
 def test_reconcile_marks_deployed_when_lakebase_was_uninstalled(

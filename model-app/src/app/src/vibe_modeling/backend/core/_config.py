@@ -80,6 +80,47 @@ class AppConfig(BaseSettings):
             "sourced from a Databricks app secret - never a literal."
         ),
     )
+    # Domain Taxonomy Builder install-time switches, written into app.yml by
+    # install/install.sh --enable-taxonomy-builder. Off by default, so the rest
+    # of the app never depends on the feature. The model service is a SEED
+    # only: it fills AgentConfig.taxonomy_model_service while that column is
+    # empty, after which Settings owns the value and this is not consulted.
+    taxonomy_builder_enabled: bool = Field(
+        default=False,
+        description="Whether the Domain Taxonomy Builder is installed (VIBE_MODELING_TAXONOMY_BUILDER_ENABLED)",
+    )
+    taxonomy_model_service: str = Field(
+        default="",
+        description=(
+            "Install-default UC model service (catalog.schema.service) for the "
+            "Domain Taxonomy Builder (VIBE_MODELING_TAXONOMY_MODEL_SERVICE)"
+        ),
+    )
+
+    # Headless Domain-Model Assessment install-time switches, written into
+    # app.yml by install/install.sh --enable-assessment. Off by default: the
+    # routes answer 404 and the poller does not start. The reader SP is a SEED
+    # only: it fills AssessConfig.reader_application_id while that column is
+    # empty, after which Settings -> Assessment owns the value.
+    assessment_enabled: bool = Field(
+        default=False,
+        description="Whether the bronze assessment skill is installed (VIBE_MODELING_ASSESSMENT_ENABLED)",
+    )
+    assess_reader_sp: str = Field(
+        default="",
+        description=("Install-default reader service principal: its application id, a UUID, not the display name "
+                     "(VIBE_MODELING_ASSESS_READER_SP)"),
+    )
+
+    @property
+    def taxonomy_install_default_model_service(self) -> str:
+        """The install-time model service, ``""`` when the feature is not
+        installed or no default was given. Seeds
+        ``AgentConfig.taxonomy_model_service`` (on row creation, and for
+        existing empty rows at boot) and backs Settings' Reset."""
+        if not self.taxonomy_builder_enabled:
+            return ""
+        return self.taxonomy_model_service.strip()
 
     @property
     def static_assets_path(self) -> Path:

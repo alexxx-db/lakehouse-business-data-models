@@ -13,6 +13,7 @@ import base64
 import json
 import re
 from datetime import datetime, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 from databricks.sdk.service.workspace import ExportFormat
 from fastapi import HTTPException
@@ -20,6 +21,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
+from ..core._time import as_utc
 from ..db_models import (
     AgentConfig,
     ModelVersion,
@@ -208,6 +210,7 @@ def _get_or_create_agent_config(session, config) -> AgentConfig:
         warehouse_id=config.warehouse_id,
         github_repo_owner=DEFAULT_REPO_OWNER,
         github_repo_name=DEFAULT_REPO_NAME,
+        taxonomy_model_service=config.taxonomy_install_default_model_service,
     )
     session.add(cfg)
     session.commit()
@@ -272,6 +275,15 @@ _CONFIG_REQUIREMENTS: dict[str, dict[str, str]] = {
             "need it. Set one in Settings → Platform."
         ),
     },
+    "taxonomy_llm": {
+        "label": "Domain Taxonomy Builder model service",
+        "settings_url": "/settings?tab=platform",
+        "field_path": "(agent_config.taxonomy_model_service)",
+        "message": (
+            "No model service is configured for the Domain Taxonomy Builder. "
+            "An admin must choose one in Settings → Platform."
+        ),
+    },
     "source_repo": {
         "label": "Industry-models source repo",
         "settings_url": "/settings?tab=sources",
@@ -321,6 +333,8 @@ def _missing_config_keys(session, config, needs) -> list[str]:
             owner = (getattr(cfg, "github_repo_owner", "") or "").strip() or DEFAULT_REPO_OWNER
             name = (getattr(cfg, "github_repo_name", "") or "").strip() or DEFAULT_REPO_NAME
             ok = bool(owner) and bool(name)
+        elif key == "taxonomy_llm":
+            ok = bool((getattr(cfg, "taxonomy_model_service", "") or "").strip())
         else:  # pragma: no cover - guards against a typo'd needs key
             raise ValueError(f"require_config: unknown requirement {key!r}")
         if not ok:
@@ -332,7 +346,7 @@ def require_config(session, config, needs, *, mode: str):
     """Assert that the installation config needed by an operation is present.
 
     ``needs`` is a subset of ``{"metamodel_catalog", "warehouse", "agent_job",
-    "source_repo"}``. Two modes with a raise/collect duality:
+    "source_repo", "taxonomy_llm"}``. Two modes with a raise/collect duality:
 
     - ``mode="raise"`` raises ``HTTPException(422, detail={...})`` with a
       structured ``config_missing`` payload (``missing`` carries per-key
@@ -367,22 +381,30 @@ def require_config(session, config, needs, *, mode: str):
             + ", ".join(labels)
             + ". Configure it in Settings, then retry."
         )
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "config_missing",
-                "missing": [
-                    {
-                        "key": k,
-                        "label": _CONFIG_REQUIREMENTS[k]["label"],
-                        "settings_url": _CONFIG_REQUIREMENTS[k]["settings_url"],
-                    }
-                    for k in missing
-                ],
-                "message": message,
-            },
-        )
+        raise config_missing_error(missing, message)
     raise ValueError(f"require_config: unknown mode {mode!r}")
+
+
+def config_missing_error(keys: str | list[str], message: str) -> HTTPException:
+    """The structured 422 ``config_missing`` error for ``keys`` with a custom
+    ``message`` (the UI shows ``message``). ``require_config`` builds its
+    error here too, so the payload shape has one definition."""
+    keys = [keys] if isinstance(keys, str) else list(keys)
+    return HTTPException(
+        status_code=422,
+        detail={
+            "error": "config_missing",
+            "missing": [
+                {
+                    "key": k,
+                    "label": _CONFIG_REQUIREMENTS[k]["label"],
+                    "settings_url": _CONFIG_REQUIREMENTS[k]["settings_url"],
+                }
+                for k in keys
+            ],
+            "message": message,
+        },
+    )
 
 
 def _get_agent_config(session) -> AgentConfig:
@@ -408,31 +430,41 @@ def _get_agent_config(session) -> AgentConfig:
 # --- Databricks run URL builder ---------------------------------------------
 
 
-def _build_dbx_job_url(ws, job_id) -> str:
-    """Build the Databricks UI URL for a persistent job.
+def build_job_run_url(ws, job_id, run_id=None) -> str:
+    """The Databricks UI URL for a job, or for one of its runs.
 
-    Returns "" when job_id is unset or ws is unavailable. The frontend
-    can't construct this — the app is served from a Databricks Apps proxy
-    origin and only the backend has access to the workspace host via the
-    SDK config.
+    ``/jobs/<job_id>`` without ``run_id``; ``/jobs/<job_id>/runs/<run_id>``
+    with one (``/jobs/runs/<run_id>`` when the job id is unknown). The
+    workspace host's query string (the ``?o=<workspace id>`` selector) is
+    kept. Returns "" when ``ws`` is unavailable or there is neither id. The
+    frontend can't construct this: the app is served from a Databricks Apps
+    proxy origin and only the backend has the workspace host (SDK config).
     """
-    if not job_id or ws is None:
+    if ws is None or not (job_id or run_id):
         return ""
     try:
-        from urllib.parse import urlsplit, urlunsplit
-
         host = (ws.config.host or "").rstrip("/")
         split = urlsplit(host)
         base = urlunsplit((split.scheme, split.netloc, "", "", ""))
-        query = split.query or ""
-        suffix = f"?{query}" if query else ""
-        return f"{base}/jobs/{job_id}{suffix}"
+        suffix = f"?{split.query}" if split.query else ""
+        if run_id:
+            path = f"/jobs/{job_id}/runs/{run_id}" if job_id else f"/jobs/runs/{run_id}"
+        else:
+            path = f"/jobs/{job_id}"
+        return f"{base}{path}{suffix}"
     except Exception:
         return ""
 
 
+def _build_dbx_job_url(ws, job_id) -> str:
+    """A persistent job's URL ("" when job_id is unset or ws is unavailable)."""
+    if not job_id:
+        return ""
+    return build_job_run_url(ws, job_id)
+
+
 def _build_dbx_run_url(databricks_run_id, ws, session) -> str | None:
-    """Build the Databricks UI URL for a job run.
+    """The agent run's URL under the stored agent job, or None without a run.
 
     Used for both the Run-level link and per-RunOperation links. Each
     Phase of a multi-phase Run dispatches its own job run, so per-Phase
@@ -440,24 +472,15 @@ def _build_dbx_run_url(databricks_run_id, ws, session) -> str | None:
     """
     if not databricks_run_id or ws is None:
         return None
-    try:
-        from urllib.parse import urlsplit, urlunsplit
-
-        host = (ws.config.host or "").rstrip("/")
-        split = urlsplit(host)
-        base = urlunsplit((split.scheme, split.netloc, "", "", ""))
-        query = split.query or ""
-        job_id = None
-        if session is not None:
+    job_id = None
+    if session is not None:
+        try:
             cfg = session.exec(select(AgentConfig).limit(1)).first()
-            if cfg and cfg.job_id:
-                job_id = cfg.job_id
-        suffix = f"?{query}" if query else ""
-        if job_id:
-            return f"{base}/jobs/{job_id}/runs/{databricks_run_id}{suffix}"
-        return f"{base}/jobs/runs/{databricks_run_id}{suffix}"
-    except Exception:
-        return None
+        except Exception:
+            return None
+        if cfg and cfg.job_id:
+            job_id = cfg.job_id
+    return build_job_run_url(ws, job_id, databricks_run_id) or None
 
 
 # --- Run output shaping -----------------------------------------------------
@@ -501,11 +524,8 @@ def _build_run_out(
     # be running), so it keeps ticking live until it promotes to `failed`.
     started = run.started_at or run.created_at
     if started is not None:
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=timezone.utc)
-        end = run.completed_at or datetime.now(timezone.utc)
-        if end.tzinfo is None:
-            end = end.replace(tzinfo=timezone.utc)
+        started = as_utc(started)
+        end = as_utc(run.completed_at) or datetime.now(timezone.utc)
         elapsed = max(0, int((end - started).total_seconds()))
     else:
         elapsed = 0
@@ -932,6 +952,7 @@ __all__ = [
     "_get_or_create_agent_config",
     "require_config",
     "resolve_warehouse_id",
+    "build_job_run_url",
     "_build_dbx_job_url",
     "_build_run_out",
     "_NOTEBOOK_VERSION_RE",

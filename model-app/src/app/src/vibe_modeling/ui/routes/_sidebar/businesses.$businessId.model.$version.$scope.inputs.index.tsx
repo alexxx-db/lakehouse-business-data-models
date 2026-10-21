@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListVersionsSuspense, useGetBusinessSuspense } from "@/lib/api";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { ComposeSurface } from "@/components/vibe-inputs/compose-surface";
 import { useBreadcrumbs } from "@/components/explorer/breadcrumb-context";
 
@@ -49,12 +50,11 @@ function Resolved({
 
   // Mirror the model page's chain, with the version crumb a link back to it
   // (the inputs page is otherwise a dead-end with no way back).
-  const scopeLabel = scope ? scope.toUpperCase() : "";
   useBreadcrumbs([
     { label: business.name, to: "/businesses/$businessId", params: { businessId } },
     { label: "Explorer", to: "/businesses/$businessId/explorer", params: { businessId } },
     {
-      label: scopeLabel ? `v${version} ${scopeLabel}` : `v${version}`,
+      label: versionScopeLabel(version, scope),
       to: "/businesses/$businessId/model/$version/$scope",
       params: { businessId, version, scope },
       search: { tab: "overview" },

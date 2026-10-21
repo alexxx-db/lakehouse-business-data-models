@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isTerminalRunStatus } from "@/lib/run-status";
+import { versionScopeLabel } from "@/lib/version-label";
 
 // LineageCard renders the source / generated / operates-on relationships
 // for a Run. Source/generated are derived from the run's RunOperation rows
@@ -294,7 +295,6 @@ function LineageVersionLink({
   // before the (version, scope) reshape). The route guard rejects unknown
   // scopes so we keep this strictly within the {ecm, mvm} set.
   const scope = version.scope || "mvm";
-  const scopeLabel = version.scope ? version.scope.toUpperCase() : "";
   return (
     <>
       <Link
@@ -304,7 +304,7 @@ function LineageVersionLink({
         className="font-medium text-primary hover:underline"
       >
         {/* Spec §4: source/output displayed as "v1 ECM" not just "v1". */}
-        v{version.version}{scopeLabel ? ` ${scopeLabel}` : ""}
+        {versionScopeLabel(version.version, version.scope)}
       </Link>
       {showDeploymentBadge && (
         <Badge variant="outline" className="text-[10px] capitalize">

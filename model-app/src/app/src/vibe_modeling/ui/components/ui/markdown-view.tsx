@@ -76,15 +76,34 @@ export interface MarkdownViewProps {
   content: string;
   /** Wrapper classes (sizing / overflow). Defaults to the artifact-preview look. */
   className?: string;
+  /** Return true to handle a link click in-app (the default navigation is suppressed). */
+  onLinkClick?: (href: string) => boolean;
 }
 
-export function MarkdownView({ content, className }: MarkdownViewProps) {
+export function MarkdownView({ content, className, onLinkClick }: MarkdownViewProps) {
+  const components = onLinkClick
+    ? {
+        ...MARKDOWN_COMPONENTS,
+        a: ({ href, ...props }: ComponentProps<"a">) => {
+          const A = MARKDOWN_COMPONENTS.a;
+          return (
+            <A
+              href={href}
+              {...props}
+              onClick={(e) => {
+                if (href && onLinkClick(href)) e.preventDefault();
+              }}
+            />
+          );
+        },
+      }
+    : MARKDOWN_COMPONENTS;
   return (
     <div className={cn("text-xs leading-relaxed text-foreground", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug]}
-        components={MARKDOWN_COMPONENTS}
+        components={components}
       >
         {content}
       </ReactMarkdown>

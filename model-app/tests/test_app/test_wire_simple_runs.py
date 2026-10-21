@@ -374,7 +374,7 @@ class TestPostRunsHappyPaths:
                 "catalog": "test_catalog",
                 "deployment_catalog": "test_catalog",
                 # schema_prefix INTENTIONALLY OMITTED — the form-default
-                # path the the test workspace walkthrough hit.
+                # path the live walkthrough hit.
                 "cataloging_style": "One Catalog",
             },
         )

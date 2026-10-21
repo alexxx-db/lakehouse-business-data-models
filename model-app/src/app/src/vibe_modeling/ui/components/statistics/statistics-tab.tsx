@@ -24,8 +24,6 @@ import {
  * T6/T7 bind the real sections to the metrics endpoints. Degradation is
  * data-driven from the evolution-metrics flags (`has_confidence`,
  * `has_predecessor`); ECM hides confidence, a base version collapses Change.
- *
- * Design-of-record: docs/design/statistics-tab/README.md.
  */
 export function StatisticsTab({
   model,

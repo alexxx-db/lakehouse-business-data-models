@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Download } from "lucide-react";
+import { Download } from "lucide-react";
+import { StatusLine } from "@/components/settings/status-line";
 import { Button } from "@/components/ui/button";
 import {
   ApiError,
@@ -92,19 +93,13 @@ export function InstallBundledAgentButton({ onInstalled }: Props) {
         {uploading ? "Installing…" : label}
       </Button>
       {result && (
-        <p className="text-green-600 flex items-start gap-1">
-          <Check className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>
-            {result.overwritten ? "Overwrote" : "Uploaded"}{" "}
-            <span className="font-mono">{result.path}</span> ({result.version}).
-          </span>
-        </p>
+        <StatusLine tone="ok">
+          {result.overwritten ? "Overwrote" : "Uploaded"}{" "}
+          <span className="font-mono">{result.path}</span> ({result.version}).
+        </StatusLine>
       )}
       {error && (
-        <p className="text-red-600 flex items-start gap-1">
-          <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </p>
+        <StatusLine tone="error">{error}</StatusLine>
       )}
     </div>
   );

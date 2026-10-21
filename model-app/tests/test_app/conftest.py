@@ -17,7 +17,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src", "a
 os.environ.setdefault("TRUST_FORWARDED_HEADERS", "1")
 
 import pytest
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+from databricks.sdk.errors import NotFound
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -29,6 +32,7 @@ from vibe_modeling.backend import explorer as _explorer  # noqa: F401 — regist
 from vibe_modeling.backend import diagram as _diagram  # noqa: F401 — register diagram routes
 from vibe_modeling.backend.routes import (
     _dev_fixtures as _routes_dev_fixtures,
+    assessments as _routes_assessments,
     businesses as _routes_businesses,
     config as _routes_config,
     deployment as _routes_deployment,
@@ -38,6 +42,7 @@ from vibe_modeling.backend.routes import (
     platform as _routes_platform,
     sectors as _routes_sectors,
     sources as _routes_sources,
+    taxonomy as _routes_taxonomy,
     uc_browse as _routes_uc_browse,
     versions as _routes_versions,
     vibe_inputs as _routes_vibe_inputs,
@@ -50,6 +55,7 @@ _SUB_ROUTERS = (
     _routes_industries.router,
     _routes_sectors.router,
     _routes_sources.router,
+    _routes_taxonomy.router,
     _routes_industry_models.router,
     _routes_config.router,
     _routes_businesses.router,
@@ -59,6 +65,8 @@ _SUB_ROUTERS = (
     _routes_import_root.router,
     _routes_dev_fixtures.router,
     _routes_vibe_inputs.router,
+    _routes_assessments.config_router,
+    _routes_assessments.router,
 )
 from vibe_modeling.backend.core._config import AppConfig
 from vibe_modeling.backend.core._defaults import (
@@ -80,6 +88,17 @@ from vibe_modeling.backend.db_models import (
     RunArtifact,
     RunProgressEvent,
 )
+
+@pytest.fixture(autouse=True)
+def _outside_apps_runtime_by_default(monkeypatch):
+    """Run every test outside the Databricks Apps runtime unless it opts in.
+
+    A shell that exports ``DATABRICKS_APP_NAME`` would otherwise make
+    header-less requests 401 (``require_user_identity``). Tests covering the
+    in-runtime path set it themselves with ``monkeypatch.setenv``.
+    """
+    monkeypatch.delenv("DATABRICKS_APP_NAME", raising=False)
+
 
 @pytest.fixture(autouse=True)
 def _isolate_diagram_prefetch(monkeypatch):
@@ -252,18 +271,30 @@ def mock_ws_fixture():
     ws.files.get_metadata.side_effect = NotFound("mock: no such file")
     return ws
 
+
+def stub_no_metamodel(mock_ws):
+    mock_ws.schemas.list.side_effect = lambda *a, **kw: iter(
+        [SimpleNamespace(name="default")]
+    )
+    mock_ws.schemas.get.side_effect = NotFound("no schema")
+    mock_ws.volumes.read.side_effect = NotFound("no volume")
+
+
 @pytest.fixture(name="config")
 def config_fixture():
     """Test AppConfig used by the client fixture's `config: Dependencies.Config` override.
 
     Carries non-empty ``deployment_catalog`` and ``warehouse_id`` so the lazy
-    AgentConfig bootstrap can be observed end-to-end in route tests.
+    AgentConfig bootstrap can be observed end-to-end in route tests. The
+    optional headless assessment is installed, so the ``/assess*`` route tests
+    reach their handlers; the gating tests override it.
     """
     return AppConfig(
         app_name="test",
         warehouse_id="test-warehouse-id",
         deployment_catalog="test_deployment_catalog",
         poll_interval_seconds=1,
+        assessment_enabled=True,
     )
 
 @pytest.fixture(name="mock_tracker")

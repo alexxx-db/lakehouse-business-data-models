@@ -151,12 +151,16 @@ export function InstallationDriftDialog({
   // Lakebase's deployment_status doesn't reflect it. `in_sync` will be
   // `true` or `null` for this case (it is not a confirmed-installed vs.
   // missing-schema mismatch), so it must be checked independently of
-  // forcedDrift rather than folded into it.
+  // forcedDrift rather than folded into it. Only a COMPLETE match counts:
+  // reconcile promotes to "deployed" only when nothing is missing, and a
+  // partial match can be another business's bare-name schemas in a shared
+  // catalog, so offering reconcile for it would loop.
   const inverseDrift =
     !!status &&
     status.lakebase_says_installed === false &&
     status.catalog_present === true &&
-    status.found_schemas.length > 0;
+    status.found_schemas.length > 0 &&
+    status.missing_schemas.length === 0;
 
   const mode: "forced" | "inverse" | null = forcedDrift
     ? "forced"

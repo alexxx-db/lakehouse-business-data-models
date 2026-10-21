@@ -1,6 +1,6 @@
 [project]
 name = "vibe-modeling"
-version = "0.7.3"
+version = "0.8.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ty>=0.0.12",
+    # Test-only: the assessment contract tests validate documents against vendored/assessment/assessment.schema.json.
+    "jsonschema>=4.0",
 ]
 
 [tool.apx.metadata]
@@ -50,6 +52,8 @@ exclude = ["src/vibe_modeling/ui"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "vendored/agent" = "vibe_modeling/vendored/agent"
+"vendored/assessment" = "vibe_modeling/vendored/assessment"
 
 [tool.hatch.build.targets.sdist.force-include]
 "vendored/agent" = "vibe_modeling/vendored/agent"
+"vendored/assessment" = "vibe_modeling/vendored/assessment"

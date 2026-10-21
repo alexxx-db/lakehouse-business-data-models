@@ -9,8 +9,7 @@ import {
 /**
  * The quiet "n/a" degradation token from the Statistics design.
  *
- * Per the design-of-record (docs/design/statistics-tab/README.md →
- * "Graceful degradation"), when a metric cannot be computed we render a
+ * Graceful degradation: when a metric cannot be computed we render a
  * `slash` icon + italic "n/a" with a tooltip explaining why — never an empty
  * panel or an error. The dependent graphic is hidden by the caller; this token
  * is what takes its place.

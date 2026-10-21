@@ -40,6 +40,7 @@ from vibe_modeling.backend import explorer as _explorer  # noqa: F401
 from vibe_modeling.backend import diagram as _diagram  # noqa: F401
 from vibe_modeling.backend.routes import (
     _dev_fixtures as _routes_dev_fixtures,
+    assessments as _routes_assessments,
     businesses as _routes_businesses,
     config as _routes_config,
     deployment as _routes_deployment,
@@ -48,6 +49,7 @@ from vibe_modeling.backend.routes import (
     platform as _routes_platform,
     sectors as _routes_sectors,
     sources as _routes_sources,
+    taxonomy as _routes_taxonomy,
     versions as _routes_versions,
 )
 
@@ -74,8 +76,12 @@ _PUBLIC_ROUTES: set[tuple[str, str]] = {
 # is added at the same time.
 _READ_ONLY_ROUTES: set[tuple[str, str]] = {
     # Platform
+    # Writes only the caller's own rows, via the transitional legacy-username
+    # re-key onto the email identity (remove with the re-key after one release).
+    # The preference routes are per-user: they write only the caller's own rows and require an identity.
     ("GET", "/api/user/preferences"),
     ("PUT", "/api/user/preferences/{key}"),  # per-user write to own row
+    ("DELETE", "/api/user/preferences/{key}"),  # per-user delete of own row
     ("GET", "/api/catalogs"),
     ("GET", "/api/admin/bundled-agent"),  # info-only, no mutation
     # Client telemetry beacon — any signed-in user; logs a warning only
@@ -194,6 +200,24 @@ _READ_ONLY_ROUTES: set[tuple[str, str]] = {
     # Source read-auth config (0.7.1) — read is open (never returns secret
     # values); the PUT is BusinessAdminOnly.
     ("GET", "/api/config/source-auth"),
+    # Headless assessment config (read is open; the PUT is AdminOnly)
+    ("GET", "/api/assess/config"),
+    # Readiness check — POST for the body, but read-only (UC lookups only).
+    ("POST", "/api/assess/readiness"),
+    # Saved bronze source map — read is open; the PUT and launch are ModelerOnly.
+    ("GET", "/api/businesses/{business_id}/assess-source-map"),
+    # Assessment list/get — open to any role; cancels are ModelerOnly.
+    ("GET", "/api/businesses/{business_id}/assessments"),
+    ("GET", "/api/assessments/{batch_id}"),
+    # Assessment results + docs — open to any role; answering a decision is ModelerOnly.
+    ("GET", "/api/assessment-domain-runs/{domain_run_id}/results"),
+    ("GET", "/api/assessment-domain-runs/{domain_run_id}/docs"),
+    ("GET", "/api/assessment-domain-runs/{domain_run_id}/docs/content"),
+    # Install-skills is role-free by design: it writes only into the caller's
+    # own /Workspace/Users/<email>/.assistant/skills folder, through OBO.
+    ("POST", "/api/assessment-domain-runs/{domain_run_id}/handoff/install-skills"),
+    # Hand-off prompts + skills check — open to any role; the POST (copy into the caller's home) is ModelerOnly.
+    ("GET", "/api/assessment-domain-runs/{domain_run_id}/handoff"),
     # Source explorer (Wave 1, Track C) — read-only browse of an external
     # catalog (GitHub today). No mutation in this story; publish/write lands
     # in a later wave behind the UC connection.
@@ -218,6 +242,18 @@ _READ_ONLY_ROUTES: set[tuple[str, str]] = {
     ("GET", "/api/businesses/{business_id}/versions/{version_id}/deployment/catalog-check"),
     ("GET", "/api/businesses/{business_id}/versions/{version_id}/deployment/uc-schema"),
     ("GET", "/api/businesses/{business_id}/versions/{version_id}/deployment/compare"),
+    # Domain Taxonomy Builder — reads + pure compute only. GET draft is a
+    # per-owner read of in-memory state; /compile is pure code (no LLM, no
+    # write); /example returns the built-in Ridgeline example. The drafting
+    # mutators (create / cancel / retry / condense) are BusinessAdminOnly —
+    # the same bar as createBusiness, where the wizard ends.
+    ("GET", "/api/taxonomy/drafts/{draft_id}"),
+    ("POST", "/api/taxonomy/compile"),
+    ("GET", "/api/taxonomy/example"),
+    # Taxonomy settings read — the landing card and the wizard read ``ready``
+    # for every role. The PUT, the Test call and the model-services picker
+    # are AdminOnly (asserted below).
+    ("GET", "/api/config/taxonomy"),
 }
 
 
@@ -234,12 +270,15 @@ def _build_app() -> FastAPI:
         _routes_industries.router,
         _routes_sectors.router,
         _routes_sources.router,
+        _routes_taxonomy.router,
         _routes_industry_models.router,
         _routes_config.router,
         _routes_businesses.router,
         _routes_versions.router,
         _routes_deployment.router,
         _routes_dev_fixtures.router,
+        _routes_assessments.config_router,
+        _routes_assessments.router,
     ):
         app.include_router(r)
     return app
@@ -353,11 +392,15 @@ def test_admin_only_routes_have_admin_guard(all_routes):
         ("POST", "/api/businesses/{business_id}/seed-model"),
         ("POST", "/api/admin/install-bundled-agent"),
         ("PUT", "/api/config/agent"),
+        ("PUT", "/api/assess/config"),
         (
             "POST",
             "/api/businesses/{business_id}/versions/import-from-volume",
         ),
         ("DELETE", "/api/businesses/{business_id}/runs/{run_id}"),
+        ("PUT", "/api/config/taxonomy"),
+        ("POST", "/api/config/taxonomy/test"),
+        ("GET", "/api/config/taxonomy/model-services"),
     }
     by_key = {(m, p): r for m, p, r in all_routes}
 
@@ -412,3 +455,8 @@ def test_route_walker_reports_total_count(all_routes, capsys):
         f"Bucket coverage shortfall: gated={gated} + public={public} "
         f"+ read_only={read_only} < total={total}"
     )
+
+
+def test_assessment_grant_route_is_removed(all_routes):
+    """The app grants nothing on customer catalogs: the assessment grant-read route is gone."""
+    assert not any(p == "/api/assess/grant-model-read" for _, p, _ in all_routes)

@@ -8,6 +8,7 @@ from ._defaults import (
     OptionalUserWorkspaceClientDependency,
 )
 from ._headers import HeadersDependency
+from ._identity import UserIdentityDependency
 from .lakebase import LakebaseDependency
 from ._roles import (
     RequireAdmin,
@@ -44,6 +45,12 @@ class Dependencies:
     Headers: TypeAlias = HeadersDependency
     """Databricks Apps HTTP headers for the current request.
     Recommended usage: `headers: Dependencies.Headers`"""
+
+    UserIdentity: TypeAlias = UserIdentityDependency
+    """Canonical caller identity (email first, then preferred username).
+    `"local-dev"` without identity headers outside the Apps runtime; 401 inside it.
+    Recommended usage: `user_id: Dependencies.UserIdentity`"""
+
     Session: TypeAlias = LakebaseDependency
     """Lakebase session dependency.
     Recommended usage: `session: Dependencies.Session`"""

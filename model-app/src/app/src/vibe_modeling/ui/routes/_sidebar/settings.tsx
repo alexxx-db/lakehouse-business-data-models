@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import { notifyError } from "@/lib/notify";
+import { apiErrorMessage } from "@/lib/api-error";
 import { invalidateEntityLists } from "@/lib/delete-invalidation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,12 @@ import { useBreadcrumbs } from "@/components/explorer/breadcrumb-context";
 import { InstallBundledAgentButton } from "@/components/settings/install-bundled-agent-button";
 import { AgentReleaseCard } from "@/components/settings/agent-release-card";
 import { SourceAuthBanner } from "@/components/source-explorer/source-auth-banner";
+import { AssessSettings } from "@/components/assessment/assess-settings";
+import { AssessBoundary } from "@/components/assessment/assess-boundary";
+import { useAssessReady } from "@/lib/assessment";
 import { AdminGate } from "@/components/settings/admin-gate";
+import { SavedNotice, SaveErrorBox, StatusLine } from "@/components/settings/status-line";
+import { TaxonomyBuilderCard } from "@/components/settings/taxonomy-builder-card";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Re-exported so existing imports (`@/routes/_sidebar/settings`) and tests keep
@@ -113,6 +119,7 @@ const validTabs = [
   "agent",
   "platform",
   "sources",
+  "assessment",
   "sectors",
   "preferences",
 ] as const;
@@ -142,6 +149,10 @@ export const Route = createFileRoute("/_sidebar/settings")({
   component: () => {
     const navigate = useNavigate();
     const { tab } = useSearch({ from: "/_sidebar/settings" });
+    // The Assessment tab exists only when the optional skill is installed
+    // (same rule as the taxonomy builder's Settings card).
+    const { installed: assessInstalled } = useAssessReady();
+    const activeTab = tab === "assessment" && !assessInstalled ? "agent" : tab;
 
     const setTab = (value: string) => {
       navigate({ to: ".", search: { tab: value as SettingsTab }, replace: true });
@@ -155,7 +166,7 @@ export const Route = createFileRoute("/_sidebar/settings")({
           <Settings className="h-5 w-5" />
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         </div>
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={activeTab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="agent">Agent</TabsTrigger>
             <TabsTrigger value="platform">
@@ -166,6 +177,7 @@ export const Route = createFileRoute("/_sidebar/settings")({
               <Github className="h-4 w-4 mr-1.5" />
               Sources
             </TabsTrigger>
+            {assessInstalled && <TabsTrigger value="assessment">Assessment</TabsTrigger>}
             <TabsTrigger value="sectors">
               <Factory className="h-4 w-4 mr-1.5" />
               Sectors
@@ -190,6 +202,15 @@ export const Route = createFileRoute("/_sidebar/settings")({
               <SourcesSection />
             </AdminGate>
           </TabsContent>
+          {assessInstalled && (
+            <TabsContent value="assessment">
+              <AdminGate scope="app">
+                <AssessBoundary>
+                  <AssessSettings />
+                </AssessBoundary>
+              </AdminGate>
+            </TabsContent>
+          )}
           <TabsContent value="sectors">
             <AdminGate scope="business">
               <Suspense fallback={<Skeleton className="h-96 w-full" />}>
@@ -399,12 +420,7 @@ export function AgentConfigSection() {
       }
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
-      // Extract HTTPException detail from axios-style error
-      const anyErr = err as { response?: { data?: { detail?: string } }; message?: string };
-      const detail =
-        anyErr?.response?.data?.detail ||
-        anyErr?.message ||
-        "Save failed.";
+      const detail = apiErrorMessage(err, "Save failed.");
       setSaveError(detail);
       setNotebookCheck({ status: "error", reason: detail });
     } finally {
@@ -485,23 +501,16 @@ export function AgentConfigSection() {
               </p>
             )}
             {notebookCheck.status === "ok" && (
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <Check className="h-3 w-3" />
+              <StatusLine tone="ok">
                 Reachable; version matches
                 {notebookCheck.version ? ` (${notebookCheck.version})` : ""}.
-              </p>
+              </StatusLine>
             )}
             {notebookCheck.status === "warn" && (
-              <p className="text-xs text-warning flex items-start gap-1">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                <span>{notebookCheck.message}</span>
-              </p>
+              <StatusLine tone="warn">{notebookCheck.message}</StatusLine>
             )}
             {notebookCheck.status === "error" && (
-              <p className="text-xs text-red-600 flex items-start gap-1">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                <span>{notebookCheck.reason}</span>
-              </p>
+              <StatusLine tone="error">{notebookCheck.reason}</StatusLine>
             )}
             <p className="text-xs text-muted-foreground">
               Path to the vibe modelling agent notebook in the Databricks workspace.
@@ -525,10 +534,7 @@ export function AgentConfigSection() {
               }}
             />
             {maxConcurrentRunsError && (
-              <p className="text-xs text-red-600 flex items-start gap-1">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                <span>{maxConcurrentRunsError}</span>
-              </p>
+              <StatusLine tone="error">{maxConcurrentRunsError}</StatusLine>
             )}
             <p className="text-xs text-muted-foreground">
               Minimum {MIN_CONCURRENT_RUNS}. The agent job needs slack for the
@@ -584,12 +590,7 @@ export function AgentConfigSection() {
           )}
 
           {saveError && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <span className="text-red-700 dark:text-red-300 whitespace-pre-wrap">
-                {saveError}
-              </span>
-            </div>
+            <SaveErrorBox>{saveError}</SaveErrorBox>
           )}
 
           <Button
@@ -606,8 +607,9 @@ export function AgentConfigSection() {
 }
 
 // Platform tab: installation-wide platform settings an admin controls - the
-// metamodel catalog (concern A) and the SQL warehouse used for progress
-// polling + model sync.
+// metamodel catalog (concern A), the SQL warehouse used for progress
+// polling + model sync, and (only when installed) the Domain Taxonomy
+// Builder's model service.
 export function PlatformSection() {
   return (
     <div className="space-y-4">
@@ -615,6 +617,7 @@ export function PlatformSection() {
       <Suspense fallback={<Skeleton className="h-64 w-full max-w-4xl" />}>
         <WarehouseSection />
       </Suspense>
+      <TaxonomyBuilderCard />
     </div>
   );
 }
@@ -667,19 +670,7 @@ export function MetamodelCatalogCard() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
-      // Mirror the existing admin/403 handling: a non-admin save is rejected
-      // server-side; surface the detail as an inline notice rather than
-      // failing silently.
-      const anyErr = err as {
-        response?: { data?: { detail?: string } };
-        body?: { detail?: string };
-        message?: string;
-      };
-      const detail =
-        anyErr?.response?.data?.detail ||
-        anyErr?.body?.detail ||
-        anyErr?.message ||
-        "Save failed. The metamodel catalog requires admin access.";
+      const detail = apiErrorMessage(err, "Save failed. The metamodel catalog requires admin access.");
       setSaveError(detail);
     } finally {
       setSaving(false);
@@ -708,13 +699,10 @@ export function MetamodelCatalogCard() {
               aria-invalid={invalid}
             />
             {invalid && (
-              <p className="text-xs text-red-600 flex items-start gap-1">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                <span>
-                  Must start with a lowercase letter and contain only lowercase
-                  letters, digits, and underscores.
-                </span>
-              </p>
+              <StatusLine tone="error">
+                Must start with a lowercase letter and contain only lowercase
+                letters, digits, and underscores.
+              </StatusLine>
             )}
             <p className="text-xs text-muted-foreground">
               UC catalog holding the agent's{" "}
@@ -725,19 +713,11 @@ export function MetamodelCatalogCard() {
           </div>
 
           {saveError && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <span className="text-red-700 dark:text-red-300 whitespace-pre-wrap">
-                {saveError}
-              </span>
-            </div>
+            <SaveErrorBox>{saveError}</SaveErrorBox>
           )}
 
           {saved && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <Check className="h-4 w-4" />
-              Metamodel catalog saved
-            </div>
+            <SavedNotice>Metamodel catalog saved</SavedNotice>
           )}
 
           <Button type="submit" disabled={saving || invalid || !dirty}>
@@ -832,10 +812,7 @@ function WarehouseSection() {
           </Select>
         </div>
         {saved && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <Check className="h-4 w-4" />
-            Warehouse updated
-          </div>
+          <SavedNotice>Warehouse updated</SavedNotice>
         )}
         {currentId && (
           <div className="text-xs text-muted-foreground font-mono">
@@ -854,9 +831,8 @@ function WarehouseSection() {
 const DIAGRAM_ALL_DOMAINS_MODE_KEY = "diagram.default_column_mode";
 const DIAGRAM_FOCAL_MODE_KEY = "diagram.default_column_mode_focal";
 // Seed defaults for the two diagram column-mode preferences. These are the
-// values the diagram viewer falls back to when no preference row exists, so
-// "Reset to defaults" restores them by writing the seeds back (no backend
-// unset endpoint - writing the seed values is the chosen reset mechanism).
+// values the diagram viewer falls back to when no preference row exists,
+// so "Reset to defaults" writes the seed values back.
 const DIAGRAM_ALL_DOMAINS_SEED: ColumnDisplayMode = "hide";
 const DIAGRAM_FOCAL_SEED: ColumnDisplayMode = "keys";
 
@@ -876,10 +852,15 @@ export function DiagramSettingsSection() {
     DIAGRAM_FOCAL_SEED;
 
   const handleChange = async (key: string, value: ColumnDisplayMode) => {
-    await setPref({ params: { key }, data: { value } });
-    await queryClient.invalidateQueries({ queryKey: getUserPreferencesKey() });
-    setSaved(key);
-    setTimeout(() => setSaved((s) => (s === key ? null : s)), 2000);
+    try {
+      await setPref({ params: { key }, data: { value } });
+      setSaved(key);
+      setTimeout(() => setSaved((s) => (s === key ? null : s)), 2000);
+    } catch (err) {
+      notifyError(err, { title: "Couldn't save the diagram setting" });
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: getUserPreferencesKey() });
+    }
   };
 
   const handleReset = async () => {
@@ -893,9 +874,11 @@ export function DiagramSettingsSection() {
         params: { key: DIAGRAM_FOCAL_MODE_KEY },
         data: { value: DIAGRAM_FOCAL_SEED },
       });
-      await queryClient.invalidateQueries({ queryKey: getUserPreferencesKey() });
+    } catch (err) {
+      notifyError(err, { title: "Couldn't reset the diagram settings" });
     } finally {
       setResetting(false);
+      await queryClient.invalidateQueries({ queryKey: getUserPreferencesKey() });
     }
   };
 
@@ -935,10 +918,7 @@ export function DiagramSettingsSection() {
             </SelectContent>
           </Select>
           {saved === DIAGRAM_ALL_DOMAINS_MODE_KEY && (
-            <div className="flex items-center gap-1.5 text-xs text-green-600">
-              <Check className="h-3.5 w-3.5" />
-              Saved
-            </div>
+            <SavedNotice size="xs">Saved</SavedNotice>
           )}
         </div>
         <div className="space-y-2">
@@ -961,10 +941,7 @@ export function DiagramSettingsSection() {
             </SelectContent>
           </Select>
           {saved === DIAGRAM_FOCAL_MODE_KEY && (
-            <div className="flex items-center gap-1.5 text-xs text-green-600">
-              <Check className="h-3.5 w-3.5" />
-              Saved
-            </div>
+            <SavedNotice size="xs">Saved</SavedNotice>
           )}
         </div>
         <div className="pt-2">
@@ -1074,16 +1051,7 @@ export function SourceAuthConfigSection() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
-      const anyErr = err as {
-        response?: { data?: { detail?: string } };
-        body?: { detail?: string };
-        message?: string;
-      };
-      const detail =
-        anyErr?.response?.data?.detail ||
-        anyErr?.body?.detail ||
-        anyErr?.message ||
-        "Save failed. Source read access requires admin access.";
+      const detail = apiErrorMessage(err, "Save failed. Source read access requires admin access.");
       setSaveError(detail);
     } finally {
       setSaving(false);
@@ -1262,19 +1230,11 @@ export function SourceAuthConfigSection() {
           )}
 
           {saveError && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <span className="text-red-700 dark:text-red-300 whitespace-pre-wrap">
-                {saveError}
-              </span>
-            </div>
+            <SaveErrorBox>{saveError}</SaveErrorBox>
           )}
 
           {saved && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <Check className="h-4 w-4" />
-              Source read access saved
-            </div>
+            <SavedNotice>Source read access saved</SavedNotice>
           )}
 
           <Button type="submit" disabled={saving || !dirty}>
@@ -1350,16 +1310,7 @@ export function GithubConfigSection() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
-      const anyErr = err as {
-        response?: { data?: { detail?: string } };
-        body?: { detail?: string };
-        message?: string;
-      };
-      const detail =
-        anyErr?.response?.data?.detail ||
-        anyErr?.body?.detail ||
-        anyErr?.message ||
-        "Save failed. GitHub config requires admin access.";
+      const detail = apiErrorMessage(err, "Save failed. GitHub config requires admin access.");
       setSaveError(detail);
     } finally {
       setSaving(false);
@@ -1459,19 +1410,11 @@ export function GithubConfigSection() {
           </div>
 
           {saveError && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <span className="text-red-700 dark:text-red-300 whitespace-pre-wrap">
-                {saveError}
-              </span>
-            </div>
+            <SaveErrorBox>{saveError}</SaveErrorBox>
           )}
 
           {saved && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <Check className="h-4 w-4" />
-              GitHub configuration saved
-            </div>
+            <SavedNotice>GitHub configuration saved</SavedNotice>
           )}
 
           <Button type="submit" disabled={saving || !dirty}>

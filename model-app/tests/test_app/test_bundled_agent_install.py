@@ -124,6 +124,7 @@ def app_config():
     cfg = MagicMock()
     cfg.deployment_catalog = "test_catalog"
     cfg.warehouse_id = "test_warehouse"
+    cfg.taxonomy_install_default_model_service = ""
     return cfg
 
 

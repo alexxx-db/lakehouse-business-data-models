@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { isNotFoundError } from "@/lib/api-error";
 import { selector } from "@/lib/selector";
+import { versionScopeLabel } from "@/lib/version-label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { Table2, Key } from "lucide-react";
 import { ChangeBadge, changeRowClassName } from "@/components/explorer/change-badge";
 import { FkLink } from "@/components/explorer/fk-link";
 import { AddFeedbackButton } from "@/components/feedback/add-feedback-button";
+import { splitCommaList } from "@/lib/comma-list";
 
 export const Route = createFileRoute(
   "/_sidebar/businesses/$businessId/model/$version/$scope/$domainName/$productName"
@@ -52,7 +54,9 @@ export const Route = createFileRoute(
         <ErrorBoundary
           // Own the "product doesn't exist in this version/scope/domain"
           // empty-state; re-throw everything else so the generic boundary
-          // still surfaces real errors.
+          // still surfaces real errors. Reset when the route params change
+          // so navigating to another product clears the card.
+          resetKeys={[businessId, version, scope, domainName, productName]}
           fallbackRender={({ error }) => {
             if (isNotFoundError(error)) {
               return (
@@ -97,7 +101,6 @@ function ProductMissing({
   domainName: string;
   productName: string;
 }) {
-  const scopeLabel = scope ? scope.toUpperCase() : "";
   return (
     <Card>
       <CardHeader>
@@ -105,8 +108,7 @@ function ProductMissing({
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          "{productName}" doesn't exist in domain "{domainName}"
-          {scopeLabel ? ` (v${version} ${scopeLabel})` : ` (v${version})`}. It
+          "{productName}" doesn't exist in domain "{domainName}" ({versionScopeLabel(version, scope)}). It
           may have been renamed or removed in this version.
         </p>
         <Button asChild variant="outline" size="sm">
@@ -163,8 +165,6 @@ function ProductDetail({
       (v) => v.version === Number(version) && ((v as any).scope || "") === scope,
     )?.id ?? _allVersions.find((v) => v.version === Number(version))?.id;
 
-  const scopeLabel = scope ? scope.toUpperCase() : "";
-
   // Scroll the search-highlighted column into view once the product loads.
   const highlightRef = useRef<HTMLTableRowElement>(null);
   useEffect(() => {
@@ -185,7 +185,7 @@ function ProductDetail({
       params: { businessId },
     },
     {
-      label: scopeLabel ? `v${version} ${scopeLabel}` : `v${version}`,
+      label: versionScopeLabel(version, scope),
       to: "/businesses/$businessId/model/$version/$scope",
       params: { businessId, version, scope },
     },
@@ -320,16 +320,11 @@ function ProductDetail({
                     {attr.business_glossary_term}
                   </TableCell>
                   <TableCell>
-                    {attr.tags &&
-                      attr.tags.split(",").map((tag) => (
-                        <Badge
-                          key={tag.trim()}
-                          variant="outline"
-                          className="mr-1 text-xs"
-                        >
-                          {tag.trim()}
-                        </Badge>
-                      ))}
+                    {splitCommaList(attr.tags).map((tag) => (
+                      <Badge key={tag} variant="outline" className="mr-1 text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </TableCell>
                 </TableRow>
                 );

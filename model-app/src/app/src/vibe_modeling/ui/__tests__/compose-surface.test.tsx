@@ -203,4 +203,16 @@ describe("ComposeSurface", () => {
     renderSurface();
     expect(screen.getByText(/Deprecated \(1\)/)).toBeInTheDocument();
   });
+
+  it("domain options come from non-deprecated inputs only", () => {
+    const anchor = (d: string) => ({ level: "element", domain_name: d, path: [`Domain: ${d}`] });
+    inputsData = [
+      mk({ id: "a", anchor: anchor("Sales") as VibeInputOut["anchor"] }),
+      mk({ id: "d", status: "deprecated", anchor: anchor("Retired") as VibeInputOut["anchor"] }),
+    ];
+    renderSurface();
+    fireEvent.click(screen.getByLabelText("Filter by domain"));
+    expect(screen.getByRole("option", { name: "Sales" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Retired" })).not.toBeInTheDocument();
+  });
 });

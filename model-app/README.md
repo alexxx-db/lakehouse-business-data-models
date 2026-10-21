@@ -22,14 +22,18 @@ governed, versioned data model deployed to Unity Catalog, iterating in natural
 language, with no notebook required.
 
 The app covers modeling and deployment of the model - designing the schema,
-iterating on it, and materializing it to Unity Catalog. It does not integrate the
-model onto real data. Forming a model onto existing data is a separate process
-(the `model-genie-skills` data-integration flow) and is out of scope here.
+iterating on it, and materializing it to Unity Catalog. With the optional bronze
+assessment enabled, it also checks an installed model against your own source
+(bronze) data and grades how well the sources cover it (see
+[step 7](#7-assess-against-your-data-optional)). Building the pipelines that load
+your data into the model is a separate process (the `model-genie-skills`
+data-integration flow). The assessment can hand its results off to that flow.
 
 ![Model Foundry home page](docs/images/app-landing.png)
 
-The home page lays out the loop and lists your recent businesses alongside the
-built-in industry templates.
+The home page lays out the loop. Below it, **Jump back in** lists the businesses,
+industries and model versions you visited most recently, so you can pick up where
+you left off. **Start something new** gives the ways to start a model.
 
 ![The modeling loop](docs/images/flow.png)
 
@@ -46,6 +50,10 @@ Start from an industry template, import an existing `model.json`, or describe a
 business in your own words. The agent generates a base model (version 1) from that
 starting point. For how to write a good business description, see
 [Describing a business](docs/Describing-a-business.md).
+
+If the optional **Domain Taxonomy Builder** is enabled, a wizard uses an LLM to
+draft the business's domains and description. You edit the draft before the first
+run, and the app checks the domain names against the agent's naming rules.
 
 ![Start a new business](docs/images/new-business.png)
 
@@ -186,6 +194,19 @@ alone), **holistic** (apply a rule everywhere, preserve structure), or **generat
 (create or rebuild parts) - and re-validates through the same quality pipeline. Each
 version also carries an RDFS ontology alongside the physical schema.
 
+### 7. Assess against your data (optional)
+
+With the optional in-app bronze assessment enabled, the loop continues after you
+deploy. You pick an installed model version and the source (bronze) schemas to
+map. For each domain, a Databricks job profiles the sources, maps each model
+column to a source column, and grades each entity Full, Partial or Blocked. The
+job runs as a read-only service principal.
+
+You then review the scorecard and the gaps, and answer the open decisions in the
+app. The assessment also suggests next vibes, which you can add as inputs to your
+next run. A hand-off step copies the project to a folder in your workspace, with
+ready prompts to continue the work in Genie Code.
+
 ## Installing in your workspace
 
 See **[INSTALL.md](INSTALL.md)** for end-to-end install instructions on any
@@ -206,6 +227,13 @@ privileges the app needs, starts the app, and pushes the built source. It is
 idempotent. Lakebase is generally available on both AWS and Azure, so no preview
 enrollment is needed.
 
+Two features are optional and off by default. Turn each on with an install flag:
+
+- `--enable-taxonomy-builder` - the Domain Taxonomy Builder. See
+  [Enabling the Domain Taxonomy Builder](INSTALL.md#enabling-the-domain-taxonomy-builder-optional).
+- `--enable-assessment` - the in-app bronze assessment. See
+  [Enabling the in-app bronze assessment skill](INSTALL.md#enabling-the-in-app-bronze-assessment-skill-optional).
+
 By default every user granted Databricks Apps access is treated as an app admin;
 set `VIBE_MODELING_RBAC_ENABLED=true` for group-based roles. See the
 [Access model](INSTALL.md#access-model) section of INSTALL.md.
@@ -217,10 +245,12 @@ set `VIBE_MODELING_RBAC_ENABLED=true` for group-based roles. See the
 | `src/app/` | The Databricks App: React + FastAPI control plane, built with [`apx`](https://github.com/databricks-solutions/apx) |
 | `src/app/src/vibe_modeling/backend/` | FastAPI backend (routes, run orchestration, model export, Unity Catalog integration) |
 | `src/app/src/vibe_modeling/ui/` | React + TypeScript frontend and its `__tests__` |
-| `src/app/vendored/agent/` | The bundled modeling agent notebook (`VERSIONS.json` + notebook), uploaded to the workspace on first boot |
-| `install/` | Installer scripts (`install.sh`, Lakebase provisioning, catalog grants, build/render) |
+| `src/app/vendored/agent/` | The bundled modeling agent notebook, its naming-rules CSV and `VERSIONS.json`, uploaded to the workspace on first boot |
+| `src/app/vendored/assessment/` | The bundled bronze assessment: the per-domain job notebook (`assess_domain.py`), its prompt and result schemas, the pinned skills, and `VERSIONS.json` (pinned CLI and skills versions) |
+| `install/` | Installer scripts (`install.sh`, Lakebase provisioning, catalog grants, model-service check, build/render) |
 | `examples/` | Example model outputs (NCDOT) and a business context input (`examples/maf.json`) |
-| `tests/test_app/` | App backend test suite (no Spark or workspace required) |
+| `docs/` | Setup guides (GitHub publish, source read access) and [Describing a business](docs/Describing-a-business.md) |
+| `tests/test_app/`, `tests/fixtures/` | App backend test suite and its fixtures (no Spark or workspace required) |
 | `databricks.yml`, `src/app/app.yml` | Databricks Asset Bundle and App configuration |
 
 ## Local development

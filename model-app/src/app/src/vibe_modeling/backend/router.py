@@ -74,6 +74,10 @@ from .routes._helpers import (
     params_json_omit_deployment_catalog_for_multi_catalog,
     resolve_warehouse_id,
 )
+from .services.metamodel_setup import (
+    MetamodelSetupError,
+    ensure_metamodel_schema_and_volume,
+)
 from .services.operations import get as _operations_registry_get
 from .services.orchestrator import Dag, OperationStep
 from .services.orchestrator.dag_factories import (
@@ -426,6 +430,7 @@ def _create_new_base_model_run_via_orchestrator(
     session,
     ws,
     tracker,
+    setup_metamodel: bool,
 ):
     """Build the ``new-base-model`` DAG, validate it, persist a Run row,
     and call ``orchestrator.start`` (spec §2.4.1 + §4).
@@ -486,6 +491,19 @@ def _create_new_base_model_run_via_orchestrator(
             status_code=500,
             detail="DAG factory returned None without blockers",
         )
+
+    # Every gate has passed: set up a missing `_metamodel` now, before the Run
+    # row and before step-0 dispatch can spill ``model_vibes`` into
+    # ``vol_root``. ``ws`` here is the App service principal client
+    # (``Dependencies.Client``), not the OBO user, so the grants the error
+    # asks for are for the app's SP.
+    if setup_metamodel:
+        try:
+            ensure_metamodel_schema_and_volume(
+                ws, resolve_run_target_catalog(data, agent_config)
+            )
+        except MetamodelSetupError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # Persist a Run row. ``intent`` is the durable label (spec §5.1).
     sid = generate_session_id()
@@ -828,7 +846,7 @@ def _issue_to_out(issue) -> IssueOut:
 
 
 # Non-terminal Run statuses. Used by ``GET /health`` so the deploy
-# script (``scripts/dev/redeploy.sh``) can refuse to push a new build
+# guard (``install/in_flight_guard.sh``) can refuse to push a new build
 # while runs are still active. Atomic-replace App containers can't hand
 # off in-flight pollers cleanly, so the deploy-time guard is the right
 # place to enforce "don't redeploy while runs are active" — the App
@@ -847,7 +865,7 @@ def _count_in_flight_runs(session) -> int:
 def get_health(session: Dependencies.Session):
     """Liveness + active-run count.
 
-    ``in_flight_runs`` lets the deploy script (``scripts/dev/redeploy.sh``)
+    ``in_flight_runs`` lets the deploy guard (``install/in_flight_guard.sh``)
     refuse to push a new wheel while a run is active. The App no longer
     carries a runtime drain gate — atomic-replace App containers can't
     cleanly hand off in-flight pollers, so blocking new dispatches while
@@ -1315,20 +1333,35 @@ _METAMODEL_REQUIRED_INTENTS = frozenset({
 })
 
 
+def _metamodel_setup_warning(target_catalog: str) -> IssueOut:
+    """The ``new-base-model`` "needs setup" warning for a catalog with no
+    ``_metamodel``. ``create_run`` matches it by equality to decide whether
+    the create handler sets ``_metamodel`` up."""
+    return IssueOut(
+        field_path="catalog",
+        step_index=-1,
+        message=f"`_metamodel` will be set up in '{target_catalog}' when you start the run.",
+        severity="warning",
+    )
+
+
 def _check_metamodel_schema_present(
     data: RunIn,
     agent_config: Optional["AgentConfig"],
     ws,
 ) -> Optional[IssueOut]:
     """Refuse to dispatch a run when the target catalog has no ``_metamodel``
-    schema. The agent reads model.json from
+    schema (except ``new-base-model``, which gets a setup warning instead).
+    The agent reads model.json from
     ``<catalog>/_metamodel/vol_root/business/<biz>/<scope>_v<N>/model.json``
     and writes Delta tables under ``<catalog>/_metamodel/{business,product,...}``;
     no schema → install crashes at dispatch with a less helpful error.
 
-    Returns a single blocker (or ``None`` when the catalog is healthy /
-    the check is skipped). The blocker points at ``field_path="catalog"``
-    so the form highlights the catalog field, not a generic dispatch error.
+    Returns one ``IssueOut`` or ``None``: a blocker for the gated intents, the
+    setup warning for ``new-base-model``, ``None`` when the schema is present
+    or the check is skipped. Never creates anything. The issue points at
+    ``field_path="catalog"`` so the form highlights the catalog field, not a
+    generic dispatch error.
     """
     if data.intent.value not in _METAMODEL_REQUIRED_INTENTS:
         return None
@@ -1359,6 +1392,14 @@ def _check_metamodel_schema_present(
         return None
     if "_metamodel" in names:
         return None
+
+    if data.intent.value == Intent.NEW_BASE_MODEL.value:
+        # A brand-new base model reports "needs setup" instead of blocking.
+        # The create handler creates `_metamodel` + `vol_root` after every
+        # gate, because step-0 dispatch may spill ``model_vibes`` to
+        # ``/Volumes/<catalog>/_metamodel/vol_root/business/<biz>/_vibe_inputs/``
+        # before the agent can create `_metamodel` itself.
+        return _metamodel_setup_warning(target_catalog)
 
     return IssueOut(
         field_path="catalog",
@@ -1681,9 +1722,10 @@ def _collect_run_preflight_blockers(
     Config-missing gates (agent job, metamodel catalog, warehouse) go through
     the shared :func:`require_config` collect mode so run-shaped and
     non-run-shaped operations converge on one mechanism. The remaining gates
-    are run-specific: the active-run lock, the One-Catalog effective-target
-    check, the metamodel-schema-present probe, the parent-version probe, and
-    the target-catalog-clash check.
+    are run-specific: the active-run lock, the new-base-model-needs-an-empty-
+    business check, the One-Catalog effective-target check, the
+    metamodel-schema-present probe, the parent-version probe, and the
+    target-catalog-clash check.
 
     See router.create_run for the source-of-truth gating.
     """
@@ -1714,17 +1756,30 @@ def _collect_run_preflight_blockers(
                 severity="blocker",
             ))
 
-    # Description gate: a model-producing intent (new-base-model,
-    # vibe-iterate, vibe-new-ecm-mvm) dispatched with an empty business
-    # description (and no rescuing override) fails ~1 minute into agent
-    # compute with "Business description is required". Catch it here so
-    # the run form blocks BEFORE dispatching the Databricks job. Independent
-    # of the config gates below - an empty description is wrong regardless
-    # of whether the agent job/catalog/warehouse are configured.
+    # Business-level gates, independent of the config gates below: they are
+    # wrong regardless of whether the agent job/catalog/warehouse are configured.
     if business_id:
         business = session.get(Business, business_id)
         if business is not None:
             intent_value = data.intent.value if data.intent is not None else ""
+            # Any ModelVersion row, including superseded, blocks new-base-model.
+            if intent_value == Intent.NEW_BASE_MODEL.value and session.exec(
+                select(ModelVersion.id).where(ModelVersion.business_id == business_id).limit(1)
+            ).first():
+                blockers.append(IssueOut(
+                    field_path="intent",
+                    step_index=-1,
+                    message=(
+                        "New Base Model needs a business with no model versions. "
+                        "Create a new business to start a fresh base model."
+                    ),
+                    severity="blocker",
+                ))
+            # Description gate: a model-producing intent (new-base-model,
+            # vibe-iterate, vibe-new-ecm-mvm) dispatched with an empty business
+            # description (and no rescuing override) fails ~1 minute into agent
+            # compute with "Business description is required". Catch it here so
+            # the run form blocks BEFORE dispatching the Databricks job.
             description_blocker = business_description_blocker_for_intent(
                 intent_value,
                 business,
@@ -1981,6 +2036,9 @@ def create_run(
         # compatibility with the existing UI that handles 409 specially.
         status_code = 409 if first.field_path == "business_id" else 400
         raise HTTPException(status_code=status_code, detail=first.message)
+    setup_metamodel = (
+        _metamodel_setup_warning(resolve_run_target_catalog(data, agent_config)) in preflight
+    )
     # One Catalog target falls back to the agent's metamodel catalog when
     # the user didn't pick a target on the form. Preflight already
     # emitted a blocker if both are empty; this branch only runs when
@@ -2017,6 +2075,7 @@ def create_run(
             session=session,
             ws=ws,
             tracker=tracker,
+            setup_metamodel=setup_metamodel,
         )
 
     # ----- Vibe-new-ECM-MVM branch (internal authoring helper) -----------

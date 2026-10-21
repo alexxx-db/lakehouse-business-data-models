@@ -260,6 +260,7 @@ describe("runs.new — Model Size combobox visibility (Fix C)", () => {
   });
 
   it("hides the Model Size combobox when intent='new-base-model' (isBase)", async () => {
+    versionsHook = () => ({ data: [] });
     await renderRunsNew("?businessId=biz-1&operationType=new-base-model");
 
     // Wait for the new-base-model form to settle (the per-run instructions
@@ -339,6 +340,7 @@ describe("runs.new — submit body model_size for intent-fixed intents", () => {
   });
 
   it("submits model_size='large model' for new-base-model (isBase)", async () => {
+    versionsHook = () => ({ data: [] });
     await renderRunsNew("?businessId=biz-1&operationType=new-base-model");
 
     await waitFor(() => {

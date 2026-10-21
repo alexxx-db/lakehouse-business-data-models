@@ -83,6 +83,15 @@ MIGRATIONS: list[Migration] = []
 # --- Helpers ------------------------------------------------------------------
 
 
+def _vkey(version: str) -> tuple[int, ...]:
+    """Sort key for dotted versions of any depth (``0.8.0`` < ``0.8.0.1`` < ``0.8.1``).
+
+    Plain string comparison mis-orders multi-digit levels (``0.8.0.10`` < ``0.8.0.9``),
+    which matters now that a release can carry a 4th micro level.
+    """
+    return tuple(int(p) for p in version.split("."))
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -242,7 +251,7 @@ def reconcile_schema(engine: Engine) -> None:
     installed = _read_installed_version(engine)
 
     # Case A: code knows about a version older than what's installed.
-    if installed is not None and installed > latest_version:
+    if installed is not None and _vkey(installed) > _vkey(latest_version):
         raise LakebaseInstallError(
             f"installed schema version {installed!r} is newer than the "
             f"latest migration this wheel knows about ({latest_version!r}). "
@@ -275,5 +284,5 @@ def reconcile_schema(engine: Engine) -> None:
 
     # Production-style partial upgrade: apply only migrations strictly
     # newer than the installed version.
-    pending = [m for m in migrations if m.version > installed]
+    pending = [m for m in migrations if _vkey(m.version) > _vkey(installed)]
     _apply_migrations(engine, pending)

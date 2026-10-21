@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { HELP_TOPICS, type HelpTopic } from "@/components/help/help-topics";
 import { Badge } from "@/components/ui/badge";
+import { useAssessReady } from "@/lib/assessment";
 
 export const Route = createFileRoute("/_sidebar/help/")({
   component: HelpIndexPage,
@@ -39,6 +40,7 @@ function TopicCard({ topic }: { topic: HelpTopic }) {
 }
 
 export function HelpIndexPage() {
+  const { ready: assessReady } = useAssessReady();
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <header className="mb-8">
@@ -51,7 +53,9 @@ export function HelpIndexPage() {
 
       <div className="space-y-8">
         {GROUP_ORDER.map((group) => {
-          const topics = HELP_TOPICS.filter((t) => t.group === group);
+          const topics = HELP_TOPICS.filter(
+            (t) => t.group === group && (t.feature !== "assessment" || assessReady),
+          );
           if (topics.length === 0) return null;
           return (
             <section key={group}>

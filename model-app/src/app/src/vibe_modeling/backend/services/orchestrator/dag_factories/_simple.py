@@ -118,7 +118,7 @@ def _schema_prefix_for(
        model. Multi-catalog styles must remain empty per the
        primitive's model validator.
 
-    Phase 4.5 walkthrough (the test workspace): step 1A blocked because the
+    Phase 4.5 walkthrough (test workspace): step 1A blocked because the
     frontend doesn't expose ``schema_prefix`` on the simple-op forms
     (intentional — for One Catalog the prefix is conventional, not
     user-chosen). Without parent-derived defaults the install op
